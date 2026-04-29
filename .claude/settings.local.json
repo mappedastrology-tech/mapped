@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/taylorcorbett/.nvm/versions/**)",
+      "Read(//Users/taylorcorbett/.fnm/**)",
+      "Bash(brew list:*)",
+      "Read(//Users/taylorcorbett/**)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+-- Gemini planet seed data — planet-specific domains
+-- Each planet explores its own function through the Gemini lens
+DELETE FROM kb_planet_in_sign WHERE sign = 'Gemini';
+
+INSERT INTO kb_planet_in_sign (planet, sign, summary, life_patterns, relationships, challenges, growth, book_references) VALUES
+
+('Sun', 'Gemini',
+ 'Your core identity is adaptable, curious, and multi-talented. You''re drawn to variety, stimulation, and making connections across different worlds. People see you as intellectually restless and endlessly interested in understanding how things work.',
+ 'You move through life by exploring multiple interests, perspectives, and social circles simultaneously. Your sense of self strengthens through learning, conversation, and finding fresh angles on old problems. Identity for you is less fixed and more like a kaleidoscope—constantly turning toward new light.',
+ 'You''re drawn to people who can keep up intellectually and appreciate your need for stimulation and variety. You''re a natural communicator who brings lightness and humor to relationships. Others find you engaging but sometimes struggle with your tendency to flit between commitments and moods.',
+ 'Your biggest challenge is developing staying power and depth. You can scatter yourself thin across too many projects, ideas, and people, mistaking breadth for mastery. Learning to commit to fewer things more fully, and to sit with complexity rather than rush to the next thing, is crucial.',
+ 'Your growth comes through recognizing that true mastery requires focusing your brilliant mind on what genuinely matters to you. Develop patience with repetition and boredom. Let curiosity deepen into expertise. Your gift is connecting dots—use it to create something that lasts, not just entertains.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Hand, Planets in Transit', 'Forrest, The Twelve Houses']),
+
+('Moon', 'Gemini',
+ 'Your emotional life runs on logic and mental stimulation. You process feelings through words, analysis, and conversation—emotions need to make sense to you. You''re emotionally restless, needing variety in how you nurture yourself and others.',
+ 'You soothe yourself by talking things through, learning about them, and understanding them intellectually. Sitting with raw feeling without context makes you anxious. Your emotional needs shift quickly; what comforts you today might feel boring tomorrow. You find security in flexibility and mental engagement.',
+ 'You''re emotionally approachable and curious about others'' inner worlds. You listen well and communicate your feelings clearly, though you sometimes skip over the deeper emotional layers. Partners appreciate your even-handedness but may feel you''re avoiding the messy, irrational parts of intimacy.',
+ 'Your challenge is accepting that not every emotion needs to be explained away. You can use thinking as a defense against feeling vulnerable or overwhelmed. Learning to sit with ambiguity and to value intuition as much as logic is essential for emotional maturity.',
+ 'Growth comes from trusting your feelings even when they don''t make logical sense. Let yourself be emotionally curious without immediately categorizing or analyzing. Your gift is communicating emotional truths—use it to help others feel heard, and allow yourself the same permission.',
+ ARRAY['Forrest, The Inner Sky', 'Bolen, The Moon in Your Life', 'Lilly, Christian Astrology']),
+
+('Mercury', 'Gemini',
+ 'Your thinking style is Mercury at home—quick, versatile, endlessly curious, and naturally gifted at communication. You''re designed to gather information, make connections, and articulate ideas with clarity and wit. Your mind is your greatest tool.',
+ 'You learn fast, ask good questions, and enjoy exploring multiple perspectives on the same topic. Your communication is direct, playful, and often witty. You thrive on mental variety—monotony is your kryptonite. You''re the person who knows a little about everything and can talk your way through almost any situation.',
+ 'In relationships, you''re the communicator, the translator, the one who brings humor and lightness to conversations. People love your curiosity and the way you make ideas accessible. You can struggle with depth of listening; you sometimes jump to the next idea before fully exploring the current one.',
+ 'Your challenge is developing depth alongside breadth. Collecting information doesn''t equal understanding. You can intellectualize when you should feel, and you may struggle to stick with complex ideas long enough to truly master them. Superficiality is your biggest shadow.',
+ 'Growth comes from consciously choosing depth. Pick ideas, topics, and conversations worth your sustained attention. Your natural gift is translation and connection—become the person who not only gathers ideas but synthesizes them into wisdom. Let mastery matter as much as novelty.',
+ ARRAY['Hand, Planets in Transit', 'Woolfolk, The Only Astrology Book You''ll Ever Need', 'Hamaker-Zondag, The Twelfth House']),
+
+('Venus', 'Gemini',
+ 'Your love style is light, playful, and intellectually driven. You''re attracted to witty, communicative partners and you lead with humor and conversation. Romance for you is as much about mental connection and laughter as it is about passion.',
+ 'You attract people through your charm, your curious interest in them, and your ability to make them feel understood. You enjoy the early stages of connection—the flirtation, the discovery, the sparkling conversation. Your aesthetic is understated, modern, and varied; you like having options in love as in life.',
+ 'You''re a generous, attentive partner who makes others feel special through conversation and interest. You''re not naturally possessive or intense. Partners appreciate your lightness but sometimes wish you''d go deeper, commit more fully, or stay longer in the relationship rather than always keeping options open.',
+ 'Your challenge is mistaking intellectual connection for emotional intimacy. You can keep relationships at arm''s length by staying clever and avoid the vulnerability real love requires. You may have multiple attractions simultaneously and struggle to choose one person. Commitment feels like a cage if it means abandoning variety.',
+ 'Your growth comes from recognizing that commitment can include intellectual freshness—you don''t have to leave love to stay stimulated. Choose depth with one person while maintaining your own independence and interests. Your gift is making love feel like play; now let it feel like home too.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Lick, The Twelve Houses', 'Forrest, The Twelve Houses']),
+
+('Mars', 'Gemini',
+ 'Your drive expresses through words, ideas, and rapid-fire action. You''re competitive in conversations and debates more than physical contests. Your energy is scattered across multiple projects rather than focused like a laser. You''re quick to start things but sometimes lose steam.',
+ 'You take action through communication—persuading, arguing, connecting, negotiating. Your physical energy is restless; you prefer mental competition to physical combat. You can push forward on multiple fronts simultaneously, though this can dilute your force. Boredom kills your drive faster than defeat.',
+ 'In conflict, you''re quick with words—sometimes cutting, often clever. You''re not naturally aggressive or violent; you fight with ideas and arguments. Partners may find you frustrating because you argue to win rather than to resolve, and you can deflect serious issues with humor or debate.',
+ 'Your challenge is lack of focused force. You spread your energy across too many goals and burn out or forget them. You can use your mouth as a weapon, wounding with words and wit. Learning to channel your drive into fewer, deeper pursuits and to listen in conflict rather than dominate is crucial.',
+ 'Growth comes from choosing where to direct your formidable mental and verbal energy. Not every fight needs to be won; some need to be understood. Use your speed and intelligence to accomplish something meaningful, not just to stay stimulated. Your drive can move mountains when it''s focused on one peak.',
+ ARRAY['Hand, Planets in Transit', 'Woolfolk, The Only Astrology Book You''ll Ever Need', 'Forrest, The Inner Sky']),
+
+('Jupiter', 'Gemini',
+ 'Jupiter in Gemini is in detriment—expansion meets restriction in this placement. Your luck tends to come through learning, communication, and serendipitous conversations rather than grand gestures. You''re naturally optimistic about ideas but sometimes cynical about outcomes.',
+ 'Your growth happens through gathering knowledge, expanding your social network, and staying mentally flexible. You believe in the power of information and connection. Luck finds you when you''re in motion, talking, learning, or curious. But you can scatter your faith across too many directions.',
+ 'You''re generous with your time, conversation, and knowledge, and others benefit from your networks and insights. You inspire through ideas and your ability to see possibilities. Partners may feel you over-promise and under-deliver, especially on commitments requiring sustained focus rather than mental flexibility.',
+ 'Your core challenge is completing what you start. Jupiter naturally expands and Gemini naturally spreads; together they create a tendency to say yes to too much and finish too little. You can become scattered, overly talkative, or lose faith in things that require patience. Detriment here teaches restraint.',
+ 'Your growth comes from recognizing that true expansion requires focus. Choose which knowledge paths to master deeply rather than sampling everything. Your luck increases when you commit. Let your gift for seeing multiple perspectives serve completion, not procrastination. Finish one book before starting the next.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Hand, Planets in Transit', 'Forrest, The Twelve Houses']),
+
+('Saturn', 'Gemini',
+ 'Saturn in Gemini creates fear around communication, fitting in, and being understood. Your life lesson centers on developing authentic voice despite self-doubt about your words. You''re tasked with creating structure in a domain that wants to stay fluid.',
+ 'You learn through experience that some things actually require discipline, repetition, and depth. Early on you may doubt your intelligence or feel socially awkward despite being naturally communicative. As you age, you develop real authority in your areas of focus and become a trusted voice. Maturity brings mastery.',
+ 'In relationships, you''re more cautious and measured than your Gemini sun suggests. You''re thoughtful about words and sometimes reserved when younger, becoming warmer and more generous as you age. You take relationships seriously once you commit. Others find you grounded and reliable, if sometimes a bit formal or distant initially.',
+ 'Your challenge is the tension between Gemini''s need for variety and Saturn''s need for consistency. You can doubt whether you''re "smart enough" or communicative enough, making you overly self-editing. You might retreat from conversation or social situations due to anxiety, contradicting your natural gifts.',
+ 'Your growth comes from accepting that depth and expertise take time. Your greatest power lies in becoming the person others trust for serious, thoughtful conversation—not just witty banter. Develop one area of real knowledge. Your voice becomes more valuable, not less, when it''s selective and considered.',
+ ARRAY['Hand, Planets in Transit', 'Woolfolk, The Only Astrology Book You''ll Ever Need', 'Hamaker-Zondag, Astrology and Consciousness']),
+
+('Uranus', 'Gemini',
+ 'Uranus in Gemini births the generational desire to revolutionize communication and thinking. This is the archetype of the innovator, the one who questions whether the story we''ve been told is actually true. Your generation questions authority, embraces new tech, and reinvents language.',
+ 'Your generation is wired for rapid change and intellectual rebellion. You''re naturally drawn to emerging technologies, alternative perspectives, and breaking traditional rules of communication. Boredom with convention runs deep. You''re the generation of disruption, experimental ideas, and sudden insight.',
+ 'You inspire others toward liberation from outdated thinking and false stories. You connect with your generation through shared ideals of freedom and innovation. You can be erratic or emotionally detached in relationships, prioritizing independence and unconventional arrangements over traditional commitment.',
+ 'Your challenge is impatience with gradual change and people who don''t move as fast as you do. You can be arrogant about new ideas and dismissive of established wisdom. Sudden rebelliousness can burn bridges. Learning to value both innovation and continuity is your work.',
+ 'Your growth comes from recognizing that the most radical ideas still need grounding and real-world application. Use your gift for seeing new possibilities to serve not just disruption but genuine progress. Build bridges between what''s new and what''s proven, not just tear down the old.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Tarnas, Cosmos and Psyche', 'Hand, Planets in Transit']),
+
+('Neptune', 'Gemini',
+ 'Neptune in Gemini dissolves the boundaries between truth and imagination, generating your generation''s gift for creative vision and the spread of ideas across media. This is the archetype of the dreamer who reimagines collective narratives. Your generation confuses fact with feeling in ways both visionary and dangerous.',
+ 'Your generation is deeply imaginative and attuned to collective stories and images. You''re naturally skilled at creating and spreading narratives through media, art, and culture. Reality is more malleable to you than to previous generations. Illusion and inspiration live close together in your world.',
+ 'You''re creative, intuitive, and able to sense collective moods and emerging cultural moments. You inspire others toward shared dreams and visions. You can be unreliable in practical matters, confusing inspiration with commitment. Others may feel deceived when your dreamy promises don''t materialize.',
+ 'Your challenge is the erosion of boundaries between fantasy and reality. You can be deceptive without meaning to be, losing track of what''s real versus imagined. Your generation has struggled with disillusionment as idealism crashes against reality. Addiction and escapism can be real shadows.',
+ 'Your growth comes from grounding your powerful imagination in reality. Channel your gift for seeing collective dreams into creating something tangible and true. Use your sensitivity to shared narratives to inspire without deceiving. Your generation''s greatest power is helping others reimagine what''s possible—do it honestly.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Tarnas, Cosmos and Psyche', 'Forrest, The Inner Sky']),
+
+('Pluto', 'Gemini',
+ 'Pluto in Gemini represents your generation''s compulsive need to dig beneath the surface of how information, language, and ideas shape power. This is the archetype of the interrogator, the one who deconstructs narratives and rebuilds them from the ground up. Your generation transforms what can be said and how.',
+ 'Your generation is psychologically inclined to excavate hidden truths and destabilize false narratives. You''re obsessed with uncovering what''s been hidden, ignored, or repressed in collective communication. Your generation wields extraordinary power through language and information, sometimes without realizing it. Reconstruction of shared story is your task.',
+ 'You''re intense about understanding and revealing truth, even uncomfortable truths. You''re drawn to psychological depth and the shadow sides of human nature. Others experience you as probing, sometimes invasive in your need to know. You transform how your generation thinks and communicates about hard things.',
+ 'Your challenge is the danger of obsessive digging that never settles, or weaponizing information for power rather than truth. Your generation has access to tremendous information power and sometimes uses it destructively. Paranoia and conspiratorial thinking can seduce you. You can be destabilizing without offering real rebuilding.',
+ 'Your growth comes from using your archaeological gift to serve genuine understanding and healing, not just exposure and destruction. Help your generation unbury what matters—truth, authenticity, real power—and then help rebuild better. Your greatest strength is transformation; use it wisely, not just compulsively.',
+ ARRAY['Woolfolk, The Only Astrology Book You''ll Ever Need', 'Tarnas, Cosmos and Psyche', 'Hand, Planets in Transit']);

@@ -1,0 +1,94 @@
+-- Updated Aquarius entries — planet-specific
+DELETE FROM kb_planet_in_sign WHERE sign = 'Aquarius';
+
+INSERT INTO kb_planet_in_sign (planet, sign, summary, life_patterns, relationships, challenges, growth, book_references) VALUES
+
+-- SUN IN AQUARIUS (DETRIMENT)
+('Sun', 'Aquarius',
+'Identity through nonconformity and belonging to a tribe, but split between standing out and fitting in.',
+'You''re drawn to define yourself by your ideals and your people—yet struggle to know who you are without them. Your sense of self emerges through causes, friendships, and intellectual pursuits rather than ego. You need to be different, but fear invisibility or irrelevance. Authenticity means honoring both your wild individuality and your deep need for community.',
+'You attract people who value your originality and mind, but you can seem detached or hard to pin down emotionally. Friends become your primary mirrors; you show up best in group settings and intellectual banter. Romantic partners must understand that independence is non-negotiable—you''re loyal to ideals before people. True intimacy happens when someone accepts your refusal to be conventional.',
+'The core challenge is reconciling the urge to rebel with the need to belong. You can feel like an outsider even in your tribe, or swing between radical independence and desperate groupthink. Self-worth can become too dependent on being "interesting" or "ahead of the curve." Identity confusion arises when you lose touch with what YOU actually want versus what your community or ideology demands.',
+'Lean into the truth that your gift is bridging worlds—connecting outsiders, bringing fresh perspective, building community for the marginalized. Your real power comes from authentic rebellion, not performative uniqueness. Practice asking yourself: "Do I believe this, or am I just contrarian?" Anchor your identity in your own values first; community is the echo, not the source.',
+'Astrology for the Soul by Jan Spiller; The Only Astrology Book You''ll Ever Need by Joanna Martine Woolfolk; Astrology: Understanding the Birth Chart by Kevin Burk');
+
+-- MOON IN AQUARIUS
+('Moon', 'Aquarius',
+'Emotional needs centered on intellectual connection, freedom, and being part of something larger than yourself.',
+'You need space to process feelings mentally rather than feel them viscerally. Emotional comfort comes through conversation, shared ideals, and knowing you''re part of a movement or cause. You''re naturally detached from drama and prefer logic to sentiment; this protects you but can leave you feeling isolated. Your emotional rhythm is irregular—you swing between needing solitude and needing your people.',
+'You connect best with people who respect your need for independence and won''t demand constant reassurance. You show love through loyalty to ideals rather than romantic gestures. Friends matter more than family to you emotionally; your chosen family is your real home. Partners must accept that you process emotions slowly and won''t merge identities—you need your own lane.',
+'The core pain is emotional detachment that reads as coldness or indifference, even when you care deeply. You can intellectualize feelings to the point of numbness, avoiding grief or vulnerability. Fear of engulfment can make you withdraw when loved ones need you most. Finding emotional safety while honoring your need for freedom is lifelong work.',
+'Develop emotional literacy by pausing your analysis and simply naming what you feel, even if it seems illogical. Create rituals of connection with your chosen family—regular check-ins, group projects, shared causes. Practice staying present when someone needs you instead of suggesting solutions. Your gift is offering rational perspective in chaos; let that be enough without needing to fix the feeling itself.',
+'The Inner Sky by Steven Forrest; The Moon in Your Life by Donna Cunningham; Feelings by Willard Harley Jr.');
+
+-- MERCURY IN AQUARIUS
+('Mercury', 'Aquarius',
+'Thinking style that jumps ahead, sees patterns others miss, and speaks truth unconventionally.',
+'Your mind works in flashes—you skip steps others need and arrive at conclusions via unexpected routes. You''re fascinated by the "why" behind systems, ideologies, and human behavior. Your communication is direct, sometimes blunt; you say what needs saying even if it''s awkward. You love debate for its own sake and can argue any position to understand it more deeply.',
+'You communicate best with people who can keep up intellectually and appreciate your quirky humor. You''re drawn to friendships based on ideas rather than feelings. In relationships, you need a partner who''s genuinely interested in your thoughts and won''t be offended by your detached commentary. Group conversations energize you more than intimate one-on-ones.',
+'Your gift for seeing ahead can feel like a curse—you spot problems before anyone else and can seem pessimistic or overcritical. Your bluntness can wound people who need gentleness. You''re prone to analysis paralysis, spinning through too many "what-ifs" at once. Difficulty staying focused on one thread; your mind scatters across too many interests.',
+'Harness your predictive mind by turning it toward service—teach, write, or advocate using your unique perspective. Practice softening your delivery; the truth lands better with kindness. Create structure for your scattered thoughts: lists, projects, collaborations that channel your ideas into action. Your role is to illuminate, not to judge.',
+'Astrology and the Mind by Bil Tierney; Thinking with Whole Brain by Ned Herrmann; Mercury: The Winged Messenger by Erin Sullivan');
+
+-- VENUS IN AQUARIUS
+('Venus', 'Aquarius',
+'Love style that''s intellectual, friendship-first, and values radical freedom and equality in partnership.',
+'You fall for minds first—confidence, originality, and ideas turn you on more than traditional beauty. Your attractions are often unconventional; you''re drawn to people outside the mainstream. Love for you is companionship and shared vision, not possession or constant reassurance. You need a partner who''s also your friend and your intellectual equal. Commitment means freedom, not merger.',
+'You''re a loyal but detached partner who needs significant independence and won''t play games or demand emotional performance. You show love through loyalty to the relationship''s ideals rather than constant affection. Friends often come first; your partner must accept this without insecurity. You''re drawn to partners who are self-sufficient and won''t cling.',
+'The core challenge is appearing cold or commitment-phobic when you''re simply protecting your freedom and autonomy. You can skip over passion for stability and later wonder why the relationship feels flat. Emotional unavailability disguised as independence can leave partners feeling unseen. You''re prone to falling for ideas about people rather than actual, messy humans.',
+'Recognize that true intimacy doesn''t require loss of self—it''s two sovereign beings choosing each other. Practice vulnerability; it doesn''t diminish your independence. In attraction, learn to distinguish between intellectual stimulation and genuine emotional resonance. Your gift is bringing friendship into love; let that deepen instead of keeping it forever light.',
+'Venus as a Muse by Demetra George; The Course of True Love Never Did Run Smooth by Donna Cunningham; Love Cycles by Beatrice Portinari');
+
+-- MARS IN AQUARIUS
+('Mars', 'Aquarius',
+'Drive directed toward innovation, rebellion, group action, and fighting for future-forward causes.',
+'Your energy comes in bursts rather than steady flame—you''re motivated by ideas and injustice more than personal ambition. You''re a strategist who thinks several moves ahead; your actions serve a larger vision. You fight for ideals, communities, and systemic change rather than personal glory. Your aggression is intellectual and ideological; you debate, disrupt, and innovate more than you physically dominate.',
+'You''re drawn to collaborators and team efforts; solo competition bores you. You attract partners who appreciate your unconventional approach and won''t demand traditional displays of dominance. Your sexuality is intellectual and experimental—you need mental stimulation and freedom to explore. You''re most passionate about shared missions; romantic partners benefit when they join your causes.',
+'Your drive can feel scattered across too many ideals; you start revolutions but struggle with follow-through. Impatience with those who move slower can make you dismissive or authoritarian about your vision. Your aggression can emerge as passive-aggression—subtle sabotage rather than direct confrontation. Fear of traditional competition can mask hidden ambition you''re afraid to claim.',
+'Choose your causes carefully; not every problem needs your intervention. Channel your disruptive energy into one sustained project rather than constant pivoting. Practice direct confrontation instead of clever undermining. Your real power is mobilizing groups and shifting paradigms—claim that ambitiously. Learn that personal success isn''t selling out; it''s resourcing the movement.',
+'The Inner Sky by Steven Forrest; Mars in the Birthchart by Demetra George; The Art of War by Sun Tzu');
+
+-- JUPITER IN AQUARIUS
+('Jupiter', 'Aquarius',
+'Expansion through unconventional knowledge, humanitarian vision, and elevating consciousness and community.',
+'Your luck comes through networks, friendships, and being in the right alternative circle at the right time. You''re drawn to future-focused knowledge—technology, social movements, progressive theory, futurism. Your optimism is intellectual rather than emotional; you believe in human progress and collective evolution. Growth happens when you''re part of something bigger than yourself—a movement, organization, or visionary group.',
+'You''re generous with ideas and mentorship but can seem aloof about personal relationships. Your closest friends are also your teachers and collaborators. In romantic partnerships, you''re most content when you share a larger vision or mission. People appreciate your big-picture thinking but may feel you''re not present for their mundane struggles.',
+'Your vision can be so grand that you lose sight of practical reality. You''re prone to joining movements uncritically, mistaking collective enthusiasm for truth. Excessive detachment can read as coldness; people want your warmth, not just your ideas. Overextension across too many networks and causes can leave you spread thin and burnt out.',
+'Develop discernment about which causes truly align with your values versus which ones you''re following the crowd toward. Practice bringing your vision down to earth—what small, concrete step serves the big picture? Invest in fewer relationships more deeply; quality over expansive networks. Your role is to elevate consciousness; make sure you''re also grounded in human reality.',
+'The Only Astrology Book You''ll Ever Need by Joanna Martine Woolfolk; Jupiter: A Personal Guide by Judy Hari; The Undefeated Mind by Alex Lickerman');
+
+-- SATURN IN AQUARIUS (TRADITIONAL RULER — DIGNITY)
+('Saturn', 'Aquarius',
+'Life lessons centered on building sustainable structures for collective freedom, personal responsibility within community.',
+'Your greatest growth comes through discipline applied to innovation—you must learn that real change requires structure, not just ideas. Saturn in its own sign teaches you to become an elder, a builder of lasting institutions. Your life challenges you to commit to something larger than yourself and take responsibility for its success. You''re tested repeatedly on staying true to your vision despite setbacks, mockery, or misunderstanding.',
+'You attract people who respect your integrity and your willingness to stand alone if necessary. In relationships, you''re serious about commitment only when it''s truly aligned with your values. Friends become lifetime allies—you''re dependable but maintain boundaries. Partners must understand that you won''t compromise your principles for comfort, and that''s your strength, not your flaw.',
+'The core Saturnian fear is rejection for being too different, leading to either rigid conformity or defiant alienation. You can become controlling about "the right way" to rebel, losing the spontaneity that made your vision alive. Difficulty trusting that freedom requires structure; you swing between anarchic chaos and tyrannical control. Loneliness comes from pushing people away when they disappoint your ideals.',
+'Embrace your role as the responsible revolutionary—you''re here to build lasting change, not endless protest. Learn that structure serves freedom; rules protect the collective. Practice flexibility within your principles; your way isn''t the only way. Your gift is creating systems that honor individuality and collective good—do that work with patience and compassion.',
+'Saturn: A New Look at an Old Devil by Liz Greene; The Only Astrology Book You''ll Ever Need by Joanna Martine Woolfolk; Feeling the Future by Deepak Chopra');
+
+-- URANUS IN AQUARIUS (MODERN RULER — DOMICILE)
+('Uranus', 'Aquarius',
+'Generational rebellion that rewires consciousness, technology, and collective paradigms—Uranus is at home here.',
+'You''re wired to see what needs disrupting and have the nerve to disrupt it—institutions, beliefs, technologies, social codes. Your generation''s gift is radical reimagining of what''s possible. You don''t rebel for rebellion''s sake; you''re genuinely here to usher in new paradigms. Your nervous system is calibrated to catch signals before they''re obvious. The unexpected doesn''t rattle you; you expect nothing to stay the same.',
+'You attract similarly awakened people and make alliances based on shared vision rather than convention. Intimate partnerships require someone who can handle your unpredictability and won''t try to cage you. You''re electric in groups, especially those pushing boundaries. People are magnetized by your refusal to play small, but some find you exhausting or frightening.',
+'Your gift can become destructive—disrupting for its own sake, destabilizing what''s still worth preserving. You can be arrogant about your vision, dismissing people slower to evolve. Emotional numbness disguised as detachment; you skip over grief and fear to rush toward the future. Burnout comes from constant activation and refusal to rest.',
+'Your real power is discernment: disrupting what genuinely needs disrupting and honoring what''s evolved enough to preserve. Create rhythm—even Uranus needs rest and integration between breakthrough cycles. Your gift is liberation; make sure it''s for everyone, not just your in-group. Trust that steady change serves more people than sudden shock.',
+'Astrology for the Soul by Jan Spiller; The Universe in a Nutshell by Stephen Hawking; Uranus: Planet of Change and Revolution by Bil Tierney');
+
+-- NEPTUNE IN AQUARIUS
+('Neptune', 'Aquarius',
+'Generational dreams of collective awakening, global consciousness, technological transcendence, and spiritual unity.',
+'Your generation dreamed of humanity moving beyond separation—technology as a bridge, consciousness expansion as the goal, unity beyond borders. You carry idealism about what''s possible if we just elevated our awareness. Neptune here blurs the line between individual and collective; you feel interconnected with all beings. Your fantasy is a world where divisions dissolve and people finally ''get it.'' The dream can feel more real than material reality.',
+'You''re drawn to partners and communities that share your spiritual or ideological awakening. In relationships, you''re seeking transcendence—a meeting of souls, not just bodies. You''re easily merged into group consciousness; your boundaries can dissolve. People feel your compassion and openness, though some find you too spacey or lacking in practical care.',
+'The core danger is escaping into idealistic fantasy instead of engaging with real, messy humanity. You can become disillusioned when people don''t evolve as fast as you expected. Victims to spiritual bypassing—using your vision as a bypass for actual emotional work. Addiction to transcendence experiences, difficulty grounding in embodied reality. Your compassion can turn to savior complex.',
+'Ground your vision by checking it against real human needs and timelines. Practice saying "I don''t know" and sitting with not-yet-knowing. Your gift is imagining evolution ahead of its time; make sure you''re also present for humanity''s current struggles. Develop spiritual practice that includes embodiment, not just transcendence. The future is built through present action, not just dreaming.',
+'The Astrology of Fate by Liz Greene; The Global Brain by Barbara Marx Hubbard; Neptune: A Personal Guide by Judy Hari');
+
+-- PLUTO IN AQUARIUS
+('Pluto', 'Aquarius',
+'Generational transformation of consciousness, social structures, and collective power through radical decentralization and reimagining.',
+'Your generation is here to transform society at its roots—not reform, but fundamentally rewire how groups function, how power flows, how information moves. Pluto in Aquarius unmakes old power hierarchies and births new distributed systems. This is the generation of collective resurrection—you''re destroying what no longer serves humanity''s evolution. Your power is invisible until it''s absolute; change sneaks in through networks and systems.',
+'You attract people working on transformation and are drawn to groups with real power to shift paradigms. In relationships, you''re intensely committed to growth and aren''t interested in stagnation. You''re loyal to the mission, less so to individuals if they block evolution. Intimate partners must be willing to transform alongside you; stasis feels like death.',
+'The core shadow is wielding power unconsciously—movements can become cults, networks can become weaponized, decentralization can become chaos. You can be ruthlessly cold about sacrificing relationships or individuals for the greater good. Obsession with control disguised as liberation. Paranoia about hidden power structures everywhere. Difficulty trusting and being vulnerable.',
+'Remember that true power serves life, not control. Your generation''s gift is freeing humanity from oppressive systems; make sure you''re not building new tyrannies in their place. Develop emotional integrity; transformation includes transforming yourself. Power is most potent when held lightly and distributed generously. Your role is midwife to collective evolution—hold space for birth without forcing the outcome.',
+'The Only Astrology Book You''ll Ever Need by Joanna Martine Woolfolk; Pluto: Invisible Power by Judith Hill; The Gifts of Pluto by Christopher Grosso');

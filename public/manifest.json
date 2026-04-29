@@ -1,0 +1,18 @@
+{
+  "name": "Mapped",
+  "short_name": "Mapped",
+  "description": "Astrology for your actual life",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#f5efe6",
+  "theme_color": "#B76B48",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-terracotta-cropped.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

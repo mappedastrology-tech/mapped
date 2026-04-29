@@ -1,0 +1,1384 @@
+"use client";
+
+/**
+ * You Tab — your birth chart, all placements, and interpretations.
+ *
+ * Loads chart data from sessionStorage (after first calculation)
+ * or from Supabase (if the user is logged in and has a saved chart).
+ * Placements expand inline as accordions showing Dolly's interpretations.
+ *
+ * Now includes: Chart Ruler section, Stellium detection, and
+ * Contradiction warnings for conflicting placements.
+ */
+
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import ChartWheel, { SIGN_NAMES } from "@/components/ChartWheel";
+// Interpretations removed — Big 3 section no longer shown
+import PlacementAccordion from "@/components/PlacementAccordion";
+import InfoTip from "@/components/InfoTip";
+import ShareCard from "@/components/ShareCard";
+import { getGlossaryEntry } from "@/lib/glossary";
+import { supabase } from "@/lib/supabase";
+import { SIGN_FULL } from "@/lib/knowledge";
+import { getChartRuler } from "@/lib/chartRuler";
+import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
+
+interface Planet {
+  name: string;
+  sign: string;
+  signNum: number;
+  position: number;
+  absPosition: number;
+  house: string | null;
+  retrograde: boolean;
+}
+
+interface House {
+  number: number;
+  sign: string;
+  signNum: number;
+  position: number;
+  absPosition: number;
+}
+
+interface RisingCusp {
+  current: string;
+  alternate: string;
+  position: number;
+  message: string;
+}
+
+interface ChartData {
+  name: string;
+  birthDate: string;
+  birthTime: string;
+  unknownTime: boolean;
+  cityName: string;
+  latitude: number;
+  longitude: number;
+  timezone?: string;
+  bigThree: { sun: string; moon: string; rising: string };
+  planets: Planet[];
+  houses: House[];
+  aspects: Array<{
+    p1Name: string;
+    p2Name: string;
+    aspect: string;
+    orbit: number;
+    aspectDegrees: number;
+  }>;
+  risingCusp?: RisingCusp | null;
+  specialPoints?: Array<{
+    name: string;
+    sign: string;
+    signNum: number;
+    position: number;
+    absPosition: number;
+    house: string | null;
+    retrograde: boolean;
+  }>;
+  midheaven?: {
+    sign: string;
+    signNum: number;
+    position: number;
+    absPosition: number;
+  } | null;
+}
+
+const PLANET_SYMBOLS: Record<string, string> = {
+  Sun: "\u2609", Moon: "\u263D", Mercury: "\u263F", Venus: "\u2640",
+  Mars: "\u2642", Jupiter: "\u2643", Saturn: "\u2644", Uranus: "\u2645",
+  Neptune: "\u2646", Pluto: "\u2647",
+};
+
+const MC_DESCRIPTIONS: Record<string, { summary: string; career: string; shadow: string; advice: string }> = {
+  Ari: { summary: "You're meant to be known for being first — a pioneer, an initiator, someone who starts things nobody else has the nerve to start. Your career thrives when you're leading, competing, or breaking new ground. Authority that tries to slow you down will always feel suffocating.", career: "Entrepreneurship, athletics, emergency services, surgery, military leadership, any field where you're the one making the first call. You need autonomy or you wilt. Roles that let you start things from scratch are where you shine brightest.", shadow: "Burning bridges by moving too fast, alienating collaborators with your impatience, or job-hopping before anything has time to grow. Your reputation can swing from 'trailblazer' to 'loose cannon' if you don't learn when to slow down.", advice: "Build something you'd be proud to put your name on. Channel your competitive fire into one thing at a time. You don't need to fight everyone — just the battles that actually matter to your legacy." },
+  Tau: { summary: "You're meant to be known for building things of lasting value. Your career thrives when it involves beauty, resources, or tangible results. People trust your reliability and taste. Slow, steady career growth suits you better than overnight success.", career: "Finance, real estate, food and hospitality, luxury goods, agriculture, music, interior design — anything where you can build something beautiful and enduring. You're the person who makes things feel substantial and worth investing in.", shadow: "Getting so comfortable in a role that you stop growing. Resisting necessary career pivots because the unknown terrifies you. Staying in a well-paying job you hate because it funds the lifestyle you need.", advice: "Your career isn't a sprint — it's a vineyard. Plant now, tend patiently, and trust that compounding effort always pays off. Don't let comfort become the ceiling on your ambition." },
+  Gem: { summary: "You're meant to be known for your mind — communication, ideas, versatility. Your career thrives when it involves writing, speaking, teaching, or connecting people and ideas. You may have multiple career paths and that's by design.", career: "Journalism, teaching, marketing, social media, translation, sales, podcasting, consulting — anything that lets you use your voice and make connections. You're the bridge between people, ideas, and industries.", shadow: "Spreading yourself so thin that you become a jack of all trades and master of none. Starting projects you don't finish. Being perceived as flaky or unreliable when you're actually just bored.", advice: "Your versatility is a feature, not a bug. But pick two or three lanes and go deep. The world needs your ideas packaged into something tangible — not just floating in conversation." },
+  Can: { summary: "You're meant to be known for nurturing and protecting. Your career thrives when it involves caring for others, creating safe spaces, or building something that feels like home. Your public reputation is warm, trustworthy, and emotionally intelligent.", career: "Healthcare, therapy, education, real estate, food service, childcare, social work, hospitality — anywhere people need to feel held and safe. You build loyalty that money can't buy.", shadow: "Taking on everyone's emotions at work until you're burned out. Struggling to separate personal feelings from professional decisions. Avoiding leadership because vulnerability feels too exposed in public.", advice: "Your emotional intelligence is a career superpower — not a weakness. Lead with it. Build teams that feel like family, and people will follow you anywhere." },
+  Leo: { summary: "You're meant to be known for your creative vision and leadership. Your career thrives when you're visible, expressive, and in charge of something that matters. You need recognition to stay motivated — a behind-the-scenes role will drain you.", career: "Entertainment, fashion, teaching, politics, creative direction, public speaking, management, luxury brands — anywhere you can put your stamp on something and be seen doing it. You're a natural on stage, literal or figurative.", shadow: "Needing applause so badly that you can't handle criticism. Dominating collaborative environments. Burning out because you can't delegate — nobody does it as well as you, right?", advice: "Your light isn't diminished by sharing the spotlight. The best Leo MC legacy isn't being the star — it's being the one who made everyone else shine brighter too." },
+  Vir: { summary: "You're meant to be known for excellence, precision, and genuine competence. Your career thrives when it involves problem-solving, analysis, health, or service. People respect your work ethic and your eye for detail.", career: "Healthcare, data analysis, editing, nutrition, veterinary science, quality assurance, accounting, research — any field that rewards doing things right instead of doing them loudly. You're the person they call when it actually has to work.", shadow: "Perfectionism that paralyzes you from shipping anything. Underselling your accomplishments because nothing feels good enough. Becoming the office workhorse while others take credit.", advice: "Your standards are a gift. But done is better than perfect, and you deserve to be recognized for the work you do. Stop waiting until it's flawless to put your name on it." },
+  Lib: { summary: "You're meant to be known for bringing people together and creating beauty. Your career thrives in partnerships, diplomacy, design, or justice. Your public image is charming and balanced — people see you as fair and aesthetically minded.", career: "Law, mediation, interior design, fashion, event planning, public relations, couples therapy, art curation — anywhere that needs someone to make things beautiful and fair simultaneously.", shadow: "Avoiding necessary conflict until it explodes. Being so focused on what others want that you lose your own professional identity. Choosing the pretty option over the right one.", advice: "Your gift for harmony is rare. Use it strategically — the world needs people who can hold opposing sides together. Just don't lose yourself in the middle." },
+  Sco: { summary: "You're meant to be known for depth, transformation, and fearless truth-telling. Your career thrives when it involves research, psychology, investigation, or anything that requires seeing what others can't. Your public presence is magnetic and intense.", career: "Psychology, forensics, surgery, investigative journalism, crisis management, finance, hospice care, sex therapy — anywhere that requires going into the dark places other people avoid.", shadow: "Power struggles at work that consume you. Being so intense that colleagues find you intimidating. Holding grudges that torpedo professional relationships.", advice: "You see what others refuse to look at — that's your edge. Channel your intensity into transformation, not control. The career that makes you confront death, power, or hidden truth is the one that makes you feel alive." },
+  Sag: { summary: "You're meant to be known for your vision, wisdom, and expansive worldview. Your career thrives in education, travel, publishing, philosophy, or anything that broadens horizons. People see you as inspiring and optimistic.", career: "Higher education, publishing, travel industry, international business, coaching, motivational speaking, religion, outdoor adventure — anything that lets you teach, explore, or expand someone's world.", shadow: "Overpromising and underdelivering because you got excited about the next thing. Being perceived as preachy or know-it-all. Resisting the boring operational work that actually makes visions real.", advice: "Your optimism is contagious — but pair it with follow-through. The teacher who changes lives isn't the one with the most ideas; it's the one who shows up every day." },
+  Cap: { summary: "You're meant to be known for building something substantial and lasting. Your career is the backbone of your identity — you take your professional reputation extremely seriously. Authority, structure, and long-term achievement define your public life. You were built for leadership that earns respect over time.", career: "Corporate leadership, law, architecture, government, banking, engineering, anything with a clear hierarchy where hard work is rewarded with increasing authority. You're built for institutions and legacies.", shadow: "Workaholism that destroys your personal life. Measuring your worth entirely by your title. Being so focused on climbing that you forget to enjoy the view.", advice: "You'll get to the top — that was never in question. The real question is whether you'll have anyone left beside you when you arrive. Build the career AND the life." },
+  Aqu: { summary: "You're meant to be known for innovation and doing things differently. Your career thrives when it involves technology, social change, community building, or disrupting outdated systems. People see you as ahead of your time.", career: "Tech, nonprofit leadership, scientific research, activism, aerospace, UX design, community organizing — any field that lets you reimagine how things are done and build something the future needs.", shadow: "Being so unconventional that no one takes you seriously. Alienating the very people you're trying to help because you refuse to play the game. Intellectualizing problems instead of solving them.", advice: "You're here to change systems, not just critique them. Find the institution most in need of disruption and plant yourself there. Your weirdness is your resume." },
+  Pis: { summary: "You're meant to be known for your compassion, creativity, and spiritual depth. Your career thrives in art, healing, music, film, or any field that requires imagination and empathy. Your public image has an ethereal, otherworldly quality.", career: "Music, film, therapy, spiritual work, photography, hospice care, poetry, dance, nonprofit work — anywhere the currency is feeling, not logic. You're the artist, the healer, the one who makes people cry in a good way.", shadow: "Escapism that looks like a career crisis. Difficulty with the business side of your art. Absorbing other people's energy until you can't function in professional settings.", advice: "Your sensitivity is your career superpower — but you need structure to support it. Find a container for your gifts. The world needs what you make, but it needs you to show up consistently to receive it." }
+};
+
+const CHIRON_DESCRIPTIONS: Record<string, { wound: string; patterns: string; healing: string; advice: string }> = {
+  Ari: { wound: "Your deepest wound is around your right to exist, to take up space, to assert yourself. At some point, being bold or putting yourself first was punished or shamed. You learned that wanting things for yourself was selfish, so you either overcompensate with aggression or shrink back entirely.", patterns: "You might swing between being overly assertive and completely passive. Starting things feels terrifying even though you're great at it. You may let others go first, speak first, take credit first — then resent them for it. Physical vitality can be an issue; headaches, jaw tension, or injuries to the head and face.", healing: "You become the person who gives others permission to be themselves unapologetically. Your courage in the face of self-doubt inspires people more than you know. The more you practice saying 'I want this' without apology, the more your wound becomes your medicine.", advice: "Start before you're ready. Speak before you're asked. Take up space before it's offered. Every time you choose yourself, you heal a little more. You don't need permission to exist loudly." },
+  Tau: { wound: "Your deepest wound is around self-worth, security, and feeling like you're enough. Material stability may have been unreliable growing up, or your value was tied to what you produced. Somewhere you learned that love is conditional on what you provide.", patterns: "You may hoard resources, overwork to feel secure, or stay in situations that are stable but soul-crushing. Body image issues are common. You might overspend to soothe yourself or undercharge because you don't believe your work is worth more.", healing: "You help others find unshakeable self-worth that doesn't depend on external validation. You teach people that they are enough without the title, the body, the bank account. Your presence alone makes others feel grounded.", advice: "Practice receiving without earning it first. Let someone pay, let someone compliment you, let yourself rest without calling it lazy. Your worth was never up for negotiation — you just forgot." },
+  Gem: { wound: "Your deepest wound is around your voice — being heard, being understood, being believed. Communication may have been dismissed or your intelligence questioned early on. You learned that your words don't matter, or worse, that they're dangerous.", patterns: "You might talk too much to overcompensate or go silent in the moments that matter most. You second-guess every word. You may have been the sibling who was ignored, the student who was told they were 'too much.' Learning disabilities or speech issues may have been part of your early story.", healing: "You become an extraordinary communicator who helps others find and trust their own voice. You're drawn to writing, teaching, or mentoring because you know what it's like to not be heard. Your words carry weight precisely because you earned them through silence.", advice: "Say the thing you're afraid to say. Write the piece you think nobody will read. Your voice is the exact medicine someone else needs — and using it is how you heal yourself." },
+  Can: { wound: "Your deepest wound is around belonging, family, and feeling safe enough to be vulnerable. Home may have been unstable or emotionally unpredictable. You learned early that the people who should protect you couldn't, or wouldn't.", patterns: "You might mother everyone while secretly starving for nurturing yourself. You attract people who need caretaking but can't return it. You may have a complicated relationship with your actual mother or maternal figures. Stomach issues, emotional eating, and difficulty feeling 'at home' anywhere are common.", healing: "You create the emotional safety for others that you craved — you become the home people never had. Your empathy is hard-won and deeply real. People feel held by you in a way that transforms them.", advice: "Let yourself be taken care of. You don't always have to be the strong one. The home you're looking for isn't a place — it's the moment you stop performing strength and let someone see the real you." },
+  Leo: { wound: "Your deepest wound is around being seen, celebrated, and creatively expressed. Your need for recognition may have been shamed as vanity, or your creative gifts were dismissed. You learned that wanting attention means you're self-centered.", patterns: "You might dim your light to make others comfortable, or swing into desperate attention-seeking. Creative blocks are your Chiron calling card — you have enormous creative potential but a voice in your head says it's not good enough. You may feel invisible in groups even when you're the most talented person in the room.", healing: "You help others shine without shame and give them the spotlight you were denied. You're the teacher, director, or mentor who sees someone's gift and says 'this matters — show the world.' Your generosity with praise heals because you know what it costs to never receive it.", advice: "Create without waiting for permission. Your art, your expression, your joy — none of it needs to be validated before it's valuable. The spotlight isn't vanity; for you, it's oxygen." },
+  Vir: { wound: "Your deepest wound is around feeling flawed, imperfect, or never good enough. Criticism may have been constant, or you internalized the message that your best was never sufficient. Perfection became your armor against rejection.", patterns: "You critique yourself more harshly than anyone else ever could. You may have anxiety around health, cleanliness, or order. You apologize for things that aren't your fault. Digestive issues and nervous system problems are common. You might be drawn to self-improvement but never feel improved.", healing: "You help others see their worth beyond their flaws and find wholeness in imperfection. Your eye for what needs fixing becomes gentle and constructive rather than critical. People come to you because you see their potential without judgment.", advice: "You are not a project to be completed. The imperfections you're trying to fix are the most human parts of you. Practice saying 'this is good enough' and meaning it — because it is, and so are you." },
+  Lib: { wound: "Your deepest wound is around relationships — rejection, imbalance, or losing yourself in others. You may have learned early that love required sacrificing your own needs. Harmony became more important than honesty.", patterns: "You attract partnerships where you give 80% and receive 20%. You may struggle to be alone, jumping from relationship to relationship because solitude feels like proof that you're unlovable. Codependency patterns run deep. You might avoid conflict so aggressively that you lose yourself.", healing: "You become a master of healthy relating, helping others build partnerships that honor both people. Your understanding of relationship dynamics is profound because you've lived the imbalance. You teach people that love doesn't require losing yourself.", advice: "The relationship that heals you is the one with yourself. Practice having needs, voicing them, and walking away from anyone who treats that as a problem. You don't need a partner to be whole — you need to know that first." },
+  Sco: { wound: "Your deepest wound involves trust, betrayal, power, or loss. Something was taken from you — innocence, control, safety — in a way that cut deep. You learned that vulnerability is dangerous and that people will use your openness against you.", patterns: "You may test people's loyalty obsessively or refuse to let anyone close enough to hurt you again. Power dynamics in relationships are a recurring theme — you're either controlling or being controlled. You might be drawn to crisis, trauma work, or intensity because normal life feels too quiet.", healing: "You become fearless about emotional truth and help others face their own shadows without flinching. Your capacity to sit with darkness — grief, rage, betrayal — without running makes you an extraordinary healer, therapist, or guide.", advice: "The trust you're afraid to give is the exact thing that sets you free. Not everyone will betray you. Let one person in — all the way — and see what happens. Your power isn't in control; it's in surrender." },
+  Sag: { wound: "Your deepest wound is around meaning, belief, and feeling like an outsider. Your worldview may have been invalidated, or you were made to feel foolish for your beliefs and dreams. You learned that hope is naive and vision is impractical.", patterns: "You may cycle between blind optimism and crushing disillusionment. Foreign cultures or philosophies attract you because you felt like a stranger in your own. You might preach what you haven't practiced or avoid commitment to any single belief system because the last one failed you.", healing: "You help others find their own truth and give them permission to believe in something bigger. Your faith, once healed, is the kind that moves mountains — not because it's naive, but because it survived the fire.", advice: "Believe in something again. Not blindly — but fiercely. The meaning you're searching for isn't in another country or another book. It's in the life you're already living, waiting for you to stop running long enough to see it." },
+  Cap: { wound: "Your deepest wound is around achievement, authority, and the fear of failure. You may have been given too much responsibility too young, or success always came with strings attached. You learned that your worth is measured by your output.", patterns: "You work harder than everyone but feel like a fraud. Authority figures trigger you — you either resent them or desperately seek their approval. You may have had to be the 'adult' as a child. Bone and joint issues, teeth problems, and chronic tension from carrying too much are common.", healing: "You redefine success for others and show them that worth isn't measured by productivity alone. Your hard-won wisdom about achievement becomes gentle mentorship that helps people build careers without losing their souls.", advice: "Rest is not failure. Take the vacation, leave the office, say no to the extra project. The empire you're building means nothing if you're too exhausted to enjoy it. You've proven yourself enough — now prove that you believe it." },
+  Aqu: { wound: "Your deepest wound is around belonging and being different. You may have felt like an outsider, too weird, or rejected by the group for being yourself. You learned that fitting in requires performing a version of yourself that isn't real.", patterns: "You might hold people at arm's length while desperately wanting connection. You intellectualize emotions because feeling them is too vulnerable. Group dynamics can trigger intense anxiety. You may reject communities before they can reject you.", healing: "You create spaces where misfits belong and show others that their uniqueness is their greatest strength. You're the one who builds the community that didn't exist when you needed it. Your outsider perspective becomes visionary leadership.", advice: "You don't need to earn belonging by being useful to the group. You belong because you exist. Let yourself need people — not just ideas, not just causes — actual humans who see the real you and stay." },
+  Pis: { wound: "Your deepest wound involves boundaries, overwhelm, and the pain of feeling everything. You may have been told you're too sensitive, too much, or not tough enough. You learned that the world is too harsh for someone like you.", patterns: "You may use substances, fantasy, or dissociation to escape the intensity of being alive. Boundaries are nearly impossible — other people's pain becomes yours. You attract people who need saving because the role of martyr feels familiar. Sleep issues, immune system problems, and mysterious ailments are common.", healing: "You validate others' sensitivity as strength and show that empathy is a superpower, not a weakness. Your ability to feel what others feel makes you an extraordinary artist, healer, or spiritual guide. Your compassion is unlimited once you learn to protect it.", advice: "Your sensitivity is not a flaw to be toughened out of — it's a gift to be managed. Build the boundaries you need so you can keep your heart open without drowning. The world needs what you feel; it just doesn't need you to sacrifice yourself to feel it." }
+};
+
+const NORTH_NODE_DESCRIPTIONS: Record<string, { direction: string; comfort: string; patterns: string; advice: string }> = {
+  Ari: { direction: "You're growing toward independence, courage, and putting yourself first. Your soul is learning to initiate, to lead, to say 'I need this' without apology. This is the lifetime where you stop waiting for permission and start creating your own path.", comfort: "Your South Node in Libra means you default to people-pleasing, partnership, and avoiding conflict. You came into this life already knowing how to compromise, mediate, and put others first. That skill isn't going anywhere — but it's no longer your growth edge.", patterns: "You might stay in relationships too long because leaving feels selfish. You ask everyone's opinion before making decisions. You avoid conflict even when it costs you your self-respect. You've been the peacekeeper so long you've forgotten what you actually want.", advice: "Take the solo risk. Be selfish sometimes. You've already mastered compromise — now master self-advocacy. The most loving thing you can do for the people around you is become a whole person on your own." },
+  Tau: { direction: "You're growing toward stability, self-worth, and building something tangible. Your soul is learning that you are enough without the crisis, the intensity, the constant transformation. Peace is the destination, not a layover.", comfort: "Your South Node in Scorpio means you default to intensity, crisis, and emotional extremes. You came in knowing how to survive, how to transform, how to go to the darkest places. That depth isn't wasted — but you don't have to live there.", patterns: "You create chaos to feel alive. Calm relationships bore you. You mistake drama for passion and peace for complacency. You might sabotage good things because they feel 'too easy' or suspicious. You're addicted to transformation even when nothing needs to change.", advice: "This lifetime is about learning that peace isn't boring — it's the foundation for everything good. Simplify. Enjoy what you have. Stop creating drama to feel alive. The garden you tend quietly is worth more than the fire you keep restarting." },
+  Gem: { direction: "You're growing toward curiosity, communication, and staying open to new information. Your soul is learning to listen, to ask questions, to admit when it doesn't know. Intellectual humility is your superpower in this lifetime.", comfort: "Your South Node in Sagittarius means you default to big-picture thinking, dogma, and assuming you already know. You came in with strong beliefs, bold opinions, and a tendency to preach. That conviction served you before — now it's time to learn.", patterns: "You lecture when you should listen. You dismiss details as beneath you. You might be drawn to philosophy, religion, or travel as a way to confirm what you already believe instead of discovering something new. You get frustrated when people don't see the 'big picture' you see.", advice: "This lifetime is about listening more than preaching. Ask questions. Stay a student. The details you've been dismissing contain the wisdom you need. The smartest thing you can say is 'I don't know — tell me more.'" },
+  Can: { direction: "You're growing toward emotional vulnerability, nurturing, and creating genuine belonging. Your soul is learning that feelings aren't liabilities — they're data, they're power, they're the whole point of being human.", comfort: "Your South Node in Capricorn means you default to achievement, control, and emotional self-sufficiency. You came in knowing how to be responsible, disciplined, and strong. You can handle anything — but handling everything alone isn't the goal anymore.", patterns: "You work when you should rest. You achieve when you should feel. You keep people at arm's length because needing them feels weak. You might have a complicated relationship with your family or avoid building one because it requires too much vulnerability.", advice: "This lifetime is about learning that your feelings aren't weaknesses — they're your greatest source of power. Let people in. Build a home, not just a resume. The career will always be there; the connection won't wait forever." },
+  Leo: { direction: "You're growing toward creative self-expression, joy, and the courage to be seen. Your soul is learning to step out of the crowd and say 'this is mine, I made it, and I'm proud.' Personal passion is your curriculum.", comfort: "Your South Node in Aquarius means you default to intellectualizing, hiding in groups, and playing it cool. You came in knowing how to think, analyze, and serve the collective. But you've been using 'the group' as a place to hide from your own heart.", patterns: "You stay in the audience when you should be on stage. You rationalize away your desire for recognition. You might pour yourself into causes or communities while neglecting your own creative fire. When someone compliments you, you deflect.", advice: "This lifetime is about stepping into the spotlight and letting your heart lead. Create something personal. Be generous with your warmth. Stop theorizing and start feeling. The world doesn't need another analyst — it needs your art." },
+  Vir: { direction: "You're growing toward practical service, discernment, and mastering the details. Your soul is learning that showing up for the small, unglamorous work is the most spiritual thing you can do. Precision is your prayer.", comfort: "Your South Node in Pisces means you default to escapism, fantasy, and avoiding the mundane. You came in with enormous intuition, compassion, and spiritual sensitivity. But you've been using those gifts to float above reality instead of engaging with it.", patterns: "You avoid routine, structure, and anything that feels too 'boring.' You might use meditation, substances, or fantasy to check out of practical responsibilities. You have beautiful dreams but struggle to turn them into anything concrete. You feel everything but organize nothing.", advice: "This lifetime is about showing up for the small, unglamorous work that actually changes things. Get organized. Be helpful. Ground your dreams in reality. The most spiritual thing you can do right now is make a to-do list and finish it." },
+  Lib: { direction: "You're growing toward partnership, diplomacy, and the art of genuine compromise. Your soul is learning that 'we' can be more powerful than 'I' without losing yourself in the process.", comfort: "Your South Node in Aries means you default to independence, impatience, and going it alone. You came in as a fighter, a pioneer, someone who charges ahead without looking back. That courage isn't going anywhere — but the lone wolf act has run its course.", patterns: "You push people away when they get too close. You make decisions without consulting anyone, then wonder why nobody supports you. You might start fights to maintain distance. Partnerships feel like constraints instead of collaborations.", advice: "This lifetime is about learning that you're stronger with the right person beside you. Collaborate. Listen. Let someone else lead sometimes. Interdependence isn't weakness — it's the advanced class." },
+  Sco: { direction: "You're growing toward emotional depth, intimacy, and transformative vulnerability. Your soul is learning that the deepest power isn't in what you own — it's in what you're willing to let go of.", comfort: "Your South Node in Taurus means you default to comfort, security, and resisting change. You came in knowing how to build stability, accumulate resources, and plant roots. But you've been using that safety as a bunker against transformation.", patterns: "You cling to possessions, relationships, and habits past their expiration date. You avoid emotional intensity because it threatens your stability. You might choose financial security over passion every time. Change feels like loss, and loss feels unbearable.", advice: "This lifetime is about letting go of what feels safe to find what feels true. Merge with someone. Share your resources. Let things die so new things can grow. The comfort zone you're protecting is the cage you're living in." },
+  Sag: { direction: "You're growing toward big-picture wisdom, adventure, and faith in the unknown. Your soul is learning to zoom out, to see the meaning behind the data, and to trust something bigger than your own mind.", comfort: "Your South Node in Gemini means you default to information-gathering, overthinking, and staying safely in your head. You came in as a communicator, a connector, a gatherer of facts. But you've been using information as a substitute for wisdom.", patterns: "You research instead of committing. You keep your options open so long that you never choose anything. You might collect degrees, read compulsively, or stay in your head to avoid the vulnerability of actually believing in something.", advice: "This lifetime is about committing to a belief and following it. Stop researching and start exploring. Trade facts for meaning. The answer isn't in the next book — it's in the leap you're afraid to take." },
+  Cap: { direction: "You're growing toward ambition, discipline, and building something that matters in the world. Your soul is learning to step into authority and claim the public role it's been avoiding.", comfort: "Your South Node in Cancer means you default to emotional comfort, family dependency, and playing it safe. You came in knowing how to nurture, to create belonging, to make everyone feel at home. But you've been hiding in the nest.", patterns: "You put family obligations before your own ambitions. You stay small because success might change your relationships. You might use emotional needs as an excuse to avoid the harder work of building something in the world. Comfort feels non-negotiable.", advice: "This lifetime is about stepping into authority and taking your public role seriously. Build the career. Accept the responsibility. You're ready for more than you think. The family that truly loves you will celebrate your success, not resent it." },
+  Aqu: { direction: "You're growing toward community, innovation, and contributing to something bigger than yourself. Your soul is learning that individual brilliance means nothing if it doesn't serve the collective.", comfort: "Your South Node in Leo means you default to personal drama, needing the spotlight, and making everything about you. You came in as a performer, a creative force, someone who knows how to command attention. That charisma isn't going anywhere — but the solo act is over.", patterns: "You make group situations about yourself. You struggle when you're not the center of attention. You might choose personal glory over the greater good. Your creative gifts are extraordinary but they stay self-serving.", advice: "This lifetime is about channeling your gifts toward the group. Find your cause. Join the movement. Your individuality matters more when it serves others. The standing ovation you're looking for comes from lifting everyone, not just yourself." },
+  Pis: { direction: "You're growing toward spiritual surrender, compassion, and trusting the flow of life. Your soul is learning that some things can't be analyzed, optimized, or fixed — they can only be felt.", comfort: "Your South Node in Virgo means you default to analysis, control, and fixing everything. You came in as a problem-solver, an organizer, someone with impeccable standards. But you've been using perfection as a shield against the messiness of being human.", patterns: "You overanalyze your feelings instead of feeling them. You try to fix people instead of holding space for their pain. You might have anxiety around chaos, mess, or anything that can't be categorized. Spirituality feels uncomfortable because it can't be fact-checked.", advice: "This lifetime is about releasing the need to have all the answers. Meditate. Create art. Trust your intuition over your spreadsheets. Some things can't be optimized — they can only be felt. Let the mystery win." }
+};
+
+const RISING_DESCRIPTIONS: Record<string, { summary: string; appearance: string; relationships: string; shadow: string; advice: string }> = {
+  Ari: { summary: "You walk into a room and people notice. Aries rising gives you a sharp, direct energy — you lead with action, not explanation. First impressions of you: bold, confident, maybe a little intimidating. You process life by doing, and hesitation feels like suffocation. Your body often moves before your mind catches up, and that's by design.", appearance: "Strong brow, athletic build or wiry energy, often a distinctive forehead or scar on the face. You look like someone who's about to do something. Your resting face might read as intense or confrontational even when you're relaxed. You tend to walk fast and gesture sharply.", relationships: "People either love your intensity or feel challenged by it. You come on strong in first meetings — which attracts bold people and intimidates cautious ones. You need partners and friends who can keep up, not ones who ask you to slow down. First dates with you are never boring.", shadow: "Impatience that reads as rudeness. Steamrolling people without realizing it. Starting conflicts because stillness feels like death. You can burn through relationships and opportunities by refusing to pause.", advice: "You're here to initiate — that's your cosmic job. But learn the difference between leading and bulldozing. The bravest thing an Aries rising can do isn't charge forward. It's stand still." },
+  Tau: { summary: "You move through the world with a grounded, magnetic calm that draws people in. Taurus rising gives you a sensual, steady presence — people feel safe around you. First impressions: warm, attractive, unhurried. You need beauty, comfort, and stability in your environment or you can't think straight.", appearance: "Often strikingly attractive in a classic, earthy way. Strong neck and shoulders, soft skin, full lips. You dress well — nothing flashy, but everything quality. Your voice is usually your most notable feature: low, melodic, the kind people want to keep listening to.", relationships: "People gravitate to you because you feel like safety. You're the friend everyone wants to sit next to, the partner who makes chaos feel manageable. But you move slowly in relationships, and pushing you faster will backfire. Once you commit, you're immovable — for better and worse.", shadow: "Stubbornness that becomes self-sabotage. Staying in situations, jobs, and relationships way past their expiration because change terrifies you. Comfort-seeking that becomes avoidance. You can mistake stagnation for stability.", advice: "Change is hard for you, but once you decide to move, nothing stops you. Your body is your anchor — trust what it tells you. If your gut says go, go. The stability you need is inside you, not in your circumstances." },
+  Gem: { summary: "You're the person everyone wants to talk to. Gemini rising gives you a quick, curious, adaptable energy that makes you endlessly interesting. First impressions: witty, youthful, a little scattered. You process life through conversation and information — you need to talk it out, read about it, ask questions.", appearance: "Animated face, expressive hands, youthful features regardless of age. You probably look younger than you are. Your eyes move quickly, always scanning. You might change your hair, style, or aesthetic frequently because one look could never capture all of you.", relationships: "You need mental stimulation in every relationship or you check out. You're the friend who always has a story, always knows what's happening, always has a recommendation. But you can be hard to pin down — not because you're flaky, but because you're genuinely pulled in twelve directions.", shadow: "Boredom is your enemy. You may come across as lighter than you actually are, which is both a gift and a frustration. People assume you're not deep because you're quick. Anxiety can spiral because your mind never stops. Gossip can become a coping mechanism.", advice: "Depth and breadth aren't opposites — you can have both. Pick the conversations, people, and interests that actually feed you, and let the rest go. Your mind is a superpower; just make sure it serves you instead of exhausting you." },
+  Can: { summary: "You feel everything in a room the moment you walk in. Cancer rising gives you a soft, nurturing presence that makes people want to open up to you. First impressions: approachable, warm, emotionally intelligent. Your mood shifts with your environment, and you need to feel safe before you can be yourself.", appearance: "Round, soft features — especially around the face and eyes. You might have a notably warm or gentle expression. Moon-like quality to your face. Your body responds to emotions: bloating, flushing, tears that come easily. You probably look like someone people want to hug.", relationships: "Home isn't just a place — it's a state of being you carry everywhere. People underestimate your strength because of your softness. You attract people who need mothering, which is fine until it isn't. Your inner circle is small and fiercely protected — outsiders don't get in easily.", shadow: "Moodiness that controls your whole day. Taking everything personally. Retreating into your shell instead of communicating what's wrong. You can become so self-protective that you push away the very love you're craving.", advice: "Your sensitivity is strength, not weakness. But learn to feel your feelings without becoming them. You can hold space for others AND have boundaries. The people who matter will respect your shell — and wait for you to come out." },
+  Leo: { summary: "You light up a room whether you're trying to or not. Leo rising gives you a warm, magnetic, creative presence that commands attention. First impressions: generous, dramatic, impossible to ignore. You need to be seen and appreciated — not out of ego, but because visibility is how you process your identity.", appearance: "Great hair — seriously. Strong features, warm coloring, a physical presence that takes up space in the best way. You walk with your chest up, your shoulders back. Even in casual clothes you look like someone. Your smile is your signature.", relationships: "Your hair, your style, your laugh — everything about you is expressive. You're the most loyal friend and the most generous partner when you feel appreciated. But withdraw attention and you'll spiral. You need people who celebrate you, not ones who compete with you or dim your light.", shadow: "The constant need for validation can become exhausting — for you and everyone around you. Dramatic reactions to minor slights. Struggling to be happy for others when you feel unseen. Jealousy disguised as pride.", advice: "You're here to create and to inspire. But your light comes from within, not from applause. Learn to shine for yourself first. The attention you give yourself is the foundation for everything else." },
+  Vir: { summary: "You notice what everyone else misses. Virgo rising gives you a precise, thoughtful, quietly competent energy. First impressions: put-together, intelligent, maybe a little reserved. You process life through analysis — you need to understand before you can relax.", appearance: "Clean, put-together appearance — you look like you have your life together even when you don't. Delicate features, often youthful. Your hands are notable, expressive, always doing something. Neat handwriting. You probably have a very specific morning routine.", relationships: "You show love through acts of service — fixing things, remembering details, anticipating needs before they're voiced. You're the friend who texts 'did you eat today?' Your body is sensitive and your routines matter more than people realize. You come across as modest, but underneath that is a mind that's always working.", shadow: "Overthinking that paralyzes you. Criticizing yourself and others as a defense mechanism. Health anxiety. Difficulty relaxing because there's always something that could be improved. Your helpfulness can become controlling.", advice: "You come across as modest, but underneath that is a mind that's always working. Use it to help — not to judge. And please apply the same gentleness you give others to yourself. You deserve your own compassion." },
+  Lib: { summary: "You make everything around you more beautiful just by being there. Libra rising gives you a charming, graceful, socially attuned presence. First impressions: attractive, diplomatic, easy to be around. You process life through relationships — other people are your mirror.", appearance: "Symmetrical features, dimples, an effortless attractiveness that has nothing to do with effort. You look approachable. Your aesthetic is balanced and intentional — you notice clashing colors the way others notice loud noises. You probably have a signature style that looks casual but isn't.", relationships: "You need harmony in your environment, and conflict physically unsettles you. You're the mediator, the peacekeeper, the one who makes group dynamics smooth. But you can lose yourself in who others want you to be. Your best relationships are with people who ask 'what do YOU want?'", shadow: "Your indecisiveness isn't weakness — it's because you genuinely see every side. But it can become paralysis. People-pleasing that erodes your identity. Avoiding conflict until it becomes an explosion. Using charm as armor.", advice: "You don't have to choose between being liked and being honest. The most beautiful thing about you isn't your face or your taste — it's your capacity to see both sides. Now pick one." },
+  Sco: { summary: "You walk into a room and people feel it before they see you. Scorpio rising gives you an intense, magnetic, penetrating presence. First impressions: mysterious, powerful, hard to read. You process life through emotional depth — surface-level anything makes you restless.", appearance: "Piercing eyes — that's the trademark. Dark or intense coloring, sharp features, a look that makes people feel seen and slightly exposed. You might have a naturally intimidating resting face. Your gaze holds weight. People notice your eyes before anything else.", relationships: "You're always reading the room, noticing who's lying, who's afraid, who's attracted to you. Trust is everything, and you don't give it easily. You have very few close friends, but the ones you have would walk through fire for you because you'd do the same.", shadow: "Suspicion that poisons good things. Testing people until they fail. Holding grudges that outlast the relationship. You can become so guarded that you create the very loneliness you're trying to avoid.", advice: "Trust is everything, and you don't give it easily — but the wall you built to protect yourself is now the thing keeping love out. Let someone see you. Really see you. The vulnerability won't kill you; the isolation might." },
+  Sag: { summary: "You bring the energy wherever you go. Sagittarius rising gives you an enthusiastic, open, adventurous presence that makes people feel optimistic. First impressions: fun, opinionated, restless. You process life through experience and philosophy — you need meaning, not just information.", appearance: "Athletic or tall, often with notable legs or hips. An open, expressive face that's easy to read. You smile big, laugh loud, and gesture expansively. You might have a slightly wild quality — untamed hair, traveled look, the face of someone with stories to tell.", relationships: "Routine bores you, small talk drains you, and you'd rather be somewhere you've never been. You need friends who can keep up with your energy and partners who don't try to cage you. Your honesty is refreshing and occasionally brutal — you don't mean to be blunt, but the truth just comes out.", shadow: "Commitment phobia disguised as freedom. Running from problems instead of facing them. Preachiness that alienates people. You can use adventure as escapism and philosophy as a shield against feeling.", advice: "Your honesty is refreshing and occasionally brutal. The adventure you're searching for isn't always in a new place — sometimes it's in going deeper where you already are. Stay long enough to find out." },
+  Cap: { summary: "You carry an authority that goes beyond your years. Capricorn rising gives you a serious, ambitious, composed presence. First impressions: mature, capable, maybe a little intimidating. You process life through structure and achievement — you need to feel like you're building something.", appearance: "Defined bone structure — strong cheekbones, jaw, or brow. You might look older when you're young and younger when you're old. There's a gravity to your face even when you smile. You dress with intention and authority. People assume you're in charge whether you are or not.", relationships: "People respect you before they even know you. You attract people who need structure or leadership. But you can struggle to let your guard down — vulnerability feels like weakness. Your warmest relationships are with people who see past the competence to the person underneath.", shadow: "You age in reverse — life gets lighter and more joyful as you get older. The early years are the hardest. Workaholism, emotional suppression, and measuring every relationship by what it produces. You can become so focused on the climb that you forget to live.", advice: "You've been old your whole life. Give yourself permission to be young now. Play. Be frivolous. The structure you've built can hold the weight of joy — let it in." },
+  Aqu: { summary: "You're the person in the room who doesn't quite fit in — and that's your superpower. Aquarius rising gives you an unconventional, intellectual, slightly detached presence. First impressions: unique, friendly but distant, hard to pin down.", appearance: "Something unusual about your appearance — asymmetric features, a unique style, or an overall vibe that's hard to categorize. You might have striking or unusual eyes. You don't look like you're trying to fit in, and that's magnetic. People can't quite figure out your aesthetic.", relationships: "You process life through ideas and ideals — you need to feel like you're contributing to something bigger. People find you fascinating but struggle to get close. That's partly by design. Your best relationships are with people who respect your need for space and share your vision for the world.", shadow: "Emotional detachment disguised as intellectual superiority. Keeping people at arm's length and calling it independence. You can be so focused on humanity that you neglect the actual humans in front of you.", advice: "People find you fascinating but struggle to get close. That's partly by design — and partly fear. The revolution you want to start in the world starts with one honest, vulnerable conversation." },
+  Pis: { summary: "You absorb the world like a sponge. Pisces rising gives you a dreamy, empathic, ethereal presence that makes you seem like you're from another dimension. First impressions: gentle, artistic, a little otherworldly. You process life through feeling and intuition — logic alone will never satisfy you.", appearance: "Soft, dreamy eyes — often large or watery. An ethereal quality that's hard to pin down. You might shift how you present depending on who you're with; you're a chameleon without meaning to be. Your face reflects every emotion passing through the room.", relationships: "Boundaries are your biggest lesson because you feel everything around you. You attract people who need saving, which can become a pattern. Your best relationships are with grounded people who protect your energy without dimming your sensitivity. You love deeply and without reservation.", shadow: "Your sensitivity is your greatest gift and your greatest challenge. Escapism through substances, fantasy, or chronic dissociation. Losing yourself in other people's identities. Victim mentality that keeps you from owning your power.", advice: "You don't need to build walls — you need a filter. Learn which feelings are yours and which belong to someone else. Your empathy is a superpower, but only if you protect the person wielding it." }
+};
+
+function elementColor(sign: string): string {
+  if (["Ari", "Leo", "Sag"].includes(sign)) return "text-terracotta";
+  if (["Tau", "Vir", "Cap"].includes(sign)) return "text-sage";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-amber";
+  return "text-[#6b8a9e]";
+}
+
+// Maps Kerykeion house strings like "Fifth_House" to numbers
+function houseToNum(house: string | null): number | null {
+  if (!house) return null;
+  const map: Record<string, number> = {
+    First: 1, Second: 2, Third: 3, Fourth: 4, Fifth: 5, Sixth: 6,
+    Seventh: 7, Eighth: 8, Ninth: 9, Tenth: 10, Eleventh: 11, Twelfth: 12,
+  };
+  const word = house.split("_")[0];
+  return map[word] || null;
+}
+
+const ORDINAL: Record<number, string> = {
+  1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th",
+  7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th",
+};
+
+const CHIRON_HOUSE: Record<number, string> = {
+  1: "Your wound lives in the most visible place possible — your identity, your body, how you show up. You may have been told something was wrong with who you fundamentally are. The healing happens every time you walk into a room as yourself, unedited.",
+  2: "Your wound lives in your sense of self-worth and material security. Money, possessions, or your own value may have felt unstable or conditional. The healing happens when you stop earning your worth and start claiming it.",
+  3: "Your wound lives in communication, learning, and your relationship with siblings or neighbors. You may have struggled to be heard in your immediate environment. The healing happens through writing, teaching, or finally saying what you were never allowed to say.",
+  4: "Your wound lives at the root — home, family, your emotional foundation. The place that should have been safest may have been the source of the most pain. The healing happens when you build the home you never had, for yourself first.",
+  5: "Your wound lives in creativity, self-expression, romance, and your relationship with children or your inner child. Joy may have been punished or your creative instincts shut down early. The healing happens when you play, create, and love without calculating the risk.",
+  6: "Your wound lives in your daily routines, health, and work habits. You may have a complicated relationship with your body or feel like no matter how hard you work, it's never enough. The healing happens through gentle discipline — service without self-sacrifice.",
+  7: "Your wound lives in one-on-one relationships — romantic partners, close friends, business partners. Betrayal, abandonment, or chronic imbalance in partnerships may be a theme. The healing happens when you learn that you can be vulnerable with someone without losing yourself.",
+  8: "Your wound lives in the deep end — intimacy, shared resources, power dynamics, loss, and transformation. Trust was likely broken in a way that changed you. The healing happens when you let someone see all of you, including the parts you think are unforgivable.",
+  9: "Your wound lives in belief systems, higher education, travel, or religion. Your search for meaning may have been invalidated, or the worldview you were given collapsed. The healing happens when you build your own philosophy from the wreckage of the inherited one.",
+  10: "Your wound lives in your career, public image, and relationship with authority. You may fear success as much as failure, or feel like the professional world demands you be someone you're not. The healing happens when you define achievement on your own terms.",
+  11: "Your wound lives in community, friendship, and your sense of belonging to a group. You may have been the outsider, the one excluded, or the one who never felt like they fit. The healing happens when you stop trying to belong and start building the community that didn't exist.",
+  12: "Your wound lives in the unconscious — hidden, spiritual, and deeply private. You may carry grief or trauma you can't name, inherited pain, or a sense of being lost in something bigger than yourself. The healing happens in solitude, meditation, therapy, or art that pulls from the unseen.",
+};
+
+const NODE_HOUSE: Record<number, string> = {
+  1: "Your growth direction points to your identity and self-presentation. You're learning to define yourself on your own terms instead of through others. The lesson is radical self-authorship — becoming the person YOU decide to be.",
+  2: "Your growth direction points to your values, resources, and self-worth. You're learning to build your own stability instead of relying on others' resources or emotional intensity. The lesson is that what you own and what you're worth are up to you alone.",
+  3: "Your growth direction points to communication, learning, and your immediate environment. You're learning to be curious, to ask questions, and to connect locally instead of always reaching for the grand and distant. The lesson is that wisdom lives in the everyday conversation.",
+  4: "Your growth direction points to home, family, and emotional roots. You're learning to build a private foundation instead of chasing public achievement. The lesson is that your inner life matters more than your outer reputation.",
+  5: "Your growth direction points to creativity, joy, romance, and self-expression. You're learning to step out of the audience and onto the stage. The lesson is that your individual creative fire matters — stop hiding in the group.",
+  6: "Your growth direction points to daily work, health, and service. You're learning to show up for the unglamorous routines that actually change your life. The lesson is that spiritual growth means nothing if you can't keep your life running.",
+  7: "Your growth direction points to partnership and genuine collaboration. You're learning that interdependence is strength, not weakness. The lesson is letting someone in — really in — and discovering you're better together than alone.",
+  8: "Your growth direction points to intimacy, transformation, and shared resources. You're learning to let go of what feels safe in order to find what's true. The lesson is that real power comes from vulnerability, not from what you accumulate.",
+  9: "Your growth direction points to higher learning, travel, philosophy, and faith. You're learning to zoom out from the details and commit to a bigger vision. The lesson is that meaning requires a leap — you can't research your way to belief.",
+  10: "Your growth direction points to career, public life, and claiming authority. You're learning to step into leadership and take your place in the world. The lesson is that ambition isn't abandoning your roots — it's honoring them by building something that lasts.",
+  11: "Your growth direction points to community, innovation, and collective purpose. You're learning to channel your individual gifts toward something bigger than yourself. The lesson is that your uniqueness matters most when it serves others.",
+  12: "Your growth direction points to spirituality, surrender, and the unseen. You're learning to trust what can't be measured, to let go of control, and to find peace in the mystery. The lesson is that not everything needs to be fixed — some things just need to be felt.",
+};
+
+/* ═══════════════════════════════════════════
+   Aspect interpretation data
+   ═══════════════════════════════════════════ */
+
+const ASPECT_SYMBOLS: Record<string, string> = {
+  conjunction: "\u260C",
+  opposition: "\u260D",
+  trine: "\u25B3",
+  square: "\u25A1",
+  sextile: "\u2731",
+};
+
+const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: string }> = {
+  conjunction: { label: "Conjunction", nature: "fusion", color: "text-amber" },
+  trine: { label: "Trine", nature: "harmony", color: "text-sage" },
+  sextile: { label: "Sextile", nature: "opportunity", color: "text-sage/70" },
+  square: { label: "Square", nature: "tension", color: "text-terracotta" },
+  opposition: { label: "Opposition", nature: "polarity", color: "text-terracotta/70" },
+};
+
+/** Classify an aspect as strong/medium/mild based on orb tightness and planet importance */
+function classifyAspectStrength(
+  orbit: number,
+  p1: string,
+  p2: string,
+  aspect: string
+): "strong" | "medium" | "mild" {
+  // Luminaries and personal planets carry more weight
+  const PERSONAL = ["Sun", "Moon", "Mercury", "Venus", "Mars"];
+  const LUMINARY = ["Sun", "Moon"];
+  const bothPersonal = PERSONAL.includes(p1) && PERSONAL.includes(p2);
+  const hasLuminary = LUMINARY.includes(p1) || LUMINARY.includes(p2);
+
+  // Tight orb = strong, regardless of planets
+  if (orbit <= 2) return "strong";
+  // Luminary-to-luminary or luminary-to-personal within moderate orb
+  if (orbit <= 4 && hasLuminary && bothPersonal) return "strong";
+  // Personal planet aspects within moderate orb
+  if (orbit <= 4 && bothPersonal) return "medium";
+  // Any aspect involving a luminary within wider orb
+  if (orbit <= 5 && hasLuminary) return "medium";
+  // Wider orbs or outer planet-to-outer planet
+  if (orbit <= 3) return "medium";
+  return "mild";
+}
+
+/** Generate a unique key for a planet pair */
+function aspectKey(p1: string, p2: string): string {
+  return [p1, p2].sort().join("-");
+}
+
+/** Natal aspect interpretations keyed by "Planet1-Planet2" (alphabetical) */
+const ASPECT_INTERPRETATIONS: Record<string, Record<string, string>> = {
+  "Moon-Sun": {
+    conjunction: "Your ego and your emotions are fused — what you want and what you feel are nearly indistinguishable. You come across as authentic and whole, but you may struggle to see yourself objectively. You are deeply unified but can be blind to your own patterns.",
+    trine: "Your inner world and outer identity flow naturally together. You feel comfortable in your own skin, and people sense your emotional groundedness. This is a gift of self-acceptance that makes others feel at ease around you.",
+    sextile: "There's a gentle harmony between who you are and how you feel. You have the opportunity to integrate your emotional needs with your ambitions — it takes some effort but comes more easily than for most.",
+    square: "What you want and what you need are at war. Your conscious identity pulls one direction while your emotional instincts pull another. This creates restlessness and inner tension, but also remarkable drive — you're never complacent because some part of you is always unsatisfied.",
+    opposition: "You're pulled between your sense of self and your emotional needs, often feeling like two different people depending on who you're with. Relationships become mirrors where this split plays out. The growth is in honoring both sides without letting either dominate.",
+  },
+  "Mercury-Sun": {
+    conjunction: "Your mind and your identity are one — you think, therefore you are. Communication is central to your sense of self. You're articulate and mentally sharp, but can over-identify with your ideas and take intellectual disagreements personally.",
+    trine: "Your mind serves your identity beautifully. You communicate who you are with ease and clarity. Ideas come naturally and you express yourself without overthinking it.",
+    sextile: "You have a natural talent for putting your thoughts into words. With a little effort, your communication skills become a real asset to your goals and self-expression.",
+    square: "Your mind races ahead of your identity, or your ego gets in the way of clear thinking. Internal dialogue can be restless or self-critical. The tension pushes you to refine how you think and communicate.",
+    opposition: "You may feel a disconnect between what you think and who you are. Others might reflect back ideas that challenge your self-concept. Growth comes through integrating external perspectives with your inner voice.",
+  },
+  "Mercury-Moon": {
+    conjunction: "Your thoughts and feelings are intertwined — you think emotionally and feel intellectually. This gives you powerful emotional intelligence but can make it hard to separate rational analysis from gut reactions.",
+    trine: "Your mind and heart communicate effortlessly. You can articulate your feelings with unusual clarity, and your thinking is enriched by emotional depth. People trust your words because they feel genuine.",
+    sextile: "You have a gift for understanding emotional nuance through conversation. Journaling, therapy, or simply talking things through helps you process feelings productively.",
+    square: "Your head and heart frequently disagree. You might rationalize away feelings or let emotions cloud your judgment. This tension creates anxiety but also pushes you toward deeper emotional honesty.",
+    opposition: "You swing between pure logic and pure emotion, struggling to hold both at once. Others may experience you as either too heady or too reactive depending on the day. Integration is the lifetime project.",
+  },
+  "Sun-Venus": {
+    conjunction: "Love, beauty, and pleasure are core to your identity. You're naturally charming and aesthetically attuned. Relationships and creative expression feel essential to who you are — not extras, but the main event.",
+    trine: "You attract love and beauty naturally. There's an ease to your relationships and creative life that others envy. You know what you like, and what you like tends to like you back.",
+    sextile: "You have a talent for making things beautiful and harmonious. With intention, your relationships and creative pursuits flourish. You bring grace to everything you touch.",
+    square: "What you want in love and what your ego needs don't always align. You might choose partners who look good but don't feel right, or struggle with self-worth in relationships. The tension refines your values over time.",
+    opposition: "You project your desires onto partners, expecting them to embody the beauty and love you struggle to claim for yourself. Growth means learning that what you're attracted to is actually a mirror of your own unlived qualities.",
+  },
+  "Mars-Sun": {
+    conjunction: "Your will and your drive are unified — you're a force of nature when motivated. Energy, ambition, and assertiveness are central to who you are. You can be domineering or inspiring depending on how conscious you are of this power.",
+    trine: "Your energy flows naturally toward your goals. You assert yourself with confidence and take action without overthinking. Physical vitality supports your ambitions.",
+    sextile: "You have access to a healthy assertiveness that serves your identity well. With effort, you channel your drive productively. Competition motivates rather than overwhelms you.",
+    square: "Your drive and your ego clash — you want to act but something holds you back, or you act impulsively and regret it. Anger management is a theme. This tension creates enormous energy when channeled consciously.",
+    opposition: "You may attract conflict with others that mirrors an internal battle between what you want to do and who you think you should be. Partners and rivals teach you about your own relationship with power and anger.",
+  },
+  "Mars-Moon": {
+    conjunction: "Your emotions are intense and physically felt — anger, passion, and protectiveness run hot. You react before you think, and your instincts are powerful. This placement creates fierce emotional honesty but can lead to volatile reactions.",
+    trine: "You act on your feelings with natural confidence. Emotional energy fuels your productivity, and you protect the people you love fiercely. Your instincts are reliable guides for action.",
+    sextile: "You have a healthy outlet for emotional energy through physical activity or productive action. When you're upset, doing something about it comes more naturally than stewing.",
+    square: "Your emotions and actions are in constant friction. You might suppress anger until it explodes, or act aggressively when you're actually hurt. This is one of the most volatile aspects in a chart, but also one of the most powerful when mastered.",
+    opposition: "You swing between emotional passivity and sudden aggression. Others may trigger your anger in ways that feel disproportionate because they're tapping into deeper emotional wells. Learning when to fight and when to feel is the lesson.",
+  },
+  "Mars-Venus": {
+    conjunction: "Desire and attraction are fused in you — you radiate sexual magnetism and creative passion. You know what you want and you go after it with charm. The line between love and lust can blur, which is both your gift and your complication.",
+    trine: "Your romantic and sexual energies flow together harmoniously. You attract what you desire with relative ease and bring both tenderness and passion to relationships. Creativity is a natural outlet for this balanced energy.",
+    sextile: "You have a talent for blending assertiveness with charm. In relationships, you know how to pursue without overwhelming. Creative collaboration comes naturally and feels energizing.",
+    square: "What you desire and how you pursue it don't match up. You might come on too strong or send mixed signals. Sexual tension is high but so is frustration. This creates passionate but complicated relationships and fierce creative energy.",
+    opposition: "You project desire outward — attracting intense relationships where push-pull dynamics dominate. Partners may embody either the Mars or Venus side while you play the other. The growth is in owning both your softness and your fire.",
+  },
+  "Jupiter-Sun": {
+    conjunction: "You were born to expand. Optimism, generosity, and a sense of purpose define your identity. You aim big and often hit big. The risk is overconfidence or excess — but the rewards of your faith in life tend to justify the gambles.",
+    trine: "Luck and opportunity flow toward you naturally. Your optimism is grounded and your ambitions tend to work out. You inspire others simply by believing that good things are possible.",
+    sextile: "You have access to growth and expansion when you seek it out. Opportunities appear when you're open to learning, traveling, or taking calculated risks.",
+    square: "Your ambitions may outpace your resources or your judgment. You overcommit, overpromise, or overindulge. But this same tension drives you to achieve things others wouldn't dare attempt.",
+    opposition: "Others may challenge your beliefs or your growth path. You might project your ideals onto partners or authority figures. The growth is in learning that your philosophy of life needs to accommodate other perspectives.",
+  },
+  "Jupiter-Moon": {
+    conjunction: "You feel everything on a grand scale — your emotional life is big, generous, and expansive. Nurturing comes naturally and abundantly. You need emotional freedom and can feel suffocated by small, routine emotional environments.",
+    trine: "Emotional generosity flows from you naturally. You create warmth and optimism wherever you go. Your instincts about people and situations tend to be positive — and usually right.",
+    sextile: "You have the ability to grow emotionally through new experiences. Travel, education, and cultural exposure feed your soul in ways that domestic routine cannot.",
+    square: "Your emotional needs are at odds with your need for growth and freedom. You might overeat, overspend, or overcommit emotionally. Restlessness masks deeper emotional needs that need addressing.",
+    opposition: "You swing between emotional security and the urge to expand beyond it. Settling down feels suffocating but rootlessness feels empty. Finding home within the adventure is the lesson.",
+  },
+  "Saturn-Sun": {
+    conjunction: "Responsibility, discipline, and a sense of heaviness were woven into your identity from the start. You may have been an old soul as a child. Achievement is important to you, but so is the fear that you'll never be enough. Life gets better with age — you were built for the long game.",
+    trine: "Discipline comes naturally to you. You take responsibility for your life without resentment and build things that last. Authority sits well on you, and people trust your judgment.",
+    sextile: "You have the ability to structure your ambitions effectively. Hard work pays off more consistently for you than for most, especially when you commit to long-term goals.",
+    square: "Authority, limitation, and self-doubt are constant themes. You feel blocked or tested by life in ways that seem unfair. But this aspect builds character like nothing else — every achievement you earn is real because nothing was handed to you.",
+    opposition: "You project authority outward, often clashing with bosses, institutions, or partners who represent the structure you resist. The lesson is learning to become your own authority rather than fighting everyone else's.",
+  },
+  "Saturn-Moon": {
+    conjunction: "Your emotional life was shaped by restriction — feelings may have been suppressed, denied, or punished early on. You're emotionally resilient but can struggle with vulnerability. Warmth is hard-won but deeply genuine when it finally flows.",
+    trine: "You handle emotions with maturity and stability. You don't overreact and people rely on your emotional steadiness. Your feelings have depth and endurance rather than flash and drama.",
+    sextile: "You can structure your emotional life productively. Therapy, journaling, and emotional discipline come more naturally to you than to most. You build emotional resilience through intentional practice.",
+    square: "Your emotional needs and your sense of duty are in constant conflict. You may feel guilty for having needs or depressed when you can't meet your own impossible standards. This is one of the harder natal aspects, but it builds extraordinary emotional depth over time.",
+    opposition: "You project your need for structure onto partners or family, creating dynamics where one person is the caretaker and the other the dependent. True emotional maturity means learning to hold both roles yourself.",
+  },
+  "Mars-Mercury": {
+    conjunction: "Your mind is sharp, quick, and combative. You argue to think and think to argue. Words are weapons and tools — you can cut with precision or build with conviction. Mental restlessness and impulsive speech are the shadow.",
+    trine: "Your thoughts translate into action smoothly. You communicate with directness and conviction. Debates energize you and your mind is naturally strategic.",
+    sextile: "You can channel mental energy into productive action when motivated. Writing, debating, and persuasion are skills you can develop with relative ease.",
+    square: "Your mind and your impulses clash. You speak before thinking, argue when you should listen, or overthink when you should act. This creates friction but also sharpens your intellect enormously.",
+    opposition: "You may attract intellectual adversaries who force you to refine your thinking. Others challenge your ideas in ways that feel personal. Growth comes through learning to fight fair with words.",
+  },
+  "Jupiter-Venus": {
+    conjunction: "Love, pleasure, and abundance flow together beautifully. You attract good things — people, money, experiences — with almost magnetic ease. Generosity is your default, though excess and indulgence are the shadow.",
+    trine: "Relationships and finances tend to work out well for you. You have natural good taste and attract partners who expand your world. Gratitude comes easily.",
+    sextile: "You have opportunities for abundance in love and finances when you reach for them. Social connections open doors that effort alone cannot.",
+    square: "Your desire for pleasure and growth can lead to overindulgence. You want too much, love too hard, or spend too freely. The tension creates a rich but sometimes chaotic romantic and financial life.",
+    opposition: "You may project your need for abundance onto partners, expecting them to provide what you haven't cultivated in yourself. Growth means generating your own joy and prosperity rather than seeking it through others.",
+  },
+  "Saturn-Venus": {
+    conjunction: "Love comes with conditions, lessons, and delays. You may feel unlovable or attract partners who are unavailable. But the love you eventually build is the most enduring kind — tested, real, and deeply loyal.",
+    trine: "You approach love with maturity and realism. Your relationships are built on substance, not infatuation. Loyalty and commitment come naturally, and you age beautifully in partnership.",
+    sextile: "You can build lasting relationships through patience and effort. Romantic partnerships improve over time rather than burning out. You value quality over intensity in love.",
+    square: "Love and duty are in constant tension. You may feel you have to earn love or that it always comes with sacrifice. This is one of the loneliest aspects to carry, but it eventually produces the deepest, most authentic love — once you stop settling.",
+    opposition: "You project your fear of rejection onto partners, creating dynamics where love feels conditional or withheld. The lesson is learning that you don't have to be perfect to be loved.",
+  },
+  "Saturn-Mars": {
+    conjunction: "Your drive is disciplined but frustrated. You have enormous endurance and can work tirelessly, but the start is always slow. Anger may be suppressed until it erupts. When you finally move, nothing can stop you.",
+    trine: "Discipline and drive work together effectively. You take sustained, strategic action toward your goals. Physical endurance is notable, and your ambition has stamina.",
+    sextile: "You can channel your energy productively with structure. Goals that require patience and persistence suit you better than quick wins.",
+    square: "Frustration, blocked energy, and anger management are lifelong themes. You feel like you're driving with the brakes on. This is an incredibly difficult aspect, but it builds an iron will that others can't match.",
+    opposition: "You swing between impulsive action and paralytic caution. Authority figures may block or frustrate your ambitions. The lesson is learning to be your own disciplinarian without becoming your own oppressor.",
+  },
+  "Neptune-Sun": {
+    conjunction: "Your identity is fluid, imaginative, and spiritually attuned — but it's hard to pin down who you actually are. You may lose yourself in fantasies, creative visions, or other people's expectations. When grounded, you're profoundly inspiring.",
+    trine: "Creativity and spiritual sensitivity flow naturally through your identity. You inspire others without trying and have access to intuitive wisdom that guides your life path.",
+    sextile: "You can tap into creative and spiritual gifts when you intentionally cultivate them. Art, music, and compassion are accessible channels for your imagination.",
+    square: "Your identity is confused by illusions, escapism, or unrealistic expectations. You may struggle with substance use, savior complexes, or chronic uncertainty about who you are. The growth is in learning to dream without disappearing.",
+    opposition: "Others may project their fantasies onto you, or you may idealize partners to avoid seeing them clearly. Disillusionment in relationships teaches you to love what's real rather than what you imagined.",
+  },
+  "Neptune-Moon": {
+    conjunction: "Your emotional life is oceanic — boundless compassion, psychic sensitivity, and a tendency to absorb everyone's feelings. You may have had an absent or idealized mother figure. Boundaries are essential or you'll drown in empathy.",
+    trine: "Your emotional intuition is remarkably accurate. You sense what others feel before they say it. Creative expression and spiritual practice are natural emotional outlets.",
+    sextile: "You have access to deep empathy and creative imagination when you cultivate it. Artistic and spiritual pursuits feed your emotional wellbeing.",
+    square: "Confusion between your feelings and other people's is a constant challenge. You may use escapism — substances, fantasy, codependency — to manage emotional overwhelm. Clarity comes through learning what's yours and what isn't.",
+    opposition: "You project your need for transcendence onto others, idealizing partners or losing yourself in relationships. The lesson is finding your own spiritual center rather than merging with everyone else's.",
+  },
+  "Pluto-Sun": {
+    conjunction: "Power, transformation, and intensity define your identity. You may have experienced death, trauma, or radical change early in life. You're here to transform yourself and others — but the process isn't gentle. People either love you or fear you.",
+    trine: "You access your personal power with relative ease. Transformation is a natural part of your life and you handle crisis better than most. Your influence on others is quiet but profound.",
+    sextile: "You can tap into transformative power when circumstances call for it. Crisis management and depth psychology come more naturally to you than to others.",
+    square: "Power struggles, control issues, and forced transformations are lifelong themes. You may attract controlling people or become one yourself. This aspect demands you confront your relationship with power — or power will confront you.",
+    opposition: "Others embody the intensity and power you haven't claimed. Partners and adversaries force you into transformations you didn't choose. The lesson is taking ownership of your own depth instead of encountering it through others.",
+  },
+  "Pluto-Moon": {
+    conjunction: "Your emotional life is volcanic — deep, transformative, and not for the faint of heart. Childhood may have involved loss, secrets, or emotional intensity beyond what a child should carry. Your emotional resilience is extraordinary because it had to be.",
+    trine: "You process emotions at a depth that most people can't access. Emotional transformation comes naturally — you shed old patterns like skin. Your emotional honesty is magnetic.",
+    sextile: "You can access emotional depth and transformation when needed. Therapy, shadow work, and honest self-examination are productive channels for your intensity.",
+    square: "Emotional power struggles dominate your inner life. You may feel consumed by feelings you can't control, or you control them so tightly that you become emotionally armored. The tension creates extraordinary emotional strength once faced.",
+    opposition: "Others trigger your deepest emotional patterns, especially around control and vulnerability. Intimate relationships become crucibles for transformation. The growth is in letting yourself be changed by love rather than hardened by it.",
+  },
+  "Pluto-Venus": {
+    conjunction: "Your love life is intense, consuming, and transformative. You don't do casual — relationships are all or nothing. Obsession, jealousy, and profound bonding are all part of the package. Love literally transforms you every time.",
+    trine: "You attract deep, transformative relationships naturally. Your love has a regenerative quality — people feel changed by knowing you. You handle emotional intensity in relationships with unusual grace.",
+    sextile: "You have access to profound romantic and creative transformation when you open to it. Your capacity for deep love grows stronger each time you risk vulnerability.",
+    square: "Love and power are tangled. You may attract obsessive relationships, jealous partners, or your own controlling tendencies. Healing comes through loving without possessing — which is the hardest thing this aspect asks of you.",
+    opposition: "Partners embody the intensity you haven't claimed. You attract transformative, sometimes destructive relationships that force you to confront your relationship with love and power.",
+  },
+  "Uranus-Sun": {
+    conjunction: "You're wired differently and you know it. Individuality, rebellion, and sudden change are central to your identity. You can't follow someone else's path — your life unfolds in unexpected lightning strikes that look chaotic from the outside but feel inevitable to you.",
+    trine: "Your uniqueness flows naturally into your life path. Change and innovation come easily, and you adapt to new circumstances with excitement rather than fear.",
+    sextile: "You can access innovation and original thinking when you seek it. Embracing change becomes easier over time and opens doors that conformity never could.",
+    square: "Stability and freedom are at war inside you. You disrupt your own life when it gets too comfortable. Relationships, jobs, and identities can change suddenly. The tension creates originality but also chronic restlessness.",
+    opposition: "Others represent the freedom or disruption you haven't claimed. Partners may be erratic or you may project your need for change onto them. The lesson is owning your unconventionality rather than encountering it through others.",
+  },
+  "Uranus-Moon": {
+    conjunction: "Your emotional life is electric and unpredictable. You need freedom in your closest relationships and can't tolerate emotional claustrophobia. Your mother may have been unconventional or emotionally erratic. You process feelings through sudden insight rather than slow processing.",
+    trine: "Emotional independence comes naturally. You handle change and instability with unusual resilience. Your intuitive flashes are often accurate and lead to creative breakthroughs.",
+    sextile: "You can cultivate emotional freedom and independence with conscious effort. New emotional experiences energize rather than frighten you.",
+    square: "Your need for emotional security and your need for freedom are in constant tension. You may sabotage comfortable relationships or feel trapped by domesticity. The tension creates emotional brilliance but also instability.",
+    opposition: "Partners may represent the emotional freedom or instability you haven't integrated. Sudden changes in relationships force you to develop your own emotional independence rather than depending on others for stability.",
+  },
+
+  /* ─── Imum Coeli (IC) — 4th house cusp: home, roots, family, inner foundation ─── */
+
+  "Imum Coeli-Sun": {
+    conjunction: "Your identity is deeply tied to where you come from — family, home, and heritage shape who you are at the core. You find yourself through private life rather than public achievement. Creating a home that reflects your true self is essential.",
+    trine: "Your sense of self is naturally supported by your roots and home life. You draw confidence from your family background and feel genuinely at ease in domestic spaces. Your inner foundation is solid.",
+    sextile: "You can strengthen your identity by investing in your home life and exploring your family history. Roots give you grounding when the world feels chaotic.",
+    square: "Your public ambitions and your need for a stable home life pull in opposite directions. You may feel torn between career success and family obligations, or struggle to feel settled no matter where you live.",
+    opposition: "Your career and public life may overshadow your private needs. Others see your accomplishments but not the emptiness at home. The growth is in building an inner foundation that doesn't depend on external recognition.",
+  },
+  "Imum Coeli-Moon": {
+    conjunction: "Your emotions are rooted in home and family in the deepest way. You feel most like yourself in private, and your inner world is rich and protected. The relationship with your mother or primary caretaker profoundly shapes your emotional patterns.",
+    trine: "Home is where your heart literally heals. You have a natural gift for creating emotionally safe spaces, and your family connections — chosen or biological — nourish you deeply.",
+    sextile: "You can build emotional security through intentional homemaking and family connection. Tending to your roots — cooking, decorating, visiting family — genuinely restores you.",
+    square: "Your emotional needs and your home situation are frequently at odds. Family may have been a source of stress rather than comfort. You're learning to create the safety you didn't inherit.",
+    opposition: "Your emotional life plays out publicly whether you want it to or not. You may struggle to keep your private feelings private, or feel exposed in career settings. Growth means building inner security that doesn't crumble under the spotlight.",
+  },
+  "Imum Coeli-Mercury": {
+    conjunction: "Your thinking is shaped by your upbringing and family narratives. You may carry inherited beliefs or communication patterns from home. Your mind is most active and creative in private, familiar spaces.",
+    trine: "Family conversations and stories from your past feed your intellect naturally. You communicate comfortably about personal and domestic matters and may have a talent for writing about home, memory, or family.",
+    sextile: "You can develop your communication skills by exploring your family history or writing about your roots. Home is a productive space for intellectual work.",
+    square: "The stories you were told growing up may conflict with what you actually think. Inherited family narratives — about money, love, or success — need to be examined and possibly rewritten.",
+    opposition: "Your private thoughts and your public communications don't always match. You may say one thing professionally and think another at home. Integration means speaking the same truth in every room.",
+  },
+  "Imum Coeli-Venus": {
+    conjunction: "Love and beauty are centered in your home life. You need your living space to be aesthetically pleasing and emotionally warm. Family relationships, especially with women, are central to your sense of love and belonging.",
+    trine: "Your home life and relationships flow together beautifully. You attract love in domestic settings and your living space reflects your taste naturally. Family bonds are a source of joy.",
+    sextile: "You can deepen your relationships by investing in your home and family life. Cooking for someone, redecorating together, or visiting family strengthens your romantic bonds.",
+    square: "What you want in love and what you need at home don't easily align. Partners may clash with your family, or your domestic ideal may feel impossible to achieve. The tension refines what you truly value.",
+    opposition: "You may prioritize how love looks publicly over how it feels privately. Relationships that impress others might not satisfy you at home. Growth means choosing partners who feel like home, not just look good beside you.",
+  },
+  "Imum Coeli-Mars": {
+    conjunction: "Your drive and energy are rooted in your home and family — you may fight fiercely for your loved ones or experience conflict within the family itself. Home renovations, real estate, or protecting your private space may consume significant energy.",
+    trine: "You channel your energy productively into home and family matters. You take action on behalf of your loved ones and have a natural drive to improve your living situation.",
+    sextile: "You can build motivation from your roots — family legacy, childhood dreams, or a desire to create a better home than the one you grew up in.",
+    square: "Home may have been a place of conflict, or your drive for independence clashes with family expectations. You might struggle with anger related to family dynamics that needs conscious processing.",
+    opposition: "Your career ambition and your family needs compete for your energy. You may feel like you can never give enough to both. Success means finding a pace that honors your private life without abandoning your goals.",
+  },
+  "Imum Coeli-Jupiter": {
+    conjunction: "Your roots are expansive — you may come from a large, multicultural, or well-traveled family. Home feels best when it's generous, open, and full of possibility. You need space, both physically and emotionally, in your private life.",
+    trine: "Your home life is naturally abundant and growth-oriented. Family supports your expansion, and you feel lucky in matters related to home and property. Generosity flows easily in domestic settings.",
+    sextile: "You can grow by investing in your home, exploring your heritage, or creating more spacious living conditions. Family connections open doors for expansion.",
+    square: "Your desire for growth and adventure conflicts with your need for roots. You may feel restless at home or overextend yourself trying to create a bigger, better domestic life than is realistic.",
+    opposition: "Your public philosophy or belief system may clash with your family's values. Growth means integrating where you came from with where you're going — honoring your roots while expanding beyond them.",
+  },
+  "Imum Coeli-Saturn": {
+    conjunction: "Your home life and family carry a sense of heaviness or responsibility. You may have grown up fast, carried family burdens, or had a strict household. Building a solid home takes time, but what you build lasts. Home improves with age.",
+    trine: "You approach home and family with maturity and responsibility. Your domestic life is structured and reliable. You may be the person your family depends on, and you handle that role with quiet strength.",
+    sextile: "You can build lasting security through patient investment in your home and family relationships. Stability in your private life grows steadily when you commit to it.",
+    square: "Family responsibilities feel crushing at times. You may feel trapped by domestic obligations or carry guilt about not doing enough for your family. The lesson is learning that duty and love aren't the same thing.",
+    opposition: "Your career demands may feel like they come at the expense of your family life. Authority figures at work and family expectations at home create a squeeze. Growth means setting boundaries that protect both.",
+  },
+  "Imum Coeli-Uranus": {
+    conjunction: "Your home life is unconventional or unpredictable. You may have moved frequently, had an unusual family structure, or need your living space to feel radically different from the norm. You redefine what 'home' means on your own terms.",
+    trine: "You adapt to changes in your home life with natural ease. Unconventional living arrangements or family structures feel normal to you, and you innovate in domestic spaces instinctively.",
+    sextile: "You can revitalize your home life by embracing change rather than resisting it. New living situations or fresh approaches to family dynamics energize you.",
+    square: "Your need for emotional stability at home clashes with sudden disruptions — unexpected moves, family upheaval, or your own restlessness. You're learning to find inner security that doesn't depend on external consistency.",
+    opposition: "Your public life may introduce sudden changes that uproot your private world. Career shifts, relocations, or social disruptions impact your home life dramatically. Stability comes from within, not from your address.",
+  },
+  "Imum Coeli-Neptune": {
+    conjunction: "Your home and family life has a dreamlike, idealized quality — for better and worse. You may have felt emotionally lost in your family, or your home was a place of creativity, spirituality, and imagination. Boundaries at home need conscious effort.",
+    trine: "Your private life is infused with creativity and spiritual sensitivity. Home feels like a sanctuary, and you have a natural gift for creating peaceful, beautiful domestic spaces.",
+    sextile: "You can nurture your creative and spiritual gifts by cultivating a peaceful home environment. Your roots feed your imagination when you give them attention.",
+    square: "Your family history may involve confusion, secrets, addiction, or idealization. The home you grew up in may not have been what it appeared. Healing means seeing your roots clearly — not as you wish they were, but as they actually are.",
+    opposition: "Your public image may be at odds with the reality of your private life. You might project an idealized version of your home to the world while struggling behind closed doors. Growth means letting go of the fantasy and tending to what's real.",
+  },
+  "Imum Coeli-Pluto": {
+    conjunction: "Your home and family history carries intensity — power dynamics, secrets, loss, or profound transformation. Where you come from fundamentally shaped who you became. Your private life is where your deepest healing and transformation happen.",
+    trine: "You have a natural ability to transform your home life and heal family patterns. Your roots give you a quiet, profound power. You can renovate not just houses but entire family dynamics.",
+    sextile: "You can access deep emotional healing by working through family patterns. Ancestral healing, therapy focused on childhood, and intentional home transformation are powerful paths for you.",
+    square: "Power struggles within your family or around your home life are a major theme. You may feel controlled by family dynamics or attempt to control your domestic world too tightly. Liberation comes through facing what's buried.",
+    opposition: "Your career or public role may involve confronting deep power dynamics that mirror your family patterns. What you experienced at home shows up in how you handle authority in the world. Growth means healing the root, not just managing the symptoms.",
+  },
+
+  /* ─── Medium Coeli (MC) — 10th house cusp: career, public reputation, life direction ─── */
+
+  "Medium Coeli-Sun": {
+    conjunction: "Your identity and your career are essentially the same thing — you're meant to be visible, recognized, and known for something. Professional achievement is deeply personal for you. You shine in public roles and leadership positions.",
+    trine: "Your sense of self flows naturally into your career path. You don't have to pretend to be someone else at work — your professional life and your personality align. Success comes from being authentically you in public.",
+    sextile: "You can strengthen your career by leaning into what makes you uniquely you. Opportunities for recognition come when you put your genuine personality into your professional work.",
+    square: "Who you are and what the world expects of you are in tension. You may feel pressured to pursue a career that doesn't match your identity, or struggle to be seen accurately in professional settings. The friction pushes you to carve your own path.",
+    opposition: "Your private needs and your career pull in opposite directions. Professional success may come at the cost of personal fulfillment, or you retreat into private life when the spotlight gets uncomfortable. Balance is the ongoing work.",
+  },
+  "Medium Coeli-Moon": {
+    conjunction: "Your emotions are tied to your career and public reputation. You need to feel emotionally invested in your work or it drains you. The public sees your emotional nature — you can't hide how you feel in professional settings, which is either your superpower or your vulnerability.",
+    trine: "Your emotional instincts guide your career naturally. You read the room well in professional settings and your public persona feels emotionally genuine. Work that involves caring for others suits you.",
+    sextile: "You can advance your career by trusting your emotional intelligence. Work environments where empathy is valued bring out your best professional self.",
+    square: "Your emotional needs and career demands frequently clash. You may feel emotionally exposed at work or choose jobs that provide security but no satisfaction. Finding work that honors your feelings and your ambitions is the challenge.",
+    opposition: "Your home life and career compete for your emotional energy. You may pour everything into work and feel empty at home, or retreat into domestic comfort when professional pressure mounts. Integration means nurturing both.",
+  },
+  "Medium Coeli-Mercury": {
+    conjunction: "Communication is central to your career and public identity. You're known for how you think and speak. Writing, teaching, media, or any field requiring intellectual agility could be your calling. Your ideas define your reputation.",
+    trine: "Your intellect naturally supports your career trajectory. You communicate your professional vision with clarity and others respect your thinking. Ideas come easily in professional contexts.",
+    sextile: "You can advance professionally by developing your communication skills. Writing, speaking, networking, and intellectual development open career doors.",
+    square: "Your ideas and your career path don't easily align. You may have brilliant thoughts that don't fit your current field, or struggle to communicate your professional value clearly. The tension pushes you to find your true intellectual calling.",
+    opposition: "Your private thinking and your public messaging may not match. You might say what the world wants to hear professionally while thinking differently at home. Growth means finding a career where you can speak your actual mind.",
+  },
+  "Medium Coeli-Venus": {
+    conjunction: "Your career involves beauty, love, art, or making things pleasant. You're publicly charming and attract professional opportunities through likability and aesthetic sensibility. Your reputation is closely tied to your taste and your relationships.",
+    trine: "Your social grace and aesthetic sense naturally support your career. Professional relationships come easily, and your work has an appealing quality that attracts opportunity and recognition.",
+    sextile: "You can advance your career through creative work, social connections, and attention to beauty. Professional settings where art, design, or relationship-building matter suit you well.",
+    square: "Your desire for a pleasant career and the reality of professional demands don't always match. You may avoid necessary conflict at work or choose charming but unfulfilling career paths. Growth means bringing beauty to hard work rather than avoiding the hard work.",
+    opposition: "What you value privately may clash with your public career. Love life and professional life compete for attention. You might sacrifice relationships for career or vice versa. Balance means neither should always win.",
+  },
+  "Medium Coeli-Mars": {
+    conjunction: "You bring fierce drive and energy to your career. You're known for your ambition, competitiveness, and willingness to fight for what you want professionally. You need a career that lets you take bold action — a desk job with no autonomy would suffocate you.",
+    trine: "Your professional drive flows naturally and effectively. You take decisive action in your career and others respect your energy and initiative. Competition motivates rather than intimidates you.",
+    sextile: "You can advance professionally through assertiveness and bold moves. Taking initiative at work pays off, and you have the energy to pursue ambitious career goals when you choose to.",
+    square: "Your aggression and your career path clash. You may burn bridges professionally, fight with authority figures, or feel constantly frustrated at work. The tension creates extraordinary career drive when channeled into the right field.",
+    opposition: "Your drive for action may conflict with your family life or private needs. You might bring work aggression home or feel that domestic responsibilities slow your career momentum. Balance means directing your energy without depleting every area of your life.",
+  },
+  "Medium Coeli-Jupiter": {
+    conjunction: "Your career is expansive, optimistic, and growth-oriented. You aim high professionally and often achieve it. Fields involving education, travel, law, publishing, or philosophy suit you. Your public reputation is generous and inspiring.",
+    trine: "Professional growth and opportunity come naturally to you. Your career benefits from lucky breaks, good timing, and a reputation for optimism. You inspire confidence in others through your work.",
+    sextile: "You can expand your career through education, travel, or philosophical exploration. Professional opportunities grow when you invest in learning and broadening your horizons.",
+    square: "Your ambitions may outpace your practical abilities, or you overcommit professionally. Saying yes to every opportunity leads to spreading yourself too thin. The tension pushes you to be strategic about which growth actually matters.",
+    opposition: "Your belief system and your family values may pull your career in different directions. Public success might require compromising ideals you hold privately. Growth means finding a professional path that aligns with your deepest beliefs.",
+  },
+  "Medium Coeli-Saturn": {
+    conjunction: "Your career is serious, structured, and slow-building. You may feel the weight of professional responsibility heavily. Success comes later in life but it's permanent — you build things that endure. People respect you for your discipline and reliability.",
+    trine: "Professional discipline comes naturally. You build your career with patience and strategic planning, and your reputation for reliability is well-earned. Authority sits comfortably on you in work settings.",
+    sextile: "You can build lasting professional success through consistent effort and long-term planning. Patience with your career trajectory pays off more for you than for most.",
+    square: "Professional obstacles, delays, and authority conflicts are recurring themes. You may feel blocked or undervalued at work. This is one of the toughest career aspects to carry, but it builds the most enduring professional achievements.",
+    opposition: "Your career demands and family responsibilities create a constant squeeze. You may feel like you're failing at both, or sacrifice one entirely for the other. The lesson is building a life structure that doesn't require choosing.",
+  },
+  "Medium Coeli-Uranus": {
+    conjunction: "Your career path is unconventional, unpredictable, and uniquely yours. You may change fields suddenly or work in cutting-edge, unusual industries. You can't follow a traditional career path — and you shouldn't try. Your reputation is for being original.",
+    trine: "Innovation and originality flow naturally into your career. You adapt to professional changes with excitement and your unconventional approach is an asset rather than a liability.",
+    sextile: "You can advance professionally by embracing innovation and change. Careers in technology, social change, or any field that rewards original thinking suit you when you lean into them.",
+    square: "Your career may involve sudden disruptions — unexpected job changes, industry upheaval, or your own restless need to start over. Stability in work is hard to maintain but each change brings you closer to your true calling.",
+    opposition: "Your need for a stable home life clashes with a chaotic or unpredictable career. Professional changes may uproot your personal world. Growth means building inner stability that survives external career shifts.",
+  },
+  "Medium Coeli-Neptune": {
+    conjunction: "Your career is infused with imagination, spirituality, or creative vision — but the path is foggy. You may struggle with professional direction or idealize careers that don't match reality. When you find your calling, your work inspires and heals others.",
+    trine: "Creative and spiritual gifts flow naturally into your career. You work with intuition and your professional reputation has an ethereal, inspiring quality. Arts, healing, and service professions suit you.",
+    sextile: "You can advance professionally by developing your creative or spiritual abilities. Careers that allow imagination and compassion to guide your work bring the most satisfaction.",
+    square: "Confusion about your career direction is a persistent theme. You may chase idealized career fantasies, fall for professional illusions, or struggle to ground your creative visions into actual work. Clarity comes through experience, not daydreaming.",
+    opposition: "Your private ideals and your public career may be in tension. The world sees a polished professional while you feel like a fraud, or your spiritual life and your career feel like separate worlds. Integration means doing work that reflects your inner truth.",
+  },
+  "Medium Coeli-Pluto": {
+    conjunction: "Your career involves power, transformation, and depth. You're drawn to fields that deal with life's biggest forces — psychology, medicine, finance, politics, or crisis management. Your professional presence is intense and people feel it immediately.",
+    trine: "You access professional power and influence naturally. Your career involves transformation, and you handle power dynamics at work with unusual skill. Your public impact is quiet but profound.",
+    sextile: "You can develop professional influence by engaging with transformative work. Careers that involve helping others through crisis, managing resources, or uncovering hidden truths suit your strengths.",
+    square: "Power struggles in your career are a lifelong theme. You may encounter controlling bosses, toxic workplaces, or your own compulsive ambition. The tension demands you develop a healthy relationship with professional power — or it will consume you.",
+    opposition: "Family power dynamics replay in your career. Authority figures at work trigger deep patterns from home. Professional transformation requires facing personal demons. The growth is in using your intensity to create rather than control.",
+  },
+
+  /* ─── North Node aspects ─── */
+
+  "Imum Coeli-North Node": {
+    conjunction: "Your life purpose is deeply tied to home, family, and building inner security. You're meant to develop roots, not chase public recognition. Finding where you truly belong — emotionally and physically — is your soul's work.",
+    trine: "Your life purpose naturally unfolds through cultivating home and family. Creating a safe foundation supports your growth path effortlessly.",
+    sextile: "Investing in your home and family life moves you closer to your destiny. Roots and belonging are productive areas for soul growth.",
+    square: "Your life purpose and your domestic life create tension. Family patterns may block your growth path, requiring you to consciously reshape your relationship with home.",
+    opposition: "Your destiny pulls you toward public achievement, but your roots keep calling you back. Honoring both your ambitions and your need for home is the balancing act of your life.",
+  },
+  "Medium Coeli-North Node": {
+    conjunction: "Your life purpose is tied to your career and public role. You're meant to step into visibility, leadership, and professional achievement. Hiding at home isn't an option — the world needs what you bring.",
+    trine: "Your career naturally aligns with your soul's growth direction. Professional achievement and life purpose feel like the same path.",
+    sextile: "Career development and professional visibility move you toward your destiny. Public roles and recognition are growth opportunities, not distractions.",
+    square: "Your life purpose and career expectations are in tension. You may be called toward work that doesn't match society's definition of success. Trusting your own path over conventional career advice is the challenge.",
+    opposition: "Your destiny pulls you toward home and inner life, but career obligations keep demanding attention. Your soul grows more through private reflection than public achievement — even if the world doesn't reward it.",
+  },
+};
+
+/** Get interpretation for an aspect, with fallback */
+function getAspectInterpretation(p1: string, p2: string, aspect: string): string {
+  const key = aspectKey(p1, p2);
+  const entry = ASPECT_INTERPRETATIONS[key];
+  if (entry && entry[aspect]) return entry[aspect];
+
+  // Fallback — generate a generic interpretation
+  const typeInfo = ASPECT_TYPE_INFO[aspect];
+  if (!typeInfo) return "";
+  const nature = typeInfo.nature;
+  if (nature === "fusion") return `Your ${p1} and ${p2} energies are merged, amplifying both for better and worse. This conjunction makes these two forces inseparable in your personality.`;
+  if (nature === "harmony") return `Your ${p1} and ${p2} work together naturally. This flowing aspect creates ease and talent in the areas these planets govern.`;
+  if (nature === "opportunity") return `Your ${p1} and ${p2} have a productive relationship that rewards conscious effort. The gifts here are accessible but not automatic.`;
+  if (nature === "tension") return `Your ${p1} and ${p2} are at cross purposes, creating inner friction that drives action. This is challenging but builds extraordinary strength in both areas.`;
+  return `Your ${p1} and ${p2} sit in polarity, creating a push-pull dynamic that plays out through relationships and external circumstances. Integration of both sides is the growth path.`;
+}
+
+function elementBg(sign: string): string {
+  if (["Ari", "Leo", "Sag"].includes(sign)) return "bg-terracotta/15 border-terracotta/25";
+  if (["Tau", "Vir", "Cap"].includes(sign)) return "bg-sage/15 border-sage/25";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "bg-amber/15 border-amber/25";
+  return "bg-[#6b8a9e]/15 border-[#6b8a9e]/25";
+}
+
+export default function YouTab() {
+  const router = useRouter();
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [openPlanet, setOpenPlanet] = useState<string | null>(null);
+  const [risingOverride, setRisingOverride] = useState<string | null>(null);
+  const [cuspDismissed, setCuspDismissed] = useState(false);
+  const [openAspect, setOpenAspect] = useState<string | null>(null);
+  const [aspectTab, setAspectTab] = useState<"strong" | "medium" | "mild">("strong");
+  const [accountName, setAccountName] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadChart() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Grab the user's actual name from their account
+        const metaName = session.user.user_metadata?.name || null;
+        if (metaName) setAccountName(metaName);
+
+        const { data } = await supabase
+          .from("charts")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (data) {
+          setChartData({
+            name: metaName || data.name,
+            birthDate: data.birth_date,
+            birthTime: data.birth_time,
+            unknownTime: data.unknown_time,
+            cityName: data.city_name,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            timezone: data.timezone,
+            bigThree: data.big_three,
+            planets: data.planets,
+            houses: data.houses,
+            aspects: data.aspects,
+            specialPoints: data.special_points || [],
+            midheaven: data.midheaven || null,
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const stored = sessionStorage.getItem("chartResult");
+      if (stored) {
+        setChartData(JSON.parse(stored));
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false);
+    }
+
+    loadChart();
+  }, []);
+
+  // Backfill specialPoints + midheaven for charts saved before those fields existed
+  useEffect(() => {
+    if (!chartData) return;
+    if ((chartData.specialPoints && chartData.specialPoints.length > 0) || chartData.midheaven) return;
+    if (!chartData.latitude || !chartData.longitude) return;
+
+    let cancelled = false;
+    fetch("/api/chart/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: chartData.name,
+        birthDate: chartData.birthDate,
+        birthTime: chartData.birthTime,
+        latitude: chartData.latitude,
+        longitude: chartData.longitude,
+        timezone: chartData.timezone,
+      }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((fresh) => {
+        if (cancelled || !fresh) return;
+        setChartData((prev) =>
+          prev ? { ...prev, specialPoints: fresh.specialPoints || [], midheaven: fresh.midheaven || null } : prev
+        );
+      })
+      .catch(() => { /* silently fail — page still works without these sections */ });
+
+    return () => { cancelled = true; };
+  }, [chartData?.specialPoints, chartData?.midheaven, chartData?.latitude, chartData?.longitude, chartData?.name, chartData?.birthDate, chartData?.birthTime, chartData?.timezone]);
+
+  // Compute effective houses/bigThree with cusp override BEFORE useMemo that needs them
+  const effectiveHouses = useMemo(() => {
+    if (!chartData) return [];
+    return risingOverride
+      ? chartData.houses.map((h, i) => i === 0 ? { ...h, sign: risingOverride } : h)
+      : chartData.houses;
+  }, [chartData, risingOverride]);
+
+  const effectiveBigThree = useMemo(() => {
+    if (!chartData) return { sun: "", moon: "", rising: "" };
+    return risingOverride
+      ? { ...chartData.bigThree, rising: risingOverride }
+      : chartData.bigThree;
+  }, [chartData, risingOverride]);
+
+  // Compute chart ruler, contradictions, and stelliums
+  const chartRuler = useMemo(() => {
+    if (!chartData) return null;
+    return getChartRuler(chartData.planets, effectiveHouses);
+  }, [chartData, effectiveHouses]);
+
+  const contradictions = useMemo<Contradiction[]>(() => {
+    if (!chartData) return [];
+    return detectContradictions(chartData.planets);
+  }, [chartData]);
+
+  const stelliums = useMemo<Stellium[]>(() => {
+    if (!chartData) return [];
+    return detectStelliums(chartData.planets);
+  }, [chartData]);
+
+  if (isLoading) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  if (!chartData) {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-foreground/50 text-lg mb-6">You haven&apos;t calculated your chart yet.</p>
+        <button
+          onClick={() => router.push("/chart/new")}
+          className="px-8 py-3 rounded-full bg-terracotta text-cream font-semibold text-sm
+                     tracking-wide hover:bg-terracotta-light active:scale-[0.98] transition-all"
+        >
+          Calculate my chart
+        </button>
+      </main>
+    );
+  }
+
+  const { name, bigThree, planets, houses, unknownTime, risingCusp, specialPoints = [], midheaven } = chartData;
+
+  return (
+    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">
+          Natal Chart
+        </p>
+        <h1
+          className="text-2xl text-foreground mb-1"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {name}
+        </h1>
+        <p className="text-foreground/40 text-sm">
+          {chartData.birthDate} &middot; {chartData.birthTime}
+          {unknownTime && " (approx)"}
+        </p>
+        <button
+          onClick={() => router.push("/chart/new?edit=true")}
+          className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full
+                     border border-terracotta/30 text-terracotta text-xs font-semibold
+                     tracking-wide hover:bg-terracotta/10 active:scale-[0.98] transition-all"
+        >
+          Edit chart
+        </button>
+      </div>
+
+      {/* Chart Wheel */}
+      <div className="mb-8 relative">
+        <div className="absolute inset-0 bg-terracotta/5 rounded-full blur-2xl" />
+        <ChartWheel planets={planets} houses={effectiveHouses} />
+      </div>
+
+      {/* Big 3 pills */}
+      <div className="flex flex-wrap justify-center gap-2 mb-4">
+        {[
+          { label: "Sun", sign: effectiveBigThree.sun },
+          { label: "Moon", sign: effectiveBigThree.moon },
+          { label: "Rising", sign: effectiveBigThree.rising },
+        ].map(({ label, sign }) => (
+          <div
+            key={label}
+            className={`px-4 py-2 rounded-full border text-sm font-medium ${elementBg(sign)}`}
+          >
+            <span className="text-foreground/50">{label}</span>
+            <span className="text-foreground/20 mx-1.5">&middot;</span>
+            <span className={elementColor(sign)}>{SIGN_NAMES[sign] || sign}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Share as branded image */}
+      <div className="flex justify-center mb-4">
+        <ShareCard
+          type="natal"
+          name={name}
+          subtitle={`${SIGN_FULL[effectiveBigThree.sun] || effectiveBigThree.sun} Sun · ${SIGN_FULL[effectiveBigThree.moon] || effectiveBigThree.moon} Moon · ${SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising`}
+          highlights={planets?.slice(0, 6).map((p: any) => ({
+            label: p.name,
+            value: `${SIGN_FULL[p.sign] || p.sign}`,
+          }))}
+        />
+      </div>
+
+      <div className="mb-4" />
+
+      {/* ═══ CHART RULER ═══ */}
+      {chartRuler && (
+        <div className="rounded-xl border border-terracotta/15 bg-terracotta/5 px-4 py-4 mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-terracotta text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+              {PLANET_SYMBOLS[chartRuler.planet] || "?"}
+            </span>
+            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
+              Your chart is ruled by {chartRuler.planet}
+            </span>
+            <InfoTip
+              term="Chart Ruler"
+              explanation="The planet that rules your Rising sign. It's the single most important planet in your chart — it colors how you approach everything in life. Whatever this planet touches in your chart, amplify it. It's more true for you than for most people."
+            />
+          </div>
+          <h3
+            className="text-lg text-foreground mb-2"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {chartRuler.planet} in {SIGN_FULL[chartRuler.rulerSign] || chartRuler.rulerSign}
+            {chartRuler.coRuler && (
+              <span className="text-foreground/30 text-sm font-normal ml-2">
+                + {chartRuler.coRuler}
+              </span>
+            )}
+          </h3>
+          <p className="text-foreground/70 text-sm leading-relaxed">
+            {chartRuler.summary}
+          </p>
+        </div>
+      )}
+
+      {/* ═══ STELLIUMS ═══ */}
+      {stelliums.length > 0 && (
+        <div className="flex flex-col gap-2 mb-8">
+          {stelliums.map((s) => (
+            <div
+              key={s.sign}
+              className={`rounded-xl border px-4 py-3 ${elementBg(s.sign).replace("border-", "border-").replace("/25", "/15")}`}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className={`text-[10px] uppercase tracking-widest font-bold ${elementColor(s.sign)}`}>
+                  {SIGN_FULL[s.sign] || s.sign} Stellium · {s.planets.length} planets
+                </span>
+                <InfoTip
+                  term="Stellium"
+                  explanation={getGlossaryEntry("Stellium")?.short || "Three or more planets in the same sign — a massive concentration of energy."}
+                />
+              </div>
+              <p className="text-foreground/65 text-sm leading-relaxed">
+                {s.summary}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex-1 h-px bg-foreground/10" />
+        <span className="text-terracotta/40 text-lg">&#x2609;</span>
+        <div className="flex-1 h-px bg-foreground/10" />
+      </div>
+
+      {/* Planetary placements — accordion style */}
+      <h2
+        className="text-xl text-foreground mb-4"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
+        Your placements
+      </h2>
+
+      <div className="flex flex-col gap-2 mb-8">
+        {planets.map((planet) => (
+          <PlacementAccordion
+            key={planet.name}
+            planetName={planet.name}
+            planetSymbol={PLANET_SYMBOLS[planet.name] || "?"}
+            sign={planet.sign}
+            position={planet.position}
+            house={planet.house}
+            retrograde={planet.retrograde}
+            isOpen={openPlanet === planet.name}
+            onToggle={() =>
+              setOpenPlanet(openPlanet === planet.name ? null : planet.name)
+            }
+          />
+        ))}
+
+        {/* ═══ RISING SIGN ═══ */}
+        {effectiveBigThree.rising && (
+          <div className={`rounded-xl border transition-colors duration-200 ${
+            openPlanet === "_Rising" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
+          }`}>
+            <button
+              onClick={() => setOpenPlanet(openPlanet === "_Rising" ? null : "_Rising")}
+              className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`text-lg ${elementColor(effectiveBigThree.rising)}`} style={{ fontFamily: "var(--font-heading)" }}>ASC</span>
+                <span className="text-foreground/80 text-sm font-medium">Rising Sign</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${elementColor(effectiveBigThree.rising)}`}>
+                  {SIGN_NAMES[effectiveBigThree.rising] || effectiveBigThree.rising}
+                </span>
+                <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Rising" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Rising" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+              <div className="px-4 pb-5 pt-1">
+                <div className="h-px bg-foreground/8 mb-5" />
+                {(() => {
+                  const r = RISING_DESCRIPTIONS[effectiveBigThree.rising];
+                  const color = elementColor(effectiveBigThree.rising);
+                  if (!r) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                  return (
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Rising Sign</span>
+                        <InfoTip term="Rising Sign" explanation="Your Rising sign (or Ascendant) is the sign that was on the eastern horizon when you were born. It's your first impression, your physical energy, and the lens through which you experience life. It's arguably the most personal point in your chart." />
+                      </div>
+                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                        {SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising
+                      </h3>
+                      <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{r.summary}</p>
+                      <div className="mb-4">
+                        <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>How you look and move</p>
+                        <p className="text-foreground/75 text-sm leading-relaxed">{r.appearance}</p>
+                      </div>
+                      <div className="mb-4">
+                        <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>In relationships</p>
+                        <p className="text-foreground/75 text-sm leading-relaxed">{r.relationships}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{r.shadow}</p>
+                        </div>
+                        <div>
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Where you grow</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{r.advice}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ MIDHEAVEN ═══ */}
+        {midheaven && (
+          <div className={`rounded-xl border transition-colors duration-200 ${
+            openPlanet === "_MC" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
+          }`}>
+            <button
+              onClick={() => setOpenPlanet(openPlanet === "_MC" ? null : "_MC")}
+              className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`text-lg ${elementColor(midheaven.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>MC</span>
+                <span className="text-foreground/80 text-sm font-medium">Midheaven</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${elementColor(midheaven.sign)}`}>
+                  {SIGN_NAMES[midheaven.sign] || midheaven.sign}
+                </span>
+                <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_MC" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_MC" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+              <div className="px-4 pb-5 pt-1">
+                <div className="h-px bg-foreground/8 mb-5" />
+                {(() => {
+                  const mc = MC_DESCRIPTIONS[midheaven.sign];
+                  const color = elementColor(midheaven.sign);
+                  if (!mc) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                  return (
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Midheaven</span>
+                        <InfoTip term="Midheaven" explanation="Your Midheaven (MC) is the highest point in your chart — it represents your career path, public reputation, and what you're known for in the world." />
+                      </div>
+                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                        Midheaven in {SIGN_FULL[midheaven.sign] || midheaven.sign}
+                      </h3>
+                      <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{mc.summary}</p>
+                      <div className="mb-4">
+                        <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Career paths</p>
+                        <p className="text-foreground/75 text-sm leading-relaxed">{mc.career}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{mc.shadow}</p>
+                        </div>
+                        <div>
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Where you grow</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{mc.advice}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CHIRON ═══ */}
+        {(() => {
+          const chiron = specialPoints.find((p) => p.name === "Chiron");
+          if (!chiron) return null;
+          return (
+            <div className={`rounded-xl border transition-colors duration-200 ${
+              openPlanet === "_Chiron" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
+            }`}>
+              <button
+                onClick={() => setOpenPlanet(openPlanet === "_Chiron" ? null : "_Chiron")}
+                className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-lg ${elementColor(chiron.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"\u26B7"}</span>
+                  <span className="text-foreground/80 text-sm font-medium">Chiron</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <span className={`text-sm font-medium ${elementColor(chiron.sign)}`}>
+                      {SIGN_NAMES[chiron.sign] || chiron.sign}
+                    </span>
+                    <span className="text-foreground/30 text-xs ml-2">
+                      {chiron.position.toFixed(0)}&deg;
+                      {chiron.house && ` · ${ORDINAL[houseToNum(chiron.house) || 0] || ""} House`}
+                    </span>
+                  </div>
+                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Chiron" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Chiron" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+                <div className="px-4 pb-5 pt-1">
+                  <div className="h-px bg-foreground/8 mb-5" />
+                  {(() => {
+                    const ch = CHIRON_DESCRIPTIONS[chiron.sign];
+                    const color = elementColor(chiron.sign);
+                    if (!ch) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    return (
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">The Wounded Healer</span>
+                          <InfoTip term="Chiron" explanation="Chiron is the 'wounded healer' — it shows your deepest wound and, paradoxically, the area where you become the greatest healer for others. It's not something to fix; it's something to work with." />
+                        </div>
+                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                          Chiron in {SIGN_FULL[chiron.sign] || chiron.sign}
+                        </h3>
+                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{ch.wound}</p>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Life patterns</p>
+                          <p className="text-foreground/75 text-sm leading-relaxed">{ch.patterns}</p>
+                        </div>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your healing gift</p>
+                          <p className="text-foreground/75 text-sm leading-relaxed">{ch.healing}</p>
+                        </div>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Working with it</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{ch.advice}</p>
+                        </div>
+                        {(() => {
+                          const hNum = houseToNum(chiron.house);
+                          if (!hNum || !CHIRON_HOUSE[hNum]) return null;
+                          return (
+                            <div className="mt-2 pt-5 border-t border-foreground/15">
+                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                                Where it plays out · {ORDINAL[hNum]} house
+                              </span>
+                              <p className="text-foreground/55 text-sm leading-relaxed">{CHIRON_HOUSE[hNum]}</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ═══ NORTH/SOUTH NODE ═══ */}
+        {(() => {
+          const northNode = specialPoints.find((p) => p.name === "North Node");
+          const southNode = specialPoints.find((p) => p.name === "South Node");
+          if (!northNode) return null;
+          return (
+            <div className={`rounded-xl border transition-colors duration-200 ${
+              openPlanet === "_Nodes" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
+            }`}>
+              <button
+                onClick={() => setOpenPlanet(openPlanet === "_Nodes" ? null : "_Nodes")}
+                className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-lg ${elementColor(northNode.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"\u260A"}</span>
+                  <span className="text-foreground/80 text-sm font-medium">Nodal Axis</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${elementColor(northNode.sign)}`}>
+                    {SIGN_NAMES[northNode.sign] || northNode.sign}
+                  </span>
+                  <span className="text-foreground/30 text-xs mx-1">/</span>
+                  <span className={`text-sm font-medium ${elementColor(southNode?.sign || "")}`}>
+                    {southNode ? SIGN_NAMES[southNode.sign] || southNode.sign : ""}
+                  </span>
+                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Nodes" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Nodes" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+                <div className="px-4 pb-5 pt-1">
+                  <div className="h-px bg-foreground/8 mb-5" />
+                  {(() => {
+                    const nd = NORTH_NODE_DESCRIPTIONS[northNode.sign];
+                    const color = elementColor(northNode.sign);
+                    if (!nd) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    return (
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Nodal Axis</span>
+                          <InfoTip term="Nodal Axis" explanation="The North Node is your soul's growth direction — what you're here to learn in this lifetime. The South Node is your comfort zone — talents you came in with but need to grow beyond. Think of it as 'where you've been vs. where you're going.'" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-4 mt-2">
+                          <div className="flex-1">
+                            <p className="text-foreground/50 text-[10px] uppercase tracking-widest font-semibold mb-1">Growing Toward</p>
+                            <p className={`text-sm font-semibold ${color}`}>
+                              {SIGN_FULL[northNode.sign] || northNode.sign}
+                            </p>
+                          </div>
+                          <div className="w-px h-12 bg-foreground/10" />
+                          <div className="flex-1">
+                            <p className="text-foreground/50 text-[10px] uppercase tracking-widest font-semibold mb-1">Coming From</p>
+                            <p className={`text-sm font-semibold ${elementColor(southNode?.sign || "")}`}>
+                              {southNode ? SIGN_FULL[southNode.sign] || southNode.sign : "\u2014"}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{nd.direction}</p>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your comfort zone</p>
+                          <p className="text-foreground/75 text-sm leading-relaxed">{nd.comfort}</p>
+                        </div>
+                        <div className="mb-4">
+                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">Patterns to notice</p>
+                          <p className="text-foreground/75 text-sm leading-relaxed">{nd.patterns}</p>
+                        </div>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>The lesson</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{nd.advice}</p>
+                        </div>
+                        {(() => {
+                          const hNum = houseToNum(northNode.house);
+                          if (!hNum || !NODE_HOUSE[hNum]) return null;
+                          return (
+                            <div className="mt-2 pt-5 border-t border-foreground/15">
+                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                                Where it plays out · {ORDINAL[hNum]} house
+                              </span>
+                              <p className="text-foreground/55 text-sm leading-relaxed">{NODE_HOUSE[hNum]}</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ═══ TENSIONS ═══ */}
+      {contradictions.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <h2
+              className="text-xl text-foreground"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Your tensions
+            </h2>
+            <InfoTip
+              term="Tensions"
+              explanation="Contradictions between your placements aren't mistakes — they're where your complexity lives. These tensions create inner friction, but they also create depth. Most interesting people have at least a few."
+            />
+          </div>
+          <p className="text-foreground/40 text-sm mb-6">
+            Your chart has placements that pull in opposite directions. That&apos;s not a flaw — it&apos;s complexity.
+          </p>
+
+          <div className="flex flex-col gap-4">
+            {contradictions.map((c, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-foreground/15 bg-surface/60 overflow-hidden"
+              >
+                {/* Theme banner */}
+                <div className="px-4 py-3 bg-foreground/[0.03] border-b border-foreground/15">
+                  <p
+                    className="text-foreground text-base font-medium"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {c.theme}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs font-semibold ${elementColor(c.sign1)}`}>
+                      {c.planet1} in {SIGN_FULL[c.sign1]}
+                    </span>
+                    <span className="text-foreground/20 text-[10px]">vs</span>
+                    <span className={`text-xs font-semibold ${elementColor(c.sign2)}`}>
+                      {c.planet2} in {SIGN_FULL[c.sign2]}
+                    </span>
+                  </div>
+                </div>
+                {/* Body */}
+                <div className="px-4 py-4">
+                  <p className="text-foreground/70 text-sm leading-relaxed">
+                    {c.summary}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ ASPECTS ═══ */}
+      {chartData.aspects && chartData.aspects.length > 0 && (() => {
+        const classified = chartData.aspects.map((a) => ({
+          ...a,
+          strength: classifyAspectStrength(a.orbit, a.p1Name, a.p2Name, a.aspect),
+          interpretation: getAspectInterpretation(a.p1Name, a.p2Name, a.aspect),
+        }));
+
+        const tabs: { key: "strong" | "medium" | "mild"; label: string; items: typeof classified; description: string }[] = [
+          { key: "strong", label: "Strong", items: classified.filter((a) => a.strength === "strong"), description: "The dominant forces in your chart — tight orbs between personal planets that shape your core personality. You feel these every day." },
+          { key: "medium", label: "Medium", items: classified.filter((a) => a.strength === "medium"), description: "Clear but less intense influences. They color your personality and show up in recurring patterns, especially under stress or growth." },
+          { key: "mild", label: "Mild", items: classified.filter((a) => a.strength === "mild"), description: "Background hums — subtle influences you might only notice in specific situations or over long periods. They add texture but don't dominate." },
+        ];
+
+        const active = tabs.find((t) => t.key === aspectTab) || tabs[0];
+
+        return (
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-2">
+              <h2
+                className="text-xl text-foreground"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Your aspects
+              </h2>
+              <InfoTip
+                term="Aspects"
+                explanation="Aspects are angles between planets in your chart. They describe how different parts of your personality interact — whether they flow together (trines, sextiles), create friction (squares, oppositions), or fuse into one force (conjunctions). The tighter the angle, the stronger the effect."
+              />
+            </div>
+            <p className="text-foreground/40 text-sm mb-5">
+              How the planets in your chart talk to each other.
+            </p>
+
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 rounded-xl bg-foreground/[0.04] mb-4">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setAspectTab(tab.key); setOpenAspect(null); }}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                    aspectTab === tab.key
+                      ? "bg-surface text-foreground shadow-sm"
+                      : "text-foreground/35 hover:text-foreground/50"
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`ml-1.5 ${aspectTab === tab.key ? "text-foreground/40" : "text-foreground/20"}`}>
+                    {tab.items.length}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab description */}
+            <p className="text-foreground/30 text-xs leading-relaxed mb-4">
+              {active.description}
+            </p>
+
+            {/* Aspect list */}
+            {active.items.length === 0 ? (
+              <p className="text-foreground/20 text-sm text-center py-6">No {active.key} aspects in your chart.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {active.items.map((a, i) => {
+                  const typeInfo = ASPECT_TYPE_INFO[a.aspect] || { label: a.aspect, nature: "", color: "text-foreground/50" };
+                  const uid = `${active.key}-${i}`;
+                  const isOpen = openAspect === uid;
+
+                  return (
+                    <div key={uid} className="rounded-xl border border-foreground/15 bg-surface/60 overflow-hidden">
+                      <button
+                        onClick={() => setOpenAspect(isOpen ? null : uid)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-foreground/[0.02] transition-colors"
+                      >
+                        <span className={`text-base ${typeInfo.color}`}>
+                          {ASPECT_SYMBOLS[a.aspect] || "·"}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-foreground/80 text-sm font-medium">
+                            {a.p1Name}
+                          </span>
+                          <span className={`text-xs mx-1.5 ${typeInfo.color}`}>
+                            {typeInfo.label.toLowerCase()}
+                          </span>
+                          <span className="text-foreground/80 text-sm font-medium">
+                            {a.p2Name}
+                          </span>
+                        </div>
+                        <span className="text-foreground/20 text-[10px]">
+                          {a.orbit}&deg;
+                        </span>
+                        <svg
+                          width="14" height="14" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2"
+                          className={`text-foreground/20 transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {isOpen && a.interpretation && (
+                        <div className="px-4 pb-4 pt-1 border-t border-foreground/15">
+                          <p className="text-foreground/70 text-sm leading-relaxed">
+                            {a.interpretation}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      <div className="h-8" />
+    </main>
+  );
+}

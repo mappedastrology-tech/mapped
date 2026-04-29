@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+/* Hide scrollbar for date wheel and similar horizontal scrollers */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/*
+  Mapped — Dual Theme Color System
+
+  LIGHT MODE: "Warm Altar"
+  Golden, warm, textured. Like a cozy journal meets a candle-lit altar.
+  Background: warm parchment. Cards: white. Accents: terracotta + gold.
+
+  DARK MODE: "Spell Book"
+  Atmospheric, moody. Like opening a grimoire at night.
+  Background: deep espresso. Cards: warm charcoal. Accents: gold + amber.
+*/
+
+/* ═══ LIGHT THEME (default) ═══ */
+:root {
+  --background: #f5efe6;
+  --background-card: #ffffff;
+  --background-card-hover: #faf7f2;
+  --background-elevated: #f0e6d8;
+  --background-hero: linear-gradient(135deg, #e8d5bc, #dcc6a8);
+
+  --foreground: #3d3225;
+  --foreground-secondary: #6d5d48;
+  --foreground-muted: #a0917a;
+  --foreground-faint: #c4b8a8;
+  --foreground-ghost: #ddd4c8;
+
+  --terracotta: #c4956a;
+  --terracotta-text: #8a6840;
+  --terracotta-bg: #f5efe6;
+  --terracotta-light: #c46a45;
+  --amber: #EBC483;
+  --amber-light: #f0d49e;
+  --sage: #5a7a4e;
+  --sage-bg: #eef3ea;
+  --sage-light: #95a888;
+  --cream: #F7EDDA;
+  --surface: #FBF1DE;
+  --surface-mid: #EAD8BC;
+  --rust: #97563E;
+  --rust-light: #a86d55;
+  --ink: #2A1F18;
+  --paper: #f5efe6;
+  --paper-deep: #EAD8BC;
+
+  --border: #e8e0d6;
+  --border-strong: #d4c4b0;
+  --border-card: #e0d5c6;
+  --border-accent: #c4956a;
+
+  --tag-bg: #f0e6d8;
+  --tag-text: #8a7252;
+  --tag-green-bg: #eef3ea;
+  --tag-green-text: #5a7a4e;
+
+  --btn-primary-bg: #c4956a;
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #2c2520;
+  --btn-secondary-text: #f5efe6;
+
+  --modal-overlay: rgba(0, 0, 0, 0.3);
+  --modal-bg: #f5efe6;
+
+  --icon-thumb-bg: #f0e6d8;
+  --icon-thumb-love: #fce8e8;
+  --icon-thumb-sage: #eef3ea;
+
+  --moon-card-bg: linear-gradient(135deg, #e8d5bc, #dcc6a8);
+  --moon-card-inner: rgba(255, 255, 255, 0.6);
+  --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ═══ DARK THEME ═══ */
+[data-theme="dark"] {
+  --background: #1a1714;
+  --background-card: #2a2318;
+  --background-card-hover: #332b20;
+  --background-elevated: #1f1b15;
+  --background-hero: linear-gradient(135deg, #2a2318, #1f1b15);
+
+  --foreground: #e8ddd0;
+  --foreground-secondary: #c4b8a8;
+  --foreground-muted: #8a7d6b;
+  --foreground-faint: #5a5040;
+  --foreground-ghost: #3d3428;
+
+  --terracotta: #c4a882;
+  --terracotta-text: #c4a882;
+  --terracotta-bg: #3d3428;
+  --terracotta-light: #d4b892;
+  --amber: #EBC483;
+  --amber-light: #f0d49e;
+  --sage: #8aaa6e;
+  --sage-bg: #2d3a28;
+  --sage-light: #95a888;
+  --cream: #2a2318;
+  --surface: #2a2318;
+  --surface-mid: #332b20;
+  --rust: #c4956a;
+  --rust-light: #d4a57a;
+  --ink: #e8ddd0;
+  --paper: #1a1714;
+  --paper-deep: #2a2318;
+
+  --border: #3d3428;
+  --border-strong: #4a3d2a;
+  --border-card: #3d3428;
+  --border-accent: #c4a882;
+
+  --tag-bg: #3d3428;
+  --tag-text: #c4a882;
+  --tag-green-bg: #2d3a28;
+  --tag-green-text: #8aaa6e;
+
+  --btn-primary-bg: #c4a882;
+  --btn-primary-text: #1a1714;
+  --btn-secondary-bg: #c4a882;
+  --btn-secondary-text: #1a1714;
+
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --modal-bg: #1f1b15;
+
+  --icon-thumb-bg: #3d3428;
+  --icon-thumb-love: #3d2828;
+  --icon-thumb-sage: #2d3a28;
+
+  --moon-card-bg: linear-gradient(135deg, #2a2318, #332b20);
+  --moon-card-inner: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-terracotta: var(--terracotta);
+  --color-terracotta-light: var(--terracotta-light);
+  --color-amber: var(--amber);
+  --color-amber-light: var(--amber-light);
+  --color-sage: var(--sage);
+  --color-sage-light: var(--sage-light);
+  --color-cream: var(--cream);
+  --color-surface: var(--surface);
+  --color-surface-mid: var(--surface-mid);
+  --color-rust: var(--rust);
+  --color-rust-light: var(--rust-light);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+
+  /* Theme-aware component colors — use instead of bg-white, bg-black */
+  --color-card: var(--background-card);
+  --color-card-hover: var(--background-card-hover);
+  --color-elevated: var(--background-elevated);
+  --color-muted: var(--foreground-muted);
+  --color-faint: var(--foreground-faint);
+  --color-ghost: var(--foreground-ghost);
+  --color-secondary: var(--foreground-secondary);
+  --color-overlay: var(--modal-overlay);
+  --color-border: var(--border);
+  --color-border-card: var(--border-card);
+  --color-border-accent: var(--border-accent);
+}
+
+/*
+  Typography system:
+  --font-display:  Bodoni Moda — page titles, hero headings (Palmore-like)
+  --font-heading:  Playfair Display — section headers, card titles
+  --font-body:     DM Sans — body text, labels, UI elements
+*/
+:root {
+  --font-display: 'Bodoni Moda', 'Playfair Display', 'Times New Roman', serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth color transitions (scoped to interactive elements, not everything) */
+a, button, input, select, textarea,
+[role="button"], [tabindex] {
+  transition-property: background-color, border-color, color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* Remove default input styling for mobile */
+input, select, textarea {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* Slide-up animation for bottom sheets */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+/* Slide-in-left animation for history drawer */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@font-face {
+  font-family: 'Ahsing';
+  src: url('/fonts/ahsing-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ZodiacDings';
+  src: url('/fonts/mf-zodiac-dings.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Astrologicus';
+  src: url('/fonts/astrologicus-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
