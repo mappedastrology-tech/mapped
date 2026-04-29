@@ -3,8 +3,6 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
 
-export const runtime = "edge";
-
 // promisify turns the callback-based execFile into something we can "await"
 const execFileAsync = promisify(execFile);
 

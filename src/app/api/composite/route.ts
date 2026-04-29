@@ -3,8 +3,6 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
 
-export const runtime = "edge";
-
 const execFileAsync = promisify(execFile);
 
 /**
