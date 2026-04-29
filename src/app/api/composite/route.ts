@@ -1,53 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { promisify } from "util";
-import path from "path";
 
-const execFileAsync = promisify(execFile);
+export const runtime = "edge";
 
 /**
  * POST /api/composite
  *
- * Calculates the composite (midpoint) chart for two people.
- * The composite chart represents the relationship itself.
+ * Calculates the composite (midpoint) chart for two people, representing
+ * the relationship itself. Requires a Python script, which is not available
+ * on Cloudflare Pages / edge runtime.
  *
- * Body: {
- *   chart1: { planets[], houses[], specialPoints[] }
- *   chart2: { planets[], houses[], specialPoints[] }
- * }
+ * Composite chart calculations must be performed on the local development server.
  */
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    const { chart1, chart2 } = body;
-    if (!chart1?.planets?.length || !chart2?.planets?.length) {
-      return NextResponse.json(
-        { error: "Both charts must include planets data." },
-        { status: 400 }
-      );
-    }
-
-    const scriptPath = path.join(process.cwd(), "scripts", "calculate_composite.py");
-
-    const { stdout, stderr } = await execFileAsync("python3", [
-      scriptPath,
-      JSON.stringify(body),
-    ], {
-      timeout: 30000,
-    });
-
-    if (stderr) {
-      console.warn("Composite Python stderr:", stderr);
-    }
-
-    const chartData = JSON.parse(stdout);
-    return NextResponse.json(chartData);
-  } catch (error) {
-    console.error("Composite calculation error:", error);
-    return NextResponse.json(
-      { error: "Failed to calculate composite chart." },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      error:
+        "Composite chart calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
+    },
+    { status: 501 }
+  );
 }

@@ -1,49 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { promisify } from "util";
-import path from "path";
 
-const execFileAsync = promisify(execFile);
+export const runtime = "edge";
 
 /**
  * POST /api/transits
  *
- * Calculate current transits to a natal chart.
- * Input: { natalPlanets, natalHouses, transitDate, latitude?, longitude? }
- * Output: { transitDate, transitPlanets, transitAspects }
+ * Calculates current planetary transits to a natal chart, showing active
+ * aspects and their timing. Requires a Python script with ephemeris data,
+ * which is not available on Cloudflare Pages / edge runtime.
+ *
+ * Transit calculations must be performed on the local development server.
  */
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    const { natalPlanets, transitDate } = body;
-    if (!natalPlanets || !transitDate) {
-      return NextResponse.json(
-        { error: "Missing natal planets or transit date." },
-        { status: 400 }
-      );
-    }
-
-    const scriptPath = path.join(process.cwd(), "scripts", "calculate_transits.py");
-
-    const { stdout, stderr } = await execFileAsync("python3", [
-      scriptPath,
-      JSON.stringify(body),
-    ], {
-      timeout: 30000,
-    });
-
-    if (stderr) {
-      console.warn("Transit calc stderr:", stderr);
-    }
-
-    const transitData = JSON.parse(stdout);
-    return NextResponse.json(transitData);
-  } catch (error) {
-    console.error("Transit calculation error:", error);
-    return NextResponse.json(
-      { error: "Failed to calculate transits." },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      error:
+        "Transit calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
+    },
+    { status: 501 }
+  );
 }
