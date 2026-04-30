@@ -4,13 +4,25 @@
 // Optional "Save my chart" checkbox reveals email/password fields to create
 // an account and save in one step.
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CitySearch, { LocationResult } from "@/components/CitySearch";
 import { supabase } from "@/lib/supabase";
 import { saveChart, updateChart } from "@/lib/saveChart";
 
-export default function NewChart() {
+export default function NewChartWrapper() {
+  return (
+    <Suspense fallback={
+      <main className="flex-1 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+      </main>
+    }>
+      <NewChart />
+    </Suspense>
+  );
+}
+
+function NewChart() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEdit = searchParams.get("edit") === "true";
