@@ -217,12 +217,31 @@ const ASPECT_SYMBOLS: Record<string, string> = {
   sextile: "\u2731",
 };
 
-const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: string }> = {
-  conjunction: { label: "Conjunction", nature: "fusion", color: "text-amber" },
-  trine: { label: "Trine", nature: "harmony", color: "text-sage" },
-  sextile: { label: "Sextile", nature: "opportunity", color: "text-sage/70" },
-  square: { label: "Square", nature: "tension", color: "text-terracotta" },
-  opposition: { label: "Opposition", nature: "polarity", color: "text-terracotta/70" },
+const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: string; beginnerDesc: string }> = {
+  conjunction: { label: "Conjunction", nature: "fusion", color: "text-amber", beginnerDesc: "These two planets are fused together — their energies blend into one. It's intense and amplified, like two voices singing the same note." },
+  trine: { label: "Trine", nature: "harmony", color: "text-sage", beginnerDesc: "These two planets flow together effortlessly — a natural gift or talent area. Things here come easy, almost too easy to notice." },
+  sextile: { label: "Sextile", nature: "opportunity", color: "text-sage/70", beginnerDesc: "These two planets get along well and create opportunities — but you have to reach for them. Think of it as an open door you still need to walk through." },
+  square: { label: "Square", nature: "tension", color: "text-terracotta", beginnerDesc: "These two planets are in conflict — they want different things and create inner tension. It's uncomfortable, but this friction is what drives your biggest growth." },
+  opposition: { label: "Opposition", nature: "polarity", color: "text-terracotta/70", beginnerDesc: "These two planets sit on opposite sides, creating a tug-of-war. You might swing between them or project one side onto other people. Balance is the lesson." },
+};
+
+/** Plain-English descriptions of what each planet governs */
+const PLANET_GOVERNS: Record<string, string> = {
+  Sun: "your core identity — who you are at your center",
+  Moon: "your emotions, instincts, and what makes you feel safe",
+  Mercury: "how you think, communicate, and process information",
+  Venus: "what you love, value, and find beautiful",
+  Mars: "your drive, ambition, anger, and how you take action",
+  Jupiter: "where you grow, what you believe, and what brings luck",
+  Saturn: "your responsibilities, fears, and where you're tested",
+  Uranus: "where you break rules, rebel, and need freedom",
+  Neptune: "your imagination, spirituality, and where you might be deceived",
+  Pluto: "your deepest transformations, power, and what you can't control",
+  Chiron: "your deepest wound and your ability to heal others",
+  "North Node": "your life purpose — the direction your soul is growing toward",
+  "South Node": "your comfort zone — patterns from the past you're moving beyond",
+  "Medium Coeli": "your career, public reputation, and legacy",
+  "Imum Coeli": "your roots, home life, and inner private world",
 };
 
 /** Classify an aspect as strong/medium/mild based on orb tightness and planet importance */
@@ -1362,11 +1381,43 @@ export default function YouTab() {
                         </svg>
                       </button>
 
-                      {isOpen && a.interpretation && (
-                        <div className="px-4 pb-4 pt-1 border-t border-foreground/15">
-                          <p className="text-foreground/70 text-sm leading-relaxed">
-                            {a.interpretation}
-                          </p>
+                      {isOpen && (
+                        <div className="px-4 pb-4 pt-1 border-t border-foreground/15 space-y-3">
+                          {/* What this aspect type means */}
+                          <div className="rounded-lg bg-foreground/[0.03] px-3 py-2.5">
+                            <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                              What&apos;s a {typeInfo.label.toLowerCase()}?
+                            </p>
+                            <p className="text-foreground/55 text-[12px] leading-relaxed">
+                              {typeInfo.beginnerDesc}
+                            </p>
+                          </div>
+
+                          {/* What each planet does */}
+                          <div className="flex flex-col gap-1.5">
+                            {PLANET_GOVERNS[a.p1Name] && (
+                              <p className="text-foreground/45 text-[11px] leading-relaxed">
+                                <span className="text-foreground/70 font-medium">{a.p1Name}</span> governs {PLANET_GOVERNS[a.p1Name]}.
+                              </p>
+                            )}
+                            {PLANET_GOVERNS[a.p2Name] && (
+                              <p className="text-foreground/45 text-[11px] leading-relaxed">
+                                <span className="text-foreground/70 font-medium">{a.p2Name}</span> governs {PLANET_GOVERNS[a.p2Name]}.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* The actual interpretation */}
+                          {a.interpretation && (
+                            <div>
+                              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                                What this means for you
+                              </p>
+                              <p className="text-foreground/70 text-sm leading-relaxed">
+                                {a.interpretation}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

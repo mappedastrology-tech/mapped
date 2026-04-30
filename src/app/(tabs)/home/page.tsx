@@ -139,6 +139,8 @@ export default function HomeTab() {
   const [shareLoading, setShareLoading] = useState(false);
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
+  const [tarotFlipping, setTarotFlipping] = useState(false);
+  const [oracleFlipping, setOracleFlipping] = useState(false);
 
   // Card pull state — remember reveals for today
   const [tarotRevealed, setTarotRevealed] = useState(() => {
@@ -506,6 +508,7 @@ export default function HomeTab() {
 
   return (
     <>
+      <style>{`@keyframes cardFlip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }`}</style>
       <main className="w-full max-w-lg mx-auto px-5 py-6 pb-28">
         {/* ─── Greeting header with moon ─── */}
         <header className="flex items-start justify-between gap-4 mb-8">
@@ -881,11 +884,15 @@ export default function HomeTab() {
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5">
               Tarot
             </p>
-            {!tarotRevealed ? (
+            {!tarotRevealed && !tarotFlipping ? (
               <button
                 onClick={() => {
-                  setTarotRevealed(true);
-                  try { localStorage.setItem(`mapped:tarot-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                  setTarotFlipping(true);
+                  setTimeout(() => {
+                    setTarotRevealed(true);
+                    setTarotFlipping(false);
+                    try { localStorage.setItem(`mapped:tarot-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                  }, 800);
                 }}
                 className="w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-terracotta/15 to-amber/15
                            border border-terracotta/25 hover:border-terracotta/50 transition-all
@@ -894,6 +901,25 @@ export default function HomeTab() {
                 <span className="text-[32px]">{'\u{1F0A0}'}</span>
                 <span className="text-foreground/40 text-[10px] font-medium">Tap to pull</span>
               </button>
+            ) : tarotFlipping ? (
+              <div className="w-full aspect-[3/4] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+                <div className="w-full h-full transition-transform duration-700"
+                  style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
+                  {/* Back */}
+                  <div className="absolute inset-0 rounded-xl border border-terracotta/25 flex items-center justify-center"
+                    style={{ backfaceVisibility: "hidden", background: "linear-gradient(135deg, #2d2010, #1a1408, #2d2010)" }}>
+                    <div className="w-[55%] h-[65%] rounded border border-terracotta/20 flex items-center justify-center">
+                      <span className="text-terracotta/30 text-2xl">✦</span>
+                    </div>
+                  </div>
+                  {/* Front */}
+                  <div className="absolute inset-0 rounded-xl border border-terracotta/25 flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10"
+                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+                    <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
+                    <p className="text-foreground/50 text-[10px] mt-1">{dailyTarot.uprightKeywords.slice(0, 2).join(" · ")}</p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <button
                 onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
@@ -996,11 +1022,15 @@ export default function HomeTab() {
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5">
               Oracle
             </p>
-            {!oracleRevealed ? (
+            {!oracleRevealed && !oracleFlipping ? (
               <button
                 onClick={() => {
-                  setOracleRevealed(true);
-                  try { localStorage.setItem(`mapped:oracle-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                  setOracleFlipping(true);
+                  setTimeout(() => {
+                    setOracleRevealed(true);
+                    setOracleFlipping(false);
+                    try { localStorage.setItem(`mapped:oracle-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                  }, 800);
                 }}
                 className="w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-sage/15 to-cream/30
                            border border-sage/25 hover:border-sage/50 transition-all
@@ -1009,6 +1039,25 @@ export default function HomeTab() {
                 <span className="text-[32px]">&#x2726;</span>
                 <span className="text-foreground/40 text-[10px] font-medium">Tap to pull</span>
               </button>
+            ) : oracleFlipping ? (
+              <div className="w-full aspect-[3/4] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+                <div className="w-full h-full transition-transform duration-700"
+                  style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
+                  {/* Back */}
+                  <div className="absolute inset-0 rounded-xl border border-sage/25 flex items-center justify-center"
+                    style={{ backfaceVisibility: "hidden", background: "linear-gradient(135deg, #1a2418, #0f1a0d, #1a2418)" }}>
+                    <div className="w-[55%] h-[65%] rounded border border-sage/20 flex items-center justify-center">
+                      <span className="text-sage/30 text-2xl">✦</span>
+                    </div>
+                  </div>
+                  {/* Front */}
+                  <div className="absolute inset-0 rounded-xl border border-sage/25 flex flex-col items-center justify-center p-3 bg-gradient-to-br from-sage/15 to-cream/10"
+                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+                    <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyOracle.animal}</p>
+                    <p className="text-foreground/50 text-[10px] mt-1">{dailyOracle.keyword}</p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <button
                 onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
@@ -1792,9 +1841,25 @@ function DetailSheet({
   if (sheet.kind === "horizon-event") {
     const ev = sheet.event;
     const ELEMENT_EMOJI: Record<string, string> = {
-      fire: "🔥", earth: "🌿", air: "💨", water: "🌊",
+      fire: "🔥", earth: "🌿", air: "💨", water: "🌊", spirit: "✨",
     };
     const elemEmoji = ev.element ? (ELEMENT_EMOJI[ev.element] ?? "✦") : "✦";
+
+    const TRADITION_LABELS: Record<string, string> = {
+      astronomical: "Astronomical Event",
+      celtic: "Celtic Tradition",
+      vedic: "Vedic / Hindu Tradition",
+      chinese: "Chinese / East Asian Tradition",
+      islamic: "Islamic Tradition",
+      indigenous: "Indigenous Tradition",
+      pagan: "Pagan / Wiccan Tradition",
+      persian: "Persian Tradition",
+      tibetan: "Tibetan Buddhist Tradition",
+      thai: "Thai Buddhist Tradition",
+      japanese: "Japanese Tradition",
+      egyptian: "Ancient Egyptian Tradition",
+    };
+
     return (
       <InfoSheet
         isOpen
@@ -1803,22 +1868,41 @@ function DetailSheet({
         title={ev.name}
         glyph={elemEmoji}
       >
-        <p className="text-foreground/70 text-[12px] uppercase tracking-[0.2em] font-bold capitalize">
-          {ev.tradition}
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-foreground/60 text-[12px] uppercase tracking-[0.2em] font-bold capitalize">
+            {TRADITION_LABELS[ev.tradition] || ev.tradition}
+          </span>
+        </div>
+
         <p className="text-foreground/85 text-[14px] leading-relaxed">{ev.description}</p>
+
         {ev.ritualHint && (
-          <div className="rounded-2xl bg-sage/10 border border-sage/25 p-4">
-            <p className="text-sage text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-              Ritual suggestion
+          <div className="rounded-2xl bg-sage/10 border border-sage/25 p-5">
+            <p className="text-sage text-[10px] uppercase tracking-[0.2em] font-bold mb-2">
+              How to observe this
             </p>
-            <p className="text-foreground/85 text-[14px] leading-relaxed">{ev.ritualHint}</p>
+            <p className="text-foreground/85 text-[14px] leading-relaxed mb-3">{ev.ritualHint}</p>
+            <div className="pt-3 border-t border-sage/15 space-y-2">
+              <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold">Setting the space</p>
+              <p className="text-foreground/65 text-[13px] leading-relaxed">
+                {ev.element === "fire" ? "Light a candle or sit near warmth. Fire rituals work best at dusk or dawn when the light is changing." :
+                 ev.element === "water" ? "Work near water if possible — a bowl, a bath, or natural water. Water rituals are strongest at night under moonlight." :
+                 ev.element === "earth" ? "Go outside if you can. Touch soil, stone, or wood. Earth rituals ground best when you're physically connected to the ground." :
+                 ev.element === "air" ? "Open a window or step outside. Breathe deeply and intentionally. Air rituals work best in the morning when the mind is clear." :
+                 "Create a quiet, sacred space. Dim the lights. Silence your phone. This is time between worlds — honor the threshold."}
+              </p>
+            </div>
           </div>
         )}
+
         <div className="flex items-center gap-2 text-foreground/40 text-[11px]">
           <span>{elemEmoji}</span>
-          <span className="capitalize">{ev.element} element · {ev.category}</span>
+          <span className="capitalize">{ev.element ? `${ev.element} element` : ""}{ev.element && ev.category ? " · " : ""}{ev.category}</span>
         </div>
+
+        <p className="text-foreground/25 text-[10px] leading-relaxed italic">
+          Ritual suggestions are inspired by each tradition&apos;s practices. We encourage learning more from practitioners and cultural sources.
+        </p>
       </InfoSheet>
     );
   }

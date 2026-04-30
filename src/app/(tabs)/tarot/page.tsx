@@ -81,6 +81,7 @@ export default function TarotTab() {
   /* ─── Card detail state ─── */
   const [detailCard, setDetailCard] = useState<DrawnCard | null>(null);
   const [detailPosition, setDetailPosition] = useState<{ name: string; description: string } | undefined>();
+  const [expandedReadingCard, setExpandedReadingCard] = useState<number | null>(null);
 
   /* ─── Fan touch state ─── */
   const fanRef = useRef<HTMLDivElement>(null);
@@ -205,6 +206,7 @@ export default function TarotTab() {
     setPickedCards([]);
     setCurrentPickPos(0);
     setFanRotation(0);
+    setExpandedReadingCard(null);
     setView("picking");
   }, [isOracleDeck, activeOracleDeck]);
 
@@ -782,6 +784,23 @@ export default function TarotTab() {
                         </span>
                       ))}
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const cardsSummary = reading.cards.map(c =>
+                          `${c.position ? c.position + ": " : ""}${c.name}${c.reversed ? " (Reversed)" : ""} — ${c.keywords.slice(0, 3).join(", ")}`
+                        ).join(". ");
+                        const dollyContext = `I did a ${reading.spreadName} reading on ${new Date(reading.date).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Cards: ${cardsSummary}. Help me revisit this reading and understand what these cards were telling me.`;
+                        sessionStorage.setItem("dolly-context", dollyContext);
+                        router.push("/dolly");
+                      }}
+                      className="mt-2.5 flex items-center gap-1.5 text-foreground/35 text-[10px] font-medium active:text-foreground/50 transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round">
+                        <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                      </svg>
+                      Ask Dolly about this reading
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1020,6 +1039,68 @@ export default function TarotTab() {
           </div>
 
           {allRevealed && (
+            <div className="mt-8 pt-6 border-t border-foreground/10">
+              <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-display)" }}>
+                Your Reading
+              </h2>
+              <div className="space-y-4">
+                {pickedOracleCards.map((oc, i) => {
+                  const pos = selectedSpread.positions[i];
+                  const isExpanded = expandedReadingCard === i;
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExpandedReadingCard(isExpanded ? null : i)}
+                      className="w-full text-left rounded-xl border border-foreground/12 bg-surface/40 overflow-hidden active:bg-foreground/[0.02] transition-all"
+                    >
+                      <div className="flex items-start gap-3 p-4">
+                        <div className="w-10 h-14 rounded-lg border border-sage/30 flex-shrink-0 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={oc.card.image} alt={oc.card.animal} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground/30 text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5">
+                            {pos?.name || `Card ${i + 1}`}
+                          </p>
+                          <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                            {oc.card.animal}
+                          </p>
+                          <p className="text-foreground/50 text-[11px] mt-1">{oc.card.keyword}</p>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          className={`text-foreground/20 mt-1 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      {isExpanded && (
+                        <div className="px-4 pb-4 space-y-3 border-t border-foreground/8 pt-3">
+                          {pos?.description && (
+                            <div>
+                              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">{pos.name}</p>
+                              <p className="text-foreground/60 text-[12px] leading-relaxed">{pos.description}</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Message</p>
+                            <p className="text-foreground/70 text-[13px] leading-relaxed">{oc.card.meaning}</p>
+                          </div>
+                          <div className="rounded-lg bg-sage/8 px-3 py-2.5">
+                            <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Reflection</p>
+                            <p className="text-foreground/60 text-[12px] leading-relaxed">
+                              What part of your life is asking for {oc.card.keyword.toLowerCase()} right now?
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {allRevealed && (
             <button onClick={() => goToDolly()}
               className="mt-8 mx-auto px-5 py-3 rounded-xl border border-foreground/15 bg-foreground/3 text-foreground/50 text-sm flex items-center gap-2 active:bg-foreground/6"
             >
@@ -1115,6 +1196,96 @@ export default function TarotTab() {
             );
           })}
         </div>
+
+        {allRevealed && (
+          <div className="mt-8 pt-6 border-t border-foreground/10">
+            <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-display)" }}>
+              Your Reading
+            </h2>
+            <div className="space-y-4">
+              {pickedCards.map((dc, i) => {
+                const pos = selectedSpread.positions[i];
+                const suitColor = SUIT_INFO[dc.card.suit]?.color || "#888";
+                const meanings = tarotMeanings[dc.card.id];
+                const isExpanded = expandedReadingCard === i;
+
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setExpandedReadingCard(isExpanded ? null : i)}
+                    className="w-full text-left rounded-xl border border-foreground/12 bg-surface/40 overflow-hidden active:bg-foreground/[0.02] transition-all"
+                  >
+                    <div className="flex items-start gap-3 p-4">
+                      {/* Card mini badge */}
+                      <div className="w-10 h-14 rounded-lg border flex-shrink-0 flex flex-col items-center justify-center"
+                        style={{ borderColor: suitColor, background: `linear-gradient(145deg, ${suitColor}15, transparent)` }}>
+                        {dc.reversed && <span className="text-[7px] text-foreground/30">↓R</span>}
+                        <span className="text-[8px] text-foreground/40">{dc.card.arcana === "major" ? romanNumeral(dc.card.number) : dc.card.suit}</span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-foreground/30 text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5">
+                          {pos?.name || `Card ${i + 1}`}
+                        </p>
+                        <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                          {dc.card.name}{dc.reversed ? " (Reversed)" : ""}
+                        </p>
+                        <p className="text-foreground/50 text-[11px] mt-1">
+                          {(dc.reversed ? dc.card.reversedKeywords : dc.card.uprightKeywords).slice(0, 3).join(" · ")}
+                        </p>
+                      </div>
+
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        className={`text-foreground/20 mt-1 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-foreground/8 pt-3">
+                        <div>
+                          <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                            {pos?.description || "Position meaning"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                            {dc.reversed ? "Reversed meaning" : "Upright meaning"}
+                          </p>
+                          <p className="text-foreground/70 text-[13px] leading-relaxed">
+                            {dc.reversed ? dc.card.reversedMeaning : dc.card.uprightMeaning}
+                          </p>
+                        </div>
+                        {meanings && (
+                          <div className="space-y-2.5">
+                            {meanings.love && (
+                              <div>
+                                <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Love & Relationships</p>
+                                <p className="text-foreground/60 text-[12px] leading-relaxed">{meanings.love}</p>
+                              </div>
+                            )}
+                            {meanings.career && (
+                              <div>
+                                <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Career & Finances</p>
+                                <p className="text-foreground/60 text-[12px] leading-relaxed">{meanings.career}</p>
+                              </div>
+                            )}
+                            {meanings.spiritual && (
+                              <div>
+                                <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Spiritual Growth</p>
+                                <p className="text-foreground/60 text-[12px] leading-relaxed">{meanings.spiritual}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {allRevealed && (
           <button onClick={() => goToDolly()}
