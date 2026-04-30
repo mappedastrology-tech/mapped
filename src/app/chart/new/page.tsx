@@ -122,9 +122,6 @@ function NewChart() {
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        if (response.status === 501) {
-          throw new Error("Chart calculations aren't available in the cloud version yet. Please calculate your chart on the local development server first — it will be saved to your account.");
-        }
         throw new Error(body.error || "Chart calculation failed. Please try again.");
       }
 

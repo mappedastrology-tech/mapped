@@ -1,23 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateAstrocartography } from "@/lib/astro/calculateAstrocartography";
 
 /**
  * POST /api/astrocartography
  *
- * Calculates astrocartography planetary lines for a birth chart, showing
- * where planetary energies are strongest on a world map. Requires a Python
- * script with ephemeris calculations, which is not available on Cloudflare
- * Pages / edge runtime.
- *
- * Astrocartography calculations must be performed on the local development server.
+ * Calculates astrocartography lines for a birth chart.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Astrocartography calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    if (data.birthYear == null || data.birthMonth == null || data.birthDay == null || data.birthHourUtc == null) {
+      return NextResponse.json(
+        { error: "Missing required fields: birthYear, birthMonth, birthDay, birthHourUtc" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateAstrocartography(data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Astrocartography error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Astrocartography calculation failed." },
+      { status: 500 }
+    );
+  }
 }

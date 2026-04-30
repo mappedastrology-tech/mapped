@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateComposite } from "@/lib/astro/calculateComposite";
 
 /**
  * POST /api/composite
  *
- * Calculates the composite (midpoint) chart for two people, representing
- * the relationship itself. Requires a Python script, which is not available
- * on Cloudflare Pages / edge runtime.
- *
- * Composite chart calculations must be performed on the local development server.
+ * Calculates a composite (relationship) chart from two birth charts.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Composite chart calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    if (!data.chart1 || !data.chart2) {
+      return NextResponse.json(
+        { error: "Missing required fields: chart1, chart2" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateComposite(data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Composite error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Composite calculation failed." },
+      { status: 500 }
+    );
+  }
 }

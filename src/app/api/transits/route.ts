@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateTransits } from "@/lib/astro/calculateTransits";
 
 /**
  * POST /api/transits
  *
- * Calculates current planetary transits to a natal chart, showing active
- * aspects and their timing. Requires a Python script with ephemeris data,
- * which is not available on Cloudflare Pages / edge runtime.
- *
- * Transit calculations must be performed on the local development server.
+ * Calculates current planetary transits to a natal chart.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Transit calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    if (!data.natalPlanets || !data.transitDate) {
+      return NextResponse.json(
+        { error: "Missing required fields: natalPlanets, transitDate" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateTransits(data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Transits error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Transit calculation failed." },
+      { status: 500 }
+    );
+  }
 }

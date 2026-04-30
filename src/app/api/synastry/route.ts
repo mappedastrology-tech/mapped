@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateSynastry } from "@/lib/astro/calculateSynastry";
 
 /**
  * POST /api/synastry
  *
- * Calculates synastry (compatibility) between two charts by analyzing
- * inter-chart aspects and relationship themes. Requires a Python script,
- * which is not available on Cloudflare Pages / edge runtime.
- *
- * Synastry calculations must be performed on the local development server.
+ * Compares two birth charts and calculates compatibility.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Synastry calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    if (!data.chart1 || !data.chart2) {
+      return NextResponse.json(
+        { error: "Missing required fields: chart1, chart2" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateSynastry(data.chart1, data.chart2, data.context || "friend");
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Synastry error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Synastry calculation failed." },
+      { status: 500 }
+    );
+  }
 }

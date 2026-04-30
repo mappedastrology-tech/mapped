@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateSolarReturn } from "@/lib/astro/calculateSolarReturn";
 
 /**
  * POST /api/chart/solar-return
  *
- * Calculates the solar return chart for a given year — the exact moment
- * the Sun returns to its natal position. Requires a Python script with
- * ephemeris data, which is not available on Cloudflare Pages / edge runtime.
- *
- * Solar return calculations must be performed on the local development server.
+ * Calculates a solar return chart for a given year.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Solar return calculations require the local development server with Python installed. This route is not available in the cloud deployment.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    if (data.natalSunAbsPos == null || data.latitude == null || data.longitude == null) {
+      return NextResponse.json(
+        { error: "Missing required fields: natalSunAbsPos, latitude, longitude" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateSolarReturn(data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Solar return error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Solar return calculation failed." },
+      { status: 500 }
+    );
+  }
 }

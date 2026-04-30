@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
+import { calculateChart } from "@/lib/astro/calculateChart";
 
 /**
  * POST /api/chart/calculate
  *
- * This route calls a Python/Kerykeion script to calculate natal charts from
- * birth data. It requires child_process and Python, which are not available
- * on Cloudflare Pages / edge runtime.
- *
- * Chart calculations must be performed on the local development server.
- * Once calculated, chart data is saved to Supabase and served from there.
+ * Calculates a full birth chart from birth data using Swiss Ephemeris.
+ * Runs on Vercel Node.js serverless runtime.
  */
 export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    {
-      error:
-        "Chart calculations require the local development server with Python installed. Your chart data is saved in Supabase after initial calculation.",
-    },
-    { status: 501 }
-  );
+  try {
+    const data = await request.json();
+
+    // Validate required fields
+    if (!data.name || !data.birthDate || !data.birthTime || data.latitude == null || data.longitude == null) {
+      return NextResponse.json(
+        { error: "Missing required fields: name, birthDate, birthTime, latitude, longitude" },
+        { status: 400 }
+      );
+    }
+
+    const result = calculateChart(data);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Chart calculation error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Chart calculation failed." },
+      { status: 500 }
+    );
+  }
 }
