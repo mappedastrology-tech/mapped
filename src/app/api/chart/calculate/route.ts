@@ -4,8 +4,8 @@ import { calculateChart } from "@/lib/astro/calculateChart";
 /**
  * POST /api/chart/calculate
  *
- * Calculates a full birth chart from birth data using Swiss Ephemeris.
- * Runs on Vercel Node.js serverless runtime.
+ * Calculates a full birth chart from birth data using astronomy-engine (pure JS).
+ * Runs on Vercel Node.js serverless runtime — no native dependencies required.
  */
 export async function POST(request: NextRequest) {
   try {
