@@ -105,6 +105,17 @@ const ASTRO_BODIES: Record<string, Astronomy.Body> = {
 };
 
 /**
+ * Get geocentric ecliptic longitude of a body at a given Julian Day.
+ * Uses GeoVector + Ecliptic which works for ALL bodies including the Sun.
+ * (EclipticLongitude is heliocentric and throws for the Sun.)
+ */
+function getGeoEclipticLongitude(body: Astronomy.Body, time: Astronomy.FlexibleDateTime): number {
+  const geo = Astronomy.GeoVector(body, time, true);
+  const ecl = Astronomy.Ecliptic(geo);
+  return ecl.elon;
+}
+
+/**
  * Get ecliptic longitude of a planet at a given Julian Day.
  */
 export function getPlanetLongitude(jd: number, planetKey: string): number {
@@ -117,8 +128,7 @@ export function getPlanetLongitude(jd: number, planetKey: string): number {
   const body = ASTRO_BODIES[planetKey];
   if (!body && body !== 0) return 0;
   const time = jdToAstroTime(jd);
-  const ecl = Astronomy.EclipticLongitude(body, time);
-  return ecl;
+  return getGeoEclipticLongitude(body, time);
 }
 
 /**
@@ -148,11 +158,11 @@ export function getPlanetData(jd: number, planetKey: string): {
   }
 
   const time = jdToAstroTime(jd);
-  const lon = Astronomy.EclipticLongitude(body, time);
+  const lon = getGeoEclipticLongitude(body, time);
 
   // Calculate speed by comparing position 1 day later
   const time2 = jdToAstroTime(jd + 1);
-  const lon2 = Astronomy.EclipticLongitude(body, time2);
+  const lon2 = getGeoEclipticLongitude(body, time2);
   let speed = ((lon2 - lon + 540) % 360) - 180; // handle wrap-around
 
   return {
