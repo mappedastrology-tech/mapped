@@ -41,6 +41,13 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Mapped" />
         <link rel="apple-touch-icon" href="/logo-terracotta-cropped.png" />
 
+        {/* Inline theme script — runs before React hydrates to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("mapped:theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t)}else{var d=window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",d)}}catch(e){document.documentElement.setAttribute("data-theme","light")}})()`,
+          }}
+        />
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

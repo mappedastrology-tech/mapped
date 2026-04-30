@@ -46,7 +46,7 @@ export default function TabsLayout({
     <>
       <TopBar />
       {/* flex-1 fills height, min-h-0 allows flex child to shrink & scroll */}
-      <div className="flex-1 min-h-0 pb-20">
+      <div className="flex-1 min-h-0 pb-28">
         {children}
       </div>
       <BottomNav />

@@ -2096,6 +2096,7 @@ export default function MapsTab() {
   const [astroLines, setAstroLines] = useState<AstroLine[] | null>(null);
   const [astroNearby, setAstroNearby] = useState<NearbyLine[] | null>(null);
   const [astroLoading, setAstroLoading] = useState(false);
+  const [astroError, setAstroError] = useState(false);
   const [selectedLifeArea, setSelectedLifeArea] = useState<LifeAreaId>("love");
   const [expandedCity, setExpandedCity] = useState<string | null>(null);
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
@@ -2330,6 +2331,7 @@ export default function MapsTab() {
     if (!birthDate) return; // truly no birth data available
 
     setAstroLoading(true);
+    setAstroError(false);
     const [y, m, d] = birthDate.split("-").map(Number);
     const tz = userChart?.timezone;
     const utcHour = birthTimeToUtcHour(birthDate, birthTime, tz || undefined);
@@ -2346,7 +2348,10 @@ export default function MapsTab() {
         radius: 8,
       }),
     })
-      .then(res => res.ok ? res.json() : null)
+      .then(res => {
+        if (!res.ok) { setAstroError(true); return null; }
+        return res.json();
+      })
       .then(data => {
         if (data) {
           setAstroLines(data.lines || []);
@@ -2354,7 +2359,7 @@ export default function MapsTab() {
           setAstroParans(data.parans || []);
         }
       })
-      .catch(() => {})
+      .catch(() => { setAstroError(true); })
       .finally(() => setAstroLoading(false));
   }, [showAstroMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -5933,10 +5938,21 @@ export default function MapsTab() {
         )}
 
         {/* ─── No birth data ─── */}
-        {!astroLoading && !astroLines && !userChart.birthDate && (
+        {!astroLoading && !astroLines && !astroError && !userChart.birthDate && (
           <div className="text-center py-12">
             <p className="text-foreground/40 text-sm mb-2">Birth date and time needed</p>
             <p className="text-foreground/25 text-xs">Astrocartography requires your exact birth data. Try recalculating your chart first.</p>
+          </div>
+        )}
+
+        {/* ─── Server-side calculation unavailable ─── */}
+        {!astroLoading && astroError && (
+          <div className="text-center py-12 px-4">
+            <p className="text-foreground/50 text-base mb-2" style={{ fontFamily: "var(--font-display)" }}>Your Map is coming soon</p>
+            <p className="text-foreground/35 text-sm leading-relaxed">
+              Astrocartography calculations aren&apos;t available in the cloud version yet.
+              This feature works on the local development server while we build the hosted calculation engine.
+            </p>
           </div>
         )}
 
