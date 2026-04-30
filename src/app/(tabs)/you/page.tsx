@@ -594,6 +594,164 @@ const ASPECT_INTERPRETATIONS: Record<string, Record<string, string>> = {
     square: "Your life purpose and career expectations are in tension. You may be called toward work that doesn't match society's definition of success. Trusting your own path over conventional career advice is the challenge.",
     opposition: "Your destiny pulls you toward home and inner life, but career obligations keep demanding attention. Your soul grows more through private reflection than public achievement — even if the world doesn't reward it.",
   },
+  "Jupiter-Mercury": {
+    conjunction: "Your mind thinks big. You're drawn to philosophy, the big picture, and grand ideas. You can be an incredible teacher or storyteller, but you might overpromise, exaggerate, or talk more than you listen. Details bore you — vision excites you.",
+    trine: "Your thinking naturally gravitates toward wisdom, meaning, and the bigger picture. You're a natural teacher and communicator who makes complex ideas accessible. Learning comes easily and joyfully.",
+    sextile: "You have a talent for connecting everyday thinking with larger meaning. Writing, teaching, and studying reward you more than most. Your curiosity has a philosophical bent.",
+    square: "Your mind wants to go big but gets scattered. You might start a dozen books and finish none, or make promises your schedule can't keep. The tension between detail and vision is frustrating but pushes you to be both thorough and inspired.",
+    opposition: "You swing between getting lost in details and getting lost in grand theories. Other people challenge your thinking in ways that sharpen it. The growth is in being both precise and expansive.",
+  },
+  "Jupiter-Mars": {
+    conjunction: "You go big or go home — your energy, ambition, and drive are supercharged. You take risks that terrify others and often win. Overconfidence and burnout are real dangers, but so is the genuine heroism you're capable of.",
+    trine: "Your drive and your sense of opportunity work together naturally. You take action at the right time, in the right amount. Competition and adventure energize rather than stress you. You're genuinely lucky when you're brave.",
+    sextile: "You can channel your energy toward growth and expansion when you choose to. Physical challenges, entrepreneurial ventures, and calculated risks tend to pay off for you.",
+    square: "Your ambition outpaces your judgment — or your judgment holds back your energy. You might push too hard, fight unnecessary battles, or take risks you shouldn't. The friction creates incredible drive once you learn when to charge and when to wait.",
+    opposition: "You attract people who challenge your drive and ambition. Conflicts with others often teach you about your own relationship with risk, anger, and competition. Learning when to fight and when to grow is the lesson.",
+  },
+  "Jupiter-Saturn": {
+    conjunction: "Expansion meets limitation in you. You dream big but plan carefully. This can feel like driving with one foot on the gas and one on the brake, but it actually gives you staying power that pure optimists lack. Your biggest achievements take time.",
+    trine: "Your optimism and discipline work together naturally. You can dream big AND follow through. This is one of the best aspects for long-term success because you balance vision with patience.",
+    sextile: "You can build structures that support your growth when you put in the effort. Long-term goals that combine ambition with realistic planning are your sweet spot.",
+    square: "Hope and doubt alternate in your life like seasons. Just when things start expanding, limitation kicks in. Just when things feel stuck, a door opens. This cycle is frustrating but builds resilience and teaches you to trust your own timing.",
+    opposition: "You swing between reckless optimism and paralyzing caution. Finding the middle ground — ambitious but realistic — is the work of your lifetime. Other people may represent whichever side you're currently ignoring.",
+  },
+  "Neptune-Venus": {
+    conjunction: "You love with your whole imagination. Romance, art, and beauty move you to your core — but you might fall in love with fantasies rather than real people. You're an incredible artist or lover when you stay grounded, and a heartbroken idealist when you don't.",
+    trine: "Your romantic and creative life is deeply inspired. You attract beauty and love naturally, and your artistic sensibilities are refined. You see the best in people — and usually bring it out of them.",
+    sextile: "You have access to deep creative inspiration and romantic sensitivity when you open yourself to it. Music, art, and poetry nourish your soul in practical ways.",
+    square: "You chase romantic and creative ideals that don't exist in the real world. Disillusionment in love is a recurring theme until you learn to love real people, not projections. Your creative vision is stunning but needs grounding to become real work.",
+    opposition: "You project impossible romantic ideals onto partners, then feel betrayed when they turn out to be human. The growth is in finding the sacred in the ordinary — real love is messier and more beautiful than the fantasy.",
+  },
+  "Neptune-Mercury": {
+    conjunction: "Your mind operates on intuition more than logic. You think in images, feelings, and poetry rather than facts and figures. You're incredibly creative but can struggle with details, deadlines, and telling the difference between imagination and reality.",
+    trine: "Your intuition and intellect work together beautifully. You understand things without being told, pick up subtext effortlessly, and communicate with unusual sensitivity and creativity.",
+    sextile: "You have access to creative, intuitive thinking when you slow down and listen to it. Journaling, meditation, and artistic expression help you think more clearly, not less.",
+    square: "Your logical mind and your intuition confuse each other. You might second-guess clear facts because they don't feel right, or trust feelings that mislead you. Developing both sharp thinking AND intuitive sensitivity — rather than choosing one — is the work.",
+    opposition: "You attract people who either think too rigidly or too dreamily. Conversations with others help you find the balance between hard facts and intuitive knowing. Neither pure logic nor pure imagination is enough on its own.",
+  },
+  "Pluto-Mars": {
+    conjunction: "Your willpower is extraordinary — when you want something, you pursue it with obsessive intensity. This creates incredible power but also explosive anger and control issues. Learning to use this force constructively rather than destructively is your life challenge.",
+    trine: "You have access to deep reserves of power and determination that you can channel constructively. When life gets hard, you dig deeper while others give up. Your strength is quiet but formidable.",
+    sextile: "You can tap into intense focus and determination when the situation calls for it. Crisis brings out your best qualities — you become calm, decisive, and powerful under pressure.",
+    square: "Power struggles dominate your life — with others, with circumstances, with yourself. You might suppress your anger until it erupts, or use force when diplomacy would work better. This aspect forges incredible strength through incredibly difficult experiences.",
+    opposition: "You attract power struggles and intense confrontations with others. These aren't random — they mirror your internal relationship with control, anger, and vulnerability. Other people show you your own shadow.",
+  },
+  "Chiron-Sun": {
+    conjunction: "There's a wound at the center of your identity — a feeling of being flawed, broken, or not enough. This isn't true, but it feels true. The gift hidden inside this pain is that your vulnerability makes you able to help others heal in ways that no one else can.",
+    trine: "Your core wound and your identity work together in a healing way. You've integrated your pain into who you are, and it gives you unusual depth and compassion. People trust you with their own wounds because they sense you've survived yours.",
+    sextile: "You can access your past pain as a source of wisdom and healing when you choose to. Helping others through similar struggles strengthens your own sense of self.",
+    square: "Your identity and your deepest wound are in friction. You might overcompensate for feelings of inadequacy, or let old pain define you. The growth is in neither hiding from your wound nor being consumed by it.",
+    opposition: "Other people trigger your deepest insecurities — not to hurt you, but to help you see what still needs healing. Relationships become mirrors for your core wound. The gift is that through loving others, you heal yourself.",
+  },
+  "Chiron-Moon": {
+    conjunction: "There's a wound in your emotional foundation — early nurturing may have been insufficient, inconsistent, or painful. You feel things deeply but struggle to feel safe. The gift is extraordinary empathy: because you know what it's like to hurt, you can truly comfort others.",
+    trine: "Your emotional wounds have been integrated into your instincts in a healing way. You nurture others naturally because you understand pain from the inside. Your sensitivity is a strength, not a weakness.",
+    sextile: "You can access emotional healing when you create safe spaces for it. Therapy, deep friendships, and nurturing others all contribute to your own healing process.",
+    square: "Your emotions and your deepest wound create ongoing friction. Old pain gets triggered by present situations, making your emotional reactions feel disproportionate. Understanding the source of the pain — rather than just reacting to it — is transformative.",
+    opposition: "Partners and family trigger your deepest emotional wounds. This isn't cruel coincidence — it's how you grow. The people closest to you show you exactly where you still need healing.",
+  },
+  "North Node-Sun": {
+    conjunction: "Your identity IS your life purpose. Simply being yourself — fully, authentically — is your soul's work. The challenge is that becoming who you really are requires leaving behind comfortable old patterns.",
+    trine: "Your sense of self naturally supports your life direction. Being authentic moves you toward your destiny without much struggle. Trust your instincts about who you're becoming.",
+    sextile: "Self-expression and personal development move you toward your purpose. When you invest in becoming a stronger, more authentic version of yourself, your life path unfolds.",
+    square: "Your sense of self and your life purpose create friction. Who you think you are may not match who you're becoming. This tension is uncomfortable but productive — it keeps pushing you to evolve.",
+    opposition: "Your comfort zone (South Node) is where your identity feels safest. Growing into your purpose means stepping away from familiar patterns and comfortable self-definitions. The old you served its purpose — now it's time to grow.",
+  },
+  "North Node-Moon": {
+    conjunction: "Your emotional instincts align with your destiny. Following your feelings — what nurtures you, what feels like home — leads you toward your purpose. Trust your gut about what's right for your future.",
+    trine: "Your emotional life naturally supports your soul's growth. The relationships and environments that comfort you also push you in the right direction. Home and purpose aren't in conflict.",
+    sextile: "Emotional growth and self-care move you toward your life purpose. When you nurture yourself properly, you're better able to walk your destined path.",
+    square: "Your emotions and your life purpose pull in different directions. What feels safe may not be what's right for your growth. Learning to honor your feelings while still moving forward is the challenge.",
+    opposition: "Your emotional comfort zone holds you back from your destiny. Old patterns of safety and nurturing feel good but keep you stuck. The growth is in finding new sources of emotional security that support who you're becoming.",
+  },
+  "Mars-North Node": {
+    conjunction: "Your drive and ambition are directly tied to your life purpose. Taking bold, decisive action is how you fulfill your destiny. Passivity is the trap; courage is the path.",
+    trine: "Your energy and initiative naturally support your life direction. When you take action, you tend to move in the right direction. Trust your drive.",
+    sextile: "Assertive action and healthy competition move you toward your purpose. When you push yourself physically or take initiative, your path becomes clearer.",
+    square: "Your drive and your destiny are at cross purposes — you might be fighting hard for the wrong things, or hesitating when courage is needed. Redirecting your energy toward what truly matters is the work.",
+    opposition: "Your comfort zone involves being passive or letting things happen to you. Your destiny requires you to fight, compete, and take initiative. Courage is the lesson.",
+  },
+  "Venus-North Node": {
+    conjunction: "Love, beauty, and relationships are central to your life purpose. Your destiny unfolds through connecting with others, creating beauty, and following what you value. Your heart is your compass.",
+    trine: "Your values and relationships naturally support your soul's growth. Loving well and appreciating beauty move you toward your destiny effortlessly.",
+    sextile: "Investing in relationships and creative pursuits moves you toward your life purpose. When you follow what you love, good things follow.",
+    square: "What you love and where you're headed create tension. You might cling to comfortable relationships that hold you back, or your values may need updating to match who you're becoming.",
+    opposition: "Your comfort zone is self-sufficiency and going it alone. Your destiny requires partnership, vulnerability, and letting yourself be loved. Opening your heart is the growth path.",
+  },
+};
+
+/** Ascendant/Descendant interpretations */
+const ANGLE_INTERPRETATIONS: Record<string, Record<string, string>> = {
+  "Ascendant-Jupiter": {
+    conjunction: "You come across as generous, optimistic, and larger than life. People immediately sense your warmth and enthusiasm. You might gain weight easily or take up a lot of space — physically or energetically — but your presence is genuinely uplifting.",
+    trine: "Your natural personality and your growth instincts work together beautifully. You come across as wise, open-minded, and adventurous without trying. Opportunities tend to find you because people like being around you.",
+    sextile: "You have an approachable quality that invites good things into your life. When you lean into your natural optimism and generosity, doors open. Travel and learning enhance your sense of self.",
+    square: "Your outward personality clashes with your need to grow and expand. You might overcommit, overpromise, or come across as more confident than you feel. The tension pushes you to back up your big energy with real substance.",
+    opposition: "Other people — especially partners — embody the expansiveness and optimism you struggle to own yourself. You attract big personalities and teachers. The lesson is realizing that the growth you admire in others already lives in you.",
+  },
+  "Ascendant-Saturn": {
+    conjunction: "You come across as serious, mature, and responsible — even as a child, people probably treated you like a little adult. There's a heaviness to your presence that earns trust but can feel isolating. You age beautifully in every sense.",
+    trine: "Discipline and maturity come naturally to how you present yourself. People respect you instinctively because you carry yourself with quiet authority. You build credibility effortlessly over time.",
+    sextile: "You have access to a grounded, responsible energy that serves you well in professional settings. With effort, your natural seriousness becomes an asset rather than a burden.",
+    square: "You feel held back by your own self-image, or by authority figures who tell you who you should be. Self-doubt is a constant companion, but every time you push through it, you become stronger. Your confidence is hard-won but real.",
+    opposition: "Partners and close others represent the structure and discipline you struggle with internally. You might attract controlling relationships or reject all authority. The lesson is becoming your own steady foundation.",
+  },
+  "Ascendant-Mars": {
+    conjunction: "You radiate energy, assertiveness, and physical vitality. People notice you immediately — you have a competitive, action-oriented presence. You might come across as aggressive or intimidating even when you don't intend to.",
+    trine: "Your assertiveness and physical energy express themselves naturally and attractively. You take initiative easily and people follow your lead without you having to push. Sports, fitness, and physical challenges energize rather than drain you.",
+    sextile: "You have a healthy assertive streak that serves you well when you lean into it. Taking action comes more naturally than overthinking, and people respond well to your directness.",
+    square: "Your energy and your self-image are in friction. You might come across as either too aggressive or too passive, struggling to find the right level of assertion. This tension creates a powerful drive once you learn to channel it.",
+    opposition: "You attract bold, assertive, sometimes combative people into your life — especially as partners. They mirror the fighting spirit you may not express directly. The lesson is learning to assert yourself rather than outsourcing your fire.",
+  },
+  "Ascendant-Venus": {
+    conjunction: "You're naturally charming, attractive, and socially graceful. Beauty and harmony are part of how you move through the world. People are drawn to you aesthetically and socially — you make things look easy even when they're not.",
+    trine: "Charm and social grace come effortlessly to you. You attract positive attention and create harmony in your environment naturally. Your aesthetic sense is strong and people trust your taste.",
+    sextile: "You have a gift for making good impressions and creating pleasant social experiences. When you lean into your natural warmth and appreciation for beauty, relationships flourish.",
+    square: "What you value and how you present yourself don't always align. You might prioritize looking good over feeling good, or struggle with self-worth despite being attractive to others. The tension refines your relationship with beauty and love.",
+    opposition: "Partners represent the beauty, charm, and social grace you struggle to own yourself. You attract artistic, attractive people and might put them on a pedestal. The lesson is recognizing your own lovability.",
+  },
+  "Ascendant-Uranus": {
+    conjunction: "You come across as unconventional, unpredictable, and electrically alive. People either love your originality or find you unsettling. You need to be authentically yourself above all else — conformity feels physically painful.",
+    trine: "Your uniqueness expresses itself naturally without alienating people. You're the interesting one in any group, and your unconventional ideas land well because they come packaged in authenticity.",
+    sextile: "You have access to an innovative, original energy that makes you stand out when you lean into it. Change and novelty energize rather than stress you.",
+    square: "Your need to be different clashes with how you're perceived. You might rebel just for rebellion's sake, or feel like you can never fit in no matter how hard you try. The growth is in being genuinely yourself, not just oppositionally different.",
+    opposition: "You attract wild, unpredictable, freedom-loving people as partners. Relationships feel electric but unstable. The lesson is allowing space for both independence and intimacy.",
+  },
+  "Ascendant-Neptune": {
+    conjunction: "You come across as dreamy, ethereal, and hard to pin down. People project their fantasies onto you — you might seem like a mystery even to yourself. Boundaries are a lifelong lesson, but your sensitivity is also your superpower.",
+    trine: "Your intuition and creativity express themselves naturally through your personality. You pick up on atmospheres and emotions without trying, and your compassion draws people to you.",
+    sextile: "You have access to deep empathy and creative inspiration when you open yourself to it. Artistic and spiritual pursuits enhance your sense of identity.",
+    square: "Your self-image is foggy — you struggle to see yourself clearly, and others may misread you. You might escape into fantasy, substances, or people-pleasing to avoid facing who you really are. Clarity about your identity is the lifetime project.",
+    opposition: "You attract dreamy, artistic, or escapist partners who embody the imagination you may not express directly. Be careful of savior dynamics — you can't rescue someone who mirrors your own avoidance.",
+  },
+  "Ascendant-Pluto": {
+    conjunction: "You have an intense, magnetic presence that people can't ignore. You transform environments just by walking into them. Power dynamics follow you everywhere — learning to wield your intensity consciously rather than reactively is key.",
+    trine: "Your personal power expresses itself naturally and persuasively. You're deeply perceptive about people and situations, and you handle crises with unusual calm because transformation doesn't scare you.",
+    sextile: "You have access to a depth and intensity that serves you well in situations requiring courage and honesty. You can handle hard truths that others avoid.",
+    square: "Power struggles color your self-image. You might feel powerless and overcompensate, or fear your own intensity and suppress it. This aspect creates a pressure-cooker dynamic that forges incredible personal strength once you stop fighting yourself.",
+    opposition: "You attract powerful, intense, sometimes controlling partners. Relationships become the arena for your deepest transformations. The lesson is owning your own power rather than giving it to — or taking it from — others.",
+  },
+  "Ascendant-Moon": {
+    conjunction: "Your emotions are written on your face — you can't hide how you feel, and your mood shapes how everyone around you experiences you. You're deeply attuned to the emotional temperature of any room. Vulnerability is your strength.",
+    trine: "Your emotional life and your outward personality flow together naturally. People feel comfortable around you because your warmth is genuine. Your instincts about people and situations are reliable.",
+    sextile: "You connect emotionally with others easily when you open up. Your intuition about social situations serves you well, and nurturing relationships come naturally.",
+    square: "How you feel inside and how you come across to others don't match. You might seem calm when you're falling apart, or emotional when you intend to be composed. This gap creates misunderstandings but also emotional resilience.",
+    opposition: "You look to partners for emotional security and nurturing. Close relationships become the place where you process your feelings — for better and worse. The lesson is learning to mother yourself rather than seeking it externally.",
+  },
+  "Ascendant-Sun": {
+    conjunction: "Your identity and how you present yourself are perfectly aligned — what you see is what you get. You have strong presence and natural leadership, but you may struggle to see yourself from anyone else's perspective.",
+    trine: "Who you are and who you appear to be match naturally. This creates confidence and consistency that people trust. You express your authentic self without effort.",
+    sextile: "You can align your inner identity with your outward expression with a little conscious effort. When you do, people respond positively because you come across as genuine.",
+    square: "There's friction between who you really are and how the world perceives you. You might feel misunderstood or like you're performing a version of yourself. The tension pushes you toward more authentic self-expression.",
+    opposition: "You discover who you are through other people — partners, rivals, and close relationships mirror back parts of yourself you can't see directly. Identity is a collaborative project for you.",
+  },
+  "Ascendant-Mercury": {
+    conjunction: "Communication defines how people experience you. You're quick-witted, talkative, and mentally alert — people know you by what you say and how you think. Your mind never stops, and everyone around you can tell.",
+    trine: "You express your ideas naturally and people follow your thinking easily. Communication is a strength that enhances everything you do — writing, speaking, and connecting come effortlessly.",
+    sextile: "You have a gift for making your thoughts accessible to others. With intention, your communication skills become a real asset in both personal and professional life.",
+    square: "Your mind and your presentation don't align smoothly. You might talk too fast, say the wrong thing, or overthink how you come across. The friction creates a sharpness that improves your communication over time.",
+    opposition: "You learn and communicate best through dialogue — bouncing ideas off others sharpens your thinking. Partners may challenge how you think, which frustrates you but ultimately makes you smarter.",
+  },
 };
 
 /** Get interpretation for an aspect, with fallback */
@@ -602,15 +760,36 @@ function getAspectInterpretation(p1: string, p2: string, aspect: string): string
   const entry = ASPECT_INTERPRETATIONS[key];
   if (entry && entry[aspect]) return entry[aspect];
 
-  // Fallback — generate a generic interpretation
+  // Check angle interpretations (Ascendant/Descendant)
+  // Descendant is opposite Ascendant, so Descendant conjunction = Ascendant opposition, etc.
+  const ASPECT_FLIP: Record<string, string> = { conjunction: "opposition", opposition: "conjunction", trine: "sextile", sextile: "trine", square: "square" };
+  const other1 = p1 === "Ascendant" || p1 === "Descendant" ? p2 : p1;
+  const angle1 = p1 === "Ascendant" || p1 === "Descendant" ? p1 : (p2 === "Ascendant" || p2 === "Descendant" ? p2 : null);
+  if (angle1) {
+    const ascKey = aspectKey("Ascendant", other1);
+    const angleEntry = ANGLE_INTERPRETATIONS[ascKey];
+    if (angleEntry) {
+      const lookupAspect = angle1 === "Descendant" ? (ASPECT_FLIP[aspect] || aspect) : aspect;
+      if (angleEntry[lookupAspect]) return angleEntry[lookupAspect];
+    }
+  }
+
+  // Smart fallback — use planet descriptions to build a meaningful interpretation
   const typeInfo = ASPECT_TYPE_INFO[aspect];
   if (!typeInfo) return "";
+
+  const desc1 = PLANET_GOVERNS[p1] || p1.toLowerCase();
+  const desc2 = PLANET_GOVERNS[p2] || p2.toLowerCase();
+  // Strip "your" / "how you" from descriptions for cleaner sentence construction
+  const clean1 = desc1.replace(/^(your |how you |where you )/, "");
+  const clean2 = desc2.replace(/^(your |how you |where you )/, "");
+
   const nature = typeInfo.nature;
-  if (nature === "fusion") return `Your ${p1} and ${p2} energies are merged, amplifying both for better and worse. This conjunction makes these two forces inseparable in your personality.`;
-  if (nature === "harmony") return `Your ${p1} and ${p2} work together naturally. This flowing aspect creates ease and talent in the areas these planets govern.`;
-  if (nature === "opportunity") return `Your ${p1} and ${p2} have a productive relationship that rewards conscious effort. The gifts here are accessible but not automatic.`;
-  if (nature === "tension") return `Your ${p1} and ${p2} are at cross purposes, creating inner friction that drives action. This is challenging but builds extraordinary strength in both areas.`;
-  return `Your ${p1} and ${p2} sit in polarity, creating a push-pull dynamic that plays out through relationships and external circumstances. Integration of both sides is the growth path.`;
+  if (nature === "fusion") return `${p1} (${clean1}) and ${p2} (${clean2}) are fused together in your chart. These two parts of your life are inseparable — when one activates, both activate. This can be overwhelming but also makes you deeply integrated in these areas.`;
+  if (nature === "harmony") return `${p1} (${clean1}) and ${p2} (${clean2}) support each other naturally in your chart. There's an ease here — these two parts of your life cooperate and strengthen each other without much effort on your part. This is a genuine gift.`;
+  if (nature === "opportunity") return `${p1} (${clean1}) and ${p2} (${clean2}) can work together well, but it takes conscious effort. The connection isn't automatic — you have to choose to bridge these two parts of your life. When you do, the results are rewarding.`;
+  if (nature === "tension") return `${p1} (${clean1}) and ${p2} (${clean2}) create friction in your life. These two parts of yourself don't agree easily — one pulls while the other pushes. This is uncomfortable but productive. The tension forces you to grow in both areas rather than coasting.`;
+  return `${p1} (${clean1}) and ${p2} (${clean2}) face each other across your chart. You may swing between these two energies or see one reflected in the people closest to you. The work is learning to honor both sides — not choosing one over the other.`;
 }
 
 function elementBg(sign: string): string {

@@ -142,22 +142,31 @@ export default function HomeTab() {
   const [tarotFlipping, setTarotFlipping] = useState(false);
   const [oracleFlipping, setOracleFlipping] = useState(false);
 
-  // Card pull state — remember reveals for today
+  // Card pull state — remember reveals for today (use local date, not UTC)
   const [tarotRevealed, setTarotRevealed] = useState(() => {
     try {
-      const key = `mapped:tarot-revealed-${new Date().toISOString().slice(0, 10)}`;
+      const d = new Date();
+      const key = `mapped:tarot-revealed-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       return localStorage.getItem(key) === "1";
     } catch { return false; }
   });
   const [oracleRevealed, setOracleRevealed] = useState(() => {
     try {
-      const key = `mapped:oracle-revealed-${new Date().toISOString().slice(0, 10)}`;
+      const d = new Date();
+      const key = `mapped:oracle-revealed-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       return localStorage.getItem(key) === "1";
     } catch { return false; }
   });
 
   // Today's celestial snapshot (memoized per render — cheap)
   const today = useMemo(() => new Date(), []);
+  // Local date string for cache keys — avoids UTC rollover mid-evening
+  const todayLocal = useMemo(() => {
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [today]);
   const moon = useMemo(() => getMoonPhase(today), [today]);
   const season = useMemo(() => getCurrentZodiacSeason(today), [today]);
   const nakshatra = useMemo(() => getCurrentNakshatra(today), [today]);
@@ -177,7 +186,7 @@ export default function HomeTab() {
 
   // Daily quote (cached in localStorage)
   const dailyQuote = useMemo(() => {
-    const cacheKey = `mapped:quote-${today.toISOString().slice(0, 10)}`;
+    const cacheKey = `mapped:quote-${todayLocal}`;
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) return JSON.parse(cached) as { text: string; author: string; source?: string; reason: string };
@@ -301,7 +310,7 @@ export default function HomeTab() {
     if (!hasChart || horoscopeStatus !== "idle") return;
 
     // Check localStorage cache — horoscope persists for the whole day
-    const todayKey = `horoscope-v3-${today.toISOString().slice(0, 10)}`;
+    const todayKey = `horoscope-v3-${todayLocal}`;
     try {
       const cached = localStorage.getItem(todayKey);
       if (cached) {
@@ -369,7 +378,7 @@ export default function HomeTab() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 natalPlanets: chartData.planets,
-                transitDate: today.toISOString().slice(0, 10),
+                transitDate: todayLocal,
               }),
             });
             if (transitRes.ok) transits = await transitRes.json();
@@ -891,7 +900,7 @@ export default function HomeTab() {
                   setTimeout(() => {
                     setTarotRevealed(true);
                     setTarotFlipping(false);
-                    try { localStorage.setItem(`mapped:tarot-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                    try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
                 className="w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-terracotta/15 to-amber/15
@@ -1029,7 +1038,7 @@ export default function HomeTab() {
                   setTimeout(() => {
                     setOracleRevealed(true);
                     setOracleFlipping(false);
-                    try { localStorage.setItem(`mapped:oracle-revealed-${today.toISOString().slice(0, 10)}`, "1"); } catch {}
+                    try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
                 className="w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-sage/15 to-cream/30

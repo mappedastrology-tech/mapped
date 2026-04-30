@@ -6854,9 +6854,9 @@ export default function MapsTab() {
 
         {/* City picker modal (duplicated here because this view returns early) */}
         {showCityPicker && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm" style={{ backgroundColor: "var(--modal-overlay)" }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm px-4" style={{ backgroundColor: "var(--modal-overlay)" }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowCityPicker(false); }}>
-            <div className="w-full max-w-lg rounded-t-2xl border border-foreground/18 bg-background p-5 pb-8 animate-slide-up">
+            <div className="w-full max-w-lg rounded-2xl border border-foreground/18 bg-background p-5 pb-6 animate-slide-up shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                   Change your city
