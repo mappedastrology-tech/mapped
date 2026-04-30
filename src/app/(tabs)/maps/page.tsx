@@ -5948,10 +5948,10 @@ export default function MapsTab() {
         {/* ─── Server-side calculation unavailable ─── */}
         {!astroLoading && astroError && (
           <div className="text-center py-12 px-4">
-            <p className="text-foreground/50 text-base mb-2" style={{ fontFamily: "var(--font-display)" }}>Your Map is coming soon</p>
+            <p className="text-foreground/50 text-base mb-2" style={{ fontFamily: "var(--font-display)" }}>Something went wrong</p>
             <p className="text-foreground/35 text-sm leading-relaxed">
-              Astrocartography calculations aren&apos;t available in the cloud version yet.
-              This feature works on the local development server while we build the hosted calculation engine.
+              We couldn&apos;t load your astrocartography map right now. Please check your birth details and try again.
+              If the problem continues, try signing out and back in.
             </p>
           </div>
         )}
