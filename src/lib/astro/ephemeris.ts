@@ -125,6 +125,9 @@ export function getPlanetLongitude(jd: number, planetKey: string): number {
   if (planetKey === "NorthNode" || planetKey === "North Node") {
     return getMeanNodeLongitude(jd);
   }
+  if (planetKey === "Lilith" || planetKey === "Black Moon Lilith") {
+    return getMeanLilithLongitude(jd);
+  }
   const body = ASTRO_BODIES[planetKey];
   if (!body && body !== 0) return 0;
   const time = jdToAstroTime(jd);
@@ -151,6 +154,12 @@ export function getPlanetData(jd: number, planetKey: string): {
     const lon = getMeanNodeLongitude(jd);
     return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: -0.053, retrograde: true };
   }
+  if (planetKey === "Lilith" || planetKey === "Black Moon Lilith") {
+    const lon = getMeanLilithLongitude(jd);
+    const lon2 = getMeanLilithLongitude(jd + 1);
+    const speed = ((lon2 - lon + 540) % 360) - 180;
+    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: speed, retrograde: false };
+  }
 
   const body = ASTRO_BODIES[planetKey];
   if (!body && body !== 0) {
@@ -172,6 +181,25 @@ export function getPlanetData(jd: number, planetKey: string): {
     longitudeSpeed: speed,
     retrograde: speed < 0,
   };
+}
+
+// ─── Mean Black Moon Lilith (Mean Lunar Apogee) ───
+
+/**
+ * Calculate Mean Black Moon Lilith longitude.
+ * This is the mean lunar apogee — the point in the Moon's orbit farthest from Earth.
+ * Formula from Meeus, Astronomical Algorithms.
+ */
+function getMeanLilithLongitude(jd: number): number {
+  const T = (jd - 2451545.0) / 36525.0;
+  // Mean longitude of lunar perigee + 180° = apogee
+  let lon = 83.3532465
+    + 4069.0137287 * T
+    - 0.0103200 * T * T
+    - T * T * T / 80053.0
+    + T * T * T * T / 18999000.0;
+  lon = ((lon % 360) + 360) % 360;
+  return Math.round(lon * 100) / 100;
 }
 
 // ─── Mean Lunar Node ───
@@ -466,6 +494,7 @@ export function getSpecialPoints(jd: number) {
   const chiron = getPlanetData(jd, "Chiron");
   const northNode = getPlanetData(jd, "North Node");
   const southNodeLon = (northNode.longitude + 180) % 360;
+  const lilith = getPlanetData(jd, "Lilith");
 
   return [
     {
@@ -482,6 +511,11 @@ export function getSpecialPoints(jd: number) {
       name: "South Node" as const,
       longitude: Math.round(southNodeLon * 100) / 100,
       retrograde: true,
+    },
+    {
+      name: "Lilith" as const,
+      longitude: Math.round(lilith.longitude * 100) / 100,
+      retrograde: false,
     },
   ];
 }

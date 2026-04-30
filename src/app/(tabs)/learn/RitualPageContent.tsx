@@ -283,7 +283,12 @@ function RitualDetailCard({
 export default function RitualPageContent() {
 
   const today = useMemo(() => new Date(), []);
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = useMemo(() => {
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [today]);
   const energy = useMemo(() => getDailyEnergy(today), [today]);
   const events = useMemo(() => getCelestialEvents(today.getFullYear()), [today]);
 
@@ -390,16 +395,63 @@ export default function RitualPageContent() {
     [userHasToolsFor]
   );
 
-  // Daily suggested ritual (respects tool filter)
+  // Local day-of-year (avoids UTC rollover mid-evening)
+  const localDayOfYear = useMemo(() => {
+    const start = new Date(today.getFullYear(), 0, 0);
+    return Math.floor((today.getTime() - start.getTime()) / 86400000);
+  }, [today]);
+
+  // Active ritual tracking — persists across page visits
+  const [activeRitual, setActiveRitual] = useState<{ id: string; startedAt: string; dayNumber: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem("mapped:active-ritual");
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Calculate which day they're on
+      const startDate = new Date(parsed.startedAt);
+      const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / 86400000);
+      return { ...parsed, dayNumber: daysDiff + 1 };
+    } catch { return null; }
+  });
+
+  const startActiveRitual = (ritualId: string) => {
+    const data = { id: ritualId, startedAt: todayStr, dayNumber: 1 };
+    setActiveRitual(data);
+    try { localStorage.setItem("mapped:active-ritual", JSON.stringify(data)); } catch {}
+  };
+
+  const clearActiveRitual = () => {
+    setActiveRitual(null);
+    try { localStorage.removeItem("mapped:active-ritual"); } catch {}
+  };
+
+  // Daily suggested ritual — cached in localStorage so it stays consistent all day
   const dailySuggestion = useMemo(
     () => {
+      const cacheKey = `mapped:daily-ritual-${todayStr}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const found = RITUAL_CATALOG.find(r => r.id === cached);
+          if (found) return found;
+        }
+        // Clean old days
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("mapped:daily-ritual-") && k !== cacheKey) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch {}
+
       const pool = toolFilteredCatalog.length > 0 ? toolFilteredCatalog : RITUAL_CATALOG;
       const phaseMatches = pool.filter((r) => r.bestPhases.includes(energy.moonPhase.phase));
       if (phaseMatches.length === 0) return pool[0];
-      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-      return phaseMatches[dayOfYear % phaseMatches.length];
+      const pick = phaseMatches[localDayOfYear % phaseMatches.length];
+      try { localStorage.setItem(cacheKey, pick.id); } catch {}
+      return pick;
     },
-    [energy.moonPhase.phase, toolFilteredCatalog]
+    [energy.moonPhase.phase, toolFilteredCatalog, todayStr, localDayOfYear]
   );
 
   // Tonight's Moon ritual — always present, never the intention-setting overrides
@@ -413,7 +465,7 @@ export default function RitualPageContent() {
         r.id !== dailySuggestion.id
     );
     if (pool.length === 0) return null;
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const dayOfYear = localDayOfYear;
     return pool[(dayOfYear + 7) % pool.length];
   }, [energy.moonPhase.phase, toolFilteredCatalog, dailySuggestion.id]);
 
@@ -541,6 +593,71 @@ export default function RitualPageContent() {
         </div>
       )}
 
+      {/* ═══ ACTIVE RITUAL (pinned multi-day practice) ═══ */}
+      {activeRitual && (() => {
+        const ritual = RITUAL_CATALOG.find(r => r.id === activeRitual.id);
+        if (!ritual) return null;
+        return (
+          <div className="rounded-2xl p-5 mb-5" style={{
+            backgroundColor: "var(--background-card)",
+            border: "2px solid var(--terracotta)",
+            boxShadow: cardShadow,
+          }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px]" style={{
+                backgroundColor: "var(--icon-thumb-love)",
+              }}>
+                {ELEMENT_ICONS[ritual.element] || "✨"}
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--terracotta)" }}>
+                  Your Active Practice — Day {activeRitual.dayNumber}
+                </p>
+                <h2 className="text-[18px] font-bold" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
+                  {ritual.title}
+                </h2>
+              </div>
+            </div>
+
+            {ritual.afterInstructions && (
+              <p className="text-[13px] leading-relaxed mb-4 italic" style={{ color: "var(--foreground-secondary)" }}>
+                {ritual.afterInstructions}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setExpandedRitual(expandedRitual === ritual.id ? null : ritual.id)}
+                className="flex-1 py-3 rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98]"
+                style={{ fontFamily: "var(--font-heading)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+              >
+                Continue today
+              </button>
+              <button
+                onClick={clearActiveRitual}
+                className="px-4 py-3 rounded-xl text-[13px] font-medium transition-colors"
+                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Expanded active ritual detail */}
+      {activeRitual && expandedRitual === activeRitual.id && (
+        <div className="mb-5 -mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+          <RitualDetailCard
+            ritual={RITUAL_CATALOG.find(r => r.id === activeRitual.id)!}
+            isExpanded={true}
+            onToggle={() => setExpandedRitual(null)}
+            onComplete={handleRitualComplete}
+            variant="featured"
+          />
+        </div>
+      )}
+
       {/* ═══ TODAY'S RITUAL ═══ */}
       <div className="rounded-2xl p-5 mb-5" style={{
         backgroundColor: "var(--background-card)",
@@ -593,7 +710,7 @@ export default function RitualPageContent() {
           {dailySuggestion.description}
         </p>
 
-        {/* Begin ritual button */}
+        {/* Action buttons */}
         <button
           onClick={() => setExpandedRitual(expandedRitual === dailySuggestion.id ? null : dailySuggestion.id)}
           className="w-full py-3.5 rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98]"
@@ -601,6 +718,17 @@ export default function RitualPageContent() {
         >
           Begin ritual
         </button>
+
+        {/* Make this my practice (for multi-day rituals) */}
+        {dailySuggestion.afterInstructions && dailySuggestion.afterInstructions.match(/day|week|daily|repeat|morning|night/i) && !activeRitual && (
+          <button
+            onClick={() => startActiveRitual(dailySuggestion.id)}
+            className="w-full py-2.5 mt-2 text-[13px] font-medium transition-colors"
+            style={{ color: "var(--terracotta)" }}
+          >
+            Make this my daily practice
+          </button>
+        )}
 
         {/* Not feeling this */}
         <button
