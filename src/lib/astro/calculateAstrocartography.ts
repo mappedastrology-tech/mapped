@@ -5,30 +5,18 @@
  * (Ascendant, Descendant, Midheaven, IC) at every longitude on Earth.
  * Returns lines that can be plotted on a world map.
  *
- * Uses Swiss Ephemeris for astronomical calculations.
+ * Uses astronomy-engine (pure JS) for astronomical calculations.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const swe = require("swisseph");
-
-import { julday, PLANETS, PlanetName } from "./ephemeris";
+import { julday, getPlanetLongitude, getHouses } from "./ephemeris";
 
 // ---------- Constants ----------
 
-/** Planet IDs for astrocartography (includes North Node) */
-const PLANET_IDS: Record<string, number> = {
-  Sun: swe.SE_SUN,
-  Moon: swe.SE_MOON,
-  Mercury: swe.SE_MERCURY,
-  Venus: swe.SE_VENUS,
-  Mars: swe.SE_MARS,
-  Jupiter: swe.SE_JUPITER,
-  Saturn: swe.SE_SATURN,
-  Uranus: swe.SE_URANUS,
-  Neptune: swe.SE_NEPTUNE,
-  Pluto: swe.SE_PLUTO,
-  "North Node": swe.SE_MEAN_NODE,
-};
+/** Planet names for astrocartography (includes North Node) */
+const PLANET_NAMES = [
+  "Sun", "Moon", "Mercury", "Venus", "Mars",
+  "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "North Node",
+];
 
 /** Colors for each planet (for frontend rendering) */
 export const PLANET_COLORS: Record<string, string> = {
@@ -194,17 +182,8 @@ interface Paran {
 
 // ---------- Helpers ----------
 
-function sweCalcLongitude(jd: number, planetId: number): number {
-  const flags = swe.SEFLG_SWIEPH | swe.SEFLG_SPEED;
-  let result = swe.swe_calc_ut(jd, planetId, flags);
-  if (result.error) {
-    result = swe.swe_calc_ut(jd, planetId, swe.SEFLG_MOSEPH | swe.SEFLG_SPEED);
-  }
-  return result.longitude;
-}
-
-function sweHouses(jd: number, lat: number, lng: number): { ascendant: number; mc: number } {
-  const result = swe.swe_houses(jd, lat, lng, "P");
+function calcHousesForLocation(jd: number, lat: number, lng: number): { ascendant: number; mc: number } {
+  const result = getHouses(jd, lat, lng);
   return {
     ascendant: result.ascendant,
     mc: result.mc,
@@ -229,8 +208,8 @@ function calculateLines(
 
   // Get planetary positions
   const planetPositions: Record<string, number> = {};
-  for (const [name, pid] of Object.entries(PLANET_IDS)) {
-    planetPositions[name] = Math.round(sweCalcLongitude(jd, pid) * 100) / 100;
+  for (const name of PLANET_NAMES) {
+    planetPositions[name] = Math.round(getPlanetLongitude(jd, name) * 100) / 100;
   }
 
   const lines: AstroLine[] = [];
@@ -249,7 +228,7 @@ function calculateLines(
         // Coarse scan
         for (let testLng = -180; testLng <= 180; testLng++) {
           try {
-            const { mc } = sweHouses(jd, 0.0, testLng);
+            const { mc } = calcHousesForLocation(jd, 0.0, testLng);
             const diff = angularDiff(mc, targetMc);
             if (diff < bestDiff) {
               bestDiff = diff;
@@ -265,7 +244,7 @@ function calculateLines(
           for (let fine = (bestLng - 2) * 10; fine <= (bestLng + 2) * 10; fine++) {
             const fl = fine / 10.0;
             try {
-              const { mc } = sweHouses(jd, 0.0, fl);
+              const { mc } = calcHousesForLocation(jd, 0.0, fl);
               const diff = angularDiff(mc, targetMc);
               if (diff < bestDiff) {
                 bestDiff = diff;
@@ -295,7 +274,7 @@ function calculateLines(
           // Coarse scan
           for (let testLng = -180; testLng <= 180; testLng += 2) {
             try {
-              const { ascendant: asc } = sweHouses(jd, lat, testLng);
+              const { ascendant: asc } = calcHousesForLocation(jd, lat, testLng);
               const diff = angularDiff(asc, target);
               if (diff < bestDiff) {
                 bestDiff = diff;
@@ -312,7 +291,7 @@ function calculateLines(
               const fl = fine / 10.0;
               if (fl < -180 || fl > 180) continue;
               try {
-                const { ascendant: asc } = sweHouses(jd, lat, fl);
+                const { ascendant: asc } = calcHousesForLocation(jd, lat, fl);
                 const diff = angularDiff(asc, target);
                 if (diff < bestDiff) {
                   bestDiff = diff;
