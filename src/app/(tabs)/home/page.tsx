@@ -905,16 +905,14 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full rounded-xl overflow-hidden relative
-                           border border-terracotta/25 hover:border-terracotta/50 transition-all
-                           flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
-                style={{ aspectRatio: "1/1" }}
+                className="w-full rounded-xl overflow-hidden border border-terracotta/25 hover:border-terracotta/50 transition-all active:scale-[0.97]"
               >
-                <Image src={CARD_BACK_IMAGE} alt="Card back" fill className="object-cover" draggable={false} />
-                <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={CARD_BACK_IMAGE} alt="Card back" className="w-full rounded-xl" draggable={false} />
+                <p className="text-foreground/50 text-[10px] text-center py-1.5">Tap to pull</p>
               </button>
             ) : tarotFlipping ? (
-              <div className="w-full rounded-xl overflow-hidden" style={{ perspective: "600px", aspectRatio: "1/1" }}>
+              <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
@@ -924,7 +922,7 @@ export default function HomeTab() {
                   <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
                     {getCardImagePath(dailyTarot.id) ? (
-                      <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
+                      <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-contain" draggable={false} />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
                         <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
@@ -938,15 +936,14 @@ export default function HomeTab() {
                 onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
                 className="w-full active:scale-[0.98] transition-transform"
               >
-                <div className="w-full rounded-xl overflow-hidden relative border border-terracotta/25" style={{ aspectRatio: "1/1" }}>
-                  {getCardImagePath(dailyTarot.id) ? (
-                    <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
-                      <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
-                    </div>
-                  )}
-                </div>
+                {getCardImagePath(dailyTarot.id) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} className="w-full rounded-xl border border-terracotta/25" draggable={false} />
+                ) : (
+                  <div className="w-full rounded-xl p-6 bg-gradient-to-br from-terracotta/15 to-amber/10 border border-terracotta/25">
+                    <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
+                  </div>
+                )}
                 <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
                   {dailyTarot.name}
                 </p>
@@ -972,16 +969,14 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full rounded-xl overflow-hidden relative
-                           border border-sage/25 hover:border-sage/50 transition-all
-                           flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
-                style={{ aspectRatio: "1/1" }}
+                className="w-full rounded-xl overflow-hidden border border-sage/25 hover:border-sage/50 transition-all active:scale-[0.97]"
               >
-                <Image src="/oracle/stitched-animal/back of deck.png" alt="Card back" fill className="object-cover" draggable={false} />
-                <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/oracle/stitched-animal/back of deck.png" alt="Card back" className="w-full rounded-xl" draggable={false} />
+                <p className="text-foreground/50 text-[10px] text-center py-1.5">Tap to pull</p>
               </button>
             ) : oracleFlipping ? (
-              <div className="w-full rounded-xl overflow-hidden" style={{ perspective: "600px", aspectRatio: "1/1" }}>
+              <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
@@ -990,7 +985,7 @@ export default function HomeTab() {
                   </div>
                   <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
+                    <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-contain" draggable={false} />
                   </div>
                 </div>
               </div>
@@ -999,9 +994,8 @@ export default function HomeTab() {
                 onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
                 className="w-full active:scale-[0.98] transition-transform"
               >
-                <div className="w-full rounded-xl overflow-hidden relative border border-sage/25" style={{ aspectRatio: "1/1" }}>
-                  <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dailyOracle.image} alt={dailyOracle.animal} className="w-full rounded-xl border border-sage/25" draggable={false} />
                 <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
                   {dailyOracle.animal}
                 </p>
