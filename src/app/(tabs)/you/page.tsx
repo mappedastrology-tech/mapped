@@ -1086,16 +1086,18 @@ export default function YouTab() {
     loadChart();
   }, []);
 
-  // Backfill specialPoints + midheaven for charts saved before those fields existed
+  // Backfill specialPoints (including Lilith) + midheaven for older saved charts
   const [backfillDone, setBackfillDone] = useState(false);
   useEffect(() => {
     if (!chartData || backfillDone) return;
     const hasLilith = chartData.specialPoints?.some((p) => p.name === "Lilith");
-    if (chartData.specialPoints && chartData.specialPoints.length > 0 && hasLilith && chartData.midheaven) return;
+    if (hasLilith && chartData.midheaven) return;
+    if (!chartData.birthDate || !chartData.birthTime) return;
     if (!chartData.latitude || !chartData.longitude) return;
 
-    setBackfillDone(true); // prevent re-triggering
+    setBackfillDone(true);
     let cancelled = false;
+    console.log("[You] Backfilling chart data (Lilith missing or midheaven missing)...");
     fetch("/api/chart/calculate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1105,17 +1107,21 @@ export default function YouTab() {
         birthTime: chartData.birthTime,
         latitude: chartData.latitude,
         longitude: chartData.longitude,
-        timezone: chartData.timezone,
+        timezone: chartData.timezone || "UTC",
       }),
     })
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (!r.ok) { console.error("[You] Backfill API returned", r.status); return null; }
+        return r.json();
+      })
       .then((fresh) => {
         if (cancelled || !fresh) return;
+        console.log("[You] Backfill succeeded, specialPoints:", fresh.specialPoints?.map((p: { name: string }) => p.name));
         setChartData((prev) =>
-          prev ? { ...prev, specialPoints: fresh.specialPoints || [], midheaven: fresh.midheaven || null } : prev
+          prev ? { ...prev, specialPoints: fresh.specialPoints || prev.specialPoints, midheaven: fresh.midheaven || prev.midheaven } : prev
         );
       })
-      .catch(() => { /* silently fail — page still works without these sections */ });
+      .catch((err) => { console.error("[You] Backfill failed:", err); });
 
     return () => { cancelled = true; };
   }, [chartData, backfillDone]);
