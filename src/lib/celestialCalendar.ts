@@ -763,14 +763,16 @@ export function getMoonPhase(date: Date): MoonPhaseInfo {
   let illum = illumination;
 
   // 8 equal phases, each spanning 1/8 of the synodic month (~3.69 days)
+  // Each phase centered on its astronomical moment: new=0, wax-cres=0.125, 1Q=0.25, wax-gib=0.375, full=0.5, wan-gib=0.625, 3Q=0.75, wan-cres=0.875
   if (fraction < 0.0625)       { phaseKey = "new"; label = "New Moon"; emoji = "🌑"; description = "The sky is dark and the moon is hidden. A blank page."; energy = "Plant seeds of intention. This is the most powerful time for setting new goals, starting fresh, and dreaming into existence."; }
-  else if (fraction < 0.25)    { phaseKey = "waxing-crescent"; label = "Waxing Crescent"; emoji = "🌒"; description = "A sliver of light appears. Momentum is building."; energy = "Take the first small step. Your intentions from the new moon need action now — even tiny ones count."; }
+  else if (fraction < 0.1875)  { phaseKey = "waxing-crescent"; label = "Waxing Crescent"; emoji = "🌒"; description = "A sliver of light appears. Momentum is building."; energy = "Take the first small step. Your intentions from the new moon need action now — even tiny ones count."; }
   else if (fraction < 0.3125)  { phaseKey = "first-quarter"; label = "First Quarter"; emoji = "🌓"; description = "Half-lit, half-dark. A crossroads of commitment."; energy = "Make decisions and push through resistance. Challenges that arise are testing your commitment to what you started."; }
-  else if (fraction < 0.5)     { phaseKey = "waxing-gibbous"; label = "Waxing Gibbous"; emoji = "🌔"; description = "Almost full. Refinement and adjustment."; energy = "Fine-tune and adjust. You can see what's working and what isn't. Edit, revise, and prepare for the culmination."; }
+  else if (fraction < 0.4375)  { phaseKey = "waxing-gibbous"; label = "Waxing Gibbous"; emoji = "🌔"; description = "Almost full. Refinement and adjustment."; energy = "Fine-tune and adjust. You can see what's working and what isn't. Edit, revise, and prepare for the culmination."; }
   else if (fraction < 0.5625)  { phaseKey = "full"; label = "Full Moon"; emoji = "🌕"; description = "Maximum illumination. Everything is visible."; energy = "Celebrate, release, and let go. What no longer serves you becomes obvious under the full moon's light. Gratitude and release rituals are powerful."; illum = 100; }
-  else if (fraction < 0.75)    { phaseKey = "waning-gibbous"; label = "Waning Gibbous"; emoji = "🌖"; description = "The light begins to retreat. Gratitude and sharing."; energy = "Share what you've learned and give back. This is a generous, reflective phase for teaching and mentoring."; }
+  else if (fraction < 0.6875)  { phaseKey = "waning-gibbous"; label = "Waning Gibbous"; emoji = "🌖"; description = "The light begins to retreat. Gratitude and sharing."; energy = "Share what you've learned and give back. This is a generous, reflective phase for teaching and mentoring."; }
   else if (fraction < 0.8125)  { phaseKey = "last-quarter"; label = "Last Quarter"; emoji = "🌗"; description = "Half-lit again. Release and forgiveness."; energy = "Let go of grudges, habits, and clutter. Clear out what's blocking you before the next cycle begins."; }
-  else                         { phaseKey = "waning-crescent"; label = "Waning Crescent"; emoji = "🌘"; description = "The final sliver. Rest before renewal."; energy = "Rest, reflect, and surrender. The old cycle is ending. Sleep more, journal, dream. The new moon is coming."; }
+  else if (fraction < 0.9375)  { phaseKey = "waning-crescent"; label = "Waning Crescent"; emoji = "🌘"; description = "The final sliver. Rest before renewal."; energy = "Rest, reflect, and surrender. The old cycle is ending. Sleep more, journal, dream. The new moon is coming."; }
+  else                         { phaseKey = "new"; label = "New Moon"; emoji = "🌑"; description = "The sky is dark and the moon is hidden. A blank page."; energy = "Plant seeds of intention. This is the most powerful time for setting new goals, starting fresh, and dreaming into existence."; }
 
   const almanacEntry = FULL_ALMANAC.find(a => a.phase === phaseKey)!;
 
