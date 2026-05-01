@@ -18,6 +18,7 @@ export interface OracleDeckInfo {
   description: string;
   cardCount: number;
   coverImage: string;  // use first card image
+  backImage: string;   // card back image
   cards: OracleCard[];
 }
 
@@ -27,6 +28,7 @@ export const STITCHED_ANIMAL_ORACLE: OracleDeckInfo = {
   description: "A 36-card oracle deck featuring hand-stitched animals, each offering wisdom and guidance. Read upright only—no reversed meanings.",
   cardCount: 36,
   coverImage: "/oracle/stitched-animal/1.png",
+  backImage: "/oracle/stitched-animal/back of deck.png",
   cards: [
     {
       id: "sa-1",

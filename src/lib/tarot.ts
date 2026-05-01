@@ -570,6 +570,20 @@ export function getCardById(id: string): TarotCard | undefined {
   return ALL_CARDS.find(c => c.id === id);
 }
 
+/**
+ * Get the image path for a tarot card.
+ * Returns the classic deck image if it exists, or null for missing cards.
+ * Missing: major-3 (The Empress), major-8 (Strength), major-9 (The Hermit), major-10 (Wheel of Fortune)
+ */
+const MISSING_IMAGES = new Set<string>([]);
+
+export function getCardImagePath(cardId: string): string | null {
+  if (MISSING_IMAGES.has(cardId)) return null;
+  return `/tarot/classic/${cardId}.png`;
+}
+
+export const CARD_BACK_IMAGE = "/tarot/classic/backside.png";
+
 /* ═══════════════════════════════════════════
    Spreads
    ═══════════════════════════════════════════ */

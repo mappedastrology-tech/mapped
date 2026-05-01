@@ -17,11 +17,12 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   ALL_CARDS, SPREADS, ORACLE_DECKS, SUIT_INFO,
-  shuffleDeck, drawCards,
+  shuffleDeck, drawCards, getCardImagePath, CARD_BACK_IMAGE,
   type TarotCard, type TarotSpread, type DrawnCard, type OracleDeck,
 } from "@/lib/tarot";
 import { tarotMeanings } from "@/lib/tarotMeanings";
 import { STITCHED_ANIMAL_ORACLE, type OracleCard, type OracleDeckInfo } from "@/lib/stitchedAnimalOracle";
+import Image from "next/image";
 
 /* ─── Types ─── */
 type View = "decks" | "spreads" | "picking" | "spread-view" | "card-detail" | "freestyle-fan" | "freestyle-scatter";
@@ -607,6 +608,17 @@ export default function TarotTab() {
           </div>
         )}
 
+        {/* Card image */}
+        {getCardImagePath(card.id) && (
+          <div className="flex justify-center mb-5">
+            <div className="w-32 rounded-xl overflow-hidden border border-foreground/15 shadow-lg"
+              style={{ transform: reversed ? "rotate(180deg)" : "none" }}>
+              <Image src={getCardImagePath(card.id)!} alt={card.name} width={128} height={205}
+                className="w-full h-auto" draggable={false} priority />
+            </div>
+          </div>
+        )}
+
         {/* Card header */}
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl text-foreground" style={{ fontFamily: "var(--font-display)" }}>
@@ -700,15 +712,7 @@ export default function TarotTab() {
               onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }}
             />
 
-            {/* AstroTarot */}
-            {userChart && (
-              <DeckCard
-                title="AstroTarot"
-                subtitle="78 cards · Woven with your birth chart"
-                gradient="linear-gradient(135deg, #0a0f1a, #1a1040, #0a0f1a)"
-                onClick={() => { setSelectedDeck("astro-tarot"); setView("spreads"); }}
-              />
-            )}
+            {/* AstroTarot removed */}
 
             {/* Stitched Animal Oracle — always available */}
             <button onClick={() => { setSelectedDeck("stitched-animal"); setView("spreads"); }} className="w-full text-left">
@@ -941,19 +945,17 @@ export default function TarotTab() {
                     style={{
                       background: isOracleDeck
                         ? "linear-gradient(135deg, #f5efe6, #e8ddd0)"
-                        : Math.abs(angle) < 8
-                          ? "linear-gradient(135deg, #2d2010, #3d2a14, #2d2010)"
-                          : "linear-gradient(135deg, #1a1408, #2d2010, #1a1408)",
+                        : "linear-gradient(135deg, #1a1408, #2d2010, #1a1408)",
                       boxShadow: Math.abs(angle) < 8 ? "0 0 12px rgba(201,168,76,0.1)" : "none",
                     }}
                   >
-                    <div className="w-full h-full flex items-center justify-center">
-                      {isOracleDeck ? (
-                        <span className="text-[#8b7355] text-[10px] font-medium opacity-40">✦</span>
-                      ) : (
-                        <div className="w-[55%] h-[65%] rounded border border-foreground/18" />
-                      )}
-                    </div>
+                    {isOracleDeck && activeOracleDeck ? (
+                      <Image src={activeOracleDeck.backImage} alt="Card back" width={CARD_W} height={CARD_H}
+                        className="w-full h-full object-cover" draggable={false} />
+                    ) : (
+                      <Image src={CARD_BACK_IMAGE} alt="Card back" width={CARD_W} height={CARD_H}
+                        className="w-full h-full object-cover" draggable={false} />
+                    )}
                   </div>
                 </button>
               );
@@ -1018,11 +1020,17 @@ export default function TarotTab() {
                   <div className="relative w-full h-full transition-transform duration-700"
                     style={{ transformStyle: "preserve-3d", transform: oc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                   >
-                    {/* Back — warm linen */}
-                    <div className="absolute inset-0 rounded-lg border border-foreground/18 flex items-center justify-center"
-                      style={{ backfaceVisibility: "hidden", background: "linear-gradient(135deg, #f5efe6, #e8ddd0, #f5efe6)" }}
+                    {/* Back — deck back image */}
+                    <div className="absolute inset-0 rounded-lg border border-foreground/18 overflow-hidden"
+                      style={{ backfaceVisibility: "hidden" }}
                     >
-                      <span className="text-[#8b7355] text-sm opacity-30">✦</span>
+                      {activeOracleDeck ? (
+                        <Image src={activeOracleDeck.backImage} alt="Card back" fill className="object-cover" draggable={false} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #f5efe6, #e8ddd0, #f5efe6)" }}>
+                          <span className="text-[#8b7355] text-sm opacity-30">✦</span>
+                        </div>
+                      )}
                     </div>
                     {/* Front — card art */}
                     <div className="absolute inset-0 rounded-lg border border-foreground/18 overflow-hidden"
@@ -1173,22 +1181,34 @@ export default function TarotTab() {
                 <div className="relative w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", transform: dc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                 >
-                  <div className="absolute inset-0 rounded-lg border border-foreground/20 flex items-center justify-center"
-                    style={{ backfaceVisibility: "hidden", background: "linear-gradient(135deg, #1a1408, #2d2010, #1a1408)" }}
+                  {/* Card back */}
+                  <div className="absolute inset-0 rounded-lg border border-foreground/20 overflow-hidden"
+                    style={{ backfaceVisibility: "hidden" }}
                   >
-                    <div className="w-[55%] h-[65%] rounded border border-foreground/18" />
+                    <Image src={CARD_BACK_IMAGE} alt="Card back" fill className="object-cover" draggable={false} />
                   </div>
-                  <div className="absolute inset-0 rounded-lg border flex flex-col items-center justify-center p-1"
+                  {/* Card face */}
+                  <div className="absolute inset-0 rounded-lg border overflow-hidden"
                     style={{
                       backfaceVisibility: "hidden", transform: "rotateY(180deg)",
-                      borderColor: suitColor, background: `linear-gradient(145deg, ${suitColor}11, #0a0a08)`,
+                      borderColor: suitColor,
                     }}
                   >
-                    {dc.reversed && <span className="absolute top-0.5 right-1 text-[7px] text-foreground/30">↓R</span>}
-                    <span className="text-[7px] text-foreground/30 mb-0.5">{dc.card.arcana === "major" ? romanNumeral(dc.card.number) : dc.card.suit}</span>
-                    <span className="text-[9px] text-foreground text-center leading-tight px-0.5"
-                      style={{ transform: dc.reversed ? "rotate(180deg)" : "none" }}
-                    >{dc.card.name.replace("The ", "")}</span>
+                    {getCardImagePath(dc.card.id) ? (
+                      <div className="relative w-full h-full" style={{ transform: dc.reversed ? "rotate(180deg)" : "none" }}>
+                        <Image src={getCardImagePath(dc.card.id)!} alt={dc.card.name} fill className="object-cover" draggable={false} />
+                        {dc.reversed && <span className="absolute top-0.5 right-1 text-[7px] text-white/60 bg-black/40 px-0.5 rounded">R</span>}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-1"
+                        style={{ background: `linear-gradient(145deg, ${suitColor}11, #0a0a08)` }}>
+                        {dc.reversed && <span className="absolute top-0.5 right-1 text-[7px] text-foreground/30">↓R</span>}
+                        <span className="text-[7px] text-foreground/30 mb-0.5">{dc.card.arcana === "major" ? romanNumeral(dc.card.number) : dc.card.suit}</span>
+                        <span className="text-[9px] text-foreground text-center leading-tight px-0.5"
+                          style={{ transform: dc.reversed ? "rotate(180deg)" : "none" }}
+                        >{dc.card.name.replace("The ", "")}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <span className="absolute -bottom-4 left-0 right-0 text-center text-[8px] text-foreground/20 truncate">{pos.name}</span>
@@ -1217,10 +1237,18 @@ export default function TarotTab() {
                   >
                     <div className="flex items-start gap-3 p-4">
                       {/* Card mini badge */}
-                      <div className="w-10 h-14 rounded-lg border flex-shrink-0 flex flex-col items-center justify-center"
+                      <div className="w-10 h-14 rounded-lg border flex-shrink-0 overflow-hidden relative"
                         style={{ borderColor: suitColor, background: `linear-gradient(145deg, ${suitColor}15, transparent)` }}>
-                        {dc.reversed && <span className="text-[7px] text-foreground/30">↓R</span>}
-                        <span className="text-[8px] text-foreground/40">{dc.card.arcana === "major" ? romanNumeral(dc.card.number) : dc.card.suit}</span>
+                        {getCardImagePath(dc.card.id) ? (
+                          <div style={{ transform: dc.reversed ? "rotate(180deg)" : "none" }} className="w-full h-full relative">
+                            <Image src={getCardImagePath(dc.card.id)!} alt={dc.card.name} fill className="object-cover" draggable={false} />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center">
+                            {dc.reversed && <span className="text-[7px] text-foreground/30">↓R</span>}
+                            <span className="text-[8px] text-foreground/40">{dc.card.arcana === "major" ? romanNumeral(dc.card.number) : dc.card.suit}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
