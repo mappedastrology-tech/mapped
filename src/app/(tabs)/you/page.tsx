@@ -1087,12 +1087,14 @@ export default function YouTab() {
   }, []);
 
   // Backfill specialPoints + midheaven for charts saved before those fields existed
+  const [backfillDone, setBackfillDone] = useState(false);
   useEffect(() => {
-    if (!chartData) return;
+    if (!chartData || backfillDone) return;
     const hasLilith = chartData.specialPoints?.some((p) => p.name === "Lilith");
     if (chartData.specialPoints && chartData.specialPoints.length > 0 && hasLilith && chartData.midheaven) return;
     if (!chartData.latitude || !chartData.longitude) return;
 
+    setBackfillDone(true); // prevent re-triggering
     let cancelled = false;
     fetch("/api/chart/calculate", {
       method: "POST",
@@ -1116,7 +1118,7 @@ export default function YouTab() {
       .catch(() => { /* silently fail — page still works without these sections */ });
 
     return () => { cancelled = true; };
-  }, [chartData?.specialPoints, chartData?.midheaven, chartData?.latitude, chartData?.longitude, chartData?.name, chartData?.birthDate, chartData?.birthTime, chartData?.timezone]);
+  }, [chartData, backfillDone]);
 
   // Compute effective houses/bigThree with cusp override BEFORE useMemo that needs them
   const effectiveHouses = useMemo(() => {
