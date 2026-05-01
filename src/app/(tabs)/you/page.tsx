@@ -1089,7 +1089,8 @@ export default function YouTab() {
   // Backfill specialPoints + midheaven for charts saved before those fields existed
   useEffect(() => {
     if (!chartData) return;
-    if ((chartData.specialPoints && chartData.specialPoints.length > 0) || chartData.midheaven) return;
+    const hasLilith = chartData.specialPoints?.some((p) => p.name === "Lilith");
+    if (chartData.specialPoints && chartData.specialPoints.length > 0 && hasLilith && chartData.midheaven) return;
     if (!chartData.latitude || !chartData.longitude) return;
 
     let cancelled = false;
