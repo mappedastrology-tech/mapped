@@ -38,7 +38,8 @@ import {
   type CustomRitual,
 } from "@/lib/customRituals";
 import Link from "next/link";
-import { Component, type ErrorInfo, type ReactNode, lazy, Suspense } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import RitualWizardComponent from "@/components/RitualWizard";
 
 // Error boundary for wizard
 class WizardErrorBoundary extends Component<
@@ -80,15 +81,7 @@ class WizardErrorBoundary extends Component<
   }
 }
 
-const RitualWizard = lazy(() =>
-  import("@/components/RitualWizard").catch(() => ({
-    default: () => (
-      <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
-        <p className="text-foreground/50 text-sm text-center">Couldn&apos;t load the wizard. Try refreshing the page.</p>
-      </div>
-    ),
-  }))
-);
+// Direct import — no lazy/dynamic loading
 
 export default function PracticePage() {
   const today = useMemo(() => new Date(), []);
@@ -131,16 +124,10 @@ export default function PracticePage() {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
         <WizardErrorBoundary onReset={() => setShowWizard(false)}>
-          <Suspense fallback={
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-foreground/30 text-sm">Loading wizard...</p>
-            </div>
-          }>
-            <RitualWizard
-              onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
-              onSave={handleWizardSave}
-            />
-          </Suspense>
+          <RitualWizardComponent
+            onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
+            onSave={handleWizardSave}
+          />
         </WizardErrorBoundary>
       </main>
     );
