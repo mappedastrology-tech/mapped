@@ -888,14 +888,13 @@ export default function HomeTab() {
         <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
           Today&apos;s pulls
         </p>
-        <div className="grid grid-cols-2 gap-3 mb-7">
-          {/* Tarot card */}
-          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-3 transition-all ${expandedCard === "tarot" ? "col-span-2" : ""} ${expandedCard === "oracle" ? "hidden" : ""}`}>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {/* Tarot card — always stays in its column */}
+          <div className={`rounded-2xl bg-card/50 border p-3 transition-all ${expandedCard === "tarot" ? "border-terracotta/30" : "border-foreground/12"}`}>
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Tarot
             </p>
             {!tarotRevealed && !tarotFlipping ? (
-              /* ── State 1: Card back — tap to pull ── */
               <button
                 onClick={() => {
                   setTarotFlipping(true);
@@ -913,7 +912,6 @@ export default function HomeTab() {
                 <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
               </button>
             ) : tarotFlipping ? (
-              /* ── State 2: Flip animation ── */
               <div className="w-full aspect-[2/3] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
@@ -934,135 +932,35 @@ export default function HomeTab() {
                 </div>
               </div>
             ) : (
-              /* ── State 3: Revealed — card image, tap to expand reading ── */
-              <div>
-                <button
-                  onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
-                  className="w-full active:scale-[0.98] transition-transform"
-                >
-                  {expandedCard === "tarot" ? (
-                    /* Expanded: small image left, info right */
-                    <div className="flex gap-3 items-start">
-                      <div className="w-24 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden relative border border-terracotta/25">
-                        {getCardImagePath(dailyTarot.id) ? (
-                          <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-terracotta/15 to-amber/10">
-                            <p className="text-foreground text-[10px] text-center">{dailyTarot.name}</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 text-left pt-1">
-                        <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
-                          {dailyTarot.name}
-                        </p>
-                        <p className="text-foreground/40 text-[10px] mt-0.5">
-                          {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
-                        </p>
-                        {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
-                          <div className="flex items-center gap-1.5 text-[9px] text-foreground/25 mt-2">
-                            {dailyTarot.element && <span>{dailyTarot.element}</span>}
-                            {dailyTarot.zodiac && <><span>·</span><span>{dailyTarot.zodiac}</span></>}
-                            {dailyTarot.planet && <><span>·</span><span>{dailyTarot.planet}</span></>}
-                          </div>
-                        )}
-                        <p className="text-foreground/20 text-[9px] mt-2">tap to collapse</p>
-                      </div>
-                    </div>
+              <button
+                onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
+                className="w-full active:scale-[0.98] transition-transform"
+              >
+                <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-terracotta/25">
+                  {getCardImagePath(dailyTarot.id) ? (
+                    <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
                   ) : (
-                    /* Collapsed: card image fills column */
-                    <>
-                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-terracotta/25">
-                        {getCardImagePath(dailyTarot.id) ? (
-                          <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
-                            <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                        {dailyTarot.name}
-                      </p>
-                      <p className="text-foreground/40 text-[9px] text-center">
-                        {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
-                      </p>
-                    </>
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
+                      <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
+                    </div>
                   )}
-                </button>
-
-                {expandedCard === "tarot" && (
-                  <div className="mt-3 pt-3 border-t border-foreground/8 space-y-3">
-                    <p className="text-foreground/60 text-[12px] leading-relaxed">
-                      {dailyTarot.uprightMeaning}
-                    </p>
-                    <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
-                      <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">If reversed</p>
-                      <p className="text-foreground/50 text-[11px] leading-relaxed">{dailyTarot.reversedMeaning}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const cardContext = `Tarot: ${dailyTarot.name} — ${dailyTarot.uprightKeywords.slice(0, 3).join(", ")}. ${dailyTarot.uprightMeaning}`;
-                          router.push(`/journal?tab=pull&card=tarot&cardName=${encodeURIComponent(dailyTarot.name)}&cardMeaning=${encodeURIComponent(cardContext)}`);
-                        }}
-                        className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
-                                   flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                      >
-                        <span className="text-[12px]">&#x270D;&#xFE0F;</span>
-                        <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const dollyContext = `I pulled the ${dailyTarot.name} today (tarot). Keywords: ${dailyTarot.uprightKeywords.join(", ")}. Upright meaning: "${dailyTarot.uprightMeaning}" — Help me understand what this card means for me today and how it connects to what's going on in my life.`;
-                          sessionStorage.setItem("dolly-context", dollyContext);
-                          router.push("/dolly");
-                        }}
-                        className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                                   flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                      >
-                        <span className="text-[12px]">&#x2728;</span>
-                        <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
-                      </button>
-                    </div>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const shareText = `Today I pulled ${dailyTarot.name} from the tarot.\n\n${dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}\n\n"${dailyTarot.uprightMeaning}"\n\n— Mapped Astrology`;
-                        if (navigator.share) {
-                          try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
-                        } else {
-                          await navigator.clipboard.writeText(shareText);
-                          setCopiedShare("tarot");
-                          setTimeout(() => setCopiedShare(null), 2000);
-                        }
-                      }}
-                      className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                                 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
-                        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                      </svg>
-                      <span className="text-foreground/50 text-[11px] font-semibold">
-                        {copiedShare === "tarot" ? "Copied!" : "Share this pull"}
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
+                <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                  {dailyTarot.name}
+                </p>
+                <p className="text-foreground/40 text-[9px] text-center">
+                  {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
+                </p>
+              </button>
             )}
           </div>
 
-          {/* Oracle card */}
-          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-3 transition-all ${expandedCard === "oracle" ? "col-span-2" : ""} ${expandedCard === "tarot" ? "hidden" : ""}`}>
+          {/* Oracle card — always stays in its column */}
+          <div className={`rounded-2xl bg-card/50 border p-3 transition-all ${expandedCard === "oracle" ? "border-terracotta/30" : "border-foreground/12"}`}>
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Oracle
             </p>
             {!oracleRevealed && !oracleFlipping ? (
-              /* ── State 1: Card back — tap to pull ── */
               <button
                 onClick={() => {
                   setOracleFlipping(true);
@@ -1080,7 +978,6 @@ export default function HomeTab() {
                 <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
               </button>
             ) : oracleFlipping ? (
-              /* ── State 2: Flip animation ── */
               <div className="w-full aspect-[2/3] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
@@ -1095,111 +992,165 @@ export default function HomeTab() {
                 </div>
               </div>
             ) : (
-              /* ── State 3: Revealed — card image, tap to expand reading ── */
-              <div>
-                <button
-                  onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
-                  className="w-full active:scale-[0.98] transition-transform"
-                >
-                  {expandedCard === "oracle" ? (
-                    /* Expanded: small image left, info right */
-                    <div className="flex gap-3 items-start">
-                      <div className="w-24 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden relative border border-sage/25">
-                        <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
-                      </div>
-                      <div className="flex-1 text-left pt-1">
-                        <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
-                          {dailyOracle.animal}
-                        </p>
-                        <p className="text-foreground/40 text-[10px] mt-0.5">
-                          {dailyOracle.keyword}
-                        </p>
-                        <p className="text-foreground/20 text-[9px] mt-2">tap to collapse</p>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Collapsed: card image fills column */
-                    <>
-                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-sage/25">
-                        <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
-                      </div>
-                      <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                        {dailyOracle.animal}
-                      </p>
-                      <p className="text-foreground/40 text-[9px] text-center">
-                        {dailyOracle.keyword}
-                      </p>
-                    </>
-                  )}
-                </button>
-
-                {expandedCard === "oracle" && (
-                  <div className="mt-3 pt-3 border-t border-foreground/8 space-y-3">
-                    <p className="text-foreground/60 text-[12px] leading-relaxed">
-                      {dailyOracle.meaning}
-                    </p>
-                    <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
-                      <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Reflection</p>
-                      <p className="text-foreground/50 text-[11px] leading-relaxed">
-                        What part of your life is asking for {dailyOracle.keyword.toLowerCase()} right now? Sit with the {dailyOracle.animal.toLowerCase()}&apos;s energy and notice what comes up.
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const cardContext = `Oracle: ${dailyOracle.animal} — ${dailyOracle.keyword}. ${dailyOracle.meaning}`;
-                          router.push(`/journal?tab=pull&card=oracle&cardName=${encodeURIComponent(dailyOracle.animal)}&cardMeaning=${encodeURIComponent(cardContext)}`);
-                        }}
-                        className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
-                                   flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                      >
-                        <span className="text-[12px]">&#x270D;&#xFE0F;</span>
-                        <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const dollyContext = `I pulled the ${dailyOracle.animal} oracle card today. Keyword: ${dailyOracle.keyword}. Meaning: "${dailyOracle.meaning}" — Help me understand what this animal's message means for me today.`;
-                          sessionStorage.setItem("dolly-context", dollyContext);
-                          router.push("/dolly");
-                        }}
-                        className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                                   flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                      >
-                        <span className="text-[12px]">&#x2728;</span>
-                        <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
-                      </button>
-                    </div>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const shareText = `Today I pulled the ${dailyOracle.animal} oracle card.\n\n${dailyOracle.keyword}\n\n"${dailyOracle.meaning}"\n\n— Mapped Astrology`;
-                        if (navigator.share) {
-                          try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
-                        } else {
-                          await navigator.clipboard.writeText(shareText);
-                          setCopiedShare("oracle");
-                          setTimeout(() => setCopiedShare(null), 2000);
-                        }
-                      }}
-                      className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                                 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
-                        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                      </svg>
-                      <span className="text-foreground/50 text-[11px] font-semibold">
-                        {copiedShare === "oracle" ? "Copied!" : "Share this pull"}
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
+                className="w-full active:scale-[0.98] transition-transform"
+              >
+                <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-sage/25">
+                  <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
+                </div>
+                <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                  {dailyOracle.animal}
+                </p>
+                <p className="text-foreground/40 text-[9px] text-center">
+                  {dailyOracle.keyword}
+                </p>
+              </button>
             )}
           </div>
         </div>
+
+        {/* ─── Expanded reading panel — below the grid ─── */}
+        {expandedCard === "tarot" && tarotRevealed && (
+          <div className="mb-7 rounded-2xl bg-card/50 border border-foreground/12 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                {dailyTarot.name}
+              </p>
+              <button onClick={() => setExpandedCard(null)} className="text-foreground/25 text-[10px]">collapse</button>
+            </div>
+            {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
+              <div className="flex items-center gap-1.5 text-[9px] text-foreground/30">
+                {dailyTarot.element && <span>{dailyTarot.element}</span>}
+                {dailyTarot.zodiac && <><span>·</span><span>{dailyTarot.zodiac}</span></>}
+                {dailyTarot.planet && <><span>·</span><span>{dailyTarot.planet}</span></>}
+              </div>
+            )}
+            <p className="text-foreground/60 text-[12px] leading-relaxed">
+              {dailyTarot.uprightMeaning}
+            </p>
+            <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
+              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">If reversed</p>
+              <p className="text-foreground/50 text-[11px] leading-relaxed">{dailyTarot.reversedMeaning}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const cardContext = `Tarot: ${dailyTarot.name} — ${dailyTarot.uprightKeywords.slice(0, 3).join(", ")}. ${dailyTarot.uprightMeaning}`;
+                  router.push(`/journal?tab=pull&card=tarot&cardName=${encodeURIComponent(dailyTarot.name)}&cardMeaning=${encodeURIComponent(cardContext)}`);
+                }}
+                className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
+                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              >
+                <span className="text-[12px]">&#x270D;&#xFE0F;</span>
+                <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
+              </button>
+              <button
+                onClick={() => {
+                  const dollyContext = `I pulled the ${dailyTarot.name} today (tarot). Keywords: ${dailyTarot.uprightKeywords.join(", ")}. Upright meaning: "${dailyTarot.uprightMeaning}" — Help me understand what this card means for me today and how it connects to what's going on in my life.`;
+                  sessionStorage.setItem("dolly-context", dollyContext);
+                  router.push("/dolly");
+                }}
+                className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
+                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              >
+                <span className="text-[12px]">&#x2728;</span>
+                <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
+              </button>
+            </div>
+            <button
+              onClick={async () => {
+                const shareText = `Today I pulled ${dailyTarot.name} from the tarot.\n\n${dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}\n\n"${dailyTarot.uprightMeaning}"\n\n— Mapped Astrology`;
+                if (navigator.share) {
+                  try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
+                } else {
+                  await navigator.clipboard.writeText(shareText);
+                  setCopiedShare("tarot");
+                  setTimeout(() => setCopiedShare(null), 2000);
+                }
+              }}
+              className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
+                         flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              <span className="text-foreground/50 text-[11px] font-semibold">
+                {copiedShare === "tarot" ? "Copied!" : "Share this pull"}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {expandedCard === "oracle" && oracleRevealed && (
+          <div className="mb-7 rounded-2xl bg-card/50 border border-foreground/12 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                {dailyOracle.animal}
+              </p>
+              <button onClick={() => setExpandedCard(null)} className="text-foreground/25 text-[10px]">collapse</button>
+            </div>
+            <p className="text-foreground/60 text-[12px] leading-relaxed">
+              {dailyOracle.meaning}
+            </p>
+            <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
+              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Reflection</p>
+              <p className="text-foreground/50 text-[11px] leading-relaxed">
+                What part of your life is asking for {dailyOracle.keyword.toLowerCase()} right now? Sit with the {dailyOracle.animal.toLowerCase()}&apos;s energy and notice what comes up.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const cardContext = `Oracle: ${dailyOracle.animal} — ${dailyOracle.keyword}. ${dailyOracle.meaning}`;
+                  router.push(`/journal?tab=pull&card=oracle&cardName=${encodeURIComponent(dailyOracle.animal)}&cardMeaning=${encodeURIComponent(cardContext)}`);
+                }}
+                className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
+                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              >
+                <span className="text-[12px]">&#x270D;&#xFE0F;</span>
+                <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
+              </button>
+              <button
+                onClick={() => {
+                  const dollyContext = `I pulled the ${dailyOracle.animal} oracle card today. Keyword: ${dailyOracle.keyword}. Meaning: "${dailyOracle.meaning}" — Help me understand what this animal's message means for me today.`;
+                  sessionStorage.setItem("dolly-context", dollyContext);
+                  router.push("/dolly");
+                }}
+                className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
+                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              >
+                <span className="text-[12px]">&#x2728;</span>
+                <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
+              </button>
+            </div>
+            <button
+              onClick={async () => {
+                const shareText = `Today I pulled the ${dailyOracle.animal} oracle card.\n\n${dailyOracle.keyword}\n\n"${dailyOracle.meaning}"\n\n— Mapped Astrology`;
+                if (navigator.share) {
+                  try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
+                } else {
+                  await navigator.clipboard.writeText(shareText);
+                  setCopiedShare("oracle");
+                  setTimeout(() => setCopiedShare(null), 2000);
+                }
+              }}
+              className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
+                         flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              <span className="text-foreground/50 text-[11px] font-semibold">
+                {copiedShare === "oracle" ? "Copied!" : "Share this pull"}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {!expandedCard && <div className="mb-4" />}
 
         {/* ─── On the horizon — moons + celestial calendar ─── */}
         <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
