@@ -11,7 +11,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
-import { supabase } from "@/lib/supabase";
 import {
   type CustomRitual,
   parseWizardOutput,
@@ -86,8 +85,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
   // Load chart context on mount
   useEffect(() => {
     async function loadChart() {
-      // Try Supabase first
+      // Try Supabase first (dynamic import to avoid module-level crash if env vars missing)
       try {
+        const { supabase } = await import("@/lib/supabase");
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const { data: chartData } = await supabase
