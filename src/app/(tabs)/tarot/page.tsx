@@ -705,12 +705,21 @@ export default function TarotTab() {
         {/* Decks */}
         <div className="space-y-4">
             {/* Classic Tarot */}
-            <DeckCard
-              title="Classic Tarot"
-              subtitle="78 cards · Major & Minor Arcana"
-              gradient="linear-gradient(135deg, #1a1408, #2d2010, #1a1408)"
-              onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }}
-            />
+            <button onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }} className="w-full text-left">
+              <div className="rounded-2xl overflow-hidden border border-foreground/18 active:scale-[0.98] transition-transform">
+                <div className="h-28 flex items-center justify-center relative gap-2" style={{ background: "linear-gradient(135deg, #f5efe6, #e8ddd0, #f5efe6)" }}>
+                  {["major-0", "major-8", "major-13", "cups-1", "wands-14"].map((id, idx) => (
+                    <Image key={id} src={getCardImagePath(id)!} alt="" width={48} height={77}
+                      className="h-20 w-auto rounded-md shadow-md border border-foreground/15 object-cover"
+                      style={{ transform: `rotate(${(idx - 2) * 4}deg)` }} draggable={false} />
+                  ))}
+                </div>
+                <div className="p-4 bg-foreground/3">
+                  <h3 className="text-foreground text-sm font-medium mb-0.5">Classic Tarot</h3>
+                  <p className="text-foreground/40 text-xs">78 cards · Major & Minor Arcana</p>
+                </div>
+              </div>
+            </button>
 
             {/* AstroTarot removed */}
 
