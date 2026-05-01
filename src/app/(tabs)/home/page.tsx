@@ -890,7 +890,7 @@ export default function HomeTab() {
         </p>
         <div className="grid grid-cols-2 gap-3 mb-3">
           {/* Tarot card — always stays in its column */}
-          <div className={`rounded-2xl bg-card/50 border p-3 transition-all ${expandedCard === "tarot" ? "border-terracotta/30" : "border-foreground/12"}`}>
+          <div className={`rounded-xl bg-card/50 border p-2 transition-all ${expandedCard === "tarot" ? "border-terracotta/30" : "border-foreground/12"}`}>
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Tarot
             </p>
@@ -904,7 +904,7 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full aspect-square rounded-xl overflow-hidden relative
+                className="w-full h-36 rounded-xl overflow-hidden relative
                            border border-terracotta/25 hover:border-terracotta/50 transition-all
                            flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
               >
@@ -912,7 +912,7 @@ export default function HomeTab() {
                 <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
               </button>
             ) : tarotFlipping ? (
-              <div className="w-full aspect-square rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+              <div className="w-full h-36 rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
@@ -936,7 +936,7 @@ export default function HomeTab() {
                 onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
                 className="w-full active:scale-[0.98] transition-transform"
               >
-                <div className="w-full aspect-square rounded-xl overflow-hidden relative border border-terracotta/25">
+                <div className="w-full h-36 rounded-xl overflow-hidden relative border border-terracotta/25">
                   {getCardImagePath(dailyTarot.id) ? (
                     <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
                   ) : (
@@ -956,7 +956,7 @@ export default function HomeTab() {
           </div>
 
           {/* Oracle card — always stays in its column */}
-          <div className={`rounded-2xl bg-card/50 border p-3 transition-all ${expandedCard === "oracle" ? "border-terracotta/30" : "border-foreground/12"}`}>
+          <div className={`rounded-xl bg-card/50 border p-2 transition-all ${expandedCard === "oracle" ? "border-terracotta/30" : "border-foreground/12"}`}>
             <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Oracle
             </p>
@@ -970,7 +970,7 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full aspect-square rounded-xl overflow-hidden relative
+                className="w-full h-36 rounded-xl overflow-hidden relative
                            border border-sage/25 hover:border-sage/50 transition-all
                            flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
               >
@@ -978,7 +978,7 @@ export default function HomeTab() {
                 <span className="relative z-10 text-white/80 text-[10px] font-medium bg-black/30 px-3 py-1 rounded-full">Tap to pull</span>
               </button>
             ) : oracleFlipping ? (
-              <div className="w-full aspect-square rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+              <div className="w-full h-36 rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
@@ -996,7 +996,7 @@ export default function HomeTab() {
                 onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
                 className="w-full active:scale-[0.98] transition-transform"
               >
-                <div className="w-full aspect-square rounded-xl overflow-hidden relative border border-sage/25">
+                <div className="w-full h-36 rounded-xl overflow-hidden relative border border-sage/25">
                   <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
                 </div>
                 <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
