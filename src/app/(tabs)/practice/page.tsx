@@ -36,8 +36,52 @@ import {
   toggleRitualRotation,
   type CustomRitual,
 } from "@/lib/customRituals";
-import RitualWizard from "@/components/RitualWizard";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+import { Component, type ErrorInfo, type ReactNode } from "react";
+
+// Error boundary for wizard
+class WizardErrorBoundary extends Component<
+  { children: ReactNode; onReset: () => void },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: ReactNode; onReset: () => void }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Wizard error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
+          <p className="text-foreground/50 text-sm text-center">Something went wrong loading the wizard.</p>
+          <p className="text-foreground/25 text-xs text-center">{this.state.error}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: "" }); this.props.onReset(); }}
+            className="px-5 py-2.5 rounded-xl text-sm border border-foreground/15 text-foreground/50"
+          >
+            Back to My Practice
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const RitualWizard = dynamic(() => import("@/components/RitualWizard"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <p className="text-foreground/30 text-sm">Loading wizard...</p>
+    </div>
+  ),
+});
 
 export default function PracticePage() {
   const today = useMemo(() => new Date(), []);
@@ -78,10 +122,14 @@ export default function PracticePage() {
   // ─── Show wizard if active ──────────────────────────────────────────────
   if (showWizard) {
     return (
-      <RitualWizard
-        onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
-        onSave={handleWizardSave}
-      />
+      <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+        <WizardErrorBoundary onReset={() => setShowWizard(false)}>
+          <RitualWizard
+            onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
+            onSave={handleWizardSave}
+          />
+        </WizardErrorBoundary>
+      </main>
     );
   }
 
