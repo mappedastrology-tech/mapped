@@ -890,8 +890,8 @@ export default function HomeTab() {
         </p>
         <div className="grid grid-cols-2 gap-3 mb-7">
           {/* Tarot card */}
-          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-4 transition-all ${expandedCard === "tarot" ? "col-span-2" : ""} ${expandedCard === "oracle" ? "hidden" : ""}`}>
-            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5">
+          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-3 transition-all ${expandedCard === "tarot" ? "col-span-2" : ""} ${expandedCard === "oracle" ? "hidden" : ""}`}>
+            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Tarot
             </p>
             {!tarotRevealed && !tarotFlipping ? (
@@ -905,7 +905,7 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full aspect-[3/4] rounded-xl overflow-hidden relative
+                className="w-full aspect-[2/3] rounded-xl overflow-hidden relative
                            border border-terracotta/25 hover:border-terracotta/50 transition-all
                            flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
               >
@@ -914,7 +914,7 @@ export default function HomeTab() {
               </button>
             ) : tarotFlipping ? (
               /* ── State 2: Flip animation ── */
-              <div className="w-full aspect-[3/4] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+              <div className="w-full aspect-[2/3] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
@@ -940,7 +940,7 @@ export default function HomeTab() {
                   onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
                   className="w-full active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-full aspect-[3/4] rounded-xl overflow-hidden relative border border-terracotta/25">
+                  <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-terracotta/25">
                     {getCardImagePath(dailyTarot.id) ? (
                       <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
                     ) : (
@@ -949,10 +949,10 @@ export default function HomeTab() {
                       </div>
                     )}
                   </div>
-                  <p className="text-foreground text-[13px] font-medium mt-2 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                  <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
                     {dailyTarot.name}
                   </p>
-                  <p className="text-foreground/40 text-[10px] text-center">
+                  <p className="text-foreground/40 text-[9px] text-center">
                     {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
                   </p>
                 </button>
@@ -1030,8 +1030,8 @@ export default function HomeTab() {
           </div>
 
           {/* Oracle card */}
-          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-4 transition-all ${expandedCard === "oracle" ? "col-span-2" : ""} ${expandedCard === "tarot" ? "hidden" : ""}`}>
-            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2.5">
+          <div className={`rounded-2xl bg-card/50 border border-foreground/12 p-3 transition-all ${expandedCard === "oracle" ? "col-span-2" : ""} ${expandedCard === "tarot" ? "hidden" : ""}`}>
+            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
               Oracle
             </p>
             {!oracleRevealed && !oracleFlipping ? (
@@ -1045,7 +1045,7 @@ export default function HomeTab() {
                     try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
                   }, 800);
                 }}
-                className="w-full aspect-[3/4] rounded-xl overflow-hidden relative
+                className="w-full aspect-[2/3] rounded-xl overflow-hidden relative
                            border border-sage/25 hover:border-sage/50 transition-all
                            flex flex-col items-center justify-center gap-2 active:scale-[0.97]"
               >
@@ -1054,7 +1054,7 @@ export default function HomeTab() {
               </button>
             ) : oracleFlipping ? (
               /* ── State 2: Flip animation ── */
-              <div className="w-full aspect-[3/4] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
+              <div className="w-full aspect-[2/3] rounded-xl overflow-hidden" style={{ perspective: "600px" }}>
                 <div className="w-full h-full transition-transform duration-700"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
@@ -1074,13 +1074,13 @@ export default function HomeTab() {
                   onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
                   className="w-full active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-full aspect-[3/4] rounded-xl overflow-hidden relative border border-sage/25">
+                  <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-sage/25">
                     <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
                   </div>
-                  <p className="text-foreground text-[13px] font-medium mt-2 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                  <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
                     {dailyOracle.animal}
                   </p>
-                  <p className="text-foreground/40 text-[10px] text-center">
+                  <p className="text-foreground/40 text-[9px] text-center">
                     {dailyOracle.keyword}
                   </p>
                 </button>
