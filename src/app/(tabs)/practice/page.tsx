@@ -75,22 +75,7 @@ export default function PracticePage() {
     refreshCustomRituals();
   }, [refreshCustomRituals]);
 
-  // ─── Show wizard if active ──────────────────────────────────────────────
-  if (showWizard) {
-    return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <h2 style={{ fontSize: 20, marginBottom: 16 }}>It worked!</h2>
-        <button
-          onClick={() => { setShowWizard(false); refreshCustomRituals(); }}
-          style={{ padding: "10px 24px", borderRadius: 12, border: "1px solid #ccc", background: "none", fontSize: 14 }}
-        >
-          Back
-        </button>
-      </div>
-    );
-  }
-
-  // ─── Derived stats ───────────────────────────────────────────────────
+  // ─── Derived stats (must be ABOVE all early returns to satisfy Rules of Hooks) ──
 
   const totalRituals = completions.length;
 
@@ -114,6 +99,21 @@ export default function PracticePage() {
 
   const engagedZodiacCount = zodiacSeasons.filter((z) => z.engaged).length;
 
+  // ─── Show wizard if active ──────────────────────────────────────────────
+  if (showWizard) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <h2 style={{ fontSize: 20, marginBottom: 16 }}>It worked!</h2>
+        <button
+          onClick={() => { setShowWizard(false); refreshCustomRituals(); }}
+          style={{ padding: "10px 24px", borderRadius: 12, border: "1px solid #ccc", background: "none", fontSize: 14 }}
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
+
   // ─── Empty state ─────────────────────────────────────────────────────
 
   if (completions.length === 0) {
@@ -127,7 +127,7 @@ export default function PracticePage() {
         <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
 
         {/* VERSION MARKER — delete after debugging */}
-        <p className="text-red-500 text-xs mb-2">BUILD: may1-v10-full-div-wizard</p>
+        <p className="text-red-500 text-xs mb-2">BUILD: may1-v11-hooks-fixed</p>
 
         {/* Wizard entry */}
         <WizardEntryButton onClick={() => setShowWizard(true)} />
