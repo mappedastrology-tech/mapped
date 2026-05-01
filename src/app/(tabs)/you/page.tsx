@@ -1032,6 +1032,7 @@ export default function YouTab() {
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openPlanet, setOpenPlanet] = useState<string | null>(null);
+  const [openRuler, setOpenRuler] = useState<string | null>(null);
   const [risingOverride, setRisingOverride] = useState<string | null>(null);
   const [cuspDismissed, setCuspDismissed] = useState(false);
   const [openAspect, setOpenAspect] = useState<string | null>(null);
@@ -1310,67 +1311,6 @@ export default function YouTab() {
         </div>
       )}
 
-      {/* ═══ SECT LIGHT ═══ */}
-      {sectLight && (
-        <div className="rounded-xl border border-amber/15 bg-amber/5 px-4 py-4 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-amber text-lg" style={{ fontFamily: "var(--font-heading)" }}>
-              {sectLight.sectLight === "Sun" ? "☉" : "☽"}
-            </span>
-            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
-              Your sect light · {sectLight.sectLight}
-            </span>
-            <InfoTip
-              term="Sect Light"
-              explanation="Sect divides charts into day and night teams. Your sect light is the leader of your team — the Sun for day charts, the Moon for night charts. It's the planet with the most natural authority in your chart. Most apps ignore sect entirely, but it changes how every other planet performs."
-            />
-          </div>
-          <h3
-            className="text-lg text-foreground mb-2"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight} in {SIGN_FULL[sectLight.sectLightSign] || sectLight.sectLightSign}
-          </h3>
-          <p className="text-foreground/70 text-sm leading-relaxed">
-            {sectLight.summary}
-          </p>
-          <div className="mt-3 flex gap-3 text-xs text-foreground/40">
-            <span>Benefic: <span className="text-foreground/60">{sectLight.benefic}</span></span>
-            <span>Malefic: <span className="text-foreground/60">{sectLight.malefic}</span></span>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ LORD OF THE YEAR ═══ */}
-      {lordOfTheYear && (
-        <div className="rounded-xl border border-[#6b8a9e]/15 bg-[#6b8a9e]/5 px-4 py-4 mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[#6b8a9e] text-lg" style={{ fontFamily: "var(--font-heading)" }}>
-              {PLANET_SYMBOLS[lordOfTheYear.lordPlanet] || "★"}
-            </span>
-            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
-              Lord of the Year · {lordOfTheYear.lordPlanet}
-            </span>
-            <InfoTip
-              term="Lord of the Year"
-              explanation="Every birthday, your chart 'profects' — advancing one house. The planet that rules the sign on that house becomes your Lord of the Year. It's the planet running the show for the next 12 months. Transits to this planet hit harder, returns of this planet mark turning points, and its natal condition describes your year's flavor."
-            />
-          </div>
-          <h3
-            className="text-lg text-foreground mb-2"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house year
-          </h3>
-          <p className="text-foreground/70 text-sm leading-relaxed">
-            {lordOfTheYear.summary}
-          </p>
-          <p className="mt-2 text-xs text-foreground/35">
-            Changes on your next birthday · {lordOfTheYear.nextBirthday}
-          </p>
-        </div>
-      )}
-
       {/* ═══ STELLIUMS ═══ */}
       {stelliums.length > 0 && (
         <div className="flex flex-col gap-2 mb-8">
@@ -1396,6 +1336,105 @@ export default function YouTab() {
         </div>
       )}
 
+
+      {/* ═══ SECT LIGHT (collapsible) ═══ */}
+      {sectLight && (
+        <div className={`rounded-xl border transition-colors duration-200 mb-3 ${
+          openRuler === "sect" ? "bg-amber/5 border-amber/15" : "bg-card/50 border-foreground/15"
+        }`}>
+          <button
+            onClick={() => setOpenRuler(openRuler === "sect" ? null : "sect")}
+            className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-amber text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+                {sectLight.sectLight === "Sun" ? "☉" : "☽"}
+              </span>
+              <div>
+                <span className="text-foreground/80 text-sm font-medium">
+                  Your sect light
+                </span>
+                <span className="text-foreground/30 text-xs ml-2">
+                  {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight}
+                </span>
+              </div>
+              <InfoTip
+                term="Sect Light"
+                explanation="Sect divides charts into day and night teams. Your sect light is the leader of your team — the Sun for day charts, the Moon for night charts. It's the planet with the most natural authority in your chart. Most apps ignore sect entirely, but it changes how every other planet performs."
+              />
+            </div>
+            <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openRuler === "sect" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <div className={`overflow-hidden transition-all duration-300 ease-out ${openRuler === "sect" ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className="px-4 pb-4 border-t border-amber/10">
+              <h3
+                className="text-lg text-foreground mt-3 mb-2"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight} in {SIGN_FULL[sectLight.sectLightSign] || sectLight.sectLightSign}
+              </h3>
+              <p className="text-foreground/70 text-sm leading-relaxed">
+                {sectLight.summary}
+              </p>
+              <div className="mt-3 flex gap-3 text-xs text-foreground/40">
+                <span>Benefic: <span className="text-foreground/60">{sectLight.benefic}</span></span>
+                <span>Malefic: <span className="text-foreground/60">{sectLight.malefic}</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ LORD OF THE YEAR (collapsible) ═══ */}
+      {lordOfTheYear && (
+        <div className={`rounded-xl border transition-colors duration-200 mb-8 ${
+          openRuler === "loy" ? "bg-[#6b8a9e]/5 border-[#6b8a9e]/15" : "bg-card/50 border-foreground/15"
+        }`}>
+          <button
+            onClick={() => setOpenRuler(openRuler === "loy" ? null : "loy")}
+            className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-[#6b8a9e] text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+                {PLANET_SYMBOLS[lordOfTheYear.lordPlanet] || "★"}
+              </span>
+              <div>
+                <span className="text-foreground/80 text-sm font-medium">
+                  Lord of the Year
+                </span>
+                <span className="text-foreground/30 text-xs ml-2">
+                  {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house
+                </span>
+              </div>
+              <InfoTip
+                term="Lord of the Year"
+                explanation="Every birthday, your chart 'profects' — advancing one house. The planet that rules the sign on that house becomes your Lord of the Year. It's the planet running the show for the next 12 months. Transits to this planet hit harder, returns of this planet mark turning points, and its natal condition describes your year's flavor."
+              />
+            </div>
+            <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openRuler === "loy" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <div className={`overflow-hidden transition-all duration-300 ease-out ${openRuler === "loy" ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className="px-4 pb-4 border-t border-[#6b8a9e]/10">
+              <h3
+                className="text-lg text-foreground mt-3 mb-2"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house year
+              </h3>
+              <p className="text-foreground/70 text-sm leading-relaxed">
+                {lordOfTheYear.summary}
+              </p>
+              <p className="mt-2 text-xs text-foreground/35">
+                Changes on your next birthday · {lordOfTheYear.nextBirthday}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Divider */}
       <div className="flex items-center gap-3 mb-8">
