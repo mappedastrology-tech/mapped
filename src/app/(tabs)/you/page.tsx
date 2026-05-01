@@ -1159,6 +1159,20 @@ export default function YouTab() {
     return detectStelliums(chartData.planets);
   }, [chartData]);
 
+  // Ensure Lilith is always present — calculate client-side if missing from saved data
+  const lilithFallback = useMemo(() => {
+    if (!chartData) return null;
+    const sp = chartData.specialPoints || [];
+    const hasLilith = sp.some((p: { name: string }) => p.name === "Lilith");
+    if (hasLilith) return null; // already have it
+    if (!chartData.birthDate) return null;
+    try {
+      return getMeanLilithData(chartData.birthDate, chartData.birthTime || undefined);
+    } catch {
+      return null;
+    }
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
@@ -1183,19 +1197,7 @@ export default function YouTab() {
   }
 
   const { name, bigThree, planets, houses, unknownTime, risingCusp, specialPoints: rawSpecialPoints = [], midheaven } = chartData;
-
-  // Ensure Lilith is always present — calculate client-side if missing from saved data
-  const specialPoints = useMemo(() => {
-    const hasLilith = rawSpecialPoints.some((p) => p.name === "Lilith");
-    if (hasLilith) return rawSpecialPoints;
-    if (!chartData.birthDate) return rawSpecialPoints;
-    try {
-      const lilith = getMeanLilithData(chartData.birthDate, chartData.birthTime || undefined);
-      return [...rawSpecialPoints, lilith];
-    } catch {
-      return rawSpecialPoints;
-    }
-  }, [rawSpecialPoints, chartData.birthDate, chartData.birthTime]);
+  const specialPoints = lilithFallback ? [...rawSpecialPoints, lilithFallback] : rawSpecialPoints;
 
   return (
     <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
