@@ -205,6 +205,69 @@ const NODE_HOUSE: Record<number, string> = {
   12: "Your growth direction points to spirituality, surrender, and the unseen. You're learning to trust what can't be measured, to let go of control, and to find peace in the mystery. The lesson is that not everything needs to be fixed — some things just need to be felt.",
 };
 
+const LILITH_DESCRIPTIONS: Record<string, { shadow: string; power: string; reclamation: string }> = {
+  Aries: {
+    shadow: "You were shamed for being too aggressive, too selfish, too loud. Somewhere you learned that wanting things for yourself was dangerous — so you either suppressed your fire or let it burn uncontrollably.",
+    power: "Your raw, unapologetic desire to exist on your own terms. When you stop asking permission to take up space, you become magnetic. Your anger isn't a flaw — it's fuel.",
+    reclamation: "Practice putting yourself first without guilt. Say 'I want' out loud. Let yourself be the main character. The people who can't handle your fire were never your people.",
+  },
+  Taurus: {
+    shadow: "You were made to feel guilty about pleasure, comfort, or wanting beautiful things. Maybe you were told you were too materialistic, too indulgent, too slow. So you either denied yourself or hoarded out of fear.",
+    power: "Your sensuality, your relationship with the physical world, and your refusal to rush. You know that the body is wise and pleasure is sacred — not something to earn or apologize for.",
+    reclamation: "Let yourself enjoy things fully without justifying it. Touch, taste, rest, beauty — these aren't rewards for productivity. They're your birthright. Build a life that feels as good as it looks.",
+  },
+  Gemini: {
+    shadow: "You were told you talk too much, think too fast, or can't be taken seriously. Your curiosity was treated as scattered. Your truth-telling made people uncomfortable, so you learned to filter yourself or stay quiet.",
+    power: "Your mind moves like lightning and you see connections others miss. When you stop dumbing yourself down, your words become spells. You can name what everyone else is afraid to say.",
+    reclamation: "Stop editing yourself for comfort. Say the thing. Write the thing. Let your mind wander where it wants. The people who call you 'too much' are really saying you make them feel like not enough.",
+  },
+  Cancer: {
+    shadow: "Your need for emotional safety was used against you. You were called too sensitive, too clingy, too needy. So you either built walls or became the caretaker who never gets taken care of.",
+    power: "Your emotional depth is supernatural. You feel what others can't even name. When you stop apologizing for your sensitivity, it becomes your greatest strength — you can hold space that heals people.",
+    reclamation: "Let yourself need people. Let yourself be held. Your vulnerability isn't weakness — it's the bravest thing you do. Set boundaries around who gets access to your softness, but never stop being soft.",
+  },
+  Leo: {
+    shadow: "You were shamed for wanting attention, recognition, or admiration. Someone made your light feel like a threat, so you either dimmed yourself or performed constantly to prove you deserved to be seen.",
+    power: "Your creative fire and magnetic presence. When you stop performing for approval and start creating for joy, you become impossible to look away from. Your light isn't stealing anyone else's.",
+    reclamation: "Create without permission. Be visible without apology. Let yourself be adored. The shame you feel about wanting to be seen is not yours — it was put there by someone who was afraid of their own light.",
+  },
+  Virgo: {
+    shadow: "You were criticized relentlessly, so you became your own harshest critic first — that way no one could hurt you worse than you hurt yourself. Your body, your work, your worth were never 'good enough.'",
+    power: "Your discernment is razor-sharp and your devotion to craft is unmatched. When you turn that analytical mind toward building instead of destroying yourself, you create things that actually change people's lives.",
+    reclamation: "Stop trying to be perfect. Let things be messy and still call them good. Your worth isn't measured by your usefulness. Rest is not laziness. You are allowed to be a work in progress.",
+  },
+  Libra: {
+    shadow: "You were punished for having your own desires, so you became a mirror — reflecting what everyone else wanted to see. You lost yourself in relationships, kept the peace at the cost of your truth.",
+    power: "You understand human dynamics at a level most people can't access. When you stop people-pleasing and start choosing yourself, your natural charm becomes a force of nature — not a survival strategy.",
+    reclamation: "Disagree out loud. Choose your own preference. Let relationships be disrupted by your honesty. The right people will stay. The ones who only loved your compliance were never loving you.",
+  },
+  Scorpio: {
+    shadow: "Your intensity scared people. Your emotions were 'too much,' your sexuality was dangerous, your knowing was unsettling. You learned to hide your power or weaponize it before anyone could use it against you.",
+    power: "You see through everything and everyone. Your emotional and psychic depth is extraordinary. When you stop fearing your own darkness, you become a force of transformation — alchemizing pain into wisdom.",
+    reclamation: "Stop hiding what you know. Let yourself be fully seen in your intensity. Your darkness is not a disease — it's depth. Trust your instincts, even when they make others uncomfortable. Especially then.",
+  },
+  Sagittarius: {
+    shadow: "Your wildness, your beliefs, your need for freedom were treated as irresponsible or dangerous. Someone tried to cage you — intellectually, spiritually, or literally — and part of you is still running from that cage.",
+    power: "Your refusal to be confined by anyone's version of truth but your own. When you stop running and start standing in your beliefs, your vision becomes prophetic. You see futures others can't imagine.",
+    reclamation: "Believe something unpopular. Go somewhere unfamiliar. Say what you actually think about God, meaning, and purpose. Your restlessness isn't a problem to solve — it's a compass pointing toward freedom.",
+  },
+  Capricorn: {
+    shadow: "You were forced to grow up too fast, to be responsible before you were ready. Authority figures failed you, so you became your own authority — but the cost was joy, play, and softness.",
+    power: "Your endurance and self-discipline are legendary. When you stop punishing yourself with productivity and start building from desire instead of duty, your ambition creates lasting legacy — not just exhaustion.",
+    reclamation: "Let yourself be unproductive. Play without purpose. Admit you're tired. Your worth is not your output. You don't need to earn rest, love, or respect — you already deserve them by existing.",
+  },
+  Aquarius: {
+    shadow: "Your uniqueness was treated as a threat. You were excluded, ostracized, or made to feel alien for being different. So you either performed normalcy or doubled down on detachment as armor.",
+    power: "Your ability to see systems that others are blind to and imagine alternatives that don't exist yet. When you stop performing belonging and start building it on your terms, you become a revolutionary.",
+    reclamation: "Stop trying to fit in. Let yourself be the strange one. Your alienation isn't a wound to heal — it's a perspective that the world desperately needs. Build your own community if the existing ones don't fit.",
+  },
+  Pisces: {
+    shadow: "Your boundaries were dissolved before you could build them. You absorbed everyone's pain and lost track of where you end and others begin. Your spiritual gifts were dismissed as delusion or weakness.",
+    power: "Your connection to the unseen world is real and extraordinary. When you stop drowning in everyone else's emotions and learn to channel that sensitivity, you become a visionary, a healer, a mystic.",
+    reclamation: "Your feelings are not illusions. Your dreams are not escapism. Build boundaries not as walls but as containers for your gifts. You are not too much — the world is just not gentle enough for what you carry.",
+  },
+};
+
 /* ═══════════════════════════════════════════
    Aspect interpretation data
    ═══════════════════════════════════════════ */
@@ -1553,6 +1616,92 @@ export default function YouTab() {
                                 Where it plays out · {ORDINAL[hNum]} house
                               </span>
                               <p className="text-foreground/55 text-sm leading-relaxed">{NODE_HOUSE[hNum]}</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ═══ BLACK MOON LILITH ═══ */}
+        {(() => {
+          const lilith = specialPoints.find((p) => p.name === "Lilith");
+          if (!lilith) return null;
+          return (
+            <div className={`rounded-xl border transition-colors duration-200 ${
+              openPlanet === "_Lilith" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
+            }`}>
+              <button
+                onClick={() => setOpenPlanet(openPlanet === "_Lilith" ? null : "_Lilith")}
+                className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-lg ${elementColor(lilith.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"⚸"}</span>
+                  <span className="text-foreground/80 text-sm font-medium">Black Moon Lilith</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${elementColor(lilith.sign)}`}>
+                    {SIGN_NAMES[lilith.sign] || lilith.sign}
+                  </span>
+                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Lilith" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Lilith" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+                <div className="px-4 pb-5 pt-1">
+                  <div className="h-px bg-foreground/8 mb-5" />
+                  {(() => {
+                    const li = LILITH_DESCRIPTIONS[lilith.sign];
+                    const color = elementColor(lilith.sign);
+                    if (!li) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    return (
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">The Dark Feminine</span>
+                          <InfoTip term="Black Moon Lilith" explanation="Lilith represents your wild, untamed energy — the parts of you that society tried to suppress. It shows where you were shamed, what you buried, and the raw power you reclaim when you stop apologizing for who you are." />
+                        </div>
+                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                          Lilith in {SIGN_FULL[lilith.sign] || lilith.sign}
+                        </h3>
+                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{li.shadow}</p>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your raw power</p>
+                          <p className="text-foreground/75 text-sm leading-relaxed">{li.power}</p>
+                        </div>
+                        <div className="mb-4">
+                          <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Reclaiming it</p>
+                          <p className="text-foreground/70 text-sm leading-relaxed">{li.reclamation}</p>
+                        </div>
+                        {(() => {
+                          const hNum = houseToNum(lilith.house);
+                          if (!hNum) return null;
+                          return (
+                            <div className="mt-2 pt-5 border-t border-foreground/15">
+                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                                Where it plays out · {ORDINAL[hNum]} house
+                              </span>
+                              <p className="text-foreground/55 text-sm leading-relaxed">
+                                Lilith in the {ORDINAL[hNum]} house means this energy shows up in your {
+                                  hNum === 1 ? "identity and first impressions" :
+                                  hNum === 2 ? "finances, self-worth, and values" :
+                                  hNum === 3 ? "communication and daily interactions" :
+                                  hNum === 4 ? "home, family, and inner world" :
+                                  hNum === 5 ? "creativity, romance, and self-expression" :
+                                  hNum === 6 ? "daily routines, health, and work" :
+                                  hNum === 7 ? "partnerships and close relationships" :
+                                  hNum === 8 ? "intimacy, shared resources, and transformation" :
+                                  hNum === 9 ? "beliefs, travel, and higher learning" :
+                                  hNum === 10 ? "career, public image, and authority" :
+                                  hNum === 11 ? "friendships, community, and future vision" :
+                                  "spirituality, solitude, and the unconscious"
+                                }.
+                              </p>
                             </div>
                           );
                         })()}
