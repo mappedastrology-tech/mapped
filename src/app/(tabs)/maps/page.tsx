@@ -2169,8 +2169,14 @@ export default function MapsTab() {
   // Synastry loading
   const [synastryLoading, setSynastryLoading] = useState(false);
 
-  // Family analysis
-  const [familyAnalysis, setFamilyAnalysis] = useState<FamilyAnalysis | null>(null);
+  // Family analysis — persisted in localStorage
+  const [familyAnalysis, setFamilyAnalysis] = useState<FamilyAnalysis | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("mapped:family-analysis");
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
   // Aspect accordion
@@ -2932,6 +2938,7 @@ export default function MapsTab() {
       const analysis = generateFamilyAnalysis(userChart, connections);
       setFamilyAnalysis(analysis);
       setAnalysisLoading(false);
+      try { localStorage.setItem("mapped:family-analysis", JSON.stringify(analysis)); } catch {}
     }, 500);
   }
 
@@ -7202,7 +7209,7 @@ export default function MapsTab() {
                         Analyzing...
                       </>
                     ) : (
-                      "Generate Family Strengths & Curses"
+                      familyAnalysis ? "Regenerate Family Analysis" : "Generate Family Strengths & Curses"
                     )}
                   </button>
                 )}
