@@ -63,6 +63,11 @@ interface HoroscopeRequest {
   celestial: CelestialData;
   transits?: TransitData;
   userName?: string;
+  lordOfTheYear?: {
+    planet: string;
+    profectionHouse: number;
+    profectionSign: string;
+  };
 }
 
 function buildChartBlock(chart: ChartData, userName?: string): string {
@@ -210,7 +215,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: HoroscopeRequest = await request.json();
-    const { chart, celestial, transits, userName } = body;
+    const { chart, celestial, transits, userName, lordOfTheYear } = body;
 
     if (!chart?.bigThree) {
       return NextResponse.json(
@@ -232,6 +237,17 @@ export async function POST(request: NextRequest) {
     contextParts.push(buildChartBlock(chart, userName));
     contextParts.push(buildCelestialBlock(celestial));
     if (transits) contextParts.push(buildTransitBlock(transits));
+
+    // Add Lord of the Year context if available
+    if (lordOfTheYear) {
+      const loyBlock = [
+        "\n## Lord of the Year (Annual Profection)",
+        `This person is in a ${lordOfTheYear.profectionHouse}${["st","nd","rd"][lordOfTheYear.profectionHouse-1] || "th"} house profection year.`,
+        `Their Lord of the Year is ${lordOfTheYear.planet} (rules ${expandSign(lordOfTheYear.profectionSign)}).`,
+        `IMPORTANT: If today's transits involve ${lordOfTheYear.planet} in any way, lead with that — "${lordOfTheYear.planet} is your year, and today..." framing. Transits to the Lord of the Year hit harder and are more personally significant this year.`,
+      ].join("\n");
+      contextParts.push(loyBlock);
+    }
 
     // Add variety hint to prevent repetitive stellium focus
     const LIFE_THEMES = [

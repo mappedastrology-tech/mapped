@@ -19,6 +19,7 @@ import PlacementAccordion from "@/components/PlacementAccordion";
 import DateWheel from "@/components/DateWheel";
 import { generateYearSummary, SR_PLANET_HOUSE_HIGHLIGHTS } from "@/lib/solar-return-interpretations";
 import { generateRelationshipSummary } from "@/lib/composite-interpretations";
+import { getLordOfTheYear, isLordOfYearTransit } from "@/lib/rulers";
 import ShareCard from "@/components/ShareCard";
 import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
@@ -2206,6 +2207,13 @@ export default function MapsTab() {
   const [selfTab, setSelfTab] = useState<"transits" | "synastry" | "solar">("transits");
   const [selfTransitData, setSelfTransitData] = useState<TransitData | null>(null);
   const [selfTransitLoading, setSelfTransitLoading] = useState(false);
+  const [transitFilterLoY, setTransitFilterLoY] = useState(false);
+
+  // Compute Lord of the Year for transit re-ranking
+  const mapsLoY = useMemo(() => {
+    if (!userChart?.birthDate || !userChart?.houses?.length) return null;
+    return getLordOfTheYear(userChart.birthDate, userChart.planets, userChart.houses);
+  }, [userChart]);
   const [overlapPersonId, setOverlapPersonId] = useState<string | null>(null);
   const [overlapTransitData, setOverlapTransitData] = useState<TransitData | null>(null);
   const [overlapTransitLoading, setOverlapTransitLoading] = useState(false);
@@ -3413,15 +3421,60 @@ export default function MapsTab() {
                   </div>
                 </div>
 
+                {/* Filter toggle: All / Year Ruler Only */}
+                {mapsLoY && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <button
+                      onClick={() => setTransitFilterLoY(false)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                        !transitFilterLoY
+                          ? "bg-terracotta/15 text-terracotta border-terracotta/20"
+                          : "text-foreground/40 border-foreground/10"
+                      }`}
+                    >
+                      All transits
+                    </button>
+                    <button
+                      onClick={() => setTransitFilterLoY(true)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                        transitFilterLoY
+                          ? "bg-[#6b8a9e]/15 text-[#6b8a9e] border-[#6b8a9e]/20"
+                          : "text-foreground/40 border-foreground/10"
+                      }`}
+                    >
+                      Year ruler only
+                    </button>
+                    <span className="text-foreground/25 text-[10px] ml-auto">
+                      {mapsLoY.lordPlanet} year
+                    </span>
+                  </div>
+                )}
+
                 {/* Major + minor transits */}
                 {(() => {
                   const majorPlanets = ["Pluto", "Neptune", "Uranus", "Saturn", "Jupiter"];
-                  const major = selfTransitData.transitAspects
+                  const loyPlanet = mapsLoY?.lordPlanet || "";
+
+                  // Filter by LoY if toggle is active
+                  let aspects = selfTransitData.transitAspects;
+                  if (transitFilterLoY && loyPlanet) {
+                    aspects = aspects.filter(a => isLordOfYearTransit(a.transitPlanet, a.natalPlanet, loyPlanet));
+                  }
+
+                  // Sort: LoY transits float to top within each tier
+                  const loySort = (a: TransitAspect, b: TransitAspect) => {
+                    const aIsLoY = loyPlanet ? (a.transitPlanet === loyPlanet || a.natalPlanet === loyPlanet ? 1 : 0) : 0;
+                    const bIsLoY = loyPlanet ? (b.transitPlanet === loyPlanet || b.natalPlanet === loyPlanet ? 1 : 0) : 0;
+                    if (bIsLoY !== aIsLoY) return bIsLoY - aIsLoY;
+                    return getTransitIntensity(b).score - getTransitIntensity(a).score;
+                  };
+
+                  const major = aspects
                     .filter(a => majorPlanets.includes(a.transitPlanet))
-                    .sort((a, b) => getTransitIntensity(b).score - getTransitIntensity(a).score);
-                  const minor = selfTransitData.transitAspects
+                    .sort(loySort);
+                  const minor = aspects
                     .filter(a => !majorPlanets.includes(a.transitPlanet))
-                    .sort((a, b) => getTransitIntensity(b).score - getTransitIntensity(a).score);
+                    .sort(loySort);
 
                   return (
                     <>
@@ -3486,6 +3539,11 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1.5 py-0.5 rounded">
+                                          Year Ruler
+                                        </span>
+                                      )}
                                       <span className={`text-[10px] font-medium ${intensity.color}`}>{intensity.label}</span>
                                       <div className="w-12 h-1 rounded-full bg-foreground/8 overflow-hidden">
                                         <div
@@ -3602,6 +3660,11 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1 py-0.5 rounded">
+                                          LoY
+                                        </span>
+                                      )}
                                       <span className={`text-[10px] ${intensity.color}`}>{intensity.label}</span>
                                       <div className="w-10 h-0.5 rounded-full bg-foreground/8 overflow-hidden">
                                         <div
@@ -4956,6 +5019,11 @@ export default function MapsTab() {
                                     </div>
                                     {/* Intensity badge */}
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                      {mapsLoY?.lordPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, mapsLoY.lordPlanet) && (
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1.5 py-0.5 rounded">
+                                          Year Ruler
+                                        </span>
+                                      )}
                                       <span className={`text-[10px] font-medium ${intensity.color}`}>{intensity.label}</span>
                                       <div className="w-12 h-1 rounded-full bg-foreground/8 overflow-hidden">
                                         <div

@@ -36,6 +36,8 @@ interface PlacementAccordionProps {
   retrograde: boolean;
   isOpen: boolean;
   onToggle: () => void;
+  /** Small inline tags like "CHART RULER", "LORD OF THE YEAR", "SECT LIGHT" */
+  tags?: string[];
 }
 
 function elementColor(sign: string): string {
@@ -95,6 +97,7 @@ export default function PlacementAccordion({
   retrograde,
   isOpen,
   onToggle,
+  tags,
 }: PlacementAccordionProps) {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -159,6 +162,15 @@ export default function PlacementAccordion({
               <span className="text-terracotta/60 text-xs ml-1">R</span>
             )}
           </span>
+          {tags && tags.length > 0 && (
+            <span className="flex gap-1 ml-1">
+              {tags.map(tag => (
+                <span key={tag} className="text-[9px] uppercase tracking-wider font-bold text-foreground/30 bg-foreground/5 px-1.5 py-0.5 rounded">
+                  {tag}
+                </span>
+              ))}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">

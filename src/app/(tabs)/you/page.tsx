@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { getMeanLilithData } from "@/lib/astro/lilithClient";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
+import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearInfo } from "@/lib/rulers";
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
 
 interface Planet {
@@ -1149,6 +1150,18 @@ export default function YouTab() {
     return getChartRuler(chartData.planets, effectiveHouses);
   }, [chartData, effectiveHouses]);
 
+  // Compute Sect Light (day/night chart)
+  const sectLight = useMemo<SectLightInfo | null>(() => {
+    if (!chartData) return null;
+    return getSectLight(chartData.planets, effectiveHouses);
+  }, [chartData, effectiveHouses]);
+
+  // Compute Lord of the Year (annual profection)
+  const lordOfTheYear = useMemo<LordOfTheYearInfo | null>(() => {
+    if (!chartData?.birthDate) return null;
+    return getLordOfTheYear(chartData.birthDate, chartData.planets, effectiveHouses);
+  }, [chartData, effectiveHouses]);
+
   const contradictions = useMemo<Contradiction[]>(() => {
     if (!chartData) return [];
     return detectContradictions(chartData.planets);
@@ -1297,6 +1310,67 @@ export default function YouTab() {
         </div>
       )}
 
+      {/* ═══ SECT LIGHT ═══ */}
+      {sectLight && (
+        <div className="rounded-xl border border-amber/15 bg-amber/5 px-4 py-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-amber text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+              {sectLight.sectLight === "Sun" ? "☉" : "☽"}
+            </span>
+            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
+              Your sect light · {sectLight.sectLight}
+            </span>
+            <InfoTip
+              term="Sect Light"
+              explanation="Sect divides charts into day and night teams. Your sect light is the leader of your team — the Sun for day charts, the Moon for night charts. It's the planet with the most natural authority in your chart. Most apps ignore sect entirely, but it changes how every other planet performs."
+            />
+          </div>
+          <h3
+            className="text-lg text-foreground mb-2"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight} in {SIGN_FULL[sectLight.sectLightSign] || sectLight.sectLightSign}
+          </h3>
+          <p className="text-foreground/70 text-sm leading-relaxed">
+            {sectLight.summary}
+          </p>
+          <div className="mt-3 flex gap-3 text-xs text-foreground/40">
+            <span>Benefic: <span className="text-foreground/60">{sectLight.benefic}</span></span>
+            <span>Malefic: <span className="text-foreground/60">{sectLight.malefic}</span></span>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ LORD OF THE YEAR ═══ */}
+      {lordOfTheYear && (
+        <div className="rounded-xl border border-[#6b8a9e]/15 bg-[#6b8a9e]/5 px-4 py-4 mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[#6b8a9e] text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+              {PLANET_SYMBOLS[lordOfTheYear.lordPlanet] || "★"}
+            </span>
+            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
+              Lord of the Year · {lordOfTheYear.lordPlanet}
+            </span>
+            <InfoTip
+              term="Lord of the Year"
+              explanation="Every birthday, your chart 'profects' — advancing one house. The planet that rules the sign on that house becomes your Lord of the Year. It's the planet running the show for the next 12 months. Transits to this planet hit harder, returns of this planet mark turning points, and its natal condition describes your year's flavor."
+            />
+          </div>
+          <h3
+            className="text-lg text-foreground mb-2"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house year
+          </h3>
+          <p className="text-foreground/70 text-sm leading-relaxed">
+            {lordOfTheYear.summary}
+          </p>
+          <p className="mt-2 text-xs text-foreground/35">
+            Changes on your next birthday · {lordOfTheYear.nextBirthday}
+          </p>
+        </div>
+      )}
+
       {/* ═══ STELLIUMS ═══ */}
       {stelliums.length > 0 && (
         <div className="flex flex-col gap-2 mb-8">
@@ -1339,21 +1413,28 @@ export default function YouTab() {
       </h2>
 
       <div className="flex flex-col gap-2 mb-8">
-        {planets.map((planet) => (
-          <PlacementAccordion
-            key={planet.name}
-            planetName={planet.name}
-            planetSymbol={PLANET_SYMBOLS[planet.name] || "?"}
-            sign={planet.sign}
-            position={planet.position}
-            house={planet.house}
-            retrograde={planet.retrograde}
-            isOpen={openPlanet === planet.name}
-            onToggle={() =>
-              setOpenPlanet(openPlanet === planet.name ? null : planet.name)
-            }
-          />
-        ))}
+        {planets.map((planet) => {
+          const rulerTags: string[] = [];
+          if (chartRuler && planet.name === chartRuler.planet) rulerTags.push("CHART RULER");
+          if (sectLight && planet.name === sectLight.sectLight) rulerTags.push("SECT LIGHT");
+          if (lordOfTheYear && planet.name === lordOfTheYear.lordPlanet) rulerTags.push("LORD OF THE YEAR");
+          return (
+            <PlacementAccordion
+              key={planet.name}
+              planetName={planet.name}
+              planetSymbol={PLANET_SYMBOLS[planet.name] || "?"}
+              sign={planet.sign}
+              position={planet.position}
+              house={planet.house}
+              retrograde={planet.retrograde}
+              isOpen={openPlanet === planet.name}
+              onToggle={() =>
+                setOpenPlanet(openPlanet === planet.name ? null : planet.name)
+              }
+              tags={rulerTags.length > 0 ? rulerTags : undefined}
+            />
+          );
+        })}
 
         {/* ═══ RISING SIGN ═══ */}
         {effectiveBigThree.rising && (
