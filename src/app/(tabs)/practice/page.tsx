@@ -61,12 +61,18 @@ class WizardErrorBoundary extends Component<
       return (
         <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
           <p className="text-foreground/50 text-sm text-center">Something went wrong loading the wizard.</p>
-          <p className="text-foreground/25 text-xs text-center">{this.state.error}</p>
+          <p className="text-foreground/25 text-xs text-center break-all max-w-[300px]">{this.state.error}</p>
           <button
             onClick={() => { this.setState({ hasError: false, error: "" }); this.props.onReset(); }}
             className="px-5 py-2.5 rounded-xl text-sm border border-foreground/15 text-foreground/50"
           >
             Back to My Practice
+          </button>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: "" }); }}
+            className="px-5 py-2.5 rounded-xl text-xs text-foreground/30"
+          >
+            Try again
           </button>
         </div>
       );

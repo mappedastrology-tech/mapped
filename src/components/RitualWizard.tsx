@@ -163,7 +163,12 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     setGeneratedRitual(null);
     setSaved(false);
 
-    const energy = getDailyEnergy(new Date());
+    let energy;
+    try {
+      energy = getDailyEnergy(new Date());
+    } catch {
+      energy = { moonPhase: { label: "Unknown", phase: "full" } };
+    }
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
     try {
@@ -229,13 +234,19 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
         return;
       }
 
-      // Parse the output
+      // Parse the output — guard against null values
+      if (!bodyLevel || minutes === null || !timing) {
+        setError("Missing inputs. Please go back and complete all steps.");
+        setStep("result");
+        return;
+      }
+
       const ritual = parseWizardOutput(fullText, {
         intentionText: intention,
-        bodyLevel: bodyLevel!,
+        bodyLevel,
         tools,
-        minutes: minutes!,
-        timing: timing!,
+        minutes,
+        timing,
       });
 
       if (ritual) {
@@ -553,9 +564,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
           <button
             onClick={() => {
-              if (timing) generateRitual();
+              if (timing && bodyLevel && minutes !== null && intention.trim()) generateRitual();
             }}
-            disabled={!timing}
+            disabled={!timing || !bodyLevel || minutes === null || !intention.trim()}
             className="mt-4 w-full py-3.5 rounded-xl text-[14px] font-medium transition-all active:scale-[0.97] disabled:opacity-30"
             style={{ backgroundColor: "var(--terracotta)", color: "#F2E8D5" }}
           >
