@@ -16,7 +16,7 @@
  * 8. Weekly/monthly reports when available
  */
 
-import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { getDailyEnergy, getMoonPhaseImage } from "@/lib/celestialCalendar";
 import Image from "next/image";
 import {
@@ -39,48 +39,32 @@ import {
 } from "@/lib/customRituals";
 import Link from "next/link";
 
-// Wizard loader — loads the wizard component on demand via dynamic import
-// so the wizard module is NEVER part of the page bundle. Any load failure
-// is caught and shown as a message instead of crashing the page.
-interface WizardProps { onClose: () => void; onSave: (r: CustomRitual) => void }
-
-function WizardLoader({ onClose, onSave }: WizardProps) {
-  const [Wizard, setWizard] = useState<ComponentType<WizardProps> | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    import("@/components/RitualWizard")
-      .then((mod) => { if (!cancelled) setWizard(() => mod.default); })
-      .catch((err) => { if (!cancelled) setLoadError(err?.message || String(err)); });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loadError) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
-        <p className="text-foreground/50 text-sm text-center">Something went wrong loading the wizard.</p>
-        <p className="text-foreground/25 text-xs text-center break-all max-w-[300px]">{loadError}</p>
-        <button
-          onClick={onClose}
-          className="px-5 py-2.5 rounded-xl text-sm border border-foreground/15 text-foreground/50"
-        >
-          Back to My Practice
-        </button>
-      </div>
-    );
-  }
-
-  if (!Wizard) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-terracotta/30 border-t-terracotta animate-spin" />
-        <p className="text-foreground/30 text-xs">Loading wizard…</p>
-      </div>
-    );
-  }
-
-  return <Wizard onClose={onClose} onSave={onSave} />;
+// DIAGNOSTIC: dead-simple inline wizard placeholder.
+// Zero imports, zero dynamic loading, zero external dependencies.
+// If THIS still crashes, the problem is NOT the wizard — it's elsewhere.
+function WizardPlaceholder({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ padding: 40, textAlign: "center" }}>
+      <h2 style={{ fontSize: 20, marginBottom: 16 }}>Wizard loaded OK</h2>
+      <p style={{ fontSize: 14, opacity: 0.6, marginBottom: 24 }}>
+        If you can see this, the wizard mounting works fine.
+        The crash was in the wizard component itself.
+      </p>
+      <button
+        onClick={onClose}
+        style={{
+          padding: "10px 24px",
+          borderRadius: 12,
+          border: "1px solid #ccc",
+          background: "none",
+          fontSize: 14,
+          cursor: "pointer",
+        }}
+      >
+        Back
+      </button>
+    </div>
+  );
 }
 
 export default function PracticePage() {
@@ -123,9 +107,8 @@ export default function PracticePage() {
   if (showWizard) {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
-        <WizardLoader
+        <WizardPlaceholder
           onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
-          onSave={handleWizardSave}
         />
       </main>
     );
