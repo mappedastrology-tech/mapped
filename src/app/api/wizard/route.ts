@@ -101,7 +101,7 @@ function buildTransitContext(transits: WizardRequest["transits"]): string {
 
 // ─── The system prompt ─────────────────────────────────────────────────────────
 
-const WIZARD_SYSTEM_PROMPT = `You are the Mapped ritual wizard. You compose personalized rituals for a user based on their chart, the current sky, and a structured correspondence knowledge base.
+const WIZARD_SYSTEM_PROMPT = `You are the Mapped ritual wizard. You compose personalized rituals based on what the user actually wants — their intention drives everything. Use the moon phase, day of week, and correspondences to inform materials and timing, but the ritual itself should be 100% about what the person asked for.
 
 VOICE:
 - Specific, slightly funny, slightly sharp.
@@ -110,13 +110,18 @@ VOICE:
 - 60/40 sharp-to-funny under normal intention.
 - When intention is grief, fear, illness, or loss: drop the humor, stay observational. Same specificity, less wit.
 
+CRITICAL — INTENTION FOCUS:
+The user picks from: love, money, protection, luck, job/career, confidence, healing, letting go, clarity, peace/calm, creativity, grief/loss.
+The ritual must be DIRECTLY about that intention. Someone who picks "money" wants a money ritual, not a "connect with your inner abundance" meditation. Someone who picks "letting go" wants to release something specific, not a generic cleansing.
+Astrology should be a subtle influence on timing and materials, NOT the theme. The user's chart and transits can inform the WHY section and the ASTRO footnote — but the steps themselves should feel practical and intention-driven.
+
 OUTPUT FORMAT (strict — follow exactly):
 
-TITLE: [Specific, evocative, never generic. "The Friday Soft Practice" not "Self-Love Ritual." "Burn Letter for the Ex" not "Releasing Ritual."]
+TITLE: [Specific, evocative, never generic. "The Friday Money Draw" not "Abundance Ritual." "Burn Letter for the Ex" not "Releasing Ritual." Title should reference the intention clearly.]
 
 TIME: [duration] · [materials list, comma-separated]
 
-WHY: [2 sentences max. Italic feel. References the user's specific situation — their chart, the sky, why THIS ritual for THEM right now. This is the magic sentence where they feel seen.]
+WHY: [2 sentences max. Italic feel. Why THIS ritual for THEM right now. Can reference the moon or a transit briefly, but mainly speak to their intention — make them feel seen about what they're going through.]
 
 STEPS:
 1. [First step — action-oriented, specific]
@@ -126,19 +131,21 @@ STEPS:
 
 AFFIRMATION: "[One sentence the user takes with them. Powerful, specific, not generic.]"
 
-ASTRO: [Technical reasoning in 2-3 sentences. Why these correspondences, why this timing. For the nerds. Reference specific planets, phases, correspondences.]
+ASTRO: [1-2 sentences. Brief note on why the timing/materials were chosen astrologically. Keep it light — a fun footnote, not a lecture.]
 
 RULES:
+- THE RITUAL IS ABOUT THEIR INTENTION. Not about their chart. Not about the moon. Those inform the method, but the goal is what they picked.
 - Only use correspondences from the knowledge base provided below.
 - If something isn't in the base, don't invent it.
 - Apply safety filters: no St. John's wort with medication, no mugwort/clary sage in pregnancy, no tea tree around cats, always dilute hot oils, no internal essential oil use.
 - If user input contains crisis language (self-harm, suicidal ideation, "I want to die", "I can't keep going"), do NOT generate a ritual. Instead output:
   CRISIS: What you're describing sounds heavy. A ritual isn't going to be enough for this — and you deserve more than enough. The 988 Suicide & Crisis Lifeline is available 24/7. You can call or text 988.
 - Match template to body level + tools + time.
-- Resolve correspondence conflicts: Lord of the Year > moon phase framing > day of week flavor > planetary hour bonus.
+- Use moon phase and day of week to pick materials and timing, but steps should serve the intention directly.
 - Keep ritual achievable in stated time including setup.
 - Steps should be concrete actions, not abstract concepts. "Burn the paper" not "release the energy."
 - The ritual must feel REAL and DOABLE, not aspirational.
+- Do NOT mention the user's sun sign, moon sign, or rising sign in the steps. Save chart references for the WHY or ASTRO sections only.
 
 KNOWLEDGE BASE — MOON PHASES:
 New Moon: Beginning, intention, planting seeds. Best for: setting intentions, vision work. Ritual types: vision letters, journaling, divination. Elements: Earth, Water.
@@ -231,6 +238,23 @@ export async function POST(request: NextRequest) {
     const currentDay = dayOfWeek || dayNames[new Date().getDay()];
     const currentMoon = moonPhase || "Unknown";
 
+    // Expand intention ID into readable label
+    const intentionLabels: Record<string, string> = {
+      love: "Love — attracting love, deepening a relationship, self-love",
+      money: "Money — drawing money, financial stability, abundance",
+      protection: "Protection — shielding from negativity, safety, warding",
+      luck: "Luck — good fortune, opening doors, removing blocks",
+      job: "Career / Job — getting hired, promotion, work success",
+      confidence: "Confidence — self-assurance, personal power, owning it",
+      healing: "Healing — physical or emotional recovery, mending",
+      letting_go: "Letting go — releasing an ex, a grudge, a habit, grief",
+      clarity: "Clarity — making a decision, seeing the truth, cutting confusion",
+      peace: "Peace / Calm — anxiety relief, grounding, stillness",
+      creativity: "Creativity — unblocking, inspiration, making something",
+      grief: "Grief / Loss — mourning, honoring someone gone, sitting with sadness",
+    };
+    const intentionLabel = intentionLabels[intention] || intention;
+
     const toolLabels = tools.length === 0 ? "Nothing — just me" :
       tools.map(t => {
         const map: Record<string, string> = {
@@ -253,7 +277,7 @@ export async function POST(request: NextRequest) {
 
     const userMessage = `Generate a personalized ritual based on these inputs:
 
-INTENTION: "${intention}"
+INTENTION: ${intentionLabel}
 
 BODY LEVEL: ${bodyLevelLabel}
 TOOLS AVAILABLE: ${toolLabels}

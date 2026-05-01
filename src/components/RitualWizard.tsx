@@ -360,10 +360,10 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           </h2>
 
           <p className="text-foreground/45 text-[13px] leading-relaxed text-center max-w-[300px] mb-2">
-            Tell her what you&apos;re working on, what you have access to, and how much time you&apos;ve got.
+            Pick what you need, what you&apos;ve got on hand, and how much time — she&apos;ll write you something real.
           </p>
           <p className="text-foreground/35 text-[12px] leading-relaxed text-center max-w-[280px] mb-8">
-            She&apos;ll pull from the moon phase, today&apos;s planetary ruler, your chart, and traditional correspondences — and write you a ritual that&apos;s actually for you.
+            The moon and the day pick the materials. You pick the goal.
           </p>
 
           <p className="text-foreground/25 text-[11px] italic mb-8">No two rituals are the same.</p>
@@ -382,6 +382,21 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   // ─── Step: Q1 — Intent ─────────────────────────────────────────────────
 
+  const INTENTION_OPTIONS = [
+    { id: "love", label: "Love", icon: "💗" },
+    { id: "money", label: "Money", icon: "💰" },
+    { id: "protection", label: "Protection", icon: "🛡" },
+    { id: "luck", label: "Luck", icon: "🍀" },
+    { id: "job", label: "Career / Job", icon: "💼" },
+    { id: "confidence", label: "Confidence", icon: "🔥" },
+    { id: "healing", label: "Healing", icon: "🩹" },
+    { id: "letting_go", label: "Letting go", icon: "🍂" },
+    { id: "clarity", label: "Clarity", icon: "🔮" },
+    { id: "peace", label: "Peace / Calm", icon: "🕊" },
+    { id: "creativity", label: "Creativity", icon: "🎨" },
+    { id: "grief", label: "Grief / Loss", icon: "🖤" },
+  ];
+
   if (step === "q1_intent") {
     return (
       <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
@@ -392,21 +407,29 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           Back
         </button>
 
-        {wizardBubble("What's pulling at you? What is this ritual for?")}
+        {wizardBubble("What's this ritual for?")}
 
         <div className="pl-7">
-          <textarea
-            ref={inputRef}
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-            placeholder="I need to let go of my ex... I want to feel more confident... My grandma just died..."
-            className="w-full bg-card/50 border border-foreground/15 rounded-xl px-4 py-3 text-foreground text-[14px] placeholder:text-foreground/20 resize-none outline-none focus:border-terracotta/30 transition-colors"
-            rows={3}
-          />
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {INTENTION_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setIntention(opt.id)}
+                className={`flex flex-col items-center gap-1.5 py-3.5 rounded-xl border text-[12px] transition-all active:scale-[0.97] ${
+                  intention === opt.id
+                    ? "bg-terracotta/10 border-terracotta/25 text-foreground"
+                    : "bg-card/40 border-foreground/12 text-foreground/55 hover:border-foreground/20"
+                }`}
+              >
+                <span className="text-[20px]">{opt.icon}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
 
           {nextButton(
             () => setStep("q2_body"),
-            !intention.trim()
+            !intention
           )}
         </div>
       </div>
