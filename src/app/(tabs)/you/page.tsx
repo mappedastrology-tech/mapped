@@ -20,6 +20,7 @@ import InfoTip from "@/components/InfoTip";
 import ShareCard from "@/components/ShareCard";
 import { getGlossaryEntry } from "@/lib/glossary";
 import { supabase } from "@/lib/supabase";
+import { getMeanLilithData } from "@/lib/astro/lilithClient";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
@@ -160,8 +161,9 @@ function elementColor(sign: string): string {
 }
 
 // Maps Kerykeion house strings like "Fifth_House" to numbers
-function houseToNum(house: string | null): number | null {
-  if (!house) return null;
+function houseToNum(house: string | number | null | undefined): number | null {
+  if (house == null) return null;
+  if (typeof house === "number") return house >= 1 && house <= 12 ? house : null;
   const map: Record<string, number> = {
     First: 1, Second: 2, Third: 3, Fourth: 4, Fifth: 5, Sixth: 6,
     Seventh: 7, Eighth: 8, Ninth: 9, Tenth: 10, Eleventh: 11, Twelfth: 12,
@@ -1180,7 +1182,20 @@ export default function YouTab() {
     );
   }
 
-  const { name, bigThree, planets, houses, unknownTime, risingCusp, specialPoints = [], midheaven } = chartData;
+  const { name, bigThree, planets, houses, unknownTime, risingCusp, specialPoints: rawSpecialPoints = [], midheaven } = chartData;
+
+  // Ensure Lilith is always present — calculate client-side if missing from saved data
+  const specialPoints = useMemo(() => {
+    const hasLilith = rawSpecialPoints.some((p) => p.name === "Lilith");
+    if (hasLilith) return rawSpecialPoints;
+    if (!chartData.birthDate) return rawSpecialPoints;
+    try {
+      const lilith = getMeanLilithData(chartData.birthDate, chartData.birthTime || undefined);
+      return [...rawSpecialPoints, lilith];
+    } catch {
+      return rawSpecialPoints;
+    }
+  }, [rawSpecialPoints, chartData.birthDate, chartData.birthTime]);
 
   return (
     <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
