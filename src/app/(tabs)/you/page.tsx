@@ -206,22 +206,22 @@ const NODE_HOUSE: Record<number, string> = {
 };
 
 const LILITH_DESCRIPTIONS: Record<string, { shadow: string; power: string; reclamation: string }> = {
-  Aries: {
+  Ari: {
     shadow: "You were shamed for being too aggressive, too selfish, too loud. Somewhere you learned that wanting things for yourself was dangerous — so you either suppressed your fire or let it burn uncontrollably.",
     power: "Your raw, unapologetic desire to exist on your own terms. When you stop asking permission to take up space, you become magnetic. Your anger isn't a flaw — it's fuel.",
     reclamation: "Practice putting yourself first without guilt. Say 'I want' out loud. Let yourself be the main character. The people who can't handle your fire were never your people.",
   },
-  Taurus: {
+  Tau: {
     shadow: "You were made to feel guilty about pleasure, comfort, or wanting beautiful things. Maybe you were told you were too materialistic, too indulgent, too slow. So you either denied yourself or hoarded out of fear.",
     power: "Your sensuality, your relationship with the physical world, and your refusal to rush. You know that the body is wise and pleasure is sacred — not something to earn or apologize for.",
     reclamation: "Let yourself enjoy things fully without justifying it. Touch, taste, rest, beauty — these aren't rewards for productivity. They're your birthright. Build a life that feels as good as it looks.",
   },
-  Gemini: {
+  Gem: {
     shadow: "You were told you talk too much, think too fast, or can't be taken seriously. Your curiosity was treated as scattered. Your truth-telling made people uncomfortable, so you learned to filter yourself or stay quiet.",
     power: "Your mind moves like lightning and you see connections others miss. When you stop dumbing yourself down, your words become spells. You can name what everyone else is afraid to say.",
     reclamation: "Stop editing yourself for comfort. Say the thing. Write the thing. Let your mind wander where it wants. The people who call you 'too much' are really saying you make them feel like not enough.",
   },
-  Cancer: {
+  Can: {
     shadow: "Your need for emotional safety was used against you. You were called too sensitive, too clingy, too needy. So you either built walls or became the caretaker who never gets taken care of.",
     power: "Your emotional depth is supernatural. You feel what others can't even name. When you stop apologizing for your sensitivity, it becomes your greatest strength — you can hold space that heals people.",
     reclamation: "Let yourself need people. Let yourself be held. Your vulnerability isn't weakness — it's the bravest thing you do. Set boundaries around who gets access to your softness, but never stop being soft.",
@@ -231,37 +231,37 @@ const LILITH_DESCRIPTIONS: Record<string, { shadow: string; power: string; recla
     power: "Your creative fire and magnetic presence. When you stop performing for approval and start creating for joy, you become impossible to look away from. Your light isn't stealing anyone else's.",
     reclamation: "Create without permission. Be visible without apology. Let yourself be adored. The shame you feel about wanting to be seen is not yours — it was put there by someone who was afraid of their own light.",
   },
-  Virgo: {
+  Vir: {
     shadow: "You were criticized relentlessly, so you became your own harshest critic first — that way no one could hurt you worse than you hurt yourself. Your body, your work, your worth were never 'good enough.'",
     power: "Your discernment is razor-sharp and your devotion to craft is unmatched. When you turn that analytical mind toward building instead of destroying yourself, you create things that actually change people's lives.",
     reclamation: "Stop trying to be perfect. Let things be messy and still call them good. Your worth isn't measured by your usefulness. Rest is not laziness. You are allowed to be a work in progress.",
   },
-  Libra: {
+  Lib: {
     shadow: "You were punished for having your own desires, so you became a mirror — reflecting what everyone else wanted to see. You lost yourself in relationships, kept the peace at the cost of your truth.",
     power: "You understand human dynamics at a level most people can't access. When you stop people-pleasing and start choosing yourself, your natural charm becomes a force of nature — not a survival strategy.",
     reclamation: "Disagree out loud. Choose your own preference. Let relationships be disrupted by your honesty. The right people will stay. The ones who only loved your compliance were never loving you.",
   },
-  Scorpio: {
+  Sco: {
     shadow: "Your intensity scared people. Your emotions were 'too much,' your sexuality was dangerous, your knowing was unsettling. You learned to hide your power or weaponize it before anyone could use it against you.",
     power: "You see through everything and everyone. Your emotional and psychic depth is extraordinary. When you stop fearing your own darkness, you become a force of transformation — alchemizing pain into wisdom.",
     reclamation: "Stop hiding what you know. Let yourself be fully seen in your intensity. Your darkness is not a disease — it's depth. Trust your instincts, even when they make others uncomfortable. Especially then.",
   },
-  Sagittarius: {
+  Sag: {
     shadow: "Your wildness, your beliefs, your need for freedom were treated as irresponsible or dangerous. Someone tried to cage you — intellectually, spiritually, or literally — and part of you is still running from that cage.",
     power: "Your refusal to be confined by anyone's version of truth but your own. When you stop running and start standing in your beliefs, your vision becomes prophetic. You see futures others can't imagine.",
     reclamation: "Believe something unpopular. Go somewhere unfamiliar. Say what you actually think about God, meaning, and purpose. Your restlessness isn't a problem to solve — it's a compass pointing toward freedom.",
   },
-  Capricorn: {
+  Cap: {
     shadow: "You were forced to grow up too fast, to be responsible before you were ready. Authority figures failed you, so you became your own authority — but the cost was joy, play, and softness.",
     power: "Your endurance and self-discipline are legendary. When you stop punishing yourself with productivity and start building from desire instead of duty, your ambition creates lasting legacy — not just exhaustion.",
     reclamation: "Let yourself be unproductive. Play without purpose. Admit you're tired. Your worth is not your output. You don't need to earn rest, love, or respect — you already deserve them by existing.",
   },
-  Aquarius: {
+  Aqu: {
     shadow: "Your uniqueness was treated as a threat. You were excluded, ostracized, or made to feel alien for being different. So you either performed normalcy or doubled down on detachment as armor.",
     power: "Your ability to see systems that others are blind to and imagine alternatives that don't exist yet. When you stop performing belonging and start building it on your terms, you become a revolutionary.",
     reclamation: "Stop trying to fit in. Let yourself be the strange one. Your alienation isn't a wound to heal — it's a perspective that the world desperately needs. Build your own community if the existing ones don't fit.",
   },
-  Pisces: {
+  Pis: {
     shadow: "Your boundaries were dissolved before you could build them. You absorbed everyone's pain and lost track of where you end and others begin. Your spiritual gifts were dismissed as delusion or weakness.",
     power: "Your connection to the unseen world is real and extraordinary. When you stop drowning in everyone else's emotions and learn to channel that sensitivity, you become a visionary, a healer, a mystic.",
     reclamation: "Your feelings are not illusions. Your dreams are not escapism. Build boundaries not as walls but as containers for your gifts. You are not too much — the world is just not gentle enough for what you carry.",
