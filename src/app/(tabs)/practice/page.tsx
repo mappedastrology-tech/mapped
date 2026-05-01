@@ -150,6 +150,9 @@ export default function PracticePage() {
         </div>
         <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
 
+        {/* VERSION MARKER — delete after debugging */}
+        <p className="text-red-500 text-xs mb-2">BUILD: may1-v6-placeholder</p>
+
         {/* Wizard entry */}
         <WizardEntryButton onClick={() => setShowWizard(true)} />
 
