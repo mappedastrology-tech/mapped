@@ -19,6 +19,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { getDailyEnergy, getMoonPhaseImage } from "@/lib/celestialCalendar";
 import Image from "next/image";
+import RitualWizard from "@/components/RitualWizard";
 import {
   getAllCompletions,
   getCompletionsSince,
@@ -102,14 +103,11 @@ export default function PracticePage() {
   // ─── Show wizard if active ──────────────────────────────────────────────
   if (showWizard) {
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <h2 style={{ fontSize: 20, marginBottom: 16 }}>It worked!</h2>
-        <button
-          onClick={() => { setShowWizard(false); refreshCustomRituals(); }}
-          style={{ padding: "10px 24px", borderRadius: 12, border: "1px solid #ccc", background: "none", fontSize: 14 }}
-        >
-          Back
-        </button>
+      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+        <RitualWizard
+          onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
+          onSave={handleWizardSave}
+        />
       </div>
     );
   }
@@ -125,9 +123,6 @@ export default function PracticePage() {
           </h1>
         </div>
         <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
-
-        {/* VERSION MARKER — delete after debugging */}
-        <p className="text-red-500 text-xs mb-2">BUILD: may1-v11-hooks-fixed</p>
 
         {/* Wizard entry */}
         <WizardEntryButton onClick={() => setShowWizard(true)} />
