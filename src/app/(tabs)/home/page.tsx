@@ -940,21 +940,55 @@ export default function HomeTab() {
                   onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
                   className="w-full active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-terracotta/25">
-                    {getCardImagePath(dailyTarot.id) ? (
-                      <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
-                        <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
+                  {expandedCard === "tarot" ? (
+                    /* Expanded: small image left, info right */
+                    <div className="flex gap-3 items-start">
+                      <div className="w-24 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden relative border border-terracotta/25">
+                        {getCardImagePath(dailyTarot.id) ? (
+                          <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-terracotta/15 to-amber/10">
+                            <p className="text-foreground text-[10px] text-center">{dailyTarot.name}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                    {dailyTarot.name}
-                  </p>
-                  <p className="text-foreground/40 text-[9px] text-center">
-                    {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
-                  </p>
+                      <div className="flex-1 text-left pt-1">
+                        <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                          {dailyTarot.name}
+                        </p>
+                        <p className="text-foreground/40 text-[10px] mt-0.5">
+                          {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
+                        </p>
+                        {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
+                          <div className="flex items-center gap-1.5 text-[9px] text-foreground/25 mt-2">
+                            {dailyTarot.element && <span>{dailyTarot.element}</span>}
+                            {dailyTarot.zodiac && <><span>·</span><span>{dailyTarot.zodiac}</span></>}
+                            {dailyTarot.planet && <><span>·</span><span>{dailyTarot.planet}</span></>}
+                          </div>
+                        )}
+                        <p className="text-foreground/20 text-[9px] mt-2">tap to collapse</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Collapsed: card image fills column */
+                    <>
+                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-terracotta/25">
+                        {getCardImagePath(dailyTarot.id) ? (
+                          <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-cover" draggable={false} />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
+                            <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                        {dailyTarot.name}
+                      </p>
+                      <p className="text-foreground/40 text-[9px] text-center">
+                        {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
+                      </p>
+                    </>
+                  )}
                 </button>
 
                 {expandedCard === "tarot" && (
@@ -966,13 +1000,6 @@ export default function HomeTab() {
                       <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">If reversed</p>
                       <p className="text-foreground/50 text-[11px] leading-relaxed">{dailyTarot.reversedMeaning}</p>
                     </div>
-                    {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
-                      <div className="flex items-center gap-2 text-[10px] text-foreground/30">
-                        {dailyTarot.element && <span>{dailyTarot.element}</span>}
-                        {dailyTarot.zodiac && <><span>·</span><span>{dailyTarot.zodiac}</span></>}
-                        {dailyTarot.planet && <><span>·</span><span>{dailyTarot.planet}</span></>}
-                      </div>
-                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={(e) => {
@@ -1074,15 +1101,36 @@ export default function HomeTab() {
                   onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
                   className="w-full active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-sage/25">
-                    <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
-                  </div>
-                  <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                    {dailyOracle.animal}
-                  </p>
-                  <p className="text-foreground/40 text-[9px] text-center">
-                    {dailyOracle.keyword}
-                  </p>
+                  {expandedCard === "oracle" ? (
+                    /* Expanded: small image left, info right */
+                    <div className="flex gap-3 items-start">
+                      <div className="w-24 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden relative border border-sage/25">
+                        <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
+                      </div>
+                      <div className="flex-1 text-left pt-1">
+                        <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                          {dailyOracle.animal}
+                        </p>
+                        <p className="text-foreground/40 text-[10px] mt-0.5">
+                          {dailyOracle.keyword}
+                        </p>
+                        <p className="text-foreground/20 text-[9px] mt-2">tap to collapse</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Collapsed: card image fills column */
+                    <>
+                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden relative border border-sage/25">
+                        <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-cover" draggable={false} />
+                      </div>
+                      <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
+                        {dailyOracle.animal}
+                      </p>
+                      <p className="text-foreground/40 text-[9px] text-center">
+                        {dailyOracle.keyword}
+                      </p>
+                    </>
+                  )}
                 </button>
 
                 {expandedCard === "oracle" && (
@@ -1152,18 +1200,6 @@ export default function HomeTab() {
             )}
           </div>
         </div>
-
-        {/* Collapse hint when a card is expanded */}
-        {expandedCard && (
-          <div className="-mt-5 mb-5 text-center">
-            <button
-              onClick={() => setExpandedCard(null)}
-              className="text-foreground/25 text-[10px] active:text-foreground/40 transition-colors"
-            >
-              tap card to collapse
-            </button>
-          </div>
-        )}
 
         {/* ─── On the horizon — moons + celestial calendar ─── */}
         <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
