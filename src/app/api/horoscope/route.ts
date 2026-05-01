@@ -184,6 +184,12 @@ NOW make it personal. Their rising sign is the lens — it determines which hous
 - "avoid" = 3-4 short phrases of what to watch for. Feel like gentle warnings, not doom.
 - Both must connect to the actual chart + sky data. No generic advice.
 
+## CRITICAL: Variety & avoiding repetition
+- If the user has a stellium (3+ planets in one sign/house), do NOT default to that house theme every day. The stellium is always there — it's background noise. Focus on what's DIFFERENT today: which transits are hitting OTHER parts of the chart? What's the moon activating that ISN'T the stellium?
+- Rotate your focus across different life areas. If yesterday might have been about relationships, today should be about creativity, work, inner world, or something else.
+- The day's story comes from what's CHANGING (transits, moon phase), not what's permanently strong in the chart.
+- Only mention the stellium house if a specific transit is actively hitting planets IN that stellium today.
+
 ## CRITICAL: Accuracy
 - ONLY reference placements that appear in the chart data below. If you say "your Venus in the 5th house," Venus MUST be in the 5th house.
 - When mentioning transits, distinguish clearly: "Venus is moving through Taurus right now" (transit) vs "your natal Venus" (birth chart).
@@ -227,7 +233,26 @@ export async function POST(request: NextRequest) {
     contextParts.push(buildCelestialBlock(celestial));
     if (transits) contextParts.push(buildTransitBlock(transits));
 
-    const fullSystem = `${HOROSCOPE_SYSTEM_PROMPT}\n\n---\n\n${contextParts.join("\n\n")}`;
+    // Add variety hint to prevent repetitive stellium focus
+    const LIFE_THEMES = [
+      "identity, appearance, personal energy",
+      "money, self-worth, what you value",
+      "communication, siblings, learning, short trips",
+      "home, family, roots, inner world",
+      "creativity, romance, fun, self-expression",
+      "health, routines, work, daily life",
+      "relationships, partnerships, one-on-one connections",
+      "transformation, intimacy, shared resources, endings",
+      "travel, higher learning, beliefs, expansion",
+      "career, public image, ambition, legacy",
+      "friends, community, hopes, future vision",
+      "spirituality, solitude, dreams, the unconscious",
+    ];
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const themeIndex = dayOfYear % 12;
+    const varietyHint = `\n\n## Today's focus suggestion\nToday, try to center the reading around themes of: ${LIFE_THEMES[themeIndex]}. Only override this if a transit is STRONGLY hitting a different area (within 1° orb).`;
+
+    const fullSystem = `${HOROSCOPE_SYSTEM_PROMPT}\n\n---\n\n${contextParts.join("\n\n")}${varietyHint}`;
 
     const client = new Anthropic({ apiKey });
 
