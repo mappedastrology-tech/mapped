@@ -1,21 +1,22 @@
 "use client";
 
 /**
- * My Practice — the anti-streak cycle tracking view.
+ * My Practice — the anti-streak cycle tracking view + Ritual Wizard.
  *
- * Source: Mapped_Cycles_Tracking.md
+ * Source: Mapped_Cycles_Tracking.md, Mapped_Ritual_Wizard_Brief.md
  *
  * Shows:
- * 1. Current cycle (moon phase + rituals this cycle)
- * 2. Lunar cycles completed
- * 3. Seasonal cycles (with rest toggle)
- * 4. Zodiac season wheel
- * 5. Transits witnessed
- * 6. Totals (rituals, most-used mood word, most-used ritual)
- * 7. Weekly/monthly reports when available
+ * 1. + Create a custom ritual (wizard entry)
+ * 2. Custom Rituals (saved from wizard)
+ * 3. Current cycle (moon phase + rituals this cycle)
+ * 4. Seasonal cycles (with rest toggle)
+ * 5. Zodiac season wheel
+ * 6. Transits witnessed
+ * 7. Totals (rituals, most-used mood word, most-used ritual)
+ * 8. Weekly/monthly reports when available
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import {
   getAllCompletions,
@@ -29,6 +30,13 @@ import {
   markCycleAsRest,
   type CompletionRecord,
 } from "@/lib/feedback";
+import {
+  getCustomRituals,
+  deleteCustomRitual,
+  toggleRitualRotation,
+  type CustomRitual,
+} from "@/lib/customRituals";
+import RitualWizard from "@/components/RitualWizard";
 import Link from "next/link";
 
 export default function PracticePage() {
@@ -45,6 +53,37 @@ export default function PracticePage() {
   const practitionerType = useMemo(() => detectPractitionerType(completions), [completions]);
 
   const [showReport, setShowReport] = useState<"weekly" | "monthly" | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [customRituals, setCustomRituals] = useState<CustomRitual[]>(() => getCustomRituals());
+  const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
+
+  const refreshCustomRituals = useCallback(() => {
+    setCustomRituals(getCustomRituals());
+  }, []);
+
+  const handleWizardSave = useCallback((ritual: CustomRitual) => {
+    refreshCustomRituals();
+  }, [refreshCustomRituals]);
+
+  const handleDeleteRitual = useCallback((id: string) => {
+    deleteCustomRitual(id);
+    refreshCustomRituals();
+  }, [refreshCustomRituals]);
+
+  const handleToggleRotation = useCallback((id: string) => {
+    toggleRitualRotation(id);
+    refreshCustomRituals();
+  }, [refreshCustomRituals]);
+
+  // ─── Show wizard if active ──────────────────────────────────────────────
+  if (showWizard) {
+    return (
+      <RitualWizard
+        onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
+        onSave={handleWizardSave}
+      />
+    );
+  }
 
   // ─── Derived stats ───────────────────────────────────────────────────
 
@@ -80,7 +119,21 @@ export default function PracticePage() {
             My Practice
           </h1>
         </div>
-        <p className="text-foreground/40 text-sm mb-8">Your cycles, your pace.</p>
+        <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
+
+        {/* Wizard entry */}
+        <WizardEntryButton onClick={() => setShowWizard(true)} />
+
+        {/* Custom rituals */}
+        {customRituals.length > 0 && (
+          <CustomRitualsSection
+            rituals={customRituals}
+            expandedId={expandedRitual}
+            onToggleExpand={setExpandedRitual}
+            onDelete={handleDeleteRitual}
+            onToggleRotation={handleToggleRotation}
+          />
+        )}
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center px-8">
@@ -114,6 +167,20 @@ export default function PracticePage() {
         </h1>
       </div>
       <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
+
+      {/* Wizard entry */}
+      <WizardEntryButton onClick={() => setShowWizard(true)} />
+
+      {/* Custom rituals */}
+      {customRituals.length > 0 && (
+        <CustomRitualsSection
+          rituals={customRituals}
+          expandedId={expandedRitual}
+          onToggleExpand={setExpandedRitual}
+          onDelete={handleDeleteRitual}
+          onToggleRotation={handleToggleRotation}
+        />
+      )}
 
       {/* ═══ CURRENT CYCLE ═══ */}
       <div className="rounded-2xl bg-card/50 border border-foreground/12 p-5 mb-4">
@@ -360,6 +427,129 @@ export default function PracticePage() {
         </p>
       </div>
     </main>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Wizard Entry Button
+// ═══════════════════════════════════════════════════════════════════════════
+
+function WizardEntryButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full mb-4 rounded-2xl border border-terracotta/20 p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-terracotta/5"
+      style={{ background: "linear-gradient(135deg, var(--terracotta-alpha-5, rgba(194,108,67,0.05)), var(--terracotta-alpha-10, rgba(194,108,67,0.1)))" }}
+    >
+      <div className="w-11 h-11 rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center flex-shrink-0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
+             stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+        </svg>
+      </div>
+      <div className="text-left flex-1">
+        <p className="text-foreground text-[14px] font-medium">+ Create a custom ritual</p>
+        <p className="text-foreground/35 text-[11px] mt-0.5">Built from your chart, the moon, and what you&apos;re working on.</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-20 flex-shrink-0">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Custom Rituals Section — saved wizard-generated rituals
+// ═══════════════════════════════════════════════════════════════════════════
+
+function CustomRitualsSection({
+  rituals,
+  expandedId,
+  onToggleExpand,
+  onDelete,
+  onToggleRotation,
+}: {
+  rituals: CustomRitual[];
+  expandedId: string | null;
+  onToggleExpand: (id: string | null) => void;
+  onDelete: (id: string) => void;
+  onToggleRotation: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
+      <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+        Custom Rituals
+      </h3>
+      <div className="space-y-2">
+        {rituals.map(r => {
+          const isExpanded = expandedId === r.id;
+          return (
+            <div key={r.id} className="rounded-xl border border-foreground/8 overflow-hidden">
+              <button
+                onClick={() => onToggleExpand(isExpanded ? null : r.id)}
+                className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-foreground/3"
+              >
+                <span className="text-foreground/25 text-[14px]">✶</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-foreground/70 text-[13px] font-medium truncate">{r.title}</p>
+                  <p className="text-foreground/30 text-[10px] mt-0.5">
+                    {r.duration}{r.materials ? ` · ${r.materials}` : ""}
+                    {r.inRotation && <span className="ml-2 text-sage">● in rotation</span>}
+                  </p>
+                </div>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)"
+                  strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`opacity-20 flex-shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+
+              {isExpanded && (
+                <div className="px-4 pb-4 border-t border-foreground/6">
+                  {r.whyThisForYou && (
+                    <p className="text-foreground/40 text-[12px] italic leading-relaxed mt-3 mb-3">{r.whyThisForYou}</p>
+                  )}
+                  <div className="space-y-2 mb-3">
+                    {r.steps.map((step, i) => (
+                      <div key={i} className="flex gap-2">
+                        <span className="text-terracotta/40 text-[12px] font-medium w-4 flex-shrink-0 text-right">{i + 1}.</span>
+                        <p className="text-foreground/55 text-[12px] leading-relaxed">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {r.affirmation && (
+                    <p className="text-foreground/50 text-[12px] italic mb-3">&ldquo;{r.affirmation}&rdquo;</p>
+                  )}
+                  {r.astroFootnote && (
+                    <p className="text-foreground/25 text-[10px] italic leading-relaxed mb-3">{r.astroFootnote}</p>
+                  )}
+                  <div className="flex gap-2 pt-2 border-t border-foreground/6">
+                    <button
+                      onClick={() => onToggleRotation(r.id)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
+                        r.inRotation
+                          ? "border-sage/30 text-sage bg-sage/5"
+                          : "border-foreground/10 text-foreground/35 hover:text-foreground/50"
+                      }`}
+                    >
+                      {r.inRotation ? "✓ In rotation" : "Add to rotation"}
+                    </button>
+                    <button
+                      onClick={() => onDelete(r.id)}
+                      className="px-3 py-1.5 rounded-lg text-[10px] text-foreground/20 border border-foreground/8 hover:text-red-400 hover:border-red-400/30 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
