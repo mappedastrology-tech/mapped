@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMoonPhase } from "@/lib/celestialCalendar";
+import { getMoonPhase, getMoonPhaseImage } from "@/lib/celestialCalendar";
+import Image from "next/image";
 
 export default function MoonPhaseWidget() {
   const [phase, setPhase] = useState<string>("");
   const [illumination, setIllumination] = useState<number>(0);
-  const [emoji, setEmoji] = useState<string>("");
+  const [phaseKey, setPhaseKey] = useState<string>("full");
   const [energy, setEnergy] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -14,7 +15,7 @@ export default function MoonPhaseWidget() {
     const moonData = getMoonPhase(new Date());
     setPhase(moonData.label);
     setIllumination(moonData.illumination);
-    setEmoji(moonData.emoji);
+    setPhaseKey(moonData.phase);
     setEnergy(moonData.energy);
     setIsLoading(false);
   }, []);
@@ -33,7 +34,9 @@ export default function MoonPhaseWidget() {
         🌙 Moon Phase
       </p>
       <div className="flex items-center gap-4 mb-4">
-        <div className="text-5xl">{emoji}</div>
+        <div className="w-12 h-12 relative shrink-0">
+          <Image src={getMoonPhaseImage(phaseKey)} alt={phase} fill className="object-contain" />
+        </div>
         <div>
           <p className="text-foreground text-lg font-medium">{phase}</p>
           <p className="text-foreground/60 text-sm">{illumination}% illuminated</p>

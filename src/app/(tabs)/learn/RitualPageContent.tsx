@@ -18,8 +18,10 @@ import { useState, useMemo, useEffect } from "react";
 import {
   getDailyEnergy,
   getCelestialEvents,
+  getMoonPhaseImage,
   type CelestialEvent,
 } from "@/lib/celestialCalendar";
+import Image from "next/image";
 import { getDailyRituals, type ModalityPrefs } from "@/lib/rituals";
 import {
   RITUAL_CATALOG,
@@ -536,9 +538,9 @@ export default function RitualPageContent() {
       <div className="rounded-2xl p-5 mb-5 relative overflow-hidden" style={{
         background: "var(--moon-card-bg)",
       }}>
-        {/* Moon emoji floating top-right */}
-        <div className="absolute top-4 right-4 text-[48px]">
-          {energy.moonPhase.emoji}
+        {/* Moon image floating top-right */}
+        <div className="absolute top-4 right-4 w-12 h-12 relative">
+          <Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" />
         </div>
 
         <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--foreground-secondary)" }}>

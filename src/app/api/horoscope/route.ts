@@ -63,6 +63,7 @@ interface HoroscopeRequest {
   celestial: CelestialData;
   transits?: TransitData;
   userName?: string;
+  userId?: string;
   lordOfTheYear?: {
     planet: string;
     profectionHouse: number;
@@ -204,6 +205,38 @@ NOW make it personal. Their rising sign is the lens — it determines which hous
 Respond with ONLY valid JSON, no markdown, no explanation:
 {"headline":"...","horoscope":"...","vibes":["...","...","..."],"avoid":["...","...","..."]}`;
 
+// Server-side daily cache keyed by user_id + date
+// Uses Supabase horoscope_cache table for cross-device consistency
+async function getCachedHoroscope(userId: string, dateStr: string) {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await sb
+      .from("horoscope_cache")
+      .select("response")
+      .eq("user_id", userId)
+      .eq("date", dateStr)
+      .single();
+    return data?.response || null;
+  } catch { return null; }
+}
+
+async function setCachedHoroscope(userId: string, dateStr: string, response: object) {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    await sb
+      .from("horoscope_cache")
+      .upsert({ user_id: userId, date: dateStr, response }, { onConflict: "user_id,date" });
+  } catch { /* best effort */ }
+}
+
 export async function POST(request: NextRequest) {
   // Rate limit: 5 horoscope generations per hour per IP (normally cached client-side)
   const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
@@ -216,6 +249,16 @@ export async function POST(request: NextRequest) {
   try {
     const body: HoroscopeRequest = await request.json();
     const { chart, celestial, transits, userName, lordOfTheYear } = body;
+
+    // Check server-side cache (cross-device consistency)
+    const userId = body.userId as string | undefined;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (userId) {
+      const cached = await getCachedHoroscope(userId, todayStr);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
+    }
 
     if (!chart?.bigThree) {
       return NextResponse.json(
@@ -319,13 +362,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const result = {
       headline: parsed.headline,
       horoscope: parsed.horoscope,
       vibes: parsed.vibes.slice(0, 4),
       avoid: parsed.avoid.slice(0, 4),
       generatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Cache server-side for cross-device consistency
+    if (userId) {
+      setCachedHoroscope(userId, todayStr, result);
+    }
+
+    return NextResponse.json(result);
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Horoscope error:", errMsg, error);

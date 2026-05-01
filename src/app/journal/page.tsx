@@ -21,10 +21,12 @@ import {
 } from "@/lib/journal";
 import {
   getMoonPhase,
+  getMoonPhaseImage,
   getCurrentZodiacSeason,
   getCurrentNakshatra,
   PLANETARY_DAYS,
 } from "@/lib/celestialCalendar";
+import Image from "next/image";
 
 const MOOD_OPTIONS = [
   { emoji: "🌿", label: "Calm" },
@@ -339,7 +341,7 @@ function JournalPage() {
         <div className="mb-5">
           <h1 className="text-[28px] text-foreground leading-tight tracking-tight mb-1" style={{ fontFamily: "var(--font-display)" }}>Journal</h1>
           <div className="flex items-center gap-2 text-[11px] text-foreground/40">
-            <span>{moon.emoji} {moon.label}</span><span>·</span><span>{season.sign} season</span><span>·</span><span>{planetaryDay.planet}&apos;s day</span>
+            <span className="inline-flex items-center gap-1"><span className="w-4 h-4 relative inline-block align-middle"><Image src={getMoonPhaseImage(moon.phase)} alt={moon.label} fill className="object-contain" /></span> {moon.label}</span><span>·</span><span>{season.sign} season</span><span>·</span><span>{planetaryDay.planet}&apos;s day</span>
           </div>
         </div>
 

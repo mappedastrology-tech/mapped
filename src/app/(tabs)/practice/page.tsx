@@ -17,7 +17,8 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { getDailyEnergy } from "@/lib/celestialCalendar";
+import { getDailyEnergy, getMoonPhaseImage } from "@/lib/celestialCalendar";
+import Image from "next/image";
 import {
   getAllCompletions,
   getCompletionsSince,
@@ -185,7 +186,7 @@ export default function PracticePage() {
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center px-8">
-            <div className="text-4xl mb-4">{energy.moonPhase.emoji}</div>
+            <div className="w-10 h-10 relative mx-auto mb-4"><Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" /></div>
             <p className="text-foreground/50 text-[14px] leading-relaxed mb-2">
               Nothing here yet.
             </p>
@@ -233,7 +234,7 @@ export default function PracticePage() {
       {/* ═══ CURRENT CYCLE ═══ */}
       <div className="rounded-2xl bg-card/50 border border-foreground/12 p-5 mb-4">
         <div className="flex items-center gap-4">
-          <span className="text-[40px]">{energy.moonPhase.emoji}</span>
+          <div className="w-10 h-10 relative shrink-0"><Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" /></div>
           <div>
             <h2 className="text-foreground/80 text-[15px] font-medium">
               {energy.moonPhase.label}

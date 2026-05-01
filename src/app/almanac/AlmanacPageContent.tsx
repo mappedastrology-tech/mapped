@@ -21,6 +21,8 @@ import {
   getComingUp,
   getGardenTips,
 } from "@/lib/almanacData";
+import { getMoonPhaseImage } from "@/lib/celestialCalendar";
+import Image from "next/image";
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
@@ -172,9 +174,9 @@ export default function AlmanacPageContent() {
 
           {/* Moon row */}
           <div className="flex items-start gap-3 mb-3.5">
-            <span className="text-[22px] leading-none mt-0.5">
-              {sky.moonPhase.emoji}
-            </span>
+            <div className="w-6 h-6 relative shrink-0 mt-0.5">
+              <Image src={getMoonPhaseImage(sky.moonPhase.phase)} alt={sky.moonPhase.label} fill className="object-contain" />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span

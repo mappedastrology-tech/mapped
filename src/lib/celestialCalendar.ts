@@ -777,6 +777,25 @@ export function getMoonPhase(date: Date): MoonPhaseInfo {
   return { phase: phaseKey, label, illumination: illum, emoji, description, energy, almanac: almanacEntry.almanac };
 }
 
+/**
+ * Get the image path for a moon phase.
+ * Maps phase keys from getMoonPhase() to the uploaded images in /moons/.
+ */
+const MOON_PHASE_IMAGES: Record<string, string> = {
+  "new": "/moons/new-moon.png",
+  "waxing-crescent": "/moons/waxing-crescent.png",
+  "first-quarter": "/moons/first-quarter.png",
+  "waxing-gibbous": "/moons/waxing-gibbous.png",
+  "full": "/moons/full-moon.png",
+  "waning-gibbous": "/moons/waning-gibbous.png",
+  "last-quarter": "/moons/third-quarter.png",
+  "waning-crescent": "/moons/waning-crescent.png",
+};
+
+export function getMoonPhaseImage(phase: string): string {
+  return MOON_PHASE_IMAGES[phase] || "/moons/full-moon.png";
+}
+
 // Approximate nakshatra from moon position (simplified — the moon traverses one nakshatra roughly every day)
 export function getCurrentNakshatra(date: Date): NakshatraInfo {
   const diff = date.getTime() - KNOWN_NEW_MOON;
