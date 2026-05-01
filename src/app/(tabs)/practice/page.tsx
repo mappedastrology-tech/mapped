@@ -16,7 +16,7 @@
  * 8. Weekly/monthly reports when available
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
 import { getDailyEnergy, getMoonPhaseImage } from "@/lib/celestialCalendar";
 import Image from "next/image";
 import {
@@ -38,50 +38,50 @@ import {
   type CustomRitual,
 } from "@/lib/customRituals";
 import Link from "next/link";
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import RitualWizardComponent from "@/components/RitualWizard";
 
-// Error boundary for wizard
-class WizardErrorBoundary extends Component<
-  { children: ReactNode; onReset: () => void },
-  { hasError: boolean; error: string }
-> {
-  constructor(props: { children: ReactNode; onReset: () => void }) {
-    super(props);
-    this.state = { hasError: false, error: "" };
+// Wizard loader — loads the wizard component on demand via dynamic import
+// so the wizard module is NEVER part of the page bundle. Any load failure
+// is caught and shown as a message instead of crashing the page.
+interface WizardProps { onClose: () => void; onSave: (r: CustomRitual) => void }
+
+function WizardLoader({ onClose, onSave }: WizardProps) {
+  const [Wizard, setWizard] = useState<ComponentType<WizardProps> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    import("@/components/RitualWizard")
+      .then((mod) => { if (!cancelled) setWizard(() => mod.default); })
+      .catch((err) => { if (!cancelled) setLoadError(err?.message || String(err)); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loadError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
+        <p className="text-foreground/50 text-sm text-center">Something went wrong loading the wizard.</p>
+        <p className="text-foreground/25 text-xs text-center break-all max-w-[300px]">{loadError}</p>
+        <button
+          onClick={onClose}
+          className="px-5 py-2.5 rounded-xl text-sm border border-foreground/15 text-foreground/50"
+        >
+          Back to My Practice
+        </button>
+      </div>
+    );
   }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message };
+
+  if (!Wizard) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
+        <div className="w-8 h-8 rounded-full border-2 border-terracotta/30 border-t-terracotta animate-spin" />
+        <p className="text-foreground/30 text-xs">Loading wizard…</p>
+      </div>
+    );
   }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Wizard error:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex-1 flex flex-col items-center justify-center px-8 gap-4">
-          <p className="text-foreground/50 text-sm text-center">Something went wrong loading the wizard.</p>
-          <p className="text-foreground/25 text-xs text-center break-all max-w-[300px]">{this.state.error}</p>
-          <button
-            onClick={() => { this.setState({ hasError: false, error: "" }); this.props.onReset(); }}
-            className="px-5 py-2.5 rounded-xl text-sm border border-foreground/15 text-foreground/50"
-          >
-            Back to My Practice
-          </button>
-          <button
-            onClick={() => { this.setState({ hasError: false, error: "" }); }}
-            className="px-5 py-2.5 rounded-xl text-xs text-foreground/30"
-          >
-            Try again
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+
+  return <Wizard onClose={onClose} onSave={onSave} />;
 }
-
-// Direct import — no lazy/dynamic loading
 
 export default function PracticePage() {
   const today = useMemo(() => new Date(), []);
@@ -123,12 +123,10 @@ export default function PracticePage() {
   if (showWizard) {
     return (
       <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
-        <WizardErrorBoundary onReset={() => setShowWizard(false)}>
-          <RitualWizardComponent
-            onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
-            onSave={handleWizardSave}
-          />
-        </WizardErrorBoundary>
+        <WizardLoader
+          onClose={() => { setShowWizard(false); refreshCustomRituals(); }}
+          onSave={handleWizardSave}
+        />
       </main>
     );
   }
