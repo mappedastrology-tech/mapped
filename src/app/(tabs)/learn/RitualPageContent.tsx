@@ -539,8 +539,8 @@ export default function RitualPageContent() {
         background: "var(--moon-card-bg)",
       }}>
         {/* Moon image floating top-right */}
-        <div className="absolute top-4 right-4 w-12 h-12 relative">
-          <Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" />
+        <div className="absolute top-4 right-4">
+          <Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} width={56} height={56} className="object-contain" />
         </div>
 
         <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--foreground-secondary)" }}>
