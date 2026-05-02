@@ -121,16 +121,11 @@ export function getLordOfTheYear(
   // Profection house = (age % 12) + 1
   const profectionHouse = (age % 12) + 1;
 
-  // Annual profections use WHOLE SIGN HOUSES (not Placidus).
-  // In whole sign, house 1 = rising sign, house 2 = next sign, etc.
-  // So profection sign = (rising sign index + profectionHouse - 1) % 12
-  const SIGN_ORDER = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
-  const risingSign = houses.find(h => h.number === 1)?.sign;
-  if (!risingSign) return null;
-  const risingIdx = SIGN_ORDER.indexOf(risingSign);
-  if (risingIdx === -1) return null;
-  const profectionSignIdx = (risingIdx + profectionHouse - 1) % 12;
-  const profectionSign = SIGN_ORDER[profectionSignIdx];
+  // Use the sign on the Placidus cusp for the profection house
+  // (matches the house system the rest of the chart displays)
+  const profectionHouseData = houses.find(h => h.number === profectionHouse);
+  if (!profectionHouseData) return null;
+  const profectionSign = profectionHouseData.sign;
   const lordPlanet = TRADITIONAL_RULER[profectionSign];
   if (!lordPlanet) return null;
 
@@ -138,6 +133,11 @@ export function getLordOfTheYear(
   const lordNatal = planets.find(p => p.name === lordPlanet);
   const lordSign = lordNatal?.sign || "?";
   const lordHouse = lordNatal?.house || null;
+
+  // Find any natal planets sitting in the profection sign (co-activated this year)
+  const planetsInProfectionSign = planets
+    .filter(p => p.sign === profectionSign && p.name !== lordPlanet)
+    .map(p => p.name);
 
   // Calculate next birthday (when profection changes)
   let nextBirthday: Date;
@@ -155,8 +155,11 @@ export function getLordOfTheYear(
   // Build summary
   const houseTheme = HOUSE_THEMES[profectionHouse] || "";
   const lordInSign = lordSignFull !== "?" ? ` ${lordPlanet} sits in ${lordSignFull} in your birth chart${lordHouseOrd ? ` (${lordHouseOrd} house)` : ""}, coloring how this year unfolds.` : "";
+  const coActivated = planetsInProfectionSign.length > 0
+    ? ` Your natal ${planetsInProfectionSign.join(" and ")} ${planetsInProfectionSign.length === 1 ? "is" : "are"} also in ${signFull}, so ${planetsInProfectionSign.length === 1 ? "it gets" : "they get"} activated this year too.`
+    : "";
 
-  const summary = `You're ${age} — a ${houseOrd} house profection year. The ${houseOrd} house in your chart is ${signFull}, ruled by ${lordPlanet}. This year, ${lordPlanet} is your Lord of the Year. ${houseTheme}${lordInSign} Watch transits to your natal ${lordPlanet} closely — they're the plot points of your year.`;
+  const summary = `You're ${age} — a ${houseOrd} house profection year. Your ${houseOrd} house cusp falls in ${signFull}, ruled by ${lordPlanet}. This year, ${lordPlanet} is your Lord of the Year. ${houseTheme}${lordInSign}${coActivated} Watch transits to your natal ${lordPlanet} closely — they're the plot points of your year.`;
 
   return {
     age,
