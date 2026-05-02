@@ -36,6 +36,7 @@ import RefreshModal from "@/components/RefreshModal";
 import MoonEventScreen from "@/components/MoonEventScreen";
 // feedback utils available if needed later
 import { getGoodForToday, getTodaySky } from "@/lib/almanacData";
+import { getVibeRecommendation, type VibePhrase } from "@/lib/vibeLibrary";
 // Theme handled via CSS variables — no useTheme needed here
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -299,6 +300,46 @@ export default function RitualPageContent() {
   const almanacGoodFor = useMemo(() => getGoodForToday(today), [today]);
   const almanacSky = useMemo(() => getTodaySky(today), [today]);
   const almanacMoonSign = almanacSky.moonSign;
+
+  // ── Vibe Library: "Right Now" recommendation ──
+  const vibePhrase = useMemo(() => {
+    // Map moon sign to element for vibe filtering
+    const signElements: Record<string, string> = {
+      Aries: "fire", Taurus: "earth", Gemini: "air", Cancer: "water",
+      Leo: "fire", Virgo: "earth", Libra: "air", Scorpio: "water",
+      Sagittarius: "fire", Capricorn: "earth", Aquarius: "air", Pisces: "water",
+    };
+    // Map day of week to planetary tag
+    const dayTags = ["solar", "lunar", "martian", "mercurial", "jupiterian", "venusian", "saturnian"];
+    const planetaryTag = dayTags[today.getDay()];
+    const elementTag = signElements[almanacMoonSign] || undefined;
+
+    // Exclude IDs shown in the last 30 days (stored in localStorage)
+    let recentIds: string[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("mapped:vibe-recent");
+        if (stored) recentIds = JSON.parse(stored);
+      } catch { /* ignore */ }
+    }
+
+    return getVibeRecommendation(planetaryTag, elementTag, undefined, recentIds);
+  }, [today, almanacMoonSign]);
+
+  // Track shown vibe phrase
+  useEffect(() => {
+    if (!vibePhrase || typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("mapped:vibe-recent");
+      const recent: string[] = stored ? JSON.parse(stored) : [];
+      if (!recent.includes(vibePhrase.id)) {
+        recent.push(vibePhrase.id);
+        // Keep last 30 days worth (max ~30 entries)
+        const trimmed = recent.slice(-30);
+        localStorage.setItem("mapped:vibe-recent", JSON.stringify(trimmed));
+      }
+    } catch { /* ignore */ }
+  }, [vibePhrase]);
 
   const [ritualModPrefs] = useState<ModalityPrefs>(loadRitualPrefs);
   const [chartInfo, setChartInfo] = useState<{ sunSign?: string; moonSign?: string; risingSign?: string }>({});
@@ -638,6 +679,35 @@ export default function RitualPageContent() {
             onComplete={handleRitualComplete}
             variant="default"
           />
+        </div>
+      )}
+
+      {/* ═══ RIGHT NOW — Vibe Library recommendation ═══ */}
+      {vibePhrase && (
+        <div className="rounded-2xl p-5 mb-5" style={{
+          backgroundColor: "var(--background-card)",
+          boxShadow: cardShadow,
+        }}>
+          <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: "var(--foreground-muted)" }}>
+            Right Now
+          </p>
+          <p className={`leading-relaxed ${vibePhrase.type === "standalone" ? "text-[16px] italic" : "text-[15px]"}`} style={{
+            fontFamily: "var(--font-heading)",
+            color: "var(--foreground)",
+          }}>
+            {vibePhrase.type === "paired" ? (
+              <>
+                {vibePhrase.phrase.split(", less ").length === 2 ? (
+                  <>
+                    <span style={{ color: "var(--terracotta)" }}>{vibePhrase.phrase.split(", less ")[0]}</span>
+                    <span style={{ color: "var(--foreground-muted)" }}>, less {vibePhrase.phrase.split(", less ")[1]}</span>
+                  </>
+                ) : vibePhrase.phrase}
+              </>
+            ) : (
+              vibePhrase.phrase
+            )}
+          </p>
         </div>
       )}
 

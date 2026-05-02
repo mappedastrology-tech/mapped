@@ -1,10 +1,10 @@
 /**
  * Mapped Vibe Library
  *
- * All 293 phrases in this file are Mapped originals.
+ * All 302 phrases in this file are Mapped originals.
  * No copyrighted material is included.
  *
- * Breakdown: 180 paired phrases + 120 standalone phrases = 300 total.
+ * Breakdown: 180 paired phrases + 122 standalone phrases = 302 total.
  */
 
 export type VibeType = "paired" | "standalone";
@@ -2618,6 +2618,16 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "FL03",
+    phrase: "The Olsen twins would not text him.",
+    type: "standalone",
+    planetaryTags: ["venusian", "saturnian"],
+    elementTags: ["earth"],
+    functionTags: ["clarifying", "empowering"],
+    voiceRegister: "pop",
+    trendRisk: "high",
+  },
+  {
+    id: "FL04",
     phrase: "Coastal grandmother in the streets, Scorpio in the sheets.",
     type: "standalone",
     planetaryTags: ["plutonian"],
@@ -2627,7 +2637,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "high",
   },
   {
-    id: "FL04",
+    id: "FL05",
     phrase: "You can wear the silk slip and answer the email.",
     type: "standalone",
     planetaryTags: ["venusian"],
@@ -2637,7 +2647,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "high",
   },
   {
-    id: "FL05",
+    id: "FL06",
     phrase: "Slick back ponytail energy, but for your boundaries.",
     type: "standalone",
     planetaryTags: ["martian"],
@@ -2647,7 +2657,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "high",
   },
   {
-    id: "FL06",
+    id: "FL07",
     phrase: 'The "it bag" is your nervous system. Fix the bag.',
     type: "standalone",
     planetaryTags: ["saturnian"],
@@ -2657,7 +2667,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "high",
   },
   {
-    id: "FL07",
+    id: "FL08",
     phrase: "Pilates body, journalism mind, Pisces feelings.",
     type: "standalone",
     planetaryTags: ["neptunian"],
@@ -2667,7 +2677,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "high",
   },
   {
-    id: "FL08",
+    id: "FL09",
     phrase: 'You are not "dressing for the job you want." You are dressing for the woman you are.',
     type: "standalone",
     planetaryTags: ["solar"],
@@ -2800,7 +2810,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "PD13",
-    phrase: "The girl dinner is the depression. We can name it.",
+    phrase: "The girl dinner is the depression. We've been told.",
     type: "standalone",
     planetaryTags: ["plutonian"],
     elementTags: ["water"],
@@ -3026,6 +3036,16 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "LR06",
+    phrase: "You are not the heroine of a Lorrie Moore story. You are also exactly that.",
+    type: "standalone",
+    planetaryTags: ["neptunian"],
+    elementTags: ["water"],
+    functionTags: ["clarifying"],
+    voiceRegister: "literary",
+    trendRisk: "low",
+  },
+  {
+    id: "LR07",
     phrase: "The thing about marriage, the thing about all of it, is that you have to keep choosing.",
     type: "standalone",
     planetaryTags: ["venusian"],
@@ -3035,7 +3055,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR07",
+    id: "LR08",
     phrase: "You are someone who has been hurt and not yet someone who has been changed by it.",
     type: "standalone",
     planetaryTags: ["plutonian"],
@@ -3045,7 +3065,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR08",
+    id: "LR09",
     phrase: "He was a person you could not stop almost-loving.",
     type: "standalone",
     planetaryTags: ["venusian"],
@@ -3055,7 +3075,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR09",
+    id: "LR10",
     phrase: "You are not falling apart. You are just unmedicated for the version of yourself you've outgrown.",
     type: "standalone",
     planetaryTags: ["plutonian"],
@@ -3065,7 +3085,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR10",
+    id: "LR11",
     phrase: "You wanted to be a person who has dinner parties. You are a person who orders Postmates.",
     type: "standalone",
     planetaryTags: ["solar"],
@@ -3075,7 +3095,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR11",
+    id: "LR12",
     phrase: "You are doing fine, in the technical sense.",
     type: "standalone",
     planetaryTags: ["mercurial"],
@@ -3085,7 +3105,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR12",
+    id: "LR13",
     phrase: "The class consciousness of leaving a man who texts in fragments.",
     type: "standalone",
     planetaryTags: ["mercurial"],
@@ -3095,7 +3115,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR13",
+    id: "LR14",
     phrase: "To love someone is, at minimum, to be inconvenienced by them.",
     type: "standalone",
     planetaryTags: ["venusian"],
@@ -3105,7 +3125,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
     trendRisk: "low",
   },
   {
-    id: "LR14",
+    id: "LR15",
     phrase: "The relationship is not a problem. The relationship is a project. There's a difference.",
     type: "standalone",
     planetaryTags: ["venusian"],
@@ -3151,8 +3171,9 @@ export function getVibeRecommendation(
   const topScore = scored[0]?.score || 0;
   const candidates = scored.filter((s) => s.score >= topScore - 1);
 
-  // Deterministic daily pick
-  const seed = Date.now();
-  const pick = candidates[seed % candidates.length];
+  // Deterministic daily pick — same phrase all day, changes at midnight
+  const now = new Date();
+  const dayKey = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+  const pick = candidates[dayKey % candidates.length];
   return pick.phrase;
 }
