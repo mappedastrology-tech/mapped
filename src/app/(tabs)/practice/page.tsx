@@ -16,8 +16,10 @@
  * 8. Weekly/monthly reports when available
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { getDailyEnergy, getMoonPhaseImage } from "@/lib/celestialCalendar";
+import { getDailyRituals, type Ritual } from "@/lib/rituals";
 import Image from "next/image";
 import RitualWizard from "@/components/RitualWizard";
 import {
@@ -41,6 +43,14 @@ import {
 import Link from "next/link";
 
 export default function PracticePage() {
+  return (
+    <Suspense fallback={null}>
+      <PracticePageInner />
+    </Suspense>
+  );
+}
+
+function PracticePageInner() {
   const today = useMemo(() => new Date(), []);
   const energy = useMemo(() => getDailyEnergy(today), [today]);
   const completions = useMemo(() => getAllCompletions(), []);
@@ -52,6 +62,20 @@ export default function PracticePage() {
   const weeklyReport = useMemo(() => generateWeeklyReport(), []);
   const monthlyReport = useMemo(() => generateMonthlyReport(), []);
   const practitionerType = useMemo(() => detectPractitionerType(completions), [completions]);
+
+  const searchParams = useSearchParams();
+  const [showMoonRitual, setShowMoonRitual] = useState(false);
+  const [moonRitual, setMoonRitual] = useState<Ritual | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
+  // Detect ?moonRitual=true and load the moon ritual
+  useEffect(() => {
+    if (searchParams.get("moonRitual") === "true") {
+      const daily = getDailyRituals(today);
+      setMoonRitual(daily.moonRitual);
+      setShowMoonRitual(true);
+    }
+  }, [searchParams, today]);
 
   const [showReport, setShowReport] = useState<"weekly" | "monthly" | null>(null);
   const [showWizard, setShowWizard] = useState(false);
@@ -124,6 +148,21 @@ export default function PracticePage() {
         </div>
         <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
 
+        {/* Moon ritual from MoonEventScreen */}
+        {showMoonRitual && moonRitual && (
+          <MoonRitualCard
+            ritual={moonRitual}
+            moonPhase={energy.moonPhase}
+            completedSteps={completedSteps}
+            onToggleStep={(i) => setCompletedSteps(prev => {
+              const next = new Set(prev);
+              if (next.has(i)) next.delete(i); else next.add(i);
+              return next;
+            })}
+            onDismiss={() => setShowMoonRitual(false)}
+          />
+        )}
+
         {/* Wizard entry */}
         <WizardEntryButton onClick={() => setShowWizard(true)} />
 
@@ -170,6 +209,21 @@ export default function PracticePage() {
         </h1>
       </div>
       <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
+
+      {/* ═══ MOON RITUAL (shown when navigated from MoonEventScreen) ═══ */}
+      {showMoonRitual && moonRitual && (
+        <MoonRitualCard
+          ritual={moonRitual}
+          moonPhase={energy.moonPhase}
+          completedSteps={completedSteps}
+          onToggleStep={(i) => setCompletedSteps(prev => {
+            const next = new Set(prev);
+            if (next.has(i)) next.delete(i); else next.add(i);
+            return next;
+          })}
+          onDismiss={() => setShowMoonRitual(false)}
+        />
+      )}
 
       {/* Wizard entry */}
       <WizardEntryButton onClick={() => setShowWizard(true)} />
@@ -700,6 +754,123 @@ function MoodInsights({ completions }: { completions: CompletionRecord[] }) {
               ✦ {insight}
             </p>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Moon Ritual Card — shown when navigated from MoonEventScreen CTA
+// ═══════════════════════════════════════════════════════════════════════════
+
+function MoonRitualCard({
+  ritual,
+  moonPhase,
+  completedSteps,
+  onToggleStep,
+  onDismiss,
+}: {
+  ritual: Ritual;
+  moonPhase: { phase: string; label: string; emoji: string };
+  completedSteps: Set<number>;
+  onToggleStep: (i: number) => void;
+  onDismiss: () => void;
+}) {
+  const allDone = completedSteps.size === ritual.steps.length && ritual.steps.length > 0;
+  const isFull = moonPhase.phase === "full";
+
+  return (
+    <div
+      className="rounded-2xl border overflow-hidden mb-5"
+      style={{
+        background: isFull
+          ? "linear-gradient(135deg, rgba(196,106,69,0.08), rgba(196,106,69,0.03))"
+          : "linear-gradient(135deg, rgba(90,74,138,0.08), rgba(90,74,138,0.03))",
+        borderColor: isFull ? "rgba(196,106,69,0.2)" : "rgba(90,74,138,0.2)",
+      }}
+    >
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3 flex items-start gap-4">
+        <span className="text-[28px] leading-none mt-0.5">{moonPhase.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p
+            className="text-[10px] uppercase tracking-[0.15em] font-semibold mb-1"
+            style={{ color: isFull ? "var(--terracotta)" : "#7a6aaa" }}
+          >
+            {moonPhase.label} Ritual
+          </p>
+          <h3
+            className="text-foreground text-[17px] font-medium leading-snug"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {ritual.title}
+          </h3>
+          <p className="text-foreground/40 text-[12px] leading-relaxed mt-1">
+            {ritual.description}
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-foreground/20 hover:text-foreground/40 transition-colors p-1 -mr-1 -mt-1"
+          aria-label="Close"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Steps */}
+      <div className="px-5 pb-4 space-y-3">
+        {ritual.steps.map((step, i) => {
+          const done = completedSteps.has(i);
+          return (
+            <button
+              key={i}
+              onClick={() => onToggleStep(i)}
+              className="w-full text-left flex gap-3 group"
+            >
+              <div
+                className="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
+                style={{
+                  borderColor: done
+                    ? (isFull ? "var(--terracotta)" : "#7a6aaa")
+                    : "var(--foreground-alpha-15, rgba(255,255,255,0.15))",
+                  background: done
+                    ? (isFull ? "var(--terracotta)" : "#7a6aaa")
+                    : "transparent",
+                }}
+              >
+                {done && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8F0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+              <p
+                className={`text-[13px] leading-relaxed transition-all ${
+                  done ? "text-foreground/30 line-through" : "text-foreground/65"
+                }`}
+              >
+                {step}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Completion state */}
+      {allDone && (
+        <div
+          className="px-5 py-4 border-t text-center"
+          style={{ borderColor: isFull ? "rgba(196,106,69,0.15)" : "rgba(90,74,138,0.15)" }}
+        >
+          <p className="text-foreground/50 text-[13px] font-medium mb-1">Ritual complete</p>
+          <p className="text-foreground/30 text-[11px]">
+            {isFull ? "You honored the fullness of this moon." : "Your intentions are planted."}
+          </p>
         </div>
       )}
     </div>

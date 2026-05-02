@@ -1330,7 +1330,7 @@ export default function HomeTab() {
           onClose={() => setShowMoonEvent(false)}
           onStartRitual={() => {
             setShowMoonEvent(false);
-            router.push("/practice");
+            router.push("/practice?moonRitual=true");
           }}
         />
       )}
