@@ -795,7 +795,7 @@ function computeCompatibility(
   context: "partner" | "family" | "friend" = "partner",
 ): CompatibilityResult {
   const isPlatonic = context !== "partner";
-  const allAspects = [...syn.crossAspects];
+  const allAspects = Array.isArray(syn.crossAspects) ? [...syn.crossAspects] : [];
   if (allAspects.length === 0) {
     return { score: 50, label: "Unknown", strengths: ["Not enough data to analyze"], challenges: [], summary: `We need more birth data to fully map the connection between ${userName} and ${partnerName}.` };
   }
@@ -832,11 +832,14 @@ function computeCompatibility(
   let score = Math.round(50 + rawRatio * 40); // maps to 10-90 base range
 
   // Bonus for fated contacts (karmic bond lifts score)
-  const fatedBonus = Math.min(syn.fatedContacts.length * 3, 12);
+  const fated = Array.isArray(syn.fatedContacts) ? syn.fatedContacts : [];
+  const fatedBonus = Math.min(fated.length * 3, 12);
   score += fatedBonus;
 
   // Bonus for high harmony ratio
-  const harmonyRatio = syn.harmony / Math.max(syn.harmony + syn.tension, 1);
+  const harmonyCount = typeof syn.harmony === "number" ? syn.harmony : 0;
+  const tensionCount = typeof syn.tension === "number" ? syn.tension : 0;
+  const harmonyRatio = harmonyCount / Math.max(harmonyCount + tensionCount, 1);
   if (harmonyRatio > 0.65) score += 5;
   if (harmonyRatio > 0.8) score += 5;
 
@@ -1021,7 +1024,7 @@ function computeCompatibility(
   const s2 = strengths[1] || "";
   const c1 = challenges[0] || "";
   const c2 = challenges[1] || "";
-  const hasFated = syn.fatedContacts.length > 0;
+  const hasFated = fated.length > 0;
   const fatedNote = isPlatonic
     ? `This ${bondWord} has a fated quality — the kind where you feel like this person was always meant to be in your life.`
     : `There's a karmic thread running through this — it doesn't feel accidental.`;
@@ -4021,10 +4024,24 @@ export default function MapsTab() {
     const personHouses = (selected.houses || []) as { number: number; sign: string; signNum: number; position: number; absPosition: number }[];
     const isPartner = selected.category === "partner";
 
+    // Normalize synastry data — Supabase JSONB round-trips can drop empty arrays
+    if (syn) {
+      if (!Array.isArray(syn.crossAspects)) syn.crossAspects = [];
+      if (!Array.isArray(syn.themes)) syn.themes = [];
+      if (!Array.isArray(syn.fatedContacts)) syn.fatedContacts = [];
+      if (typeof syn.harmony !== "number") syn.harmony = 0;
+      if (typeof syn.tension !== "number") syn.tension = 0;
+    }
+
     // Compute compatibility for all connections
-    const compat = syn
-      ? computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend")
-      : null;
+    let compat = null;
+    try {
+      compat = syn
+        ? computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend")
+        : null;
+    } catch (e) {
+      console.error("[maps] computeCompatibility crashed:", e);
+    }
 
     return (
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
