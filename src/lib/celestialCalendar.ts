@@ -1,12 +1,16 @@
 /**
  * Celestial Calendar — multi-cultural astronomical & astrological date system.
  *
- * Computes moon phases, zodiac seasons, and maps culturally significant dates
- * from Vedic (Hindu), Chinese, Celtic, Islamic, Indigenous, and Western traditions.
- *
- * All date calculations are approximate (based on known astronomical cycles)
- * and intended for spiritual/cultural context, not precise astronomical use.
+ * Moon phases, zodiac seasons, and nakshatras use astronomy-engine for
+ * sub-arcminute accuracy. Cultural & festival dates are approximate.
  */
+
+import {
+  getMoonPhaseFraction,
+  getMoonIllumination,
+  getMoonLongitude,
+  getCurrentSunSign,
+} from "@/lib/astro/currentSky";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -739,19 +743,12 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
 ];
 
 // ─── MOON PHASE CALCULATION ──────────────────────────────────────────────────
-// Approximate algorithm based on known new moon reference + synodic period
-
-const SYNODIC_MONTH = 29.53058868; // days
-const KNOWN_NEW_MOON = new Date("2024-01-11T11:57:00Z").getTime(); // known new moon
+// Uses astronomy-engine for accurate phase fraction and illumination
 
 export function getMoonPhase(date: Date): MoonPhaseInfo {
-  const diff = date.getTime() - KNOWN_NEW_MOON;
-  const daysSinceNew = diff / (1000 * 60 * 60 * 24);
-  const cyclePosition = ((daysSinceNew % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
-  const fraction = cyclePosition / SYNODIC_MONTH; // 0 to 1
-
-  // Approximate illumination
-  const illumination = Math.round(Math.abs(Math.cos(fraction * Math.PI * 2) * -50 + 50));
+  // Use astronomy-engine for accurate phase fraction and illumination
+  const fraction = getMoonPhaseFraction(date);
+  const illumination = getMoonIllumination(date);
 
   // Determine phase key based on fraction, then pull almanac from FULL_ALMANAC
   type PhaseKey = MoonPhaseInfo["phase"];
@@ -760,15 +757,13 @@ export function getMoonPhase(date: Date): MoonPhaseInfo {
   let emoji: string;
   let description: string;
   let energy: string;
-  let illum = illumination;
 
-  // 8 equal phases, each spanning 1/8 of the synodic month (~3.69 days)
-  // Each phase centered on its astronomical moment: new=0, wax-cres=0.125, 1Q=0.25, wax-gib=0.375, full=0.5, wan-gib=0.625, 3Q=0.75, wan-cres=0.875
+  // 8 equal phases, each spanning 1/8 of the cycle
   if (fraction < 0.0625)       { phaseKey = "new"; label = "New Moon"; emoji = "🌑"; description = "The sky is dark and the moon is hidden. A blank page."; energy = "Plant seeds of intention. This is the most powerful time for setting new goals, starting fresh, and dreaming into existence."; }
   else if (fraction < 0.1875)  { phaseKey = "waxing-crescent"; label = "Waxing Crescent"; emoji = "🌒"; description = "A sliver of light appears. Momentum is building."; energy = "Take the first small step. Your intentions from the new moon need action now — even tiny ones count."; }
   else if (fraction < 0.3125)  { phaseKey = "first-quarter"; label = "First Quarter"; emoji = "🌓"; description = "Half-lit, half-dark. A crossroads of commitment."; energy = "Make decisions and push through resistance. Challenges that arise are testing your commitment to what you started."; }
   else if (fraction < 0.4375)  { phaseKey = "waxing-gibbous"; label = "Waxing Gibbous"; emoji = "🌔"; description = "Almost full. Refinement and adjustment."; energy = "Fine-tune and adjust. You can see what's working and what isn't. Edit, revise, and prepare for the culmination."; }
-  else if (fraction < 0.5625)  { phaseKey = "full"; label = "Full Moon"; emoji = "🌕"; description = "Maximum illumination. Everything is visible."; energy = "Celebrate, release, and let go. What no longer serves you becomes obvious under the full moon's light. Gratitude and release rituals are powerful."; illum = 100; }
+  else if (fraction < 0.5625)  { phaseKey = "full"; label = "Full Moon"; emoji = "🌕"; description = "Maximum illumination. Everything is visible."; energy = "Celebrate, release, and let go. What no longer serves you becomes obvious under the full moon's light. Gratitude and release rituals are powerful."; }
   else if (fraction < 0.6875)  { phaseKey = "waning-gibbous"; label = "Waning Gibbous"; emoji = "🌖"; description = "The light begins to retreat. Gratitude and sharing."; energy = "Share what you've learned and give back. This is a generous, reflective phase for teaching and mentoring."; }
   else if (fraction < 0.8125)  { phaseKey = "last-quarter"; label = "Last Quarter"; emoji = "🌗"; description = "Half-lit again. Release and forgiveness."; energy = "Let go of grudges, habits, and clutter. Clear out what's blocking you before the next cycle begins."; }
   else if (fraction < 0.9375)  { phaseKey = "waning-crescent"; label = "Waning Crescent"; emoji = "🌘"; description = "The final sliver. Rest before renewal."; energy = "Rest, reflect, and surrender. The old cycle is ending. Sleep more, journal, dream. The new moon is coming."; }
@@ -776,7 +771,7 @@ export function getMoonPhase(date: Date): MoonPhaseInfo {
 
   const almanacEntry = FULL_ALMANAC.find(a => a.phase === phaseKey)!;
 
-  return { phase: phaseKey, label, illumination: illum, emoji, description, energy, almanac: almanacEntry.almanac };
+  return { phase: phaseKey, label, illumination, emoji, description, energy, almanac: almanacEntry.almanac };
 }
 
 /**
@@ -798,36 +793,27 @@ export function getMoonPhaseImage(phase: string): string {
   return MOON_PHASE_IMAGES[phase] || "/moons/full-moon.png";
 }
 
-// Approximate nakshatra from moon position (simplified — the moon traverses one nakshatra roughly every day)
+// Nakshatra from real Moon longitude (astronomy-engine) converted to sidereal
 export function getCurrentNakshatra(date: Date): NakshatraInfo {
-  const diff = date.getTime() - KNOWN_NEW_MOON;
-  const daysSinceNew = diff / (1000 * 60 * 60 * 24);
-  // Moon traverses ~13.2° per day, each nakshatra spans 13°20' (13.333°)
-  // So roughly one nakshatra per day
-  const nakshatraIndex = Math.floor(((daysSinceNew % (27.3217)) + 27.3217) % 27.3217) % 27;
+  const tropicalLon = getMoonLongitude(date);
+  // Convert tropical to sidereal (Lahiri ayanamsa ≈ 24.17° for 2024-2028)
+  const AYANAMSA = 24.17;
+  const siderealLon = ((tropicalLon - AYANAMSA) % 360 + 360) % 360;
+  // Each nakshatra spans 13°20' = 13.3333°
+  const nakshatraIndex = Math.floor(siderealLon / (360 / 27)) % 27;
   return NAKSHATRAS[nakshatraIndex];
 }
 
 // ─── CURRENT ZODIAC SEASON ────────────────────────────────────────────────────
 
 export function getCurrentZodiacSeason(date: Date): ZodiacSeason {
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-
-  for (const season of ZODIAC_SEASONS) {
-    // Handle Capricorn wrapping Dec→Jan
-    if (season.startMonth > season.endMonth) {
-      if ((m === season.startMonth && d >= season.startDay) || (m === season.endMonth && d <= season.endDay)) {
-        return season;
-      }
-    } else {
-      if ((m === season.startMonth && d >= season.startDay) || (m === season.endMonth && d <= season.endDay) ||
-          (m > season.startMonth && m < season.endMonth)) {
-        return season;
-      }
-    }
-  }
-  return ZODIAC_SEASONS[0]; // fallback
+  // Use astronomy-engine for accurate sun sign (handles ingress date shifts)
+  const sunSign = getCurrentSunSign(date);
+  const match = ZODIAC_SEASONS.find(s => s.sign === sunSign.full);
+  if (match) return match;
+  // Fallback to abbreviation match
+  const abbMatch = ZODIAC_SEASONS.find(s => s.sign.slice(0, 3).toLowerCase() === sunSign.abbr.toLowerCase());
+  return abbMatch || ZODIAC_SEASONS[0];
 }
 
 // ─── FIXED & MOVABLE CULTURAL DATES ──────────────────────────────────────────
@@ -916,11 +902,10 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
 
   // ── PLANETARY EVENTS & RETROGRADES (2026 approximate dates) ──
   events.push(
-    { id: `mercury-retrograde-1-${year}`, name: "Mercury Retrograde", date: new Date(year, 2, 30), endDate: new Date(year, 3, 20), tradition: "astronomical", category: "planetary", description: "March–April 2026. Mercury appears to move backward in the sky. In astrology, this is associated with communication delays, technology glitches, and a need for review and reflection. A time to edit, revise, and reconsider.", ritualHint: "Avoid signing major contracts. Proofread everything. Journalize about what needs to be reconsidered.", element: "air" },
-    { id: `mercury-retrograde-2-${year}`, name: "Mercury Retrograde", date: new Date(year, 6, 5), endDate: new Date(year, 6, 30), tradition: "astronomical", category: "planetary", description: "July–August 2026. Another period of Mercury's backward apparent motion. Communication can be murky. Use this time to revisit unfinished conversations, edit old projects, or reconnect with people from your past.", ritualHint: "Finish what you started. Clean out your old messages and emails. Have the conversation you've been avoiding.", element: "air" },
-    { id: `mercury-retrograde-3-${year}`, name: "Mercury Retrograde", date: new Date(year, 10, 3), endDate: new Date(year, 10, 23), tradition: "astronomical", category: "planetary", description: "November 2026. Mercury's third retrograde period of the year. The final review of the year's lessons. Reread old journals, reassess your direction, and clarify your intentions before year's end.", ritualHint: "Journal about the year's lessons. Reconcile with someone if needed. Slow down and listen deeply.", element: "air" },
-    { id: `venus-retrograde-${year}`, name: "Venus Retrograde", date: new Date(year, 0, 11), endDate: new Date(year, 1, 20), tradition: "astronomical", category: "planetary", description: "January–February 2026. Venus moves backward — a rare occurrence (happens every 18 months or so). A time for self-love, reassessing relationships, and clarifying what you truly value and desire.", ritualHint: "Practice radical self-care. Review your relationships. Clarify your values. What do you truly want?", element: "water" },
-    { id: `mars-retrograde-${year}`, name: "Mars Retrograde", date: new Date(year, 4, 10), endDate: new Date(year, 6, 3), tradition: "astronomical", category: "planetary", description: "May–July 2026. Mars, the planet of action and desire, moves backward. Aggression may feel suppressed; ambitions may need recalibration. Good for strategic planning, not for launching new ventures. Review your goals.", ritualHint: "Channel energy inward. Work on your strategy and tactics. Conserve your fire for what truly matters.", element: "fire" },
+    { id: `mercury-retrograde-1-${year}`, name: "Mercury Retrograde", date: new Date(year, 1, 26), endDate: new Date(year, 2, 21), tradition: "astronomical", category: "planetary", description: "February 26 – March 21, 2026. Mercury appears to move backward in the sky. In astrology, this is associated with communication delays, technology glitches, and a need for review and reflection. A time to edit, revise, and reconsider.", ritualHint: "Avoid signing major contracts. Proofread everything. Journalize about what needs to be reconsidered.", element: "air" },
+    { id: `mercury-retrograde-2-${year}`, name: "Mercury Retrograde", date: new Date(year, 5, 30), endDate: new Date(year, 6, 24), tradition: "astronomical", category: "planetary", description: "June 30 – July 24, 2026. Another period of Mercury's backward apparent motion. Communication can be murky. Use this time to revisit unfinished conversations, edit old projects, or reconnect with people from your past.", ritualHint: "Finish what you started. Clean out your old messages and emails. Have the conversation you've been avoiding.", element: "air" },
+    { id: `mercury-retrograde-3-${year}`, name: "Mercury Retrograde", date: new Date(year, 9, 24), endDate: new Date(year, 10, 13), tradition: "astronomical", category: "planetary", description: "October 24 – November 13, 2026. Mercury's third retrograde period of the year. The final review of the year's lessons. Reread old journals, reassess your direction, and clarify your intentions before year's end.", ritualHint: "Journal about the year's lessons. Reconcile with someone if needed. Slow down and listen deeply.", element: "air" },
+    { id: `venus-retrograde-${year}`, name: "Venus Retrograde", date: new Date(year, 9, 3), endDate: new Date(year, 10, 14), tradition: "astronomical", category: "planetary", description: "October 3 – November 14, 2026. Venus moves backward — a rare occurrence (happens every 18 months or so). A time for self-love, reassessing relationships, and clarifying what you truly value and desire.", ritualHint: "Practice radical self-care. Review your relationships. Clarify your values. What do you truly want?", element: "water" },
   );
 
   // ── ECLIPSE SEASONS (2026) ──
@@ -928,7 +913,7 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
     { id: `solar-eclipse-1-${year}`, name: "Solar Eclipse", date: new Date(year, 1, 17), tradition: "astronomical", category: "solar", description: "February 17, 2026 — Solar eclipse in Aquarius. Solar eclipses are cosmic reset buttons. A new moon on steroids. Powerful for setting intentions and starting new chapters. The shadow of the moon obscures the sun. What becomes visible in the darkness?", ritualHint: "Sit in silence and darkness. Plant an intention that needs solar fire. What do you want to birth?", element: "spirit" },
     { id: `lunar-eclipse-1-${year}`, name: "Lunar Eclipse", date: new Date(year, 2, 3), tradition: "astronomical", category: "moon", description: "March 3, 2026 — Lunar eclipse in Virgo. Lunar eclipses illuminate what was hidden. A full moon on steroids. Reveals truth. Often brings sudden endings or revelations. The earth's shadow falls on the moon — what shadow work is calling?", ritualHint: "Journal about what's being revealed. Release what no longer serves. Name your truth.", element: "water" },
     { id: `solar-eclipse-2-${year}`, name: "Solar Eclipse", date: new Date(year, 7, 12), tradition: "astronomical", category: "solar", description: "August 12, 2026 — Solar eclipse in Leo. Another solar eclipse, another reset point. A powerful moment of beginning again. The cosmos clears the stage for what's next.", ritualHint: "Begin something new and bold. Declare your next chapter. Walk through the cosmic door.", element: "spirit" },
-    { id: `lunar-eclipse-2-${year}`, name: "Lunar Eclipse", date: new Date(year, 7, 27), tradition: "astronomical", category: "moon", description: "August 27, 2026 — Lunar eclipse in Pisces. The year's second lunar eclipse. Emotional revelations and spiritual truths surface. What have you been avoiding feeling? Let the eclipse illuminate it.", ritualHint: "Look inward. What have you learned? What do you need to release?", element: "water" },
+    { id: `lunar-eclipse-2-${year}`, name: "Lunar Eclipse", date: new Date(year, 7, 28), tradition: "astronomical", category: "moon", description: "August 28, 2026 — Lunar eclipse in Pisces. The year's second lunar eclipse. Emotional revelations and spiritual truths surface. What have you been avoiding feeling? Let the eclipse illuminate it.", ritualHint: "Look inward. What have you learned? What do you need to release?", element: "water" },
   );
 
   // ── CULTURAL ASTROLOGY & NEW YEAR FESTIVALS ──
@@ -955,7 +940,7 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
     [4, 31, "Blue Moon", "Sagittarius"],    // Rare second full moon in May
     [5, 29, "Strawberry Moon", "Capricorn"],
     [6, 29, "Buck Moon", "Aquarius"],
-    [7, 27, "Sturgeon Moon", "Pisces"],     // Lunar Eclipse
+    [7, 28, "Sturgeon Moon", "Pisces"],     // Lunar Eclipse
     [8, 26, "Harvest Moon", "Aries"],
     [9, 25, "Hunter's Moon", "Taurus"],
     [10, 24, "Beaver Moon", "Gemini"],
@@ -965,7 +950,7 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   for (const [month, day, name, sign, special] of fullMoons2026) {
     if (year === 2026) {
       const isBlue = name === "Blue Moon";
-      const isEclipse = special === "eclipse" || (month === 2 && day === 3) || (month === 7 && day === 27);
+      const isEclipse = special === "eclipse" || (month === 2 && day === 3) || (month === 7 && day === 28);
       const specialLabel = isBlue ? " — Blue Moon (rare second full moon this month)" :
                            isEclipse ? " — Lunar Eclipse" : "";
       events.push({
