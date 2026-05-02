@@ -33,6 +33,7 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import RitualCompletionCheckin from "@/components/RitualCompletionCheckin";
 import RefreshModal from "@/components/RefreshModal";
+import MoonEventScreen from "@/components/MoonEventScreen";
 // feedback utils available if needed later
 import { getGoodForToday, getTodaySky } from "@/lib/almanacData";
 // Theme handled via CSS variables — no useTheme needed here
@@ -337,6 +338,9 @@ export default function RitualPageContent() {
   // Refresh mode state
   const [showRefresh, setShowRefresh] = useState(false);
 
+  // Moon event overlay (full/new moon detail screen)
+  const [showMoonEvent, setShowMoonEvent] = useState(false);
+
   const handleRitualComplete = (ritualId: string, ritualTitle: string) => {
     setShowCheckin({ ritualId, ritualTitle });
   };
@@ -579,7 +583,16 @@ export default function RitualPageContent() {
         {/* Nested moon ritual card */}
         {moonRitual && (
           <button
-            onClick={() => setExpandedRitual(expandedRitual === moonRitual.id ? null : moonRitual.id)}
+            onClick={() => {
+              const phase = energy.moonPhase.phase;
+              if (phase === "full" || phase === "new") {
+                // On full/new moon days, open the full moon detail screen
+                setShowMoonEvent(true);
+              } else {
+                // Other phases: expand ritual inline
+                setExpandedRitual(expandedRitual === moonRitual.id ? null : moonRitual.id);
+              }
+            }}
             className="w-full rounded-xl p-4 flex items-center justify-between active:scale-[0.98] transition-all"
             style={{
               backgroundColor: "var(--moon-card-inner)",
@@ -587,19 +600,29 @@ export default function RitualPageContent() {
           >
             <div>
               <p className="text-[15px] font-semibold text-left" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
-                {moonRitual.title}
+                {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new")
+                  ? `Learn about tonight's ${energy.moonPhase.label}`
+                  : moonRitual.title}
               </p>
               <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                {moonRitual.duration || "5 min"} · {(() => {
-                  const r = moonRitual as CatalogRitual;
-                  return r.tier === 0 ? "No tools" : r.tier === 1 ? "Household" : r.tier === 2 ? "Crystals" : "Full Practice";
-                })()}
+                {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new")
+                  ? "Lore, correspondences & ritual"
+                  : `${moonRitual.duration || "5 min"} · ${(() => {
+                      const r = moonRitual as CatalogRitual;
+                      return r.tier === 0 ? "No tools" : r.tier === 1 ? "Household" : r.tier === 2 ? "Crystals" : "Full Practice";
+                    })()}`}
               </p>
             </div>
             <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3" style={{ backgroundColor: "var(--terracotta)" }}>
-              <svg className="w-4 h-4 ml-0.5" fill="white" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+              {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new") ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 ml-0.5" fill="white" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
             </div>
           </button>
         )}
@@ -1084,6 +1107,13 @@ export default function RitualPageContent() {
             setExpandedRitual(ritual.id);
           }}
           onClose={() => setShowRefresh(false)}
+        />
+      )}
+
+      {/* Moon event detail screen (full/new moon days) */}
+      {showMoonEvent && (
+        <MoonEventScreen
+          onClose={() => setShowMoonEvent(false)}
         />
       )}
     </main>

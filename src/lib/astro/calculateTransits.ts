@@ -23,6 +23,7 @@ import {
   PLANETS,
   PlanetName,
 } from "./ephemeris";
+import { getTransitIntensity } from "../transitIntensity";
 
 // ---------- Constants ----------
 
@@ -265,11 +266,9 @@ export function calculateTransits(data: TransitInput) {
     }
   }
 
-  // Sort by significance: outer planets first, then tighter orbs
+  // Sort by full intensity score (planet weight × aspect type × orb × natal weight × retrograde)
   transitAspects.sort(
-    (a, b) =>
-      -(PLANET_WEIGHT[a.transitPlanet] ?? 0) + (PLANET_WEIGHT[b.transitPlanet] ?? 0) ||
-      a.orb - b.orb,
+    (a, b) => getTransitIntensity(b).score - getTransitIntensity(a).score,
   );
 
   // Compute date windows for each aspect

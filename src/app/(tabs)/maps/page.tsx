@@ -20,6 +20,7 @@ import DateWheel from "@/components/DateWheel";
 import { generateYearSummary, SR_PLANET_HOUSE_HIGHLIGHTS } from "@/lib/solar-return-interpretations";
 import { generateRelationshipSummary } from "@/lib/composite-interpretations";
 import { getLordOfTheYear, isLordOfYearTransit } from "@/lib/rulers";
+import { getTransitIntensity } from "@/lib/transitIntensity";
 import ShareCard from "@/components/ShareCard";
 import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
@@ -297,45 +298,7 @@ const TIER_EXPLANATIONS = [
   { label: "Background", range: "10-34", color: "#7A8B8B", desc: "Undertone — very loose connection" },
 ];
 
-/* Calculates how strongly a transit is affecting the chart (0-100).
-   Factors: planet weight, aspect type, orb tightness, retrograde. */
-function getTransitIntensity(ta: TransitAspect): { score: number; label: string; color: string } {
-  // Planet weight: outer planets hit harder, longer
-  const planetWeight: Record<string, number> = {
-    Pluto: 55, Neptune: 48, Uranus: 45, Saturn: 40, Jupiter: 30,
-    Mars: 20, Venus: 16, Mercury: 13, Sun: 11, Moon: 7,
-  };
-  // Aspect intensity: conjunctions/oppositions hit hardest
-  const aspectWeight: Record<string, number> = {
-    conjunction: 1.0, opposition: 0.9, square: 0.85, trine: 0.55, sextile: 0.45, quincunx: 0.65,
-  };
-  // Natal planet importance: personal planets feel it more viscerally
-  const natalWeight: Record<string, number> = {
-    Sun: 1.6, Moon: 1.6, Mercury: 1.2, Venus: 1.35, Mars: 1.2,
-    Jupiter: 0.9, Saturn: 1.0, Uranus: 0.85, Neptune: 0.85, Pluto: 0.8,
-  };
-
-  const base = planetWeight[ta.transitPlanet] || 10;
-  const aspectMult = aspectWeight[ta.aspect] || 0.5;
-  const natalMult = natalWeight[ta.natalPlanet] || 1.0;
-  // Tighter orb = stronger. 0° orb = 1.0x, 8° orb = 0.25x
-  const orbFactor = Math.max(0.25, 1.0 - (ta.orb / 10.5));
-  // Retrograde adds ~18% intensity (energy concentrated, revisiting)
-  const retroMult = ta.transitRetrograde ? 1.18 : 1.0;
-
-  let score = Math.round(base * aspectMult * natalMult * orbFactor * retroMult);
-  score = Math.min(100, Math.max(1, score));
-
-  let label = "Background hum";
-  let color = "text-foreground/30";
-  if (score >= 75) { label = "Life-altering"; color = "text-terracotta"; }
-  else if (score >= 55) { label = "Very strong"; color = "text-amber"; }
-  else if (score >= 38) { label = "Significant"; color = "text-foreground/70"; }
-  else if (score >= 20) { label = "Moderate"; color = "text-foreground/50"; }
-  else if (score >= 10) { label = "Subtle"; color = "text-foreground/40"; }
-
-  return { score, label, color };
-}
+/* Transit intensity scoring imported from @/lib/transitIntensity */
 
 /* ── Specific transit-to-natal descriptions ──
    Keyed by "TransitPlanet-NatalPlanet" for unique descriptions.

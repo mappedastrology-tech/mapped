@@ -1,0 +1,43 @@
+{
+  "sorted_middleware": [
+    "/api/seed-special-points/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/seed-special-points/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/api/seed-special-points/route_client-reference-manifest.js",
+        "server/edge/chunks/_next-internal_server_app_api_seed-special-points_route_actions_13cttln.js",
+        "server/edge/chunks/[root-of-the-server]__1389y1p._.js",
+        "server/edge/chunks/node_modules_next_dist_01jb8.a._.js",
+        "server/edge/chunks/node_modules_next_dist_esm_build_templates_edge-app-route_05ii-df.js",
+        "server/edge/chunks/[root-of-the-server]__00b~ypc._.js",
+        "server/edge/chunks/node_modules_@supabase_supabase-js_dist_index_mjs_09osfkw._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0vzuuip.js"
+      ],
+      "name": "app/api/seed-special-points/route",
+      "page": "/api/seed-special-points/route",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0vzuuip.js",
+      "matchers": [
+        {
+          "regexp": "^/api/seed-special-points(?:/)?$",
+          "originalSource": "/api/seed-special-points"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "87Gva-H4Vufpo-cnwFxq6",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "rZh3IZbLsA8nnZmFN09kIBweEe6hpVTTfNrLXJmP8mo=",
+        "__NEXT_PREVIEW_MODE_ID": "18e8af4c68371d4755b8a5691b6562f8",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "0c5b0626c4809ef13e8249df452f75b24bc6a864cb592dba37d81bd57f494edf",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "83cb7963a0895f398bfae273d5e08b0fe071ca331e8e507d88b1b9ac66362155"
+      }
+    }
+  }
+}

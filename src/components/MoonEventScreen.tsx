@@ -9,7 +9,7 @@
  * Triggered from home screen moon badge or horizon event cards.
  */
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import {
   getTodaysMoonEvent,
   getFullMoonsForYear,
@@ -20,6 +20,7 @@ import {
   type TodaysMoonEvent,
   type YearMoonEntry,
 } from "@/lib/celestialCalendar";
+import { getDailyRituals } from "@/lib/rituals";
 
 // ─── Night sky background image ─────────────────────────────────────────────
 
@@ -123,6 +124,12 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
   const moonEvent = useMemo(() => getTodaysMoonEvent(today), [today]);
   const moonPhase = useMemo(() => getMoonPhase(today), [today]);
   const yearMoons = useMemo(() => getFullMoonsForYear(today.getFullYear()), [today]);
+
+  // Inline ritual state
+  const [showRitual, setShowRitual] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const ritualRef = useRef<HTMLDivElement>(null);
+  const moonRitual = useMemo(() => getDailyRituals(today).moonRitual, [today]);
 
   // Set status bar / theme-color to dark while this screen is open
   useEffect(() => {
@@ -289,21 +296,100 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
           </div>
         )}
 
-        {/* Ritual CTA */}
-        {onStartRitual && (
-          <div className="py-4">
-            <button
-              onClick={onStartRitual}
-              className="w-full py-3.5 rounded-xl text-[14px] font-semibold transition-all active:scale-[0.97]"
-              style={{
-                background: kind === "full"
-                  ? "linear-gradient(135deg, #c46a45, #a85a38)"
-                  : "linear-gradient(135deg, #5a4a8a, #4a3a7a)",
-                color: "#FFF8F0",
-              }}
-            >
-              {kind === "full" ? "Start Full Moon Ritual" : "Set Your Intentions"}
-            </button>
+        {/* Ritual CTA + inline ritual steps */}
+        <div className="py-4">
+          <button
+            onClick={() => {
+              if (!showRitual) {
+                setShowRitual(true);
+                // Scroll to ritual after it renders
+                setTimeout(() => ritualRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+              } else {
+                setShowRitual(false);
+                setCompletedSteps(new Set());
+              }
+            }}
+            className="w-full py-3.5 rounded-xl text-[14px] font-semibold transition-all active:scale-[0.97]"
+            style={{
+              background: kind === "full"
+                ? "linear-gradient(135deg, #c46a45, #a85a38)"
+                : "linear-gradient(135deg, #5a4a8a, #4a3a7a)",
+              color: "#FFF8F0",
+            }}
+          >
+            {showRitual
+              ? "Hide Ritual"
+              : kind === "full" ? "Start Full Moon Ritual" : "Set Your Intentions"}
+          </button>
+        </div>
+
+        {/* Expanded inline ritual steps */}
+        {showRitual && moonRitual && (
+          <div ref={ritualRef} className="pb-6 rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="px-5 pt-5 pb-3">
+              <p className="text-[9px] tracking-[0.2em] uppercase mb-2" style={{ opacity: 0.3 }}>
+                {moonRitual.duration} · {moonRitual.steps.length} steps
+              </p>
+              <h3 className="text-[18px] font-bold mb-1" style={{ fontFamily: "Georgia, serif" }}>
+                {moonRitual.title}
+              </h3>
+              <p className="text-[12px] leading-[1.5]" style={{ opacity: 0.5 }}>
+                {moonRitual.description}
+              </p>
+            </div>
+
+            <div className="px-5 space-y-2">
+              {moonRitual.steps.map((step, i) => {
+                const done = completedSteps.has(i);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setCompletedSteps(prev => {
+                        const next = new Set(prev);
+                        if (next.has(i)) next.delete(i);
+                        else next.add(i);
+                        return next;
+                      });
+                    }}
+                    className="w-full flex items-start gap-3 py-3 px-3 rounded-xl text-left transition-all active:scale-[0.98]"
+                    style={{
+                      background: done ? "rgba(196,106,69,0.15)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    {/* Step number / checkmark */}
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-bold"
+                      style={{
+                        background: done ? "#c46a45" : "rgba(255,255,255,0.08)",
+                        color: done ? "#fff" : "rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      {done ? "✓" : i + 1}
+                    </div>
+                    <p className="text-[13px] leading-[1.5] flex-1"
+                      style={{
+                        opacity: done ? 0.45 : 0.7,
+                        textDecoration: done ? "line-through" : "none",
+                      }}
+                    >
+                      {step}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Completion message */}
+            {completedSteps.size === moonRitual.steps.length && (
+              <div className="mx-5 mt-4 mb-2 py-3 px-4 rounded-xl text-center" style={{ background: "rgba(196,106,69,0.15)" }}>
+                <p className="text-[14px] font-semibold" style={{ color: "#f5e6c8" }}>
+                  ✨ Ritual complete
+                </p>
+                <p className="text-[11px] mt-1" style={{ opacity: 0.45 }}>
+                  {kind === "full" ? "Release what no longer serves you." : "Your intentions are planted."}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
