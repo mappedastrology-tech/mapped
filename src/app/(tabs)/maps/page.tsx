@@ -30,17 +30,18 @@ import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
    ═══════════════════════════════════════════ */
 class DetailErrorBoundary extends React.Component<
   { children: React.ReactNode; onReset: () => void },
-  { error: Error | null }
+  { error: Error | null; stack: string }
 > {
   constructor(props: { children: React.ReactNode; onReset: () => void }) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, stack: "" };
   }
   static getDerivedStateFromError(error: Error) {
-    return { error };
+    return { error, stack: "" };
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("[DetailErrorBoundary] Render crash:", error, info.componentStack);
+    console.error("[DetailErrorBoundary] Render crash:", error, "\nStack:", error.stack, "\nComponent:", info.componentStack);
+    this.setState({ stack: (error.stack || "") + "\n\nComponent tree:" + (info.componentStack || "") });
   }
   render() {
     if (this.state.error) {
@@ -48,8 +49,9 @@ class DetailErrorBoundary extends React.Component<
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
           <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart.</p>
           <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{this.state.error.message}</p>
+          <pre className="text-foreground/20 text-[8px] leading-tight mb-4 max-w-sm overflow-auto max-h-48 text-left whitespace-pre-wrap break-all bg-foreground/5 p-2 rounded">{this.state.stack}</pre>
           <button
-            onClick={() => { this.setState({ error: null }); this.props.onReset(); }}
+            onClick={() => { this.setState({ error: null, stack: "" }); this.props.onReset(); }}
             className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
           >
             Back to map
@@ -4158,12 +4160,15 @@ export default function MapsTab() {
         compat = computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend");
       }
     } catch (e) {
-      console.error("[maps] Detail view setup crashed:", e, "selected:", JSON.stringify({ name: selected.name, category: selected.category, hasSyn: !!selected.synastry, hasPlanets: !!selected.planets }));
+      const errMsg = e instanceof Error ? e.message : "Unknown error";
+      const errStack = e instanceof Error ? e.stack : "";
+      console.error("[maps] Detail view setup crashed:", e, "\nStack:", errStack, "\nSelected:", JSON.stringify({ name: selected.name, category: selected.category, hasSyn: !!selected.synastry, hasPlanets: !!selected.planets, planetHouses: selected.planets?.slice(0,3).map(p => ({ n: p.name, h: p.house, ht: typeof p.house })) }));
       // Show error fallback instead of crashing the page
       return (
         <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
           <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart (setup).</p>
-          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{e instanceof Error ? e.message : "Unknown error"}</p>
+          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{errMsg}</p>
+          <pre className="text-foreground/20 text-[8px] leading-tight mb-4 max-w-sm overflow-auto max-h-48 text-left whitespace-pre-wrap break-all bg-foreground/5 p-2 rounded">{errStack}</pre>
           <button
             onClick={() => { setSelectedId(null); setPersonTab("synastry"); }}
             className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
