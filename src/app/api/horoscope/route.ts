@@ -251,8 +251,13 @@ export async function POST(request: NextRequest) {
     const { chart, celestial, transits, userName, lordOfTheYear } = body;
 
     // Check server-side cache (cross-device consistency)
+    // Use the client's local date if provided, so all devices in the same timezone
+    // get the same horoscope regardless of when they hit the UTC boundary.
     const userId = body.userId as string | undefined;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const localDate = (body as unknown as Record<string, unknown>).localDate as string | undefined;
+    const todayStr = (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate))
+      ? localDate
+      : new Date().toISOString().slice(0, 10);
     if (userId) {
       const cached = await getCachedHoroscope(userId, todayStr);
       if (cached) {

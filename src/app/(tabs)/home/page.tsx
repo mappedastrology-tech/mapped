@@ -87,6 +87,7 @@ import InfoSheet from "@/components/InfoSheet";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
 import { getTodaysMoonEvent } from "@/lib/celestialCalendar";
+import { getCurrentMoonSign, getCurrentPlanetSign } from "@/lib/astro/currentSky";
 
 interface DailyHoroscope {
   headline: string;
@@ -405,6 +406,7 @@ export default function HomeTab() {
             transits,
             userName: userName || undefined,
             userId: authSession.user.id,
+            localDate: todayLocal,
           }),
         });
 
@@ -431,26 +433,12 @@ export default function HomeTab() {
 
   // Moon sign label (sidereal, from almanac data or celestial calendar)
   const moonSignLabel = useMemo(() => {
-    const MOON_SIGNS = [
-      "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
-    ];
-    const ref = new Date("2024-04-08T00:00:00Z").getTime();
-    const elapsed = (today.getTime() - ref) / (1000 * 60 * 60 * 24);
-    const idx = Math.floor(((elapsed % 27.32) / 27.32) * 12) % 12;
-    return MOON_SIGNS[idx < 0 ? idx + 12 : idx];
+    return getCurrentMoonSign(today).full;
   }, [today]);
 
-  // Venus sign (approximate — moves ~1 sign/month)
+  // Venus sign (accurate, via astronomy-engine)
   const venusSign = useMemo(() => {
-    const SIGNS = [
-      "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
-    ];
-    const ref = new Date("2024-03-21T00:00:00Z").getTime();
-    const elapsed = (today.getTime() - ref) / (1000 * 60 * 60 * 24);
-    const idx = Math.floor(elapsed / 30.4) % 12;
-    return SIGNS[idx < 0 ? idx + 12 : idx];
+    return getCurrentPlanetSign("Venus", today).full;
   }, [today]);
 
   // Next major upcoming event for "Next Up" banner

@@ -91,9 +91,8 @@ const SIGN_ELEMENTS: Record<string, "fire" | "water" | "earth" | "air"> = {
   Sagittarius: "fire", Capricorn: "earth", Aquarius: "air", Pisces: "water",
 };
 
-/** Synodic month in days — moon completes one zodiac cycle in ~27.32 days */
-const SIDEREAL_MONTH = 27.321661;
-const KNOWN_NEW_MOON = new Date("2024-01-11T11:57:00Z").getTime();
+// Moon sign now uses astronomy-engine for accuracy (see currentSky.ts)
+import { getCurrentMoonSign, getMoonLongitude } from "@/lib/astro/currentSky";
 
 // ─── MOON SIGN ACTIVITIES (curated per specification) ─────────────────────────
 
@@ -315,14 +314,11 @@ function getSunTimes(date: Date): { sunrise: number; sunset: number } {
 
 /**
  * Get the current moon sign based on date.
- * The moon spends ~2.33 days in each sign, cycling through all 12 in ~27.32 days.
+ * Uses astronomy-engine ephemeris for accuracy (sub-arcminute).
  */
 function getMoonSign(date: Date): string {
-  const diff = date.getTime() - KNOWN_NEW_MOON;
-  const daysSinceRef = diff / (1000 * 60 * 60 * 24);
-  const cycleDays = ((daysSinceRef % SIDEREAL_MONTH) + SIDEREAL_MONTH) % SIDEREAL_MONTH;
-  const signIndex = Math.floor((cycleDays / SIDEREAL_MONTH) * 12);
-  return ZODIAC_SIGNS[signIndex];
+  const { full } = getCurrentMoonSign(date);
+  return full;
 }
 
 /** Day number within the current zodiac season (1-based) */
@@ -342,12 +338,10 @@ function getDayOfSeason(date: Date, season: ZodiacSeason): number {
  * We approximate this by placing a window near sign transitions.
  */
 function getVoidOfCourseMoon(date: Date): VoidOfCourseMoonWindow | null {
-  const diff = date.getTime() - KNOWN_NEW_MOON;
-  const daysSinceRef = diff / (1000 * 60 * 60 * 24);
-  const cycleDays = ((daysSinceRef % SIDEREAL_MONTH) + SIDEREAL_MONTH) % SIDEREAL_MONTH;
-  const daysPerSign = SIDEREAL_MONTH / 12;
-  const positionInSign = cycleDays % daysPerSign;
-  const fractionOfSign = positionInSign / daysPerSign;
+  // Use astronomy-engine to get the moon's position within its current sign
+  const moonLon = getMoonLongitude(date);
+  const degreeInSign = ((moonLon % 30) + 30) % 30; // 0-30 degrees within sign
+  const fractionOfSign = degreeInSign / 30;
 
   // VOC window happens in the last ~15% of a sign transit
   if (fractionOfSign < 0.85) return null;

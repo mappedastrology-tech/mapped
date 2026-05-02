@@ -107,7 +107,7 @@ export function getLordOfTheYear(
   if (!birthDate || !houses.length) return null;
 
   const now = referenceDate || new Date();
-  const [birthY, birthM, birthD] = birthDate.split("-").map(Number);
+  const [birthY, birthM, birthD] = String(birthDate).split("-").map(Number);
   if (!birthY || !birthM || !birthD) return null;
 
   // Calculate age (have they had their birthday this year?)

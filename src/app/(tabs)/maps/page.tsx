@@ -766,9 +766,9 @@ function ordinal(n: number): string {
 
 const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function fmtTransitDate(dateStr?: string): string {
+function fmtTransitDate(dateStr?: string | number): string {
   if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const [y, m, d] = String(dateStr).split("-").map(Number);
   const month = SHORT_MONTHS[m - 1] || "";
   return `${month} ${d}, ${y}`;
 }
@@ -1247,7 +1247,7 @@ const ASPECT_COLORS: Record<string, string> = {
 
 /** Helper: convert local birth time to UTC using IANA timezone string */
 function birthTimeToUtcHour(birthDate: string, birthTime: string, timezone?: string): number {
-  const [hh, mm] = birthTime.split(":").map(Number);
+  const [hh, mm] = String(birthTime || "12:00").split(":").map(Number);
   const localHour = hh + mm / 60;
 
   if (!timezone) {
@@ -2419,9 +2419,9 @@ export default function MapsTab() {
 
     setAstroLoading(true);
     setAstroError(false);
-    const [y, m, d] = birthDate.split("-").map(Number);
+    const [y, m, d] = String(birthDate).split("-").map(Number);
     const tz = userChart?.timezone;
-    const utcHour = birthTimeToUtcHour(birthDate, birthTime, tz || undefined);
+    const utcHour = birthTimeToUtcHour(String(birthDate), String(birthTime || "12:00"), tz || undefined);
     fetch("/api/astrocartography", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -6404,7 +6404,7 @@ export default function MapsTab() {
                   <g key={entry.id}>
                     <circle cx={projX(entry.lng)} cy={projY(entry.lat)} r="2.5" fill="#7a8c6e" stroke="#F3E8D6" strokeWidth="0.6" />
                     <text x={projX(entry.lng)} y={projY(entry.lat) - 5} textAnchor="middle" fill="#2A1F18" fontSize="4" fontWeight="600">
-                      {entry.cityName.split(",")[0]}
+                      {String(entry.cityName || "").split(",")[0]}
                     </text>
                   </g>
                 ))}
@@ -6778,12 +6778,12 @@ export default function MapsTab() {
               {timelineEntries.length > 0 && (
                 <div className="flex flex-col gap-3 mb-4">
                   {[...timelineEntries]
-                    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+                    .sort((a, b) => String(a.startDate || "").localeCompare(String(b.startDate || "")))
                     .map((entry) => {
                       const isExpanded = expandedTimeline === entry.id;
                       const synopsis = astroLines ? getLocationSynopsis(entry.lat, entry.lng, astroLines) : [];
-                      const startYear = entry.startDate.split("-")[0];
-                      const endLabel = entry.endDate === "present" ? "Present" : entry.endDate.split("-")[0];
+                      const startYear = String(entry.startDate || "").split("-")[0];
+                      const endLabel = entry.endDate === "present" ? "Present" : String(entry.endDate || "").split("-")[0];
 
                       return (
                         <div key={entry.id} className="rounded-xl border border-foreground/18 bg-card/50 overflow-hidden">
@@ -6947,7 +6947,7 @@ export default function MapsTab() {
                       value={tlCity}
                       onChange={(v: string) => setTlCity(v)}
                       onSelect={(loc: LocationResult) => {
-                        setTlCity(loc.display_name.split(",")[0]);
+                        setTlCity(String(loc.display_name || "").split(",")[0]);
                         setTlLat(parseFloat(loc.lat));
                         setTlLng(parseFloat(loc.lon));
                       }}
