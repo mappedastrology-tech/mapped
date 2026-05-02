@@ -3103,7 +3103,7 @@ export default function MapsTab() {
   // ─── Self view: My Transits + Relationship weather ───
   if (showSelfView) {
     const overlapPerson = overlapPersonId ? connections.find(c => c.id === overlapPersonId) : null;
-    const personName = overlapPerson?.name.split(" ")[0] || "";
+    const personName = String(overlapPerson?.name || "").split(" ")[0] || "";
     const isPartnerOverlap = overlapPerson?.category === "partner";
     const isFamilyOverlap = overlapPerson?.category === "family";
 
@@ -4143,11 +4143,11 @@ export default function MapsTab() {
         compat = computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend");
       }
     } catch (e) {
-      console.error("[maps] Detail view setup crashed:", e);
+      console.error("[maps] Detail view setup crashed:", e, "selected:", JSON.stringify({ name: selected.name, category: selected.category, hasSyn: !!selected.synastry, hasPlanets: !!selected.planets }));
       // Show error fallback instead of crashing the page
       return (
         <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
-          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart.</p>
+          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart (setup).</p>
           <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{e instanceof Error ? e.message : "Unknown error"}</p>
           <button
             onClick={() => { setSelectedId(null); setPersonTab("synastry"); }}
@@ -4158,6 +4158,9 @@ export default function MapsTab() {
         </main>
       );
     }
+
+    // Safe first-name helper — guards against non-string name from Supabase
+    const firstName = String(selected.name || "").split(" ")[0] || "them";
 
     return (
       <DetailErrorBoundary onReset={() => { setSelectedId(null); setPersonTab("synastry"); }}>
@@ -4350,7 +4353,7 @@ export default function MapsTab() {
                   <ShareCard
                     type="synastry"
                     name="You"
-                    name2={selected.name.split(" ")[0]}
+                    name2={firstName}
                     score={compat.score}
                     subtitle={userChart?.bigThree ? `${SIGN_FULL[userChart.bigThree.sun] || userChart.bigThree.sun} Sun · ${SIGN_FULL[userChart.bigThree.moon] || userChart.bigThree.moon} Moon` : undefined}
                     subtitle2={bt ? `${SIGN_FULL[bt.sun] || bt.sun} Sun · ${SIGN_FULL[bt.moon] || bt.moon} Moon` : undefined}
@@ -4363,7 +4366,7 @@ export default function MapsTab() {
                   <ExportButton
                     type="synastry"
                     name="You"
-                    name2={selected.name.split(" ")[0]}
+                    name2={firstName}
                     aspects={syn.crossAspects}
                     meta={{
                       "Score": String(compat.score),
@@ -5010,7 +5013,7 @@ export default function MapsTab() {
               <>
                 <div className="text-center mb-4">
                   <p className="text-foreground/30 text-xs">
-                    What the sky is activating in {selected.name.split(" ")[0]}&rsquo;s chart
+                    What the sky is activating in {firstName}&rsquo;s chart
                   </p>
                 </div>
 
@@ -5076,7 +5079,7 @@ export default function MapsTab() {
                                     <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} {selected.name.split(" ")[0]}&rsquo;s {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {ta.natalPlanet}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-foreground/30">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
@@ -5327,7 +5330,7 @@ export default function MapsTab() {
 
                 <div className="rounded-xl border border-foreground/15 bg-card/40 px-4 py-3">
                   <p className="text-foreground/25 text-xs leading-relaxed">
-                    Transits show where today&rsquo;s planets are activating {selected.name.split(" ")[0]}&rsquo;s birth chart. Major transits (Jupiter through Pluto) shape long-term themes, while inner planet transits (Sun through Mars) set the daily tone. The house tells you which life area is being activated.
+                    Transits show where today&rsquo;s planets are activating {firstName}&rsquo;s birth chart. Major transits (Jupiter through Pluto) shape long-term themes, while inner planet transits (Sun through Mars) set the daily tone. The house tells you which life area is being activated.
                   </p>
                 </div>
               </>
@@ -5387,7 +5390,7 @@ export default function MapsTab() {
                       <ShareCard
                         type="composite"
                         name="You"
-                        name2={selected.name.split(" ")[0]}
+                        name2={firstName}
                         theme={relSummary.title}
                         subtitle={compositeData.bigThree ? `${compositeData.bigThree.sun || "?"} Sun · ${compositeData.bigThree.moon || "?"} Moon · ${compositeData.bigThree.rising || "?"} Rising` : undefined}
                         highlights={[
@@ -5399,7 +5402,7 @@ export default function MapsTab() {
                       <ExportButton
                         type="composite"
                         name="You"
-                        name2={selected.name.split(" ")[0]}
+                        name2={firstName}
                         bigThree={compositeData.bigThree}
                         planets={compositeData.planets}
                         houses={compositeData.houses}
@@ -5512,7 +5515,7 @@ export default function MapsTab() {
                   Calculate Composite Chart
                 </button>
                 <p className="text-foreground/25 text-xs mt-3 text-center max-w-[260px]">
-                  See the chart that represents your relationship with {selected.name.split(" ")[0]} as its own entity
+                  See the chart that represents your relationship with {firstName} as its own entity
                 </p>
               </div>
             )}
@@ -5535,7 +5538,6 @@ export default function MapsTab() {
             ) : solarReturnData && solarReturnPersonId === selected.id ? (
               (() => {
                 const yearSummary = generateYearSummary(solarReturnData);
-                const firstName = selected.name.split(" ")[0];
                 return (
                   <>
                     {/* Year picker */}
@@ -5709,7 +5711,7 @@ export default function MapsTab() {
                   Calculate Solar Return
                 </button>
                 <p className="text-foreground/25 text-xs mt-3 text-center max-w-[260px]">
-                  See {selected.name.split(" ")[0]}&rsquo;s year-ahead themes based on when the Sun returns to their natal degree
+                  See {firstName}&rsquo;s year-ahead themes based on when the Sun returns to their natal degree
                 </p>
               </div>
             )}

@@ -32,7 +32,7 @@ interface PlacementAccordionProps {
   planetSymbol: string;
   sign: string;
   position: number;
-  house: string | null;
+  house: string | number | null;
   retrograde: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -47,14 +47,22 @@ function elementColor(sign: string): string {
   return "text-ink";
 }
 
-function formatHouse(house: string | null): string {
-  if (!house) return "";
+function formatHouse(house: string | number | null): string {
+  if (house == null) return "";
+  // house can be a number (1-12) from calculateChart or a string like "First_House"
+  if (typeof house === "number") {
+    const ordinals: Record<number, string> = {
+      1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th",
+      7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th",
+    };
+    return `${ordinals[house] || house} House`;
+  }
   const ordinals: Record<string, string> = {
     First: "1st", Second: "2nd", Third: "3rd", Fourth: "4th",
     Fifth: "5th", Sixth: "6th", Seventh: "7th", Eighth: "8th",
     Ninth: "9th", Tenth: "10th", Eleventh: "11th", Twelfth: "12th",
   };
-  const word = house.split("_")[0];
+  const word = String(house).split("_")[0];
   return `${ordinals[word] || word} House`;
 }
 
