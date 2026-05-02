@@ -92,7 +92,7 @@ const MAJOR_ARCANA: TarotCard[] = [
     reversedKeywords: ["dependence", "smothering", "creative block", "neglect"],
     uprightMeaning: "Creation is flowing through you right now — whether that's literal birth or any new thing you're bringing to life. Abundance is available, but only if you nurture what you're growing with patience and care. Enjoy the beauty and sensuality of this season.",
     reversedMeaning: "Either you're not tending to what needs your attention, or someone is trying to nurture you in ways that feel suffocating. Creative energy feels stuck, blocked, or dependent on something outside yourself — it's time to reclaim your generative power.",
-    element: "Earth", zodiac: "Venus",
+    element: "Earth", planet: "Venus",
   },
   {
     id: "major-4", name: "The Emperor", number: 4, suit: "major", arcana: "major",
@@ -132,7 +132,7 @@ const MAJOR_ARCANA: TarotCard[] = [
     reversedKeywords: ["self-doubt", "weakness", "insecurity", "raw emotion"],
     uprightMeaning: "Real power isn't loud or forceful — it's patient, compassionate, and grounded in deep knowing. You have the inner strength to face what needs facing, not through aggression but through gentleness and courage combined. Trust the quiet power within.",
     reversedMeaning: "Self-doubt is eating away at your confidence, making you question whether you have what it takes. You're running on raw emotion instead of steady strength, and the insecurity is showing in ways you can't hide.",
-    zodiac: "Leo",
+    element: "Fire", zodiac: "Leo",
   },
   {
     id: "major-9", name: "The Hermit", number: 9, suit: "major", arcana: "major",
@@ -172,7 +172,7 @@ const MAJOR_ARCANA: TarotCard[] = [
     reversedKeywords: ["resistance to change", "fear of endings", "stagnation", "holding on"],
     uprightMeaning: "Something must end for something new to begin — and that's not a failure, it's a rebirth. The version of you or your life that's dying has already served its purpose; let it go with gratitude. What emerges from this ending will be worth it.",
     reversedMeaning: "You're clinging to what's already finished, trying to resurrect something that needs to stay dead. The transformation is happening whether you accept it or not — resistance only makes it more painful.",
-    zodiac: "Scorpio",
+    element: "Water", zodiac: "Scorpio",
   },
   {
     id: "major-14", name: "Temperance", number: 14, suit: "major", arcana: "major",

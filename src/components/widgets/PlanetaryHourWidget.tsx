@@ -36,14 +36,18 @@ export default function PlanetaryHourWidget() {
     }
 
     // Chaldean order: Saturn, Jupiter, Mars, Sun, Venus, Mercury, Moon
-    // Map to weekdays: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6)
-    const chaldeanOrder = [6, 4, 2, 0, 5, 3, 1]; // indices into PLANETARY_DAYS
+    // Each day's first hour is ruled by the day's planet.
+    // The sequence then continues through the Chaldean order.
+    // PLANETARY_DAYS indices: 0=Sun, 1=Moon, 2=Mars, 3=Mercury, 4=Jupiter, 5=Venus, 6=Saturn
+    const chaldeanSequence = [6, 4, 2, 0, 5, 3, 1]; // PLANETARY_DAYS indices in Chaldean order
     const dayOfWeek = now.getDay();
 
-    // Get the starting planet for this day
-    const startPlanetIndex = chaldeanOrder[dayOfWeek];
-    // Shift by the current hour
-    const planetIndex = chaldeanOrder[(startPlanetIndex + hourIndex) % 7];
+    // Find where this day's planet sits in the Chaldean sequence
+    // dayOfWeek: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat → PLANETARY_DAYS index is same
+    const dayPlanetIndex = dayOfWeek; // Sun=0, Moon=1, Mars=2, etc.
+    const startPos = chaldeanSequence.indexOf(dayPlanetIndex);
+    // Walk hourIndex steps through the Chaldean sequence
+    const planetIndex = chaldeanSequence[(startPos + hourIndex) % 7];
 
     const planetaryDay = PLANETARY_DAYS[planetIndex];
 
