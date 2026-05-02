@@ -205,10 +205,10 @@ export default function DollyTab() {
         })));
       }
 
-      // Load today's conversation (table might not exist yet — that's ok)
+      // Load today's conversation — try Supabase first, fall back to localStorage
       let hasExistingConvo = false;
+      const todayKey = new Date().toISOString().split("T")[0];
       try {
-        const todayKey = new Date().toISOString().split("T")[0];
         const { data: convos } = await supabase
           .from("dolly_conversations")
           .select("*")
@@ -223,7 +223,18 @@ export default function DollyTab() {
           hasExistingConvo = true;
         }
       } catch {
-        // Table might not exist yet — continue without saved conversations
+        // Supabase unavailable — try localStorage
+      }
+
+      // Fall back to localStorage if Supabase had nothing
+      if (!hasExistingConvo) {
+        try {
+          const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}");
+          if (lsData[todayKey]?.messages?.length) {
+            setMessages(lsData[todayKey].messages);
+            hasExistingConvo = true;
+          }
+        } catch { /* ignore */ }
       }
 
       setIsLoading(false);
@@ -254,14 +265,27 @@ export default function DollyTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingContext, isLoading]);
 
-  // Save conversation to Supabase (debounced on message changes)
+  // Save conversation — always to localStorage, Supabase as backup
   const saveConversation = useCallback(async (msgs: Message[]) => {
     if (!msgs.length) return;
+
+    const todayKey = new Date().toISOString().split("T")[0];
+
+    // Always save to localStorage first (guaranteed to work)
+    try {
+      const lsKey = "mapped:dolly-conversations";
+      const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string }>;
+      existing[viewingDay || todayKey] = { messages: msgs, updated_at: new Date().toISOString() };
+      // Keep last 30 days
+      const keys = Object.keys(existing).sort().reverse();
+      if (keys.length > 30) { for (const k of keys.slice(30)) delete existing[k]; }
+      localStorage.setItem(lsKey, JSON.stringify(existing));
+    } catch { /* localStorage full or unavailable */ }
+
+    // Also try Supabase
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
-
-      const todayKey = new Date().toISOString().split("T")[0];
 
       if (conversationId) {
         await supabase
@@ -282,9 +306,9 @@ export default function DollyTab() {
         if (data) setConversationId(data.id);
       }
     } catch (err) {
-      console.error("Save conversation error:", err);
+      console.error("Save conversation error (Supabase):", err);
     }
-  }, [conversationId]);
+  }, [conversationId, viewingDay]);
 
   // Send message
   async function handleSend(text?: string) {
@@ -429,6 +453,18 @@ export default function DollyTab() {
         .limit(50);
 
       let convos: PastConversation[] = (data || []).filter(c => c.messages && c.messages.length > 0);
+
+      // Merge localStorage conversations that Supabase might not have
+      try {
+        const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}") as Record<string, { messages: Message[]; updated_at: string }>;
+        for (const [day, val] of Object.entries(lsData)) {
+          if (!val?.messages?.length) continue;
+          const alreadyInDb = convos.some(c => c.day === day);
+          if (!alreadyInDb) {
+            convos.push({ id: `local-${day}`, day, messages: val.messages, updated_at: val.updated_at });
+          }
+        }
+      } catch { /* ignore */ }
 
       // Merge the current in-memory conversation so it always appears,
       // even if it hasn't been saved to Supabase yet or has newer messages

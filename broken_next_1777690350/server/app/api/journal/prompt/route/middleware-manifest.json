@@ -1,0 +1,42 @@
+{
+  "sorted_middleware": [
+    "/api/journal/prompt/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/journal/prompt/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/api/journal/prompt/route_client-reference-manifest.js",
+        "server/edge/chunks/_next-internal_server_app_api_journal_prompt_route_actions_0m0f1j~.js",
+        "server/edge/chunks/[root-of-the-server]__12rwyzf._.js",
+        "server/edge/chunks/node_modules_next_dist_01jb8.a._.js",
+        "server/edge/chunks/node_modules_@anthropic-ai_sdk_index_mjs_0he-vsb._.js",
+        "server/edge/chunks/[root-of-the-server]__00b~ypc._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0427a7..js"
+      ],
+      "name": "app/api/journal/prompt/route",
+      "page": "/api/journal/prompt/route",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0427a7..js",
+      "matchers": [
+        {
+          "regexp": "^/api/journal/prompt(?:/)?$",
+          "originalSource": "/api/journal/prompt"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "jQpR9UMFKsHhcROz9YKBS",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "ecTZvwTNpMKdJ8K3Y/NiUE/FQKpzZU5d9JOIeWYZPr4=",
+        "__NEXT_PREVIEW_MODE_ID": "24df7582c477343e15b79472a867a7e3",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "eae11c88a9d3cb6f6a87440bb62ca11463bf459cb3c2953d773658dc89f1b0fa",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "34ece14d05902d27eb6a9a6cba047ebb48fbff71411a8a8e707e059bd60cc219"
+      }
+    }
+  }
+}

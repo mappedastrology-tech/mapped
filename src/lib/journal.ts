@@ -41,15 +41,22 @@ export interface JournalReflection {
 // ─── ENTRY CRUD ───────────────────────────────────────────────────────────────
 
 export async function getJournalEntry(userId: string, date: string): Promise<JournalEntry | null> {
-  const { data, error } = await supabase
-    .from("journal_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("date", date)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("journal_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .single();
 
-  if (error || !data) return null;
-  return data as JournalEntry;
+    if (!error && data) return data as JournalEntry;
+  } catch { /* Supabase unavailable */ }
+
+  // Fall back to localStorage
+  try {
+    const lsEntries = JSON.parse(localStorage.getItem("mapped:journal-entries") || "[]") as JournalEntry[];
+    return lsEntries.find(e => e.date === date) || null;
+  } catch { return null; }
 }
 
 export async function saveJournalEntry(
@@ -60,51 +67,85 @@ export async function saveJournalEntry(
   mood?: string,
   celestialContext?: JournalEntry["celestial_context"]
 ): Promise<JournalEntry | null> {
-  // Try update first, then insert if no rows matched
-  const { data: existing } = await supabase
-    .from("journal_entries")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("date", date)
-    .maybeSingle();
+  const now = new Date().toISOString();
 
-  const payload = {
+  // Build the entry object for localStorage fallback
+  const localEntry: JournalEntry = {
+    id: `local-${date}-${userId}`,
     user_id: userId,
     date,
     content,
     prompt: prompt || "(no prompt)",
-    mood: mood || null,
-    celestial_context: celestialContext || null,
-    updated_at: new Date().toISOString(),
+    mood: mood || undefined,
+    celestial_context: celestialContext || undefined,
+    created_at: now,
+    updated_at: now,
   };
 
-  if (existing) {
-    const { user_id: _uid, date: _d, ...updatePayload } = payload;
-    const { data, error } = await supabase
+  // Always save to localStorage first (guaranteed to work)
+  try {
+    const lsKey = "mapped:journal-entries";
+    const existing = JSON.parse(localStorage.getItem(lsKey) || "[]") as JournalEntry[];
+    const idx = existing.findIndex(e => e.date === date);
+    if (idx >= 0) {
+      existing[idx] = { ...existing[idx], ...localEntry, id: existing[idx].id };
+    } else {
+      existing.unshift(localEntry);
+    }
+    // Keep last 200
+    localStorage.setItem(lsKey, JSON.stringify(existing.slice(0, 200)));
+  } catch { /* localStorage full or unavailable */ }
+
+  // Try Supabase
+  try {
+    const { data: existingRow } = await supabase
       .from("journal_entries")
-      .update(updatePayload)
+      .select("id")
       .eq("user_id", userId)
       .eq("date", date)
-      .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.error("Journal update error:", JSON.stringify(error));
-      return null;
-    }
-    return data as JournalEntry;
-  } else {
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .insert(payload)
-      .select()
-      .single();
+    const payload = {
+      user_id: userId,
+      date,
+      content,
+      prompt: prompt || "(no prompt)",
+      mood: mood || null,
+      celestial_context: celestialContext || null,
+      updated_at: now,
+    };
 
-    if (error) {
-      console.error("Journal insert error:", JSON.stringify(error));
-      return null;
+    if (existingRow) {
+      const { user_id: _uid, date: _d, ...updatePayload } = payload;
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .update(updatePayload)
+        .eq("user_id", userId)
+        .eq("date", date)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Journal update error:", JSON.stringify(error));
+        return localEntry; // Return localStorage version instead of null
+      }
+      return data as JournalEntry;
+    } else {
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Journal insert error:", JSON.stringify(error));
+        return localEntry; // Return localStorage version instead of null
+      }
+      return data as JournalEntry;
     }
-    return data as JournalEntry;
+  } catch (err) {
+    console.error("Journal Supabase error:", err);
+    return localEntry; // Supabase totally failed, but localStorage worked
   }
 }
 
@@ -113,15 +154,31 @@ export async function getJournalEntries(
   limit = 30,
   offset = 0
 ): Promise<JournalEntry[]> {
-  const { data, error } = await supabase
-    .from("journal_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: false })
-    .range(offset, offset + limit - 1);
+  let dbEntries: JournalEntry[] = [];
+  try {
+    const { data, error } = await supabase
+      .from("journal_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  if (error) return [];
-  return (data || []) as JournalEntry[];
+    if (!error && data) dbEntries = data as JournalEntry[];
+  } catch { /* Supabase unavailable */ }
+
+  // Merge localStorage entries that Supabase might not have
+  try {
+    const lsEntries = JSON.parse(localStorage.getItem("mapped:journal-entries") || "[]") as JournalEntry[];
+    for (const lse of lsEntries) {
+      if (!dbEntries.some(e => e.date === lse.date)) {
+        dbEntries.push(lse);
+      }
+    }
+    // Re-sort by date descending
+    dbEntries.sort((a, b) => b.date.localeCompare(a.date));
+  } catch { /* ignore */ }
+
+  return dbEntries;
 }
 
 export async function getJournalEntriesForPeriod(
