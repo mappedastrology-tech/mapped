@@ -294,8 +294,8 @@ function calcAscendant(ramc: number, obliquity: number, latitude: number): numbe
   const latRad = latitude * DEG;
 
   let asc = Math.atan2(
-    -Math.cos(ramcRad),
-    Math.sin(ramcRad) * Math.cos(oblRad) + Math.tan(latRad) * Math.sin(oblRad)
+    Math.cos(ramcRad),
+    -(Math.sin(ramcRad) * Math.cos(oblRad) + Math.tan(latRad) * Math.sin(oblRad))
   ) * RAD;
 
   asc = ((asc % 360) + 360) % 360;

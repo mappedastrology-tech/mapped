@@ -136,8 +136,8 @@ const RULER_IN_SIGN: Record<string, { meaning: string; advice: string }> = {
     advice: "Trust your intensity — it's not too much. Go all-in on what matters and cut what doesn't without guilt. Your power grows in private. You don't need to explain your moves to anyone.",
   },
   "Mars|Sagittarius": {
-    meaning: "Your drive is expansive and restless. You need freedom, meaning, and forward motion — staying still feels like dying. You navigate life through big bets, bold moves, and an unshakable belief that something better is coming.",
-    advice: "Say yes to the adventure. Travel, learn, take the risk that scares you. Your energy gets blocked when life feels small or meaningless — always have something on the horizon to move toward.",
+    meaning: "Your drive runs on conviction. You don't just want to do things — you need to believe in them. When something matters to you, your intensity is relentless and almost spiritual. You fight for truth, for meaning, for what you think is right — and you'll burn bridges if a situation feels dishonest or beneath you.",
+    advice: "Channel the fire into something you actually believe in — half-hearted commitments drain you. You need a mission, not just a goal. When your anger flares, ask what principle got violated — that's where the real issue lives. Your power comes from depth of conviction, not breadth of experience.",
   },
   "Mars|Capricorn": {
     meaning: "Your drive is disciplined, strategic, and built for the long haul. Mars is exalted here — you have an almost ruthless ability to set a goal and grind until you reach it, no matter how long it takes.",
