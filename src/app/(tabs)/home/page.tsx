@@ -581,13 +581,21 @@ export default function HomeTab() {
             onClick={() => setShowMoonEvent(true)}
             className="w-full mb-6 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-all"
             style={{
-              background: todaysMoonEvent.kind === "full"
-                ? "linear-gradient(135deg, #1a1040 0%, #2a1850 50%, #1a1040 100%)"
-                : "linear-gradient(135deg, #0a0a20 0%, #151535 50%, #0a0a20 100%)",
+              background: "#0a0a1a",
               border: "1px solid rgba(196,106,69,0.25)",
+              position: "relative",
             }}
           >
-            <div className="flex items-center gap-4 px-5 py-4">
+            {/* Night sky background */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/night-sky.png"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+              style={{ opacity: 0.7 }}
+            />
+            <div className="absolute inset-0 rounded-2xl" style={{ background: "linear-gradient(90deg, rgba(5,5,15,0.4) 0%, rgba(5,5,15,0.2) 100%)" }} />
+            <div className="flex items-center gap-4 px-5 py-4 relative z-10">
               <div className="shrink-0">
                 <MoonPhaseIcon phase={todaysMoonEvent.kind === "full" ? "Full Moon" : "New Moon"} size={48} />
               </div>

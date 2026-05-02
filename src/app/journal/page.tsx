@@ -55,7 +55,8 @@ function MiniCalendar({
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
-  const todayStr = today.toISOString().slice(0, 10);
+  // Use local date (not UTC) to avoid showing tomorrow in the evening
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -149,7 +150,13 @@ function JournalPage() {
 
   // Today
   const today = useMemo(() => new Date(), []);
-  const todayStr = today.toISOString().slice(0, 10);
+  // Use local date string (not UTC) — avoids showing tomorrow's date in the evening
+  const todayStr = useMemo(() => {
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [today]);
 
   // Reflection tab state
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -225,9 +232,22 @@ function JournalPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Fetch prompt ───
+  // ─── Fetch prompt (cached per day so it stays the same all day) ───
   useEffect(() => {
     if (prompt || promptLoading || isLoading || !userId || activeTab !== "reflections") return;
+
+    // Check localStorage cache first — same prompt all day
+    const cacheKey = `mapped:journal-prompt-${todayStr}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setPrompt(parsed.prompt);
+        if (parsed.context) setPromptContext(parsed.context);
+        return;
+      }
+    } catch { /* proceed to fetch */ }
+
     setPromptLoading(true);
     async function fetchPrompt() {
       try {
@@ -237,7 +257,20 @@ function JournalPage() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ horoscope: horoscope || "A day of potential and presence.", celestial: { moonPhase: moon.label, zodiacSeason: season.sign, planetaryDay: planetaryDay.day, nakshatra: nakshatra.name, nakshatraQuality: nakshatra.quality }, userName }),
         });
-        if (res.ok) { const d = await res.json(); setPrompt(d.prompt); if (d.context) setPromptContext(d.context); }
+        if (res.ok) {
+          const d = await res.json();
+          setPrompt(d.prompt);
+          if (d.context) setPromptContext(d.context);
+          // Cache for the rest of the day
+          try {
+            // Clean old prompt caches
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k?.startsWith("mapped:journal-prompt-") && k !== cacheKey) localStorage.removeItem(k);
+            }
+            localStorage.setItem(cacheKey, JSON.stringify({ prompt: d.prompt, context: d.context }));
+          } catch { /* storage full */ }
+        }
         else setPrompt("What's alive in you right now that you haven't given words to yet?");
       } catch { setPrompt("What's asking for your attention today?"); }
       setPromptLoading(false);
