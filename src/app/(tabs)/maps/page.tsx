@@ -2972,6 +2972,13 @@ export default function MapsTab() {
     const isFamilyOverlap = overlapPerson?.category === "family";
 
     // ── Build prescriptive relationship story from both transit sets ──
+    //
+    // Strategy: instead of creating one card per planet (which produces 5-7
+    // redundant cards), we consolidate by *tone*. If Pluto AND Saturn are both
+    // challenging, that's one "Heavy weather" card listing both. If Jupiter
+    // trines both charts while Saturn squares them, we get exactly two cards:
+    // one tension, one support. Maximum 3 cards total.
+    //
     type StoryCard = { icon: string; headline: string; body: string; advice: string; tone: "warm" | "tension" | "growth" | "neutral" };
     const storyCards: StoryCard[] = [];
 
@@ -2979,292 +2986,246 @@ export default function MapsTab() {
       const yours = selfTransitData.transitAspects || [];
       const theirs = overlapTransitData.transitAspects || [];
 
-      // Helper: what natal planet means in relationship context
-      const NATAL_MEANING: Record<string, { you: string; them: string }> = {
-        Sun: { you: "your sense of self and confidence", them: `${personName}'s identity and ego` },
-        Moon: { you: "your emotional needs and comfort", them: `${personName}'s emotional world` },
-        Venus: { you: "how you love and what you value", them: `what ${personName} finds beautiful and worth loving` },
-        Mars: { you: "your drive, desire, and anger", them: `${personName}'s ambition and assertiveness` },
-        Mercury: { you: "how you think and communicate", them: `how ${personName} processes and speaks` },
-        Jupiter: { you: "your sense of hope and growth", them: `${personName}'s optimism and expansion` },
-        Saturn: { you: "your fears, boundaries, and responsibilities", them: `${personName}'s sense of duty and limits` },
-        Uranus: { you: "your need for freedom and change", them: `${personName}'s restlessness and independence` },
-        Neptune: { you: "your dreams, illusions, and intuition", them: `${personName}'s imagination and blind spots` },
-        Pluto: { you: "your deepest power and control patterns", them: `${personName}'s intensity and transformation` },
-        "North Node": { you: "your soul's growth direction", them: `${personName}'s destined path` },
+      const ASPECT_FEEL: Record<string, { verb: string }> = {
+        conjunction: { verb: "amplifying" },
+        square: { verb: "challenging" },
+        opposition: { verb: "polarizing" },
+        trine: { verb: "supporting" },
+        sextile: { verb: "gently activating" },
       };
 
-      // Helper: what a transiting planet brings
-      const TRANSIT_BRINGS: Record<string, string> = {
-        Pluto: "deep transformation, power struggles, and the need to let something die so something new can emerge",
-        Neptune: "confusion, idealization, spiritual openings, and the dissolving of what you thought was solid",
-        Uranus: "sudden changes, breakthroughs, restlessness, and the urge to break free from anything stale",
-        Saturn: "pressure to get serious, take responsibility, face limitations, and build something that lasts",
-        Jupiter: "expansion, generosity, optimism, and the desire to say yes to more",
-        Mars: "energy, urgency, conflict, and the push to act now rather than later",
-        Venus: "tenderness, attraction, desire for harmony, and attention to beauty and pleasure",
-        Sun: "clarity about identity, a spotlight on ego, and the need to be seen",
-        Mercury: "heightened communication, mental activity, and the need to understand and be understood",
-        Moon: "emotional waves, mood shifts, and a pull toward comfort and nurturing",
+      // Track which planets are hitting both charts (outer only)
+      const OUTER = ["Pluto", "Neptune", "Uranus", "Saturn", "Jupiter"];
+      const PLANET_RANK: Record<string, number> = { Pluto: 5, Neptune: 4, Uranus: 3, Saturn: 2, Jupiter: 1 };
+      const yourMajor = yours.filter(a => OUTER.includes(a.transitPlanet));
+      const theirMajor = theirs.filter(a => OUTER.includes(a.transitPlanet));
+      const transitPlanets = [...new Set([...yourMajor.map(a => a.transitPlanet), ...theirMajor.map(a => a.transitPlanet)])]
+        .sort((a, b) => (PLANET_RANK[b] || 0) - (PLANET_RANK[a] || 0));
+
+      // Classify each planet's relationship impact
+      type PlanetHit = {
+        planet: string;
+        category: "both-challenging" | "both-flowing" | "mixed" | "yours-only" | "theirs-only";
+        yourAspect?: string; theirAspect?: string;
+        yourNatal?: string; theirNatal?: string;
+        yourOrb?: number; theirOrb?: number;
+        youHarder?: boolean;
       };
-
-      const ASPECT_FEEL: Record<string, { verb: string; quality: string }> = {
-        conjunction: { verb: "amplifying", quality: "merged with" },
-        square: { verb: "challenging", quality: "in tension with" },
-        opposition: { verb: "polarizing", quality: "pulling against" },
-        trine: { verb: "supporting", quality: "flowing with" },
-        sextile: { verb: "gently activating", quality: "open to" },
-      };
-
-      // Track which planets are hitting both charts
-      const yourMajor = yours.filter(a => ["Pluto", "Neptune", "Uranus", "Saturn", "Jupiter"].includes(a.transitPlanet));
-      const theirMajor = theirs.filter(a => ["Pluto", "Neptune", "Uranus", "Saturn", "Jupiter"].includes(a.transitPlanet));
-
-      // Group by transiting planet
-      const transitPlanets = new Set([...yourMajor.map(a => a.transitPlanet), ...theirMajor.map(a => a.transitPlanet)]);
+      const hits: PlanetHit[] = [];
 
       for (const tp of transitPlanets) {
-        const yourHits = yourMajor.filter(a => a.transitPlanet === tp);
-        const theirHits = theirMajor.filter(a => a.transitPlanet === tp);
-        const brings = TRANSIT_BRINGS[tp] || "change";
+        const yHits = yourMajor.filter(a => a.transitPlanet === tp);
+        const tHits = theirMajor.filter(a => a.transitPlanet === tp);
+        const yh = yHits[0]; const th = tHits[0];
 
-        if (yourHits.length > 0 && theirHits.length > 0) {
-          // Same planet hitting both charts — most important for relationship
-          const yh = yourHits[0];
-          const th = theirHits[0];
-          const yFeel = ASPECT_FEEL[yh.aspect] || ASPECT_FEEL.conjunction;
-          const tFeel = ASPECT_FEEL[th.aspect] || ASPECT_FEEL.conjunction;
-          const yMeaning = NATAL_MEANING[yh.natalPlanet];
-          const tMeaning = NATAL_MEANING[th.natalPlanet];
-          const bothChallenging = ["square", "opposition"].includes(yh.aspect) && ["square", "opposition"].includes(th.aspect);
-          const bothFlowing = ["trine", "sextile"].includes(yh.aspect) && ["trine", "sextile"].includes(th.aspect);
-          const mixed = !bothChallenging && !bothFlowing;
+        if (yh && th) {
+          const yChal = ["square", "opposition"].includes(yh.aspect);
+          const tChal = ["square", "opposition"].includes(th.aspect);
+          if (yChal && tChal) hits.push({ planet: tp, category: "both-challenging", yourAspect: yh.aspect, theirAspect: th.aspect, yourNatal: yh.natalPlanet, theirNatal: th.natalPlanet, yourOrb: yh.orb, theirOrb: th.orb });
+          else if (!yChal && !tChal) hits.push({ planet: tp, category: "both-flowing", yourAspect: yh.aspect, theirAspect: th.aspect, yourNatal: yh.natalPlanet, theirNatal: th.natalPlanet });
+          else hits.push({ planet: tp, category: "mixed", yourAspect: yh.aspect, theirAspect: th.aspect, yourNatal: yh.natalPlanet, theirNatal: th.natalPlanet, youHarder: yChal });
+        } else if (yh) {
+          hits.push({ planet: tp, category: "yours-only", yourAspect: yh.aspect, yourNatal: yh.natalPlanet, yourOrb: yh.orb });
+        } else if (th) {
+          hits.push({ planet: tp, category: "theirs-only", theirAspect: th.aspect, theirNatal: th.natalPlanet, theirOrb: th.orb });
+        }
+      }
 
-          // Planet-specific advice
-          const PLANET_CHALLENGE_ADVICE: Record<string, { partner: string; family: string; friend: string }> = {
-            Pluto: {
-              partner: `Power dynamics are surfacing. If you feel controlled or controlling, that's Pluto. Name the feeling without blame: "I'm feeling a need for control right now and I know it's not about you."`,
-              family: `Old family power dynamics are being excavated. Don't try to fix generational patterns in a single conversation — just notice what's coming up.`,
-              friend: `Intensity is high. If this friendship suddenly feels heavy or loaded, give it room. Not every bond needs to go deep all the time.`,
-            },
-            Neptune: {
-              partner: `Confusion and idealization are in the air. You might be seeing what you want to see, not what's real. Hold off on big relationship decisions until this fog lifts.`,
-              family: `Boundaries are blurry. You might absorb each other's anxiety without realizing it. Stay grounded in what's yours versus what's theirs.`,
-              friend: `Miscommunication is likely. What seems clear in your head may not land the same way. Over-communicate and don't assume.`,
-            },
-            Uranus: {
-              partner: `Both of you are restless. The urge to shake things up is mutual — channel it into trying something new together rather than picking fights out of boredom.`,
-              family: `Expect the unexpected in family dynamics. Someone might say something that changes the shape of the relationship. Stay flexible.`,
-              friend: `Both of you need more independence than usual. Don't take distance personally — it's the transit, not the friendship.`,
-            },
-            Saturn: {
-              partner: `This is the "are we solid?" transit. Saturn tests foundations. If things feel heavy between you, it's because the relationship is being asked to mature. Do the hard conversation.`,
-              family: `Authority and responsibility are the themes. Who carries the load? This transit asks you to redistribute it more honestly.`,
-              friend: `Commitments may feel burdensome. Be realistic about what you can give each other right now instead of overcommitting and resenting it.`,
-            },
-            Jupiter: {
-              partner: `You might be overextending — saying yes to too much, spending too freely, promising more than you can deliver. Jupiter expands everything, including problems. Stay generous but realistic.`,
-              family: `Expectations are inflated on both sides. Someone might push for more togetherness than the other can handle. Be honest about capacity.`,
-              friend: `Growing pains — one or both of you is outgrowing old patterns. The tension is actually a sign of positive expansion if you let it breathe.`,
-            },
-          };
-          const PLANET_FLOW_ADVICE: Record<string, { partner: string; family: string; friend: string }> = {
-            Pluto: {
-              partner: `This is a rare window of deep intimacy. The walls are down for both of you. Have the conversation that scares you — it will bring you closer, not push you apart.`,
-              family: `Healing is available. If there's a family wound that needs addressing, this is the window where it can actually shift. Bring it up gently.`,
-              friend: `The friendship can go deeper right now. Share something real. This transit rewards vulnerability with trust.`,
-            },
-            Neptune: {
-              partner: `Romance and spiritual connection are heightened. Create beauty together — cook a meal, watch a sunset, listen to music. The everyday becomes magical under this transit.`,
-              family: `Compassion flows naturally right now. Forgiveness, understanding, and letting go of old grudges come easier. Take advantage of this softness.`,
-              friend: `Creative collaboration is favored. If you've been meaning to start a project, write something, or dream together — now's the time.`,
-            },
-            Uranus: {
-              partner: `Excitement and novelty are calling. Try something you've never done together. This transit rewards breaking routine — a spontaneous trip, a new experience, an honest experiment.`,
-              family: `Fresh perspectives on old dynamics. Someone might surprise you in a good way. Be open to seeing family members as who they are now, not who they were.`,
-              friend: `This is "let's do something wild" energy. Say yes to the weird idea. The friendship needs some adventure right now.`,
-            },
-            Saturn: {
-              partner: `You're both ready to build something real. This is the transit for commitments that last — moving in, making plans, having the "where is this going" conversation with confidence.`,
-              family: `Structure and stability are gifts you can give each other right now. Practical support — help with a project, financial advice, showing up consistently — means more than words.`,
-              friend: `Reliability matters. Show up when you say you will. Small consistent gestures build the kind of trust that lasts decades under Saturn.`,
-            },
-            Jupiter: {
-              partner: `Abundance is available. Plan something big together — a trip, a goal, an investment in your future. Jupiter rewards bold moves made in partnership.`,
-              family: `Celebrate together. Gather, travel, share good news. Jupiter amplifies joy when it's shared. This is a window for creating happy memories.`,
-              friend: `Expand your world together. Take a class, explore a new place, introduce each other to new people. Jupiter wants growth, and it's better shared.`,
-            },
-          };
+      // ── Consolidated advice by lead planet + relationship type ──
+      const relType = isPartnerOverlap ? "partner" : isFamilyOverlap ? "family" : "friend";
+      const CHALLENGE_ADVICE: Record<string, Record<string, string>> = {
+        Pluto: {
+          partner: `Power dynamics are surfacing. Name the feeling without blame — "I'm feeling a need for control and I know it's not about you."`,
+          family: `Old family power dynamics are being excavated. Don't try to fix generational patterns in one conversation — just notice.`,
+          friend: `Intensity is high. Give the friendship room. Not every bond needs to go deep all the time.`,
+        },
+        Neptune: {
+          partner: `Confusion is in the air. You might be seeing what you want to see. Hold off on big relationship decisions until the fog lifts.`,
+          family: `Boundaries are blurry. Stay grounded in what's yours versus what's theirs.`,
+          friend: `Miscommunication is likely. Over-communicate and don't assume.`,
+        },
+        Uranus: {
+          partner: `Both of you are restless. Channel it into trying something new together rather than picking fights out of boredom.`,
+          family: `Expect the unexpected. Someone might say something that changes the dynamic. Stay flexible.`,
+          friend: `You both need more independence than usual. Don't take distance personally.`,
+        },
+        Saturn: {
+          partner: `Saturn tests foundations. If things feel heavy, the relationship is being asked to mature. Do the hard conversation.`,
+          family: `Who carries the load? This transit asks you to redistribute responsibility more honestly.`,
+          friend: `Be realistic about what you can give each other right now instead of overcommitting.`,
+        },
+        Jupiter: {
+          partner: `You might be overextending — saying yes to too much. Jupiter expands everything, including problems. Stay generous but realistic.`,
+          family: `Expectations are inflated on both sides. Be honest about capacity.`,
+          friend: `Growing pains — one or both of you is outgrowing old patterns. Let it breathe.`,
+        },
+      };
+      const FLOW_ADVICE: Record<string, Record<string, string>> = {
+        Pluto: {
+          partner: `The walls are down for both of you. Have the conversation that scares you — it will bring you closer.`,
+          family: `If there's a family wound that needs addressing, this is the window where it can actually shift.`,
+          friend: `Share something real. This transit rewards vulnerability with trust.`,
+        },
+        Neptune: {
+          partner: `Romance and spiritual connection are heightened. Create beauty together — the everyday becomes magical.`,
+          family: `Compassion flows naturally. Forgiveness and letting go of old grudges come easier.`,
+          friend: `Creative collaboration is favored. If you've been meaning to start a project together, now's the time.`,
+        },
+        Uranus: {
+          partner: `Try something you've never done together. This transit rewards breaking routine.`,
+          family: `Be open to seeing family members as who they are now, not who they were.`,
+          friend: `Say yes to the weird idea. The friendship needs some adventure right now.`,
+        },
+        Saturn: {
+          partner: `You're both ready to build something real. This is the transit for commitments that last.`,
+          family: `Practical support — showing up consistently — means more than words right now.`,
+          friend: `Show up when you say you will. Small consistent gestures build lasting trust.`,
+        },
+        Jupiter: {
+          partner: `Plan something big together — a trip, a goal. Jupiter rewards bold moves made in partnership.`,
+          family: `Celebrate together. Jupiter amplifies joy when it's shared.`,
+          friend: `Expand your world together. Take a class, explore a new place.`,
+        },
+      };
 
-          // Planet-specific mixed advice (when the transit lands differently on each person)
-          const PLANET_MIXED_ADVICE: Record<string, { youHarder: { partner: string; family: string; friend: string }; themHarder: { partner: string; family: string; friend: string } }> = {
-            Pluto: {
-              youHarder: {
-                partner: `Let ${personName} know you're going through something. They're in a good place and can hold space — but only if they know you need it.`,
-                family: `You're processing something deep around power or control. ${personName} isn't feeling the same intensity — lean on their stability without expecting them to fully understand.`,
-                friend: `Pluto is asking you to transform something right now, and that's heavy. ${personName} might not get why you're so intense. It's okay to be honest about needing space.`,
-              },
-              themHarder: {
-                partner: `Check in on ${personName}. Pluto transits bring up control, fear, and vulnerability. They might be having a harder time than they're showing. Your steadiness is their anchor right now.`,
-                family: `${personName} might be going through a quiet upheaval. Don't pry, but make it clear you're a safe place to land. Sometimes just being available is enough.`,
-                friend: `${personName} is in a Pluto pressure cooker. They might pull away or seem guarded. Don't take it personally — show up without expectations.`,
-              },
-            },
-            Neptune: {
-              youHarder: {
-                partner: `You might be seeing the relationship through a fog right now. ${personName} has clearer vision — trust their read on things more than your own until this transit passes.`,
-                family: `Neptune is blurring your boundaries. You might absorb ${personName}'s emotions without realizing it. Ask yourself: is this feeling mine or theirs?`,
-                friend: `You're more impressionable right now. ${personName} isn't under the same spell — let them be a reality check when things feel confusing.`,
-              },
-              themHarder: {
-                partner: `${personName} may not be seeing things clearly right now. Be gentle but honest — they need your clarity more than your agreement.`,
-                family: `${personName} might be idealizing the past or escaping into wishful thinking. Don't burst their bubble harshly, but ground the conversation when it matters.`,
-                friend: `${personName} might seem distant or lost in their own world. Neptune does that. Stay connected with low-pressure check-ins.`,
-              },
-            },
-            Uranus: {
-              youHarder: {
-                partner: `Let ${personName} know you're going through something. They're in a good place and can hold space — but only if they know you need it.`,
-                family: `You're feeling the pull to break free from something. ${personName} isn't restless in the same way — communicate what you need before acting on impulse.`,
-                friend: `Uranus is shaking things up for you but not for ${personName}. Your need for change might confuse them. Explain what you're feeling rather than just disappearing.`,
-              },
-              themHarder: {
-                partner: `Check in on ${personName}. They might be having a harder time than they're showing. Your support matters more right now than you realize.`,
-                family: `${personName} might make surprising choices or seem restless. Uranus demands freedom — give them room to figure things out without judgment.`,
-                friend: `${personName} may seem unpredictable right now. They're working through a need for change. Be flexible with plans and don't take flakiness personally.`,
-              },
-            },
-            Saturn: {
-              youHarder: {
-                partner: `Saturn is weighing on you more than on ${personName}. Tell them what you're carrying — they can help shoulder it, but they won't know to offer unless you say something.`,
-                family: `You're feeling the weight of responsibility more acutely. ${personName} might not see the pressure you're under. Be direct about what you need from them.`,
-                friend: `Saturn is asking you to get serious about something, and it's exhausting. ${personName} is in a lighter place — let their ease remind you that not everything has to be hard.`,
-              },
-              themHarder: {
-                partner: `${personName} is carrying a Saturn-level weight right now. They might seem distant, critical, or worn down. Don't try to lighten it with optimism — just be there.`,
-                family: `${personName} is dealing with pressure around duty or limits. Practical help — not pep talks — is what they need. Offer something concrete.`,
-                friend: `${personName} might seem withdrawn or overly serious. Saturn does that. Invite them out, but don't push if they decline. Consistency matters more than grand gestures.`,
-              },
-            },
-            Jupiter: {
-              youHarder: {
-                partner: `Your growth feels more like growing pains right now, while ${personName} is expanding smoothly. Don't compare your process to theirs — ask them to be patient with your pace.`,
-                family: `${personName} is in a generous, optimistic phase while you might feel overextended. Be honest about your capacity instead of trying to match their energy.`,
-                friend: `${personName} is riding high and you're not quite there. That's okay — Jupiter expands what's already there, including struggles. Let them lift you up a bit.`,
-              },
-              themHarder: {
-                partner: `${personName}'s enthusiasm might be overextending them right now. Be their reality check without dampening their excitement. Honest support beats blind cheerleading.`,
-                family: `${personName} has big expectations right now. Help them channel it — they need someone who's grounded, not someone who inflates things further.`,
-                friend: `${personName} might be overcommitting or over-promising. Jupiter makes everything seem possible. Be the friend who gently asks "can you actually do all of that?"`,
-              },
-            },
-          };
+      // ── Group hits by tone and build consolidated cards ──
 
-          if (bothChallenging) {
-            const challengeAdvice = PLANET_CHALLENGE_ADVICE[tp];
-            storyCards.push({
-              icon: "🔥",
-              headline: `${tp} is testing you both`,
-              body: `${tp} brings ${brings}. Right now it's ${yFeel.verb} ${yMeaning?.you || yh.natalPlanet} (${yh.aspect} at ${yh.orb}°) while simultaneously ${tFeel.verb} ${tMeaning?.them || th.natalPlanet} (${th.aspect} at ${th.orb}°). Neither of you is operating from your most relaxed place. The friction you feel between each other right now isn't really about each other — it's ${tp} stirring things up in both of your charts at the same time.`,
-              advice: challengeAdvice
-                ? (isPartnerOverlap ? challengeAdvice.partner : isFamilyOverlap ? challengeAdvice.family : challengeAdvice.friend)
-                : `Be patient with each other. This is temporary.`,
-              tone: "tension",
-            });
-          } else if (bothFlowing) {
-            const flowAdvice = PLANET_FLOW_ADVICE[tp];
-            storyCards.push({
-              icon: "✨",
-              headline: `${tp} is opening doors for you both`,
-              body: `${tp} brings ${brings} — and right now it's ${yFeel.verb} ${yMeaning?.you || yh.natalPlanet} while also ${tFeel.verb} ${tMeaning?.them || th.natalPlanet}. You're both in a receptive, expansive state around these parts of your lives. This is a window where the relationship can level up without much effort.`,
-              advice: flowAdvice
-                ? (isPartnerOverlap ? flowAdvice.partner : isFamilyOverlap ? flowAdvice.family : flowAdvice.friend)
-                : `Lean in. This is a good time to deepen this connection.`,
-              tone: "warm",
-            });
-          } else if (mixed) {
-            const youHarder = ["square", "opposition"].includes(yh.aspect);
-            const whoStruggles = youHarder ? "you" : personName;
-            const whoFlows = youHarder ? personName : "you";
-            const mixedAdvice = PLANET_MIXED_ADVICE[tp];
-            const adviceSet = youHarder ? mixedAdvice?.youHarder : mixedAdvice?.themHarder;
-            storyCards.push({
-              icon: "⚖️",
-              headline: `${tp} is landing differently on each of you`,
-              body: `${tp} is ${yFeel.verb} ${yMeaning?.you || yh.natalPlanet} (${yh.aspect}) and ${tFeel.verb} ${tMeaning?.them || th.natalPlanet} (${th.aspect}). This creates an imbalance — ${whoFlows} ${youHarder ? "is" : "are"} feeling supported while ${whoStruggles} ${youHarder ? "are" : "is"} under pressure. The person having the easier time might not realize the other is struggling, which can lead to misunderstandings.`,
-              advice: adviceSet
-                ? (isPartnerOverlap ? adviceSet.partner : isFamilyOverlap ? adviceSet.family : adviceSet.friend)
-                : `The imbalance is temporary. ${whoStruggles === "you" ? `Let ${personName} know what you need.` : `Ask ${personName} how they're really doing.`}`,
-              tone: "growth",
-            });
-          }
-        } else if (yourHits.length > 0 && theirHits.length === 0) {
-          // Only hitting your chart
-          const yh = yourHits[0];
-          const yFeel = ASPECT_FEEL[yh.aspect] || ASPECT_FEEL.conjunction;
-          const yMeaning = NATAL_MEANING[yh.natalPlanet];
-          const isChallenging = ["square", "opposition"].includes(yh.aspect);
+      const challengingBoth = hits.filter(h => h.category === "both-challenging");
+      const flowingBoth = hits.filter(h => h.category === "both-flowing");
+      const mixedBoth = hits.filter(h => h.category === "mixed");
+      const yoursOnly = hits.filter(h => h.category === "yours-only");
+      const theirsOnly = hits.filter(h => h.category === "theirs-only");
+
+      // Card 1: Shared tension (consolidated)
+      if (challengingBoth.length > 0) {
+        const lead = challengingBoth[0]; // strongest planet
+        const planets = challengingBoth.map(h => h.planet);
+        const planetList = planets.length === 1 ? planets[0] : planets.slice(0, -1).join(", ") + " and " + planets.at(-1);
+        const isPlural = planets.length > 1;
+        const leadAdvice = CHALLENGE_ADVICE[lead.planet]?.[relType] || "Be patient with each other. This is temporary.";
+
+        storyCards.push({
+          icon: "🔥",
+          headline: isPlural ? `${planetList} are both pressing on this relationship` : `${lead.planet} is testing you both`,
+          body: isPlural
+            ? `${planetList} are all making hard aspects to both of your charts right now. That's a lot of pressure landing on the same dynamic at the same time. Neither of you is operating from your most relaxed place — and the friction you feel isn't really about each other, it's the sky turning up the volume on everything.`
+            : `${lead.planet} is ${ASPECT_FEEL[lead.yourAspect || ""]?.verb || "challenging"} your ${lead.yourNatal} (${lead.yourAspect}) while simultaneously ${ASPECT_FEEL[lead.theirAspect || ""]?.verb || "challenging"} ${personName}'s ${lead.theirNatal} (${lead.theirAspect}). Neither of you is in a relaxed place right now, and the friction between you isn't really about each other.`,
+          advice: leadAdvice,
+          tone: "tension",
+        });
+      }
+
+      // Card 2: Shared flow (consolidated)
+      if (flowingBoth.length > 0) {
+        const lead = flowingBoth[0];
+        const planets = flowingBoth.map(h => h.planet);
+        const planetList = planets.length === 1 ? planets[0] : planets.slice(0, -1).join(", ") + " and " + planets.at(-1);
+        const isPlural = planets.length > 1;
+        const leadAdvice = FLOW_ADVICE[lead.planet]?.[relType] || "Lean in. This is a good time to deepen this connection.";
+
+        storyCards.push({
+          icon: "✨",
+          headline: isPlural ? `${planetList} are all working in your favor` : `${lead.planet} is opening doors for you both`,
+          body: isPlural
+            ? `${planetList} are all making supportive aspects to both of your charts. You're both in a receptive, expansive state. This is a window where the relationship can deepen without much effort — the cosmic weather is on your side.`
+            : `${lead.planet} is ${ASPECT_FEEL[lead.yourAspect || ""]?.verb || "supporting"} your ${lead.yourNatal} while also ${ASPECT_FEEL[lead.theirAspect || ""]?.verb || "supporting"} ${personName}'s ${lead.theirNatal}. You're both open in the same ways right now.`,
+          advice: leadAdvice,
+          tone: "warm",
+        });
+      }
+
+      // Card 3: Imbalance (only if there's no shared tension/flow to cover the main dynamic)
+      if (mixedBoth.length > 0 && storyCards.length < 2) {
+        const lead = mixedBoth[0];
+        const youHarder = lead.youHarder;
+        const whoStruggles = youHarder ? "you" : personName;
+        const whoFlows = youHarder ? personName : "you";
+
+        const MIXED_ADVICE: Record<string, Record<string, { youHarder: string; themHarder: string }>> = {
+          Pluto: {
+            partner: { youHarder: `Let ${personName} know you're going through something. They can hold space — but only if they know you need it.`, themHarder: `Check in on ${personName}. They might be having a harder time than they're showing. Your steadiness is their anchor.` },
+            family: { youHarder: `Lean on ${personName}'s stability without expecting them to fully understand what you're processing.`, themHarder: `${personName} might be going through a quiet upheaval. Make it clear you're a safe place to land.` },
+            friend: { youHarder: `It's okay to be honest about needing space right now.`, themHarder: `Show up without expectations. ${personName} might pull away — don't take it personally.` },
+          },
+          Saturn: {
+            partner: { youHarder: `Tell ${personName} what you're carrying — they can help shoulder it.`, themHarder: `${personName} is carrying a heavy weight. Don't try to lighten it with optimism — just be there.` },
+            family: { youHarder: `Be direct about what you need from them.`, themHarder: `Practical help — not pep talks — is what ${personName} needs.` },
+            friend: { youHarder: `Let their ease remind you that not everything has to be hard.`, themHarder: `Invite them out, but don't push if they decline.` },
+          },
+        };
+        const adviceMap = MIXED_ADVICE[lead.planet]?.[relType];
+        const advice = youHarder ? (adviceMap?.youHarder || `Let ${personName} know what you need.`) : (adviceMap?.themHarder || `Ask ${personName} how they're really doing.`);
+
+        storyCards.push({
+          icon: "⚖️",
+          headline: `${lead.planet} is landing differently on each of you`,
+          body: `${lead.planet} is making a ${lead.yourAspect} to your ${lead.yourNatal} and a ${lead.theirAspect} to ${personName}'s ${lead.theirNatal}. ${whoFlows} ${youHarder ? "is" : "are"} feeling supported while ${whoStruggles} ${youHarder ? "are" : "is"} under pressure. The person having the easier time might not realize the other is struggling.`,
+          advice,
+          tone: "growth",
+        });
+      }
+
+      // Card: One-sided activation (only show the STRONGEST one, and only if we have room)
+      if (storyCards.length < 3 && (yoursOnly.length > 0 || theirsOnly.length > 0)) {
+        // Pick the single strongest one-sided hit
+        const allOneSided = [...yoursOnly, ...theirsOnly];
+        const best = allOneSided[0]; // already sorted by planet rank
+        if (best) {
+          const isYours = best.category === "yours-only";
+          const isChallenging = ["square", "opposition"].includes((isYours ? best.yourAspect : best.theirAspect) || "");
+          const natal = isYours ? best.yourNatal : best.theirNatal;
+          const aspect = isYours ? best.yourAspect : best.theirAspect;
+          const feel = ASPECT_FEEL[aspect || ""]?.verb || "activating";
+          const who = isYours ? "your" : `${personName}'s`;
+          const other = isYours ? personName : "you";
+
           storyCards.push({
             icon: isChallenging ? "🌊" : "🌱",
-            headline: `${tp} is activating your chart — not ${personName}'s`,
-            body: `Transit ${tp} is ${yFeel.verb} ${yMeaning?.you || yh.natalPlanet} right now (${yh.aspect} at ${yh.orb}°), but it's not making significant contact with ${personName}'s chart. This means ${isChallenging ? "the tension or intensity you're feeling is mostly internal — it's your process, not something they're causing" : "you have access to growth and expansion that's yours alone"}. ${personName} may not fully understand what you're going through because they're not experiencing the same planetary pressure.`,
+            headline: `${best.planet} is activating ${who} chart — not ${isYours ? personName + "'s" : "yours"}`,
+            body: `Transit ${best.planet} is ${feel} ${who} ${natal} (${aspect}), but it's not making significant contact with ${isYours ? personName + "'s" : "your"} chart. ${isChallenging ? `The tension ${isYours ? "you feel" : personName + " feels"} is mostly internal — ${isYours ? personName + " isn't" : "you're not"} causing it.` : `${isYours ? "You have" : personName + " has"} access to growth that's ${isYours ? "yours" : "theirs"} alone right now.`}`,
             advice: isChallenging
-              ? `Don't project this onto ${personName}. The irritation or heaviness you feel has a source — and it's the sky, not them. Name it: "I'm going through a ${tp} transit and it's making my ${yh.natalPlanet.toLowerCase()} stuff intense right now."`
-              : `Share your enthusiasm. You're being given an opportunity — ${personName} can be part of it even if they're not feeling the same push.`,
+              ? `${isYours ? `Don't project this onto ${personName}. The source is the sky, not them.` : `Don't take ${personName}'s mood personally. This is their process. Be steady.`}`
+              : `${isYours ? `Share your enthusiasm — ${personName} can be part of it.` : `Encourage what's emerging. Your interest in their growth strengthens the bond.`}`,
             tone: isChallenging ? "tension" : "growth",
-          });
-        } else if (theirHits.length > 0 && yourHits.length === 0) {
-          // Only hitting their chart
-          const th = theirHits[0];
-          const tFeel = ASPECT_FEEL[th.aspect] || ASPECT_FEEL.conjunction;
-          const tMeaning = NATAL_MEANING[th.natalPlanet];
-          const isChallenging = ["square", "opposition"].includes(th.aspect);
-          storyCards.push({
-            icon: isChallenging ? "🌊" : "🌱",
-            headline: `${tp} is activating ${personName}'s chart — not yours`,
-            body: `Transit ${tp} is ${tFeel.verb} ${tMeaning?.them || th.natalPlanet} (${th.aspect} at ${th.orb}°), but it's not significantly contacting your chart right now. ${isChallenging ? `${personName} may seem more reactive, withdrawn, or intense than usual — it's not about you. They're processing something real.` : `${personName} may seem more alive, open, or inspired lately. They're in a growth window.`}`,
-            advice: isChallenging
-              ? isPartnerOverlap
-                ? `Give them room to feel what they're feeling without trying to fix it. Ask "what do you need from me right now?" instead of guessing.`
-                : `Don't take their mood personally. This is their process. Be steady.`
-              : `Encourage what's emerging. Ask about what excites them. Your interest in their growth strengthens the bond.`,
-            tone: isChallenging ? "tension" : "warm",
           });
         }
       }
 
-      // Venus/Mars inner planet weather for relationship tone
+      // Venus/Mars card — only if no outer-planet cards already covered the same tone
+      const hasTensionCard = storyCards.some(c => c.tone === "tension");
+      const hasWarmCard = storyCards.some(c => c.tone === "warm");
+
       const yourVenus = yours.filter(a => a.transitPlanet === "Venus" && ["Sun", "Moon", "Venus", "Mars"].includes(a.natalPlanet));
       const theirVenus = theirs.filter(a => a.transitPlanet === "Venus" && ["Sun", "Moon", "Venus", "Mars"].includes(a.natalPlanet));
       const yourMars = yours.filter(a => a.transitPlanet === "Mars" && ["Sun", "Moon", "Venus", "Mars"].includes(a.natalPlanet));
       const theirMars = theirs.filter(a => a.transitPlanet === "Mars" && ["Sun", "Moon", "Venus", "Mars"].includes(a.natalPlanet));
 
-      if (yourVenus.length > 0 && theirVenus.length > 0) {
+      if (storyCards.length < 3 && yourVenus.length > 0 && theirVenus.length > 0 && !hasWarmCard) {
         storyCards.push({
           icon: "💛",
-          headline: "Venus is touching both of your charts",
-          body: `Transit Venus is activating personal planets in both of your charts right now. This opens a window of warmth, appreciation, and desire for harmony. You're both more attuned to beauty, affection, and what feels good. The relationship gets a temporary upgrade in sweetness.`,
+          headline: "Venus is softening things between you",
+          body: `Transit Venus is touching personal planets in both charts. You're both more attuned to beauty, affection, and what feels good. ${hasTensionCard ? "This is a counterweight to the heavier transits — lean into it." : "The relationship gets a temporary upgrade in sweetness."}`,
           advice: isPartnerOverlap
-            ? `This is date night energy. Don't waste it on logistics. Be present with each other — this window is brief.`
-            : `Express appreciation. A genuine compliment, a thoughtful gesture, or just quality time together will land especially well right now.`,
+            ? `This is date night energy. Be present with each other — this window is brief.`
+            : `Express appreciation. A genuine gesture will land especially well right now.`,
           tone: "warm",
         });
-      } else if (yourMars.length > 0 && theirMars.length > 0) {
+      } else if (storyCards.length < 3 && yourMars.length > 0 && theirMars.length > 0 && !hasTensionCard) {
         storyCards.push({
           icon: "⚡",
-          headline: "Mars is activating both of your charts",
-          body: `Transit Mars is hitting personal planets for both of you. Energy is high, patience is low. ${isPartnerOverlap ? "This can show up as passion or as arguments — often both in the same day." : "You might find yourselves snapping at each other over small things, or conversely, getting a lot done together."} Mars speeds everything up and turns up the volume.`,
-          advice: `Channel this into action, not arguments. Exercise together, tackle a project, or have the honest conversation you've been avoiding. Mars rewards directness.`,
+          headline: "Mars is turning up the heat",
+          body: `Transit Mars is hitting personal planets for both of you. Energy is high, patience is low. ${isPartnerOverlap ? "This can show up as passion or arguments — often both in the same day." : "You might snap at each other over small things, or conversely, get a lot done together."}`,
+          advice: `Channel this into action, not arguments. Exercise together, tackle a project, or have the honest conversation you've been avoiding.`,
           tone: "tension",
         });
       }
 
-      // Overall relationship weather summary
+      // Fallback: quiet skies
       if (storyCards.length === 0) {
         storyCards.push({
           icon: "☁️",
           headline: "Quiet skies between you",
-          body: `The major transits right now aren't making strong connections to both of your charts simultaneously. This doesn't mean nothing is happening — it means the planets aren't pressuring or supporting your dynamic in an obvious way. This is a period of relative calm for the relationship itself, even if one or both of you has personal transits going on.`,
+          body: `The major transits right now aren't making strong connections to both of your charts simultaneously. This is a period of relative calm for the relationship itself, even if one or both of you has personal transits going on.`,
           advice: `Use this calm to maintain, not coast. Check in, show up, do the small things. Not every period needs to be intense to be meaningful.`,
           tone: "neutral",
         });

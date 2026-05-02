@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/account/delete": {},
+    "/api/chart/interpret": {},
+    "/api/dolly": {},
+    "/api/dolly/test": {},
+    "/api/horoscope": {},
+    "/api/journal/prompt": {},
+    "/api/journal/reflect": {},
+    "/api/seed-special-points": {},
+    "/api/wizard": {}
+  }
+}

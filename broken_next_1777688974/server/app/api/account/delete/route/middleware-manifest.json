@@ -1,0 +1,42 @@
+{
+  "sorted_middleware": [
+    "/api/account/delete/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/account/delete/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/api/account/delete/route_client-reference-manifest.js",
+        "server/edge/chunks/_next-internal_server_app_api_account_delete_route_actions_0dhjoay.js",
+        "server/edge/chunks/[root-of-the-server]__0n~ghf6._.js",
+        "server/edge/chunks/node_modules_next_dist_01jb8.a._.js",
+        "server/edge/chunks/node_modules_@supabase_supabase-js_dist_index_mjs_09osfkw._.js",
+        "server/edge/chunks/[root-of-the-server]__00b~ypc._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0thg~0o.js"
+      ],
+      "name": "app/api/account/delete/route",
+      "page": "/api/account/delete/route",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0thg~0o.js",
+      "matchers": [
+        {
+          "regexp": "^/api/account/delete(?:/)?$",
+          "originalSource": "/api/account/delete"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "noyi3EdOLGuKkoVc3QRkp",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "zY9o1U/i5fj7uFadjKF9hGEcwQgKy0K1JiXdGwcm0Zo=",
+        "__NEXT_PREVIEW_MODE_ID": "e7cb5fa8beb143eaf16f97b3a1f4cb07",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "b3e5b2887cd253eaf87bd1a8a4e2bf1a164cf4ef8bee8f4015e0a6e5af7a9e33",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "9ac0a9916ef6b3f9a0cca194942cc40ec1ec435658b75f3d7c371ec1c130967e"
+      }
+    }
+  }
+}
