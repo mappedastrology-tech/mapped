@@ -177,21 +177,45 @@ export default function TarotTab() {
   const readingSavedRef = useRef(false);
   useEffect(() => {
     if (readingSavedRef.current) return;
-    const hasCards = pickedCards.length > 0 || pickedOracleCards.length > 0;
+    const hasCards = pickedCards.length > 0 || pickedOracleCards.length > 0 || freestylePicks.length > 0;
     if (!hasCards) return;
     const allRevealed = isOracleDeck
       ? pickedOracleCards.every((c) => c.revealed)
       : pickedCards.every((c) => c.revealed);
+
+    // Spread readings: save when all cards revealed and count matches
     if (allRevealed && selectedSpread && (isOracleDeck ? pickedOracleCards.length >= selectedSpread.cardCount : pickedCards.length >= selectedSpread.cardCount)) {
       saveReading();
       readingSavedRef.current = true;
     }
-  }, [pickedCards, pickedOracleCards, isOracleDeck, selectedSpread, saveReading]);
+    // Freestyle readings: save when at least 1 card is picked and all are revealed
+    if (!selectedSpread && freestylePicks.length > 0 && freestylePicks.every(c => c.revealed)) {
+      saveReading();
+      readingSavedRef.current = true;
+    }
+  }, [pickedCards, pickedOracleCards, freestylePicks, isOracleDeck, selectedSpread, saveReading]);
 
-  // Reset save flag when starting a new reading
+  // Reset save flag when starting a new reading or switching spreads
   useEffect(() => {
     readingSavedRef.current = false;
   }, [selectedSpread]);
+
+  // Also reset when cards are cleared (starting fresh)
+  useEffect(() => {
+    if (pickedCards.length === 0 && pickedOracleCards.length === 0 && freestylePicks.length === 0) {
+      readingSavedRef.current = false;
+    }
+  }, [pickedCards.length, pickedOracleCards.length, freestylePicks.length]);
+
+  // Sync tarot readings from Supabase on mount (pulls remote readings user may have done on another device)
+  useEffect(() => {
+    import("@/lib/completionSync").then((m) => m.syncTarotReadings()).then(() => {
+      try {
+        const saved = localStorage.getItem("mapped:tarot-history");
+        if (saved) setReadingHistory(JSON.parse(saved));
+      } catch {}
+    }).catch(() => {});
+  }, []);
 
   /* ─── Start a spread reading ─── */
   const handleStartSpread = useCallback((spread: TarotSpread) => {

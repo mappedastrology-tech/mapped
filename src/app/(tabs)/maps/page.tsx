@@ -2528,23 +2528,36 @@ export default function MapsTab() {
             ...(zodSystem === "sidereal" ? { ayanamsa: ayan } : {}),
           }),
         });
-        if (!calcRes.ok) throw new Error("Chart calculation failed");
+        if (!calcRes.ok) {
+          const errBody = await calcRes.json().catch(() => ({}));
+          throw new Error(errBody.error || "Chart calculation failed. Check their birth info.");
+        }
         chartResult = await calcRes.json();
+
+        // Validate chart result has expected shape
+        if (!chartResult?.planets || !chartResult?.bigThree) {
+          throw new Error("Chart calculation returned incomplete data. Try again.");
+        }
 
         // Recalculate synastry
         if (userChart) {
-          const rel = RELATIONSHIP_OPTIONS.find(r => r.value === formRelationship);
-          const cat = rel?.category || oldConn.category;
-          const synRes = await fetch("/api/synastry", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chart1: { planets: userChart.planets, specialPoints: userChart.specialPoints, bigThree: userChart.bigThree },
-              chart2: { planets: chartResult.planets, specialPoints: chartResult.specialPoints || [], bigThree: chartResult.bigThree },
-              context: cat,
-            }),
-          });
-          if (synRes.ok) synastryResult = await synRes.json();
+          try {
+            const rel = RELATIONSHIP_OPTIONS.find(r => r.value === formRelationship);
+            const cat = rel?.category || oldConn.category;
+            const synRes = await fetch("/api/synastry", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chart1: { planets: userChart.planets, specialPoints: userChart.specialPoints, bigThree: userChart.bigThree },
+                chart2: { planets: chartResult.planets, specialPoints: chartResult.specialPoints || [], bigThree: chartResult.bigThree },
+                context: cat,
+              }),
+            });
+            if (synRes.ok) synastryResult = await synRes.json();
+          } catch {
+            // Synastry failure shouldn't block the edit — just keep old synastry
+            console.warn("[editPerson] Synastry recalc failed, keeping old data");
+          }
         }
       }
 
@@ -2575,9 +2588,31 @@ export default function MapsTab() {
 
       if (userId) {
         try {
-          const { id, ...updateData } = updatedConn;
-          await supabase.from("connections").update(updateData).eq("id", id);
-        } catch { /* save locally */ }
+          // Only send fields that exist as columns in the connections table
+          const dbPayload: Record<string, unknown> = {
+            name: updatedConn.name,
+            relationship: updatedConn.relationship,
+            category: updatedConn.category,
+            birth_date: updatedConn.birth_date,
+            birth_time: updatedConn.birth_time,
+            unknown_time: updatedConn.unknown_time,
+            city_name: updatedConn.city_name,
+            latitude: updatedConn.latitude,
+            longitude: updatedConn.longitude,
+            timezone: updatedConn.timezone,
+            big_three: updatedConn.big_three,
+            planets: updatedConn.planets,
+            houses: updatedConn.houses,
+            aspects: updatedConn.aspects,
+            special_points: updatedConn.special_points,
+            midheaven: updatedConn.midheaven,
+            synastry: updatedConn.synastry,
+          };
+          const { error: dbErr } = await supabase.from("connections").update(dbPayload).eq("id", updatedConn.id);
+          if (dbErr) console.warn("[editPerson] Supabase update failed:", dbErr.message);
+        } catch (dbCatchErr) {
+          console.warn("[editPerson] DB save failed, using local:", dbCatchErr);
+        }
       }
 
       const updated = connections.map(c => c.id === editingConnectionId ? updatedConn : c);
@@ -2589,7 +2624,8 @@ export default function MapsTab() {
       setFormLat(null); setFormLng(null); setShowAddForm(false);
       setEditingConnectionId(null);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Something went wrong.");
+      console.error("[editPerson] Error:", err);
+      setFormError(err instanceof Error ? err.message : "Something went wrong. Try again.");
     } finally {
       setIsSubmitting(false);
     }

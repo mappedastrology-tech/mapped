@@ -1014,25 +1014,83 @@ function getAspectInterpretation(p1: string, p2: string, aspect: string): string
     }
   }
 
-  // Smart fallback — use planet descriptions to build a meaningful interpretation
+  // Smart fallback — use planet-specific context to build an interpretation
+  // that reads like someone explaining YOUR chart, not a textbook.
   const typeInfo = ASPECT_TYPE_INFO[aspect];
   if (!typeInfo) return "";
 
-  const desc1 = PLANET_GOVERNS[p1] || p1.toLowerCase();
-  const desc2 = PLANET_GOVERNS[p2] || p2.toLowerCase();
-  // Strip "your" / "how you" from descriptions for cleaner sentence construction
-  const clean1 = desc1.replace(/^(your |how you |where you )/, "");
-  const clean2 = desc2.replace(/^(your |how you |where you )/, "");
-
+  // Build concrete, planet-specific sentences instead of generic templates
   const nature = typeInfo.nature;
-  if (nature === "fusion") return `${p1} (${clean1}) and ${p2} (${clean2}) are fused together in your chart. These two parts of your life are inseparable — when one activates, both activate. This can be overwhelming but also makes you deeply integrated in these areas.`;
-  if (nature === "harmony") return `${p1} (${clean1}) and ${p2} (${clean2}) support each other naturally in your chart. There's an ease here — these two parts of your life cooperate and strengthen each other without much effort on your part. This is a genuine gift.`;
-  if (nature === "opportunity") return `${p1} (${clean1}) and ${p2} (${clean2}) can work together well, but it takes conscious effort. The connection isn't automatic — you have to choose to bridge these two parts of your life. When you do, the results are rewarding.`;
-  if (nature === "tension") return `${p1} (${clean1}) and ${p2} (${clean2}) create friction in your life. These two parts of yourself don't agree easily — one pulls while the other pushes. This is uncomfortable but productive. The tension forces you to grow in both areas rather than coasting.`;
-  if (nature === "talent") return `${p1} (${clean1}) and ${p2} (${clean2}) connect through a creative, almost instinctive channel. This isn't something you were taught — it's something you just do. The way these two parts of your life interact produces something original that's hard for others to replicate.`;
-  if (nature === "adjustment") return `${p1} (${clean1}) and ${p2} (${clean2}) don't naturally understand each other. There's a persistent need to adjust and recalibrate between these two parts of your life. It's subtle but real — like wearing one shoe that never quite fits. The growth comes from learning to hold both without forcing them together.`;
-  if (nature === "irritation") return `${p1} (${clean1}) and ${p2} (${clean2}) create a low-level friction that won't let you get too comfortable. It's not dramatic enough to demand attention, but persistent enough that it shapes your behavior over time. Pay attention to the small frustrations — they're pointing at something worth addressing.`;
-  return `${p1} (${clean1}) and ${p2} (${clean2}) face each other across your chart. You may swing between these two energies or see one reflected in the people closest to you. The work is learning to honor both sides — not choosing one over the other.`;
+  const pair = `${p1}-${p2}`;
+  const pairRev = `${p2}-${p1}`;
+
+  // Common planet pair descriptions — what does THIS specific combo mean in real life?
+  const PAIR_CONTEXT: Record<string, string> = {
+    "Sun-Moon": "Your sense of self and your emotional needs",
+    "Sun-Mercury": "Your identity and how you communicate",
+    "Sun-Venus": "Who you are and what you love",
+    "Sun-Mars": "Your ego and your drive",
+    "Sun-Jupiter": "Your identity and your sense of possibility",
+    "Sun-Saturn": "Who you are and what holds you back",
+    "Sun-Uranus": "Your identity and your need to be different",
+    "Sun-Neptune": "Your sense of self and your imagination",
+    "Sun-Pluto": "Your conscious self and your deepest power",
+    "Moon-Mercury": "Your feelings and your thinking mind",
+    "Moon-Venus": "Your emotional needs and your desires",
+    "Moon-Mars": "How you feel and how you act",
+    "Moon-Jupiter": "Your emotional world and your faith",
+    "Moon-Saturn": "Your vulnerability and your self-control",
+    "Moon-Uranus": "Your emotional patterns and your need for freedom",
+    "Moon-Neptune": "Your inner world and your imagination",
+    "Moon-Pluto": "Your emotions and your survival instincts",
+    "Mercury-Venus": "How you think and what you value",
+    "Mercury-Mars": "Your mind and your willpower",
+    "Mercury-Jupiter": "Your thinking and your beliefs",
+    "Mercury-Saturn": "How you communicate and your fear of being wrong",
+    "Mercury-Uranus": "Your mind and your unconventional streak",
+    "Mercury-Neptune": "Your logic and your intuition",
+    "Mercury-Pluto": "Your words and your ability to see what's hidden",
+    "Venus-Mars": "What you want and how you go after it",
+    "Venus-Jupiter": "Your values and your optimism",
+    "Venus-Saturn": "What you love and what you fear losing",
+    "Venus-Uranus": "Your desires and your need for independence",
+    "Venus-Neptune": "Your love life and your idealism",
+    "Venus-Pluto": "Your attachments and your intensity",
+    "Mars-Jupiter": "Your ambition and your sense of purpose",
+    "Mars-Saturn": "Your drive and your discipline",
+    "Mars-Uranus": "Your energy and your rebellious side",
+    "Mars-Neptune": "Your willpower and your sensitivity",
+    "Mars-Pluto": "Your assertiveness and your need for control",
+    "Jupiter-Saturn": "Your hope and your realism",
+    "Jupiter-Uranus": "Your growth and your restlessness",
+    "Jupiter-Neptune": "Your faith and your fantasy",
+    "Jupiter-Pluto": "Your ambitions and your transformative power",
+    "Saturn-Uranus": "Your need for structure and your need for freedom",
+    "Saturn-Neptune": "Your pragmatism and your dreams",
+    "Saturn-Pluto": "Your discipline and your depth",
+    "Uranus-Neptune": "Your originality and your spiritual instincts",
+    "Uranus-Pluto": "Your revolutionary streak and your transformative drive",
+    "Neptune-Pluto": "Your imagination and your survival instincts",
+    "Sun-Chiron": "Your identity and your deepest wound",
+    "Moon-Chiron": "Your emotions and your oldest hurt",
+    "Venus-Chiron": "How you love and where love has hurt you",
+    "Mars-Chiron": "Your drive and the thing that once stopped you",
+    "Sun-North Node": "Who you are and who you're becoming",
+    "Moon-North Node": "Your comfort zone and your growth edge",
+    "Venus-North Node": "What you value and what your life is asking you to value",
+    "Mars-North Node": "How you act and the direction your soul is pulled toward",
+  };
+
+  const context = PAIR_CONTEXT[pair] || PAIR_CONTEXT[pairRev] || `${p1} and ${p2}`;
+
+  if (nature === "fusion") return `${context} are merged in your chart — they operate as one unit. When one activates, the other fires too. You don't experience ${p1.toLowerCase()} energy without ${p2.toLowerCase()} energy showing up alongside it. This makes you intense and integrated in these areas, but it can also feel like there's no off switch.`;
+  if (nature === "harmony") return `${context} are naturally aligned in your chart. This means you don't have to work hard to make these areas of life cooperate — they just do. When you lean into ${p1.toLowerCase()} matters, ${p2.toLowerCase()} benefits automatically. Most people have to fight for this kind of internal agreement. You got it for free.`;
+  if (nature === "opportunity") return `${context} have an open channel between them, but you have to use it deliberately. The potential is real — when you consciously connect how you handle ${p1.toLowerCase()} stuff with your ${p2.toLowerCase()} instincts, good things happen. The key word is "consciously." This doesn't happen on autopilot.`;
+  if (nature === "tension") return `${context} are in conflict. You feel this as an internal push-pull — one part of you wants something that the other part resists. This isn't comfortable, and it's not supposed to be. The friction forces you to deal with both sides honestly instead of defaulting to the easier one. Growth lives in this discomfort.`;
+  if (nature === "talent") return `${context} connect in an unusual, creative way that's specific to you. You do something with this combination that other people can't easily replicate — it's instinctive, not learned. You might not even realize it's a talent because it comes so naturally. But watch how other people struggle with the same thing, and you'll see it.`;
+  if (nature === "adjustment") return `${context} don't speak the same language. You can't fully satisfy one without slightly neglecting the other, which creates a low-grade tension that never fully resolves. The trick isn't to force them together — it's to get comfortable with the fact that some parts of yourself will always need manual calibration.`;
+  if (nature === "irritation") return `${context} rub against each other in a way that's too quiet to demand attention but too persistent to ignore. Small frustrations accumulate around these themes — the kind you brush off individually but that shape your behavior over time. Paying attention to what specifically irritates you here reveals something worth addressing.`;
+  return `${context} sit at opposite ends of your chart, creating a seesaw effect. You might over-identify with one side and project the other onto the people closest to you. The real work is owning both — not choosing sides.`;
 }
 
 function elementBg(sign: string): string {
