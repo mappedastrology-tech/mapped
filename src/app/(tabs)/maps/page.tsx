@@ -806,10 +806,19 @@ function sanitizeConnection(conn: Connection): Connection {
     };
   }
 
+  // Convert numeric house (1-12) back to the string format the rest of the app expects
+  const HOUSE_WORDS = ["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth","Eleventh","Twelfth"];
+  const normalizeHouse = (h: unknown): string | null => {
+    if (h == null) return null;
+    if (typeof h === "number" && h >= 1 && h <= 12) return `${HOUSE_WORDS[h - 1]}_House`;
+    if (typeof h === "string") return h;
+    return null;
+  };
+
   // Sanitize planets — filter out entries with NaN/missing positions
   const planets = Array.isArray(conn.planets)
     ? conn.planets.filter(p => p && typeof p.name === "string" && typeof p.sign === "string")
-        .map(p => ({ ...p, absPosition: safeNum(p.absPosition), position: safeNum(p.position) }))
+        .map(p => ({ ...p, absPosition: safeNum(p.absPosition), position: safeNum(p.position), house: normalizeHouse(p.house) }))
     : null;
 
   // Sanitize houses
@@ -817,6 +826,12 @@ function sanitizeConnection(conn: Connection): Connection {
     ? (conn.houses as any[]).filter(h => h && typeof h.sign === "string")
         .map(h => ({ ...h, absPosition: safeNum(h.absPosition), position: safeNum(h.position) }))
     : null;
+
+  // Sanitize special_points — same house normalization as planets
+  const special_points = Array.isArray(conn.special_points)
+    ? conn.special_points.filter((sp: any) => sp && typeof sp.name === "string")
+        .map((sp: any) => ({ ...sp, absPosition: safeNum(sp.absPosition), position: safeNum(sp.position), house: normalizeHouse(sp.house) }))
+    : conn.special_points;
 
   // Sanitize synastry
   let synastry = conn.synastry;
@@ -832,7 +847,7 @@ function sanitizeConnection(conn: Connection): Connection {
     };
   }
 
-  return { ...conn, name, relationship, category, birth_date, birth_time, city_name, big_three, planets, houses, synastry };
+  return { ...conn, name, relationship, category, birth_date, birth_time, city_name, big_three, planets, houses, special_points, synastry };
 }
 
 const ASPECT_WEIGHT: Record<string, number> = {
