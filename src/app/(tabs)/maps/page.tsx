@@ -26,6 +26,42 @@ import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
 
 /* ═══════════════════════════════════════════
+   Error Boundary — catches rendering crashes
+   ═══════════════════════════════════════════ */
+class DetailErrorBoundary extends React.Component<
+  { children: React.ReactNode; onReset: () => void },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; onReset: () => void }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[DetailErrorBoundary] Render crash:", error, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart.</p>
+          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{this.state.error.message}</p>
+          <button
+            onClick={() => { this.setState({ error: null }); this.props.onReset(); }}
+            className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
+          >
+            Back to map
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/* ═══════════════════════════════════════════
    Types
    ═══════════════════════════════════════════ */
 
@@ -2626,6 +2662,13 @@ export default function MapsTab() {
       setFormBirthTime(""); setFormUnknownTime(false); setFormCity("");
       setFormLat(null); setFormLng(null); setShowAddForm(false);
       setEditingConnectionId(null);
+      // After editing (especially birthday), go back to map view so
+      // the detail view re-mounts cleanly when the user taps again.
+      if (birthChanged) {
+        setSelectedId(null);
+        setPersonTab("synastry");
+        setShowDetailedAspects(false);
+      }
     } catch (err) {
       console.error("[editPerson] Error:", err);
       setFormError(err instanceof Error ? err.message : "Something went wrong. Try again.");
@@ -4018,32 +4061,52 @@ export default function MapsTab() {
 
   // ─── Detail view for selected connection ───
   if (selected) {
-    const syn = selected.synastry;
-    const bt = selected.big_three;
-    const personPlanets = selected.planets || [];
-    const personHouses = (selected.houses || []) as { number: number; sign: string; signNum: number; position: number; absPosition: number }[];
-    const isPartner = selected.category === "partner";
+    let syn: SynastryData | null = null;
+    let bt: { sun: string; moon: string; rising: string } | null = null;
+    let personPlanets: Planet[] = [];
+    let personHouses: { number: number; sign: string; signNum: number; position: number; absPosition: number }[] = [];
+    let isPartner = false;
+    let compat: CompatibilityResult | null = null;
 
-    // Normalize synastry data — Supabase JSONB round-trips can drop empty arrays
-    if (syn) {
-      if (!Array.isArray(syn.crossAspects)) syn.crossAspects = [];
-      if (!Array.isArray(syn.themes)) syn.themes = [];
-      if (!Array.isArray(syn.fatedContacts)) syn.fatedContacts = [];
-      if (typeof syn.harmony !== "number") syn.harmony = 0;
-      if (typeof syn.tension !== "number") syn.tension = 0;
-    }
-
-    // Compute compatibility for all connections
-    let compat = null;
     try {
-      compat = syn
-        ? computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend")
-        : null;
+      syn = (selected.synastry as SynastryData | null) ?? null;
+      bt = selected.big_three ?? null;
+      personPlanets = selected.planets || [];
+      personHouses = (selected.houses || []) as { number: number; sign: string; signNum: number; position: number; absPosition: number }[];
+      isPartner = selected.category === "partner";
+
+      // Normalize synastry data — Supabase JSONB round-trips can drop empty arrays
+      if (syn) {
+        if (!Array.isArray(syn.crossAspects)) syn.crossAspects = [];
+        if (!Array.isArray(syn.themes)) syn.themes = [];
+        if (!Array.isArray(syn.fatedContacts)) syn.fatedContacts = [];
+        if (typeof syn.harmony !== "number") syn.harmony = 0;
+        if (typeof syn.tension !== "number") syn.tension = 0;
+      }
+
+      // Compute compatibility
+      if (syn) {
+        compat = computeCompatibility(syn, "You", selected.name, userChart?.bigThree || null, bt, selected.category as "partner" | "family" | "friend");
+      }
     } catch (e) {
-      console.error("[maps] computeCompatibility crashed:", e);
+      console.error("[maps] Detail view setup crashed:", e);
+      // Show error fallback instead of crashing the page
+      return (
+        <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart.</p>
+          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{e instanceof Error ? e.message : "Unknown error"}</p>
+          <button
+            onClick={() => { setSelectedId(null); setPersonTab("synastry"); }}
+            className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
+          >
+            Back to map
+          </button>
+        </main>
+      );
     }
 
     return (
+      <DetailErrorBoundary onReset={() => { setSelectedId(null); setPersonTab("synastry"); }}>
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
           onClick={() => { setSelectedId(null); setOpenAspect(null); setPersonTab("synastry"); setOpenPlacement(null); setShowDetailedAspects(false); }}
@@ -5659,6 +5722,7 @@ export default function MapsTab() {
           </div>
         )}
       </main>
+      </DetailErrorBoundary>
     );
   }
 
