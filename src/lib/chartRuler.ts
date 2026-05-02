@@ -45,14 +45,21 @@ import { SIGN_FULL } from "./knowledge";
 
 const SIGN_FULL_NAMES: Record<string, string> = SIGN_FULL;
 
-function formatHouseOrdinal(house: string | null): string {
-  if (!house) return "";
+function formatHouseOrdinal(house: string | number | null): string {
+  if (house == null) return "";
+  if (typeof house === "number") {
+    const ord: Record<number, string> = {
+      1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th",
+      7: "7th", 8: "8th", 9: "9th", 10: "10th", 11: "11th", 12: "12th",
+    };
+    return ord[house] || String(house);
+  }
   const ordinals: Record<string, string> = {
     First: "1st", Second: "2nd", Third: "3rd", Fourth: "4th",
     Fifth: "5th", Sixth: "6th", Seventh: "7th", Eighth: "8th",
     Ninth: "9th", Tenth: "10th", Eleventh: "11th", Twelfth: "12th",
   };
-  const word = house.split("_")[0];
+  const word = String(house).split("_")[0];
   return ordinals[word] || word;
 }
 

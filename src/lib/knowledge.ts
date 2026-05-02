@@ -27,9 +27,10 @@ const HOUSE_NUM: Record<string, number> = {
 };
 
 /** Parse "First_House" → 1, or return null */
-export function parseHouseNumber(house: string | null): number | null {
-  if (!house) return null;
-  const word = house.split("_")[0];
+export function parseHouseNumber(house: string | number | null): number | null {
+  if (house == null) return null;
+  if (typeof house === "number") return house >= 1 && house <= 12 ? house : null;
+  const word = String(house).split("_")[0];
   return HOUSE_NUM[word] ?? null;
 }
 
@@ -212,7 +213,7 @@ export async function fetchRetrograde(
 export async function fetchPlacementKnowledge(
   planet: string,
   signAbbr: string,
-  houseWord: string | null,
+  houseWord: string | number | null,
   isRetrograde: boolean = false
 ) {
   const houseNumber = parseHouseNumber(houseWord);

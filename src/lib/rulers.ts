@@ -175,13 +175,14 @@ export function getLordOfTheYear(
 
 /* ─── Helpers ─── */
 
-function parseHouse(house: string | null): number | null {
-  if (!house) return null;
+function parseHouse(house: string | number | null): number | null {
+  if (house == null) return null;
+  if (typeof house === "number") return house >= 1 && house <= 12 ? house : null;
   const map: Record<string, number> = {
     First: 1, Second: 2, Third: 3, Fourth: 4, Fifth: 5, Sixth: 6,
     Seventh: 7, Eighth: 8, Ninth: 9, Tenth: 10, Eleventh: 11, Twelfth: 12,
   };
-  const word = house.split("_")[0];
+  const word = String(house).split("_")[0];
   return map[word] || null;
 }
 
