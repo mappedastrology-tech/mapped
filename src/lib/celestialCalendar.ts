@@ -925,10 +925,10 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
 
   // ── ECLIPSE SEASONS (2026) ──
   events.push(
-    { id: `solar-eclipse-1-${year}`, name: "Solar Eclipse", date: new Date(year, 0, 17), tradition: "astronomical", category: "solar", description: "January 17, 2026 (approximate) — Solar eclipses are cosmic reset buttons. A new moon on steroids. Powerful for setting intentions and starting new chapters. The shadow of the moon obscures the sun. What becomes visible in the darkness?", ritualHint: "Sit in silence and darkness. Plant an intention that needs solar fire. What do you want to birth?", element: "spirit" },
-    { id: `lunar-eclipse-1-${year}`, name: "Lunar Eclipse", date: new Date(year, 6, 3), tradition: "astronomical", category: "moon", description: "July 3, 2026 (approximate) — Lunar eclipses illuminate what was hidden. A full moon on steroids. Reveals truth. Often brings sudden endings or revelations. The earth's shadow falls on the moon — what shadow work is calling?", ritualHint: "Journal about what's being revealed. Release what no longer serves. Name your truth.", element: "water" },
-    { id: `solar-eclipse-2-${year}`, name: "Solar Eclipse", date: new Date(year, 6, 17), tradition: "astronomical", category: "solar", description: "July 17, 2026 (approximate) — Another solar eclipse, another reset point. Two weeks after the lunar eclipse. A powerful moment of beginning again. The cosmos clears the stage for what's next.", ritualHint: "Begin something new and bold. Declare your next chapter. Walk through the cosmic door.", element: "spirit" },
-    { id: `lunar-eclipse-2-${year}`, name: "Lunar Eclipse", date: new Date(year, 11, 26), tradition: "astronomical", category: "moon", description: "December 26, 2026 (approximate) — The year's final lunar eclipse. Full circle back to January's energy. Another full moon revelation at year's end. What truths have emerged this year? What cycles are completing?", ritualHint: "Look back at the year. What have you learned? What do you need to release before the new year?", element: "water" },
+    { id: `solar-eclipse-1-${year}`, name: "Solar Eclipse", date: new Date(year, 1, 17), tradition: "astronomical", category: "solar", description: "February 17, 2026 — Solar eclipse in Aquarius. Solar eclipses are cosmic reset buttons. A new moon on steroids. Powerful for setting intentions and starting new chapters. The shadow of the moon obscures the sun. What becomes visible in the darkness?", ritualHint: "Sit in silence and darkness. Plant an intention that needs solar fire. What do you want to birth?", element: "spirit" },
+    { id: `lunar-eclipse-1-${year}`, name: "Lunar Eclipse", date: new Date(year, 2, 3), tradition: "astronomical", category: "moon", description: "March 3, 2026 — Lunar eclipse in Virgo. Lunar eclipses illuminate what was hidden. A full moon on steroids. Reveals truth. Often brings sudden endings or revelations. The earth's shadow falls on the moon — what shadow work is calling?", ritualHint: "Journal about what's being revealed. Release what no longer serves. Name your truth.", element: "water" },
+    { id: `solar-eclipse-2-${year}`, name: "Solar Eclipse", date: new Date(year, 7, 12), tradition: "astronomical", category: "solar", description: "August 12, 2026 — Solar eclipse in Leo. Another solar eclipse, another reset point. A powerful moment of beginning again. The cosmos clears the stage for what's next.", ritualHint: "Begin something new and bold. Declare your next chapter. Walk through the cosmic door.", element: "spirit" },
+    { id: `lunar-eclipse-2-${year}`, name: "Lunar Eclipse", date: new Date(year, 7, 27), tradition: "astronomical", category: "moon", description: "August 27, 2026 — Lunar eclipse in Pisces. The year's second lunar eclipse. Emotional revelations and spiritual truths surface. What have you been avoiding feeling? Let the eclipse illuminate it.", ritualHint: "Look inward. What have you learned? What do you need to release?", element: "water" },
   );
 
   // ── CULTURAL ASTROLOGY & NEW YEAR FESTIVALS ──
@@ -943,44 +943,71 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   // Full moons are added separately below, but each one is an Esbat in Wiccan tradition
   // They represent a gathering of witches to work magic aligned with the full moon's energy
 
-  // ── FULL MOONS (approximate for 2026) ──
-  const fullMoons2026: [number, number, string][] = [
-    [0, 13, "Wolf Moon"], [1, 12, "Snow Moon"], [2, 14, "Worm Moon"],
-    [3, 12, "Pink Moon"], [4, 12, "Flower Moon"], [5, 11, "Strawberry Moon"],
-    [6, 10, "Buck Moon"], [7, 9, "Sturgeon Moon"], [8, 7, "Harvest Moon"],
-    [9, 7, "Hunter's Moon"], [10, 5, "Beaver Moon"], [11, 5, "Cold Moon"],
+  // ── FULL MOONS (astronomically correct for 2026) ──
+  // Sources: CHANI, Parade, Royal Museums Greenwich, Old Farmer's Almanac
+  // Format: [month, day, name, zodiacSign, special?]
+  const fullMoons2026: [number, number, string, string, string?][] = [
+    [0, 3, "Wolf Moon", "Cancer"],
+    [1, 1, "Snow Moon", "Leo"],
+    [2, 3, "Worm Moon", "Virgo"],          // Lunar Eclipse
+    [3, 1, "Pink Moon", "Libra"],
+    [4, 1, "Flower Moon", "Scorpio"],       // First of two May full moons
+    [4, 31, "Blue Moon", "Sagittarius"],    // Rare second full moon in May
+    [5, 29, "Strawberry Moon", "Capricorn"],
+    [6, 29, "Buck Moon", "Aquarius"],
+    [7, 27, "Sturgeon Moon", "Pisces"],     // Lunar Eclipse
+    [8, 26, "Harvest Moon", "Aries"],
+    [9, 25, "Hunter's Moon", "Taurus"],
+    [10, 24, "Beaver Moon", "Gemini"],
+    [11, 24, "Cold Moon", "Cancer"],
   ];
 
-  for (const [month, day, name] of fullMoons2026) {
+  for (const [month, day, name, sign, special] of fullMoons2026) {
     if (year === 2026) {
+      const isBlue = name === "Blue Moon";
+      const isEclipse = special === "eclipse" || (month === 2 && day === 3) || (month === 7 && day === 27);
+      const specialLabel = isBlue ? " — Blue Moon (rare second full moon this month)" :
+                           isEclipse ? " — Lunar Eclipse" : "";
       events.push({
-        id: `full-moon-${year}-${month}`,
+        id: `full-moon-${year}-${month}-${day}`,
         name: `Full ${name} (Esbat)`,
         date: new Date(year, month, day),
         tradition: "pagan",
         category: "moon",
-        description: `The ${name} illuminates the sky. In Wiccan tradition, every full moon is an Esbat — a gathering of witches to work magic and celebrate the Goddess. Each full moon has been named by indigenous, Celtic, and colonial American traditions based on the natural world at that time of year.`,
+        description: `The ${name} in ${sign}.${specialLabel} In Wiccan tradition, every full moon is an Esbat — a gathering of witches to work magic and celebrate the Goddess. Each full moon has been named by indigenous, Celtic, and colonial American traditions based on the natural world at that time of year.`,
         ritualHint: "Full moon release: write what you want to let go of and safely burn the paper. Sit in moonlight for 10 minutes. Cast a circle and work magic aligned with the moon's energy.",
         element: "water",
       });
     }
   }
 
-  // ── NEW MOONS (approximate for 2026) ──
-  const newMoons2026: [number, number][] = [
-    [0, 29], [1, 27], [2, 29], [3, 27], [4, 27], [5, 25],
-    [6, 25], [7, 23], [8, 21], [9, 21], [10, 19], [11, 19],
+  // ── NEW MOONS (astronomically correct for 2026) ──
+  // Format: [month, day, zodiacSign, special?]
+  const newMoons2026: [number, number, string, string?][] = [
+    [0, 18, "Capricorn"],
+    [1, 17, "Aquarius"],                   // Solar Eclipse (Feb 17 12:01 UTC)
+    [2, 18, "Pisces"],
+    [3, 17, "Aries"],
+    [4, 16, "Taurus"],
+    [5, 14, "Gemini"],
+    [6, 14, "Cancer"],
+    [7, 12, "Leo"],                        // Solar Eclipse
+    [8, 10, "Virgo"],
+    [9, 10, "Libra"],
+    [10, 8, "Scorpio"],
+    [11, 8, "Sagittarius"],
   ];
 
-  for (const [month, day] of newMoons2026) {
+  for (const [month, day, sign] of newMoons2026) {
     if (year === 2026) {
+      const isEclipse = (month === 1 && day === 17) || (month === 7 && day === 12);
       events.push({
         id: `new-moon-${year}-${month}`,
         name: "New Moon",
         date: new Date(year, month, day),
         tradition: "astronomical",
         category: "moon",
-        description: "The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.",
+        description: `New Moon in ${sign}.${isEclipse ? " — Solar Eclipse" : ""} The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.`,
         ritualHint: "Write 3 intentions by candlelight. Speak them aloud to the dark sky.",
         element: "water",
       });
@@ -1125,6 +1152,16 @@ export const MOON_LORE: Record<string, MoonNameLore> = {
       "Endurance and inner fire. The darkest night is also the longest moonlight. Whatever you've been carrying, you've almost made it through.",
     emoji: "❄️",
   },
+  "Blue Moon": {
+    name: "Blue Moon",
+    altNames: ["Second Moon", "Bonus Moon"],
+    origin: "European, Colonial American",
+    story:
+      "A rare second full moon in a single calendar month — happening roughly every 2.5 years. The phrase 'once in a blue moon' comes from this rarity. May 2026 has two full moons: the Flower Moon on May 1 and the Blue Moon on May 31.",
+    energy:
+      "The unexpected gift. An extra full moon is a bonus round — use it for whatever unfinished business the first one stirred up. Double the release, double the magic.",
+    emoji: "🔵",
+  },
 };
 
 // Short cultural context for the dark New Moon (shared across all new moons)
@@ -1191,12 +1228,20 @@ export function getNextMoonEvents(fromDate: Date): {
     return m ? m[1] : undefined;
   };
 
+  // Parse the moon's zodiac sign from the event description
+  // Description format: "The Flower Moon in Scorpio." or "New moon in Taurus."
+  const parseMoonSign = (desc: string): string | undefined => {
+    const m = desc.match(/in ([A-Z][a-z]+)\./);
+    return m ? m[1] : undefined;
+  };
+
   const nextFull: NextMoonEvent | null = nextFullEvent
     ? {
         kind: "full",
         date: nextFullEvent.date,
         moonName: parseMoonName(nextFullEvent.name),
         label: parseMoonName(nextFullEvent.name) ?? "Full Moon",
+        zodiacSign: parseMoonSign(nextFullEvent.description) || getCurrentZodiacSeason(nextFullEvent.date).sign,
         daysUntil: Math.round(
           (nextFullEvent.date.getTime() - from.getTime()) / msPerDay
         ),
@@ -1205,7 +1250,7 @@ export function getNextMoonEvents(fromDate: Date): {
 
   const nextNew: NextMoonEvent | null = nextNewEvent
     ? (() => {
-        const sign = getCurrentZodiacSeason(nextNewEvent.date).sign;
+        const sign = parseMoonSign(nextNewEvent.description) || getCurrentZodiacSeason(nextNewEvent.date).sign;
         return {
           kind: "new" as const,
           date: nextNewEvent.date,
@@ -1219,6 +1264,76 @@ export function getNextMoonEvents(fromDate: Date): {
     : null;
 
   return { nextFull, nextNew };
+}
+
+// ─── TODAY'S MOON EVENT ─────────────────────────────────────────────────────
+// Returns info about today's full/new moon event, or null if today isn't one.
+
+export interface TodaysMoonEvent {
+  kind: "full" | "new";
+  moonName?: string;      // e.g. "Flower Moon", "Blue Moon"
+  zodiacSign: string;     // e.g. "Scorpio"
+  isBlue: boolean;        // rare second full moon in a month
+  isEclipse: boolean;     // lunar or solar eclipse
+  lore?: MoonNameLore;    // rich lore data
+}
+
+export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
+  const { nextFull, nextNew } = getNextMoonEvents(date);
+
+  if (nextFull && nextFull.daysUntil === 0) {
+    const name = nextFull.moonName;
+    return {
+      kind: "full",
+      moonName: name,
+      zodiacSign: nextFull.zodiacSign || getCurrentZodiacSeason(date).sign,
+      isBlue: name === "Blue Moon",
+      isEclipse: false, // TODO: cross-reference eclipse dates
+      lore: name ? MOON_LORE[name] : undefined,
+    };
+  }
+
+  if (nextNew && nextNew.daysUntil === 0) {
+    return {
+      kind: "new",
+      zodiacSign: nextNew.zodiacSign || getCurrentZodiacSeason(date).sign,
+      isBlue: false,
+      isEclipse: false,
+      lore: NEW_MOON_LORE,
+    };
+  }
+
+  return null;
+}
+
+// ─── ALL FULL MOONS FOR A YEAR (for the "Moons of 2026" grid) ──────────────
+
+export interface YearMoonEntry {
+  month: number;       // 0-11
+  day: number;
+  name: string;        // "Flower Moon", "Blue Moon"
+  sign: string;        // "Scorpio"
+  isBlue: boolean;
+  emoji: string;
+}
+
+export function getFullMoonsForYear(year: number): YearMoonEntry[] {
+  if (year !== 2026) return []; // Only 2026 data is hardcoded
+  return [
+    { month: 0, day: 3, name: "Wolf Moon", sign: "Cancer", isBlue: false, emoji: "🐺" },
+    { month: 1, day: 1, name: "Snow Moon", sign: "Leo", isBlue: false, emoji: "❄️" },
+    { month: 2, day: 3, name: "Worm Moon", sign: "Virgo", isBlue: false, emoji: "🪱" },
+    { month: 3, day: 1, name: "Pink Moon", sign: "Libra", isBlue: false, emoji: "🌸" },
+    { month: 4, day: 1, name: "Flower Moon", sign: "Scorpio", isBlue: false, emoji: "🌷" },
+    { month: 4, day: 31, name: "Blue Moon", sign: "Sagittarius", isBlue: true, emoji: "🔵" },
+    { month: 5, day: 29, name: "Strawberry Moon", sign: "Capricorn", isBlue: false, emoji: "🍓" },
+    { month: 6, day: 29, name: "Buck Moon", sign: "Aquarius", isBlue: false, emoji: "🦌" },
+    { month: 7, day: 27, name: "Sturgeon Moon", sign: "Pisces", isBlue: false, emoji: "🐟" },
+    { month: 8, day: 26, name: "Harvest Moon", sign: "Aries", isBlue: false, emoji: "🌾" },
+    { month: 9, day: 25, name: "Hunter's Moon", sign: "Taurus", isBlue: false, emoji: "🏹" },
+    { month: 10, day: 24, name: "Beaver Moon", sign: "Gemini", isBlue: false, emoji: "🦫" },
+    { month: 11, day: 24, name: "Cold Moon", sign: "Cancer", isBlue: false, emoji: "❄️" },
+  ];
 }
 
 // ─── DAILY ENERGY CALCULATOR ─────────────────────────────────────────────────

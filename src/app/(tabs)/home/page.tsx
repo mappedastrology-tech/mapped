@@ -85,6 +85,8 @@ import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
 import InfoSheet from "@/components/InfoSheet";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
+import MoonEventScreen from "@/components/MoonEventScreen";
+import { getTodaysMoonEvent } from "@/lib/celestialCalendar";
 
 interface DailyHoroscope {
   headline: string;
@@ -138,6 +140,7 @@ export default function HomeTab() {
   const [journalPromptContext, setJournalPromptContext] = useState<string>("");
   const [journalPromptLoading, setJournalPromptLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [showMoonEvent, setShowMoonEvent] = useState(false);
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [tarotFlipping, setTarotFlipping] = useState(false);
@@ -176,6 +179,7 @@ export default function HomeTab() {
     return PLANETARY_DAYS[idx];
   }, [today]);
   const nextMoons = useMemo(() => getNextMoonEvents(today), [today]);
+  const todaysMoonEvent = useMemo(() => getTodaysMoonEvent(today), [today]);
 
   // Deterministic daily seed — same value all day, changes at midnight
   const dailySeed = useMemo(() => {
@@ -544,31 +548,63 @@ export default function HomeTab() {
             </h1>
           </div>
 
-          {/* Moon phase badge */}
+          {/* Moon phase badge — on full/new moon days, opens the event takeover */}
           <button
             type="button"
-            onClick={() => setSheet({ kind: "moon-phase" })}
+            onClick={() => todaysMoonEvent ? setShowMoonEvent(true) : setSheet({ kind: "moon-phase" })}
             className="shrink-0 rounded-2xl border p-3 text-center active:scale-95 transition-all"
             style={{
-              borderColor: "var(--border-card)",
-              backgroundColor: "var(--background-card)",
+              borderColor: todaysMoonEvent ? "var(--terracotta)" : "var(--border-card)",
+              backgroundColor: todaysMoonEvent ? "rgba(196,106,69,0.08)" : "var(--background-card)",
             }}
           >
             <MoonPhaseIcon phase={moon.label} size={80} className="mb-1" />
             <p
               className="text-[8px] uppercase tracking-[0.2em] font-bold mb-0.5"
-              style={{ color: "var(--foreground)", opacity: 0.45 }}
+              style={{ color: todaysMoonEvent ? "var(--terracotta)" : "var(--foreground)", opacity: todaysMoonEvent ? 0.7 : 0.45 }}
             >
-              Today&apos;s moon
+              {todaysMoonEvent ? (todaysMoonEvent.kind === "full" ? "✦ Full Moon ✦" : "✦ New Moon ✦") : "Today’s moon"}
             </p>
             <p
               className="text-[11px] uppercase tracking-[0.15em] font-bold"
-              style={{ color: "var(--foreground)", opacity: 0.7 }}
+              style={{ color: todaysMoonEvent ? "var(--terracotta)" : "var(--foreground)", opacity: 0.7 }}
             >
-              {moon.label}
+              {todaysMoonEvent?.moonName || moon.label}
             </p>
           </button>
         </header>
+
+        {/* ─── Moon event banner (full/new moon days only) ─── */}
+        {todaysMoonEvent && (
+          <button
+            type="button"
+            onClick={() => setShowMoonEvent(true)}
+            className="w-full mb-6 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-all"
+            style={{
+              background: todaysMoonEvent.kind === "full"
+                ? "linear-gradient(135deg, #1a1040 0%, #2a1850 50%, #1a1040 100%)"
+                : "linear-gradient(135deg, #0a0a20 0%, #151535 50%, #0a0a20 100%)",
+              border: "1px solid rgba(196,106,69,0.25)",
+            }}
+          >
+            <div className="flex items-center gap-4 px-5 py-4">
+              <div className="shrink-0">
+                <MoonPhaseIcon phase={todaysMoonEvent.kind === "full" ? "Full Moon" : "New Moon"} size={48} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white/90 text-[15px] font-semibold" style={{ fontFamily: "Georgia, serif" }}>
+                  Tonight: {todaysMoonEvent.moonName || (todaysMoonEvent.kind === "full" ? "Full Moon" : "New Moon")}
+                </p>
+                <p className="text-white/45 text-[11px] mt-0.5">
+                  {todaysMoonEvent.zodiacSign} · Tap to explore rituals &amp; lore
+                </p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </div>
+          </button>
+        )}
 
         {/* ─── Today's Transit card ─── */}
         <div
@@ -1182,7 +1218,7 @@ export default function HomeTab() {
                   <button
                     key={item!.event.kind}
                     type="button"
-                    onClick={() => setSheet({ kind: item!.sheetKind })}
+                    onClick={() => item!.event.daysUntil === 0 ? setShowMoonEvent(true) : setSheet({ kind: item!.sheetKind })}
                     className={`flex-1 px-4 py-3.5 text-left active:scale-[0.98] transition-all
                                ${idx === 0 ? "bg-card/60" : "bg-card/40"}
                                ${idx < arr.length - 1 ? "border-r border-foreground/8" : ""}`}
@@ -1284,6 +1320,17 @@ export default function HomeTab() {
         planetaryDay={planetaryDay}
         nextMoons={nextMoons}
       />
+
+      {/* ─── Moon event takeover (full/new moon days) ─── */}
+      {showMoonEvent && (
+        <MoonEventScreen
+          onClose={() => setShowMoonEvent(false)}
+          onStartRitual={() => {
+            setShowMoonEvent(false);
+            router.push("/practice");
+          }}
+        />
+      )}
     </>
   );
 }
