@@ -456,9 +456,32 @@ export default function RitualPageContent() {
     [energy.moonPhase.phase, toolFilteredCatalog, todayStr, localDayOfYear]
   );
 
-  // Tonight's Moon ritual — always present, never the intention-setting overrides
+  // Tonight's Moon ritual
+  // On full/new moon days, use the same ritual from getDailyRituals() (matches home screen + practice page)
+  // On other phases, pick a phase-appropriate catalog ritual
   const moonRitual = useMemo(() => {
     const phase = energy.moonPhase.phase;
+
+    if (phase === "full" || phase === "new") {
+      // Use the central moon ritual from rituals.ts — same one shown on MoonEventScreen
+      const daily = getDailyRituals(new Date());
+      // Wrap as a CatalogRitual-like shape for RitualDetailCard compatibility
+      const r = daily.moonRitual;
+      return {
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        steps: r.steps,
+        category: "moon" as RitualCategory,
+        duration: r.duration || "15 min",
+        mood: r.mood,
+        element: r.element,
+        tier: 0,
+        bestPhases: [phase],
+        contentTags: ["moon", phase],
+      } as CatalogRitual;
+    }
+
     const pool = toolFilteredCatalog.filter(
       (r) =>
         r.bestPhases.includes(phase) &&

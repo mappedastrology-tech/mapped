@@ -281,6 +281,12 @@ const ASPECT_SYMBOLS: Record<string, string> = {
   trine: "\u25B3",
   square: "\u25A1",
   sextile: "\u2731",
+  quintile: "Q",
+  "bi-quintile": "bQ",
+  "semi-sextile": "\u26BA",
+  quincunx: "\u26BB",
+  "semi-square": "\u2220",
+  sesquiquadrate: "\u2A3E",
 };
 
 const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: string; beginnerDesc: string }> = {
@@ -289,6 +295,12 @@ const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: s
   sextile: { label: "Sextile", nature: "opportunity", color: "text-sage/70", beginnerDesc: "These two planets get along well and create opportunities — but you have to reach for them. Think of it as an open door you still need to walk through." },
   square: { label: "Square", nature: "tension", color: "text-terracotta", beginnerDesc: "These two planets are in conflict — they want different things and create inner tension. It's uncomfortable, but this friction is what drives your biggest growth." },
   opposition: { label: "Opposition", nature: "polarity", color: "text-terracotta/70", beginnerDesc: "These two planets sit on opposite sides, creating a tug-of-war. You might swing between them or project one side onto other people. Balance is the lesson." },
+  quintile: { label: "Quintile", nature: "talent", color: "text-foreground/50", beginnerDesc: "A creative, somewhat rare aspect. These two planets connect through talent and unique expression — something you do that doesn't fit neatly into any category but is distinctly yours." },
+  "bi-quintile": { label: "Bi-Quintile", nature: "talent", color: "text-foreground/50", beginnerDesc: "Like the quintile but deeper — a refined creative gift. These two planets produce something original when they work together. Think of it as a skill nobody taught you." },
+  "semi-sextile": { label: "Semi-Sextile", nature: "adjustment", color: "text-foreground/40", beginnerDesc: "These two planets are neighbors that don't quite speak the same language. There's a subtle friction that asks you to make small adjustments — nothing dramatic, but a constant nudge toward integration." },
+  quincunx: { label: "Quincunx", nature: "adjustment", color: "text-foreground/40", beginnerDesc: "Also called an inconjunct. These two planets have nothing in common and struggle to relate. It creates a blind spot — something you keep having to recalibrate because it never quite resolves." },
+  "semi-square": { label: "Semi-Square", nature: "irritation", color: "text-terracotta/40", beginnerDesc: "A low-grade tension between these two planets — not as dramatic as a square, but a persistent itch. It creates minor frustrations that push you to deal with things you'd rather ignore." },
+  sesquiquadrate: { label: "Sesquiquadrate", nature: "irritation", color: "text-terracotta/40", beginnerDesc: "Like a semi-square's older sibling. Persistent agitation between these two planets that builds slowly. It creates situations where you have to confront patterns you've been avoiding." },
 };
 
 /** Plain-English descriptions of what each planet governs */
@@ -1017,6 +1029,9 @@ function getAspectInterpretation(p1: string, p2: string, aspect: string): string
   if (nature === "harmony") return `${p1} (${clean1}) and ${p2} (${clean2}) support each other naturally in your chart. There's an ease here — these two parts of your life cooperate and strengthen each other without much effort on your part. This is a genuine gift.`;
   if (nature === "opportunity") return `${p1} (${clean1}) and ${p2} (${clean2}) can work together well, but it takes conscious effort. The connection isn't automatic — you have to choose to bridge these two parts of your life. When you do, the results are rewarding.`;
   if (nature === "tension") return `${p1} (${clean1}) and ${p2} (${clean2}) create friction in your life. These two parts of yourself don't agree easily — one pulls while the other pushes. This is uncomfortable but productive. The tension forces you to grow in both areas rather than coasting.`;
+  if (nature === "talent") return `${p1} (${clean1}) and ${p2} (${clean2}) connect through a creative, almost instinctive channel. This isn't something you were taught — it's something you just do. The way these two parts of your life interact produces something original that's hard for others to replicate.`;
+  if (nature === "adjustment") return `${p1} (${clean1}) and ${p2} (${clean2}) don't naturally understand each other. There's a persistent need to adjust and recalibrate between these two parts of your life. It's subtle but real — like wearing one shoe that never quite fits. The growth comes from learning to hold both without forcing them together.`;
+  if (nature === "irritation") return `${p1} (${clean1}) and ${p2} (${clean2}) create a low-level friction that won't let you get too comfortable. It's not dramatic enough to demand attention, but persistent enough that it shapes your behavior over time. Pay attention to the small frustrations — they're pointing at something worth addressing.`;
   return `${p1} (${clean1}) and ${p2} (${clean2}) face each other across your chart. You may swing between these two energies or see one reflected in the people closest to you. The work is learning to honor both sides — not choosing one over the other.`;
 }
 
