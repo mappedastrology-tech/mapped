@@ -216,15 +216,15 @@ const SKY_OBSERVATIONS: SkyObservation[] = [
   // Seasonal — Summer (season 1)
   { text: "The Summer Triangle — Vega, Deneb, Altair — is nearly overhead. Three stars, three eagles, one sky.", emoji: "🔺", condition: { season: 1 } },
   { text: "Scorpius is low in the south tonight. Its red heart, Antares, is a star 700 times wider than our sun.", emoji: "🦂", condition: { season: 1 } },
-  { text: "Jupiter is up most of the night this month, bright and steady in the eastern sky after dark.", emoji: "🪐", condition: { season: 1 } },
+  { text: "Arcturus, the brightest star in the northern sky, blazes almost directly overhead tonight. Find it by following the arc of the Big Dipper's handle.", emoji: "🌟", condition: { season: 1 } },
   { text: "The Milky Way is at its best on moonless summer nights. If you can get away from city lights, it's worth it.", emoji: "🌌", condition: { season: 1 } },
   { text: "Warm nights and late sunsets make this the easiest time of year to stargaze. No coat required.", emoji: "🌃", condition: { season: 1 } },
 
   // Seasonal — Fall (season 2)
-  { text: "Mars is visible in the east after sunset, glowing with its unmistakable orange tint.", emoji: "🔴", condition: { season: 2 } },
+  { text: "The Fomalhaut star hangs low in the south tonight — a lone bright point in an otherwise empty patch of sky. The ancients called it the Lonely One.", emoji: "⭐", condition: { season: 2 } },
   { text: "The Great Square of Pegasus is high in the south tonight — autumn's signature constellation.", emoji: "🐴", condition: { season: 2 } },
   { text: "Nights are growing noticeably longer. The sky gets dark early enough to stargaze before bedtime.", emoji: "🌙", condition: { season: 2 } },
-  { text: "Andromeda — the nearest galaxy, 2.5 million light-years away — is visible tonight as a faint smudge near Pegasus.", emoji: "🌀", condition: { season: 2 } },
+  { text: "Andromeda — the nearest large galaxy, 2.5 million light-years away — is visible tonight as a faint smudge near Pegasus.", emoji: "🌀", condition: { season: 2 } },
   { text: "The autumn sky has a quiet grandeur. Fewer bright stars, but the ones that are there feel closer.", emoji: "✨", condition: { season: 2 } },
 
   // Seasonal — Winter (season 3)
@@ -296,25 +296,27 @@ function formatTime(decimalHours: number): string {
 }
 
 /**
- * Approximate sunrise/sunset for ~30degN latitude (Austin/San Antonio area).
+ * Approximate sunrise/sunset for ~30degN latitude (Austin area).
  * Uses a simplified sinusoidal model based on day of year.
- * Sunrise ranges ~5:30 (summer) to ~7:15 (winter).
- * Sunset ranges ~5:30 (winter) to ~8:35 (summer).
+ * Calibrated against actual Austin data (includes DST clock effect):
+ * Sunrise ranges ~6:29 AM (summer) to ~7:25 AM (winter).
+ * Sunset ranges ~5:23 PM (winter) to ~8:37 PM (summer).
+ * Note: sunrise varies much less than sunset at 30°N — this asymmetry is real.
  */
 function getSunTimes(date: Date): { sunrise: number; sunset: number } {
   const doy = dayOfYear(date);
-  // Day offset from summer solstice (day ~172)
+  // Day offset from summer solstice (June 21 = day ~172)
   const angle = ((doy - 172) / 365.25) * 2 * Math.PI;
 
-  // Sunrise: oscillates around 6:22 with amplitude ~0.88 hours
-  // At summer solstice (angle=0), cos=1 → earliest sunrise (6.37 - 0.88 = 5:29)
-  // At winter solstice (angle=π), cos=-1 → latest sunrise (6.37 + 0.88 = 7:15)
-  const sunrise = 6.37 - 0.88 * Math.cos(angle);
+  // Sunrise: oscillates around 6:57 with amplitude ~0.47 hours
+  // At summer solstice (angle=0), cos=1 → earliest sunrise (6.95 - 0.47 = 6:29)
+  // At winter solstice (angle=π), cos=-1 → latest sunrise (6.95 + 0.47 = 7:25)
+  const sunrise = 6.95 - 0.47 * Math.cos(angle);
 
-  // Sunset: oscillates around 19:02 (7:02 PM) with amplitude ~1.55 hours
-  // At summer solstice (angle=0), cos=1 → latest sunset (19.03 + 1.55 = 20:35)
-  // At winter solstice (angle=π), cos=-1 → earliest sunset (19.03 - 1.55 = 17:28)
-  const sunset = 19.03 + 1.55 * Math.cos(angle);
+  // Sunset: oscillates around 7:00 PM with amplitude ~1.62 hours
+  // At summer solstice (angle=0), cos=1 → latest sunset (19.00 + 1.62 = 20:37)
+  // At winter solstice (angle=π), cos=-1 → earliest sunset (19.00 - 1.62 = 17:23)
+  const sunset = 19.00 + 1.62 * Math.cos(angle);
 
   return { sunrise, sunset };
 }
@@ -613,7 +615,7 @@ export function getComingUp(date: Date): ComingUpEvent[] {
   // Equinoxes and solstices
   const astronomicalEvents = [
     { date: new Date(year, 2, 20), label: "Spring Equinox" },
-    { date: new Date(year, 5, 20), label: "Summer Solstice" },
+    { date: new Date(year, 5, 21), label: "Summer Solstice" },
     { date: new Date(year, 8, 22), label: "Autumn Equinox" },
     { date: new Date(year, 11, 21), label: "Winter Solstice" },
   ];
