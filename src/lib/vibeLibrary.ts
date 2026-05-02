@@ -132,7 +132,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "S11",
-    phrase: "More the savings account you don't touch, less the manifestation board",
+    phrase: "More the savings account you don't touch, less the vision board",
     type: "paired",
     planetaryTags: ["saturnian"],
     elementTags: ["earth"],
@@ -2120,7 +2120,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "IN04",
-    phrase: "Main character energy, but you actually have to do the thing.",
+    phrase: "Main character moment, but you actually have to do the thing.",
     type: "standalone",
     planetaryTags: ["solar"],
     elementTags: ["fire"],
@@ -2252,7 +2252,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "CS02",
-    phrase: "We accept the love we think we deserve. We can update the deserving.",
+    phrase: "You keep accepting the love you think you deserve. You can update the number.",
     type: "standalone",
     planetaryTags: ["venusian"],
     elementTags: ["water"],
@@ -2486,7 +2486,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "DC04",
-    phrase: "Manifesting only works when you also do the dishes.",
+    phrase: "The vision board only works when you also do the dishes.",
     type: "standalone",
     planetaryTags: ["saturnian"],
     elementTags: ["earth"],
@@ -2536,7 +2536,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "DC09",
-    phrase: "You're not a hopeless romantic. You're a Venus in Pisces with no boundaries.",
+    phrase: "You're not a hopeless romantic. You're a Venus in Pisces with no filter.",
     type: "standalone",
     planetaryTags: ["venusian"],
     elementTags: ["water"],
@@ -2648,7 +2648,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   },
   {
     id: "FL06",
-    phrase: "Slick back ponytail energy, but for your boundaries.",
+    phrase: "Slick back ponytail discipline, but for your standards.",
     type: "standalone",
     planetaryTags: ["martian"],
     elementTags: ["fire"],
@@ -2986,7 +2986,7 @@ export const VIBE_LIBRARY: VibePhrase[] = [
   // --- Literary register (LR01-LR14) ---
   {
     id: "LR01",
-    phrase: "We tell ourselves stories in order to live. We tell ourselves the same story in order to stay stuck.",
+    phrase: "You keep telling yourself the same story. The story is the stuckness.",
     type: "standalone",
     planetaryTags: ["plutonian"],
     elementTags: ["water"],
