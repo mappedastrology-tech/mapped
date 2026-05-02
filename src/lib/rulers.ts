@@ -121,11 +121,16 @@ export function getLordOfTheYear(
   // Profection house = (age % 12) + 1
   const profectionHouse = (age % 12) + 1;
 
-  // Find the sign on that house cusp
-  const houseCusp = houses.find(h => h.number === profectionHouse);
-  if (!houseCusp) return null;
-
-  const profectionSign = houseCusp.sign;
+  // Annual profections use WHOLE SIGN HOUSES (not Placidus).
+  // In whole sign, house 1 = rising sign, house 2 = next sign, etc.
+  // So profection sign = (rising sign index + profectionHouse - 1) % 12
+  const SIGN_ORDER = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
+  const risingSign = houses.find(h => h.number === 1)?.sign;
+  if (!risingSign) return null;
+  const risingIdx = SIGN_ORDER.indexOf(risingSign);
+  if (risingIdx === -1) return null;
+  const profectionSignIdx = (risingIdx + profectionHouse - 1) % 12;
+  const profectionSign = SIGN_ORDER[profectionSignIdx];
   const lordPlanet = TRADITIONAL_RULER[profectionSign];
   if (!lordPlanet) return null;
 
