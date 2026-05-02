@@ -786,6 +786,25 @@ function fmtDateRange(start?: string, end?: string): string {
    ═══════════════════════════════════════════ */
 function sanitizeConnection(conn: Connection): Connection {
   const safeNum = (v: unknown): number => (typeof v === "number" && isFinite(v) ? v : 0);
+  const safeStr = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : String(v ?? fallback));
+
+  // Ensure all string fields are actually strings (Supabase JSONB can return unexpected types)
+  const name = safeStr(conn.name, "Unknown");
+  const relationship = safeStr(conn.relationship, "friend");
+  const category = safeStr(conn.category, "friend");
+  const birth_date = safeStr(conn.birth_date, "2000-01-01");
+  const birth_time = conn.birth_time != null ? safeStr(conn.birth_time) : null;
+  const city_name = conn.city_name != null ? safeStr(conn.city_name) : null;
+
+  // Sanitize big_three
+  let big_three = conn.big_three;
+  if (big_three && typeof big_three === "object") {
+    big_three = {
+      sun: safeStr(big_three.sun, "Ari"),
+      moon: safeStr(big_three.moon, "Ari"),
+      rising: safeStr(big_three.rising, ""),
+    };
+  }
 
   // Sanitize planets — filter out entries with NaN/missing positions
   const planets = Array.isArray(conn.planets)
@@ -813,7 +832,7 @@ function sanitizeConnection(conn: Connection): Connection {
     };
   }
 
-  return { ...conn, planets, houses, synastry };
+  return { ...conn, name, relationship, category, birth_date, birth_time, city_name, big_three, planets, houses, synastry };
 }
 
 const ASPECT_WEIGHT: Record<string, number> = {
@@ -1075,8 +1094,8 @@ function computeCompatibility(
   const challenges = topChallenges.map(c => challengePhrases[c] || `Navigating ${c} differences`);
 
   // 5. Generate summary paragraph
-  const person = partnerName.split(" ")[0];
-  const user = userName || "You";
+  const person = String(partnerName || "").split(" ")[0] || "them";
+  const user = String(userName || "") || "You";
   const bondWord = isPlatonic ? "bond" : "connection";
 
   // Remap category names for platonic contexts (no "love", "attraction", "passion", "romance" about family)
