@@ -178,7 +178,7 @@ const PHASE_RITUALS: Record<MoonPhaseInfo["phase"], PhaseRitualData> = {
         {
           crystals: "Hold amethyst while you work. It brings the mental clarity to distinguish what's serving you from what's just taking up space — physically and emotionally. Let it guide your editing eye.",
           chakra: "Touch gently between your eyebrows — your third eye — and ask: what am I not seeing? Breathe. Trust whatever answer surfaces, even if it surprises you.",
-          flowers: "Burn sage or thyme as you move through your space. Sage clears stagnant energy; thyme sharpens the mind. Let the smoke carry away what belongs to an older version of your plans.",
+          flowers: "Burn garden sage or thyme as you move through your space. Sage clears stagnant energy; thyme sharpens the mind. Let the smoke carry away what belongs to an older version of your plans.",
         },
       ],
       [

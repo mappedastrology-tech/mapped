@@ -393,6 +393,63 @@ function ThemeSection() {
   );
 }
 
+/* ─── About Our Sources section ─── */
+
+function SourcesSection() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between"
+      >
+        <p className="text-xs uppercase tracking-widest text-foreground/40">About Our Sources</p>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          className={`text-foreground/30 transition-transform ${expanded ? "rotate-180" : ""}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-3 text-[12px] leading-[1.7] text-foreground/55">
+          <p>
+            Mapped synthesizes practices from many traditions: Hellenistic astrology (2nd century CE onward),
+            Western magical practice, Hermetic Qabalah, traditional Western herbalism, color symbolism,
+            crystal correspondences, and chakra theory.
+          </p>
+          <p>
+            Some of these practices originate in closed traditions, including Hindu and Buddhist chakras,
+            Indigenous American sage rituals, and African diasporic practices. We use these correspondences
+            with respect for their origins and try to flag where attribution matters.
+          </p>
+          <p>
+            We are not the keepers of any closed tradition. We are a Western synthesis. If you want to go
+            deeper into any specific tradition, we encourage you to seek out teachers from within those traditions.
+          </p>
+          <div className="pt-2 border-t border-foreground/8 space-y-2 text-[11px] text-foreground/40">
+            <p>
+              <strong className="text-foreground/50">Chakras:</strong> The chakra framework Mapped uses is a Western
+              synthesis of practices originating in Hindu and Buddhist tantric tradition.
+            </p>
+            <p>
+              <strong className="text-foreground/50">Sage:</strong> White sage is sacred to Indigenous communities in
+              California (especially Chumash and Cahuilla peoples). Mapped recommends garden sage by default.
+            </p>
+            <p>
+              <strong className="text-foreground/50">Crystals:</strong> Crystals are mined globally, often in conditions
+              that are environmentally or ethically concerning. Buy from sellers you trust.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main account page ─── */
 
 function AccountPage() {
@@ -937,6 +994,9 @@ function AccountPage() {
 
           {/* ─── Appearance / Theme ─── */}
           <ThemeSection />
+
+          {/* ─── About Our Sources ─── */}
+          <SourcesSection />
 
           {/* ─── Sign out ─── */}
           <button

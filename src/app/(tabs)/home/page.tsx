@@ -194,7 +194,7 @@ export default function HomeTab() {
     const cacheKey = `mapped:quote-${todayLocal}`;
     try {
       const cached = localStorage.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as { text: string; author: string; source?: string; reason: string };
+      if (cached) return JSON.parse(cached) as { text: string; reason: string };
       // Clean old cache
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
@@ -202,7 +202,7 @@ export default function HomeTab() {
       }
     } catch { /* proceed */ }
     const result = getDailyQuote(today);
-    const val = { text: result.quote.text, author: result.quote.author, source: result.quote.source, reason: result.reason };
+    const val = { text: result.quote.text, reason: result.reason };
     try { localStorage.setItem(cacheKey, JSON.stringify(val)); } catch { /* full */ }
     return val;
   }, [today]);
@@ -513,8 +513,8 @@ export default function HomeTab() {
           <p className="text-foreground/80 text-[15px] leading-[1.7] italic">
             &ldquo;{dailyQuote.text}&rdquo;
           </p>
-          <p className="text-foreground/50 text-[12px] mt-3">
-            — {dailyQuote.author}
+          <p className="text-foreground/30 text-[9px] uppercase tracking-[0.15em] mt-3">
+            {dailyQuote.reason}
           </p>
         </div>
       </main>
@@ -877,19 +877,14 @@ export default function HomeTab() {
           )}
         </div>
 
-        {/* ─── Daily quote ─── */}
+        {/* ─── Daily phrase ─── */}
         <div className="mb-6 rounded-2xl px-5 py-5" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
           <p className="text-[15px] leading-[1.7] italic" style={{ color: "var(--foreground)", opacity: 0.8, fontFamily: "var(--font-body)" }}>
             &ldquo;{dailyQuote.text}&rdquo;
           </p>
-          <div className="flex items-baseline justify-between mt-3">
-            <p className="text-[12px]" style={{ color: "var(--foreground)", opacity: 0.5 }}>
-              — {dailyQuote.author}{dailyQuote.source ? <span style={{ opacity: 0.7 }}>,{" "}{dailyQuote.source}</span> : ""}
-            </p>
-            <p className="text-[9px] uppercase tracking-[0.15em] shrink-0 ml-3" style={{ color: "var(--foreground)", opacity: 0.25 }}>
-              {dailyQuote.reason}
-            </p>
-          </div>
+          <p className="text-[9px] uppercase tracking-[0.15em] mt-3" style={{ color: "var(--foreground)", opacity: 0.25 }}>
+            {dailyQuote.reason}
+          </p>
         </div>
 
         {/* ─── Next Up banner ─── */}
