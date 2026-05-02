@@ -930,6 +930,30 @@ export default function HomeTab() {
                     setTarotRevealed(true);
                     setTarotFlipping(false);
                     try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
+                    // Save to tarot-history for persistence
+                    try {
+                      const histKey = "mapped:tarot-history";
+                      const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
+                      // Don't duplicate if already saved today
+                      const alreadySaved = existing.some((r: { date?: string; spreadName?: string }) =>
+                        r.spreadName === "Daily Pull" && r.date?.startsWith(todayLocal)
+                      );
+                      if (!alreadySaved) {
+                        const reading = {
+                          id: `daily-${todayLocal}`,
+                          date: new Date().toISOString(),
+                          deck: "rider-waite",
+                          spreadName: "Daily Pull",
+                          cards: [{
+                            name: dailyTarot.name,
+                            keywords: dailyTarot.uprightKeywords,
+                            reversed: false,
+                          }],
+                        };
+                        const updated = [reading, ...existing].slice(0, 50);
+                        localStorage.setItem(histKey, JSON.stringify(updated));
+                      }
+                    } catch { /* ignore */ }
                   }, 800);
                 }}
                 className="w-full rounded-xl overflow-hidden border border-terracotta/25 hover:border-terracotta/50 transition-all active:scale-[0.97]"
@@ -994,6 +1018,29 @@ export default function HomeTab() {
                     setOracleRevealed(true);
                     setOracleFlipping(false);
                     try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
+                    // Save to tarot-history for persistence
+                    try {
+                      const histKey = "mapped:tarot-history";
+                      const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
+                      const alreadySaved = existing.some((r: { date?: string; spreadName?: string }) =>
+                        r.spreadName === "Daily Oracle Pull" && r.date?.startsWith(todayLocal)
+                      );
+                      if (!alreadySaved) {
+                        const reading = {
+                          id: `daily-oracle-${todayLocal}`,
+                          date: new Date().toISOString(),
+                          deck: "stitched-animal-oracle",
+                          spreadName: "Daily Oracle Pull",
+                          cards: [{
+                            name: dailyOracle.animal,
+                            keywords: [dailyOracle.keyword],
+                            reversed: false,
+                          }],
+                        };
+                        const updated = [reading, ...existing].slice(0, 50);
+                        localStorage.setItem(histKey, JSON.stringify(updated));
+                      }
+                    } catch { /* ignore */ }
                   }, 800);
                 }}
                 className="w-full rounded-xl overflow-hidden border border-sage/25 hover:border-sage/50 transition-all active:scale-[0.97]"

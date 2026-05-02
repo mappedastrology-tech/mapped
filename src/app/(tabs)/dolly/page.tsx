@@ -70,9 +70,14 @@ const STARTER_PROMPTS = [
 
 interface PastConversation {
   id: string;
-  day: string;
+  day: string;       // YYYY-MM-DD the conversation was started
   messages: Message[];
   updated_at: string;
+}
+
+// Generate a unique conversation ID
+function generateConvoId(): string {
+  return `convo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export default function DollyTab() {
@@ -205,38 +210,8 @@ export default function DollyTab() {
         })));
       }
 
-      // Load today's conversation — try Supabase first, fall back to localStorage
-      let hasExistingConvo = false;
-      const todayKey = new Date().toISOString().split("T")[0];
-      try {
-        const { data: convos } = await supabase
-          .from("dolly_conversations")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("day", todayKey)
-          .limit(1)
-          .single();
-
-        if (convos?.messages?.length) {
-          setMessages(convos.messages);
-          setConversationId(convos.id);
-          hasExistingConvo = true;
-        }
-      } catch {
-        // Supabase unavailable — try localStorage
-      }
-
-      // Fall back to localStorage if Supabase had nothing
-      if (!hasExistingConvo) {
-        try {
-          const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}");
-          if (lsData[todayKey]?.messages?.length) {
-            setMessages(lsData[todayKey].messages);
-            hasExistingConvo = true;
-          }
-        } catch { /* ignore */ }
-      }
-
+      // Start fresh each time — don't auto-load previous conversations.
+      // History is browsable via the chat list.
       setIsLoading(false);
 
       // Check if we were sent here with context (e.g., "Go deeper" from horoscope)
@@ -244,10 +219,7 @@ export default function DollyTab() {
         const ctx = sessionStorage.getItem("dolly-context");
         if (ctx) {
           sessionStorage.removeItem("dolly-context");
-          // Only auto-send if there's no existing conversation today
-          if (!hasExistingConvo) {
-            setPendingContext(ctx);
-          }
+          setPendingContext(ctx);
         }
       } catch { /* ignore */ }
     }
@@ -270,16 +242,24 @@ export default function DollyTab() {
     if (!msgs.length) return;
 
     const todayKey = new Date().toISOString().split("T")[0];
+    // Ensure we have a unique conversation ID for this chat session
+    const convoId = conversationId || generateConvoId();
+    if (!conversationId) setConversationId(convoId);
 
     // Always save to localStorage first (guaranteed to work)
     try {
       const lsKey = "mapped:dolly-conversations";
-      const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string }>;
-      existing[viewingDay || todayKey] = { messages: msgs, updated_at: new Date().toISOString() };
-      // Keep last 30 days
-      const keys = Object.keys(existing).sort().reverse();
-      if (keys.length > 30) { for (const k of keys.slice(30)) delete existing[k]; }
-      localStorage.setItem(lsKey, JSON.stringify(existing));
+      const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
+      existing[convoId] = { messages: msgs, updated_at: new Date().toISOString(), day: viewingDay || todayKey };
+      // Keep last 50 conversations
+      const entries = Object.entries(existing).sort((a, b) => b[1].updated_at.localeCompare(a[1].updated_at));
+      if (entries.length > 50) {
+        const pruned: Record<string, { messages: Message[]; updated_at: string; day?: string }> = {};
+        entries.slice(0, 50).forEach(([k, v]) => { pruned[k] = v; });
+        localStorage.setItem(lsKey, JSON.stringify(pruned));
+      } else {
+        localStorage.setItem(lsKey, JSON.stringify(existing));
+      }
     } catch { /* localStorage full or unavailable */ }
 
     // Also try Supabase
@@ -456,12 +436,14 @@ export default function DollyTab() {
 
       // Merge localStorage conversations that Supabase might not have
       try {
-        const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}") as Record<string, { messages: Message[]; updated_at: string }>;
-        for (const [day, val] of Object.entries(lsData)) {
+        const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
+        for (const [convoKey, val] of Object.entries(lsData)) {
           if (!val?.messages?.length) continue;
-          const alreadyInDb = convos.some(c => c.day === day);
-          if (!alreadyInDb) {
-            convos.push({ id: `local-${day}`, day, messages: val.messages, updated_at: val.updated_at });
+          const alreadyInList = convos.some(c => c.id === convoKey);
+          if (!alreadyInList) {
+            // day field may be inside val (new format) or the key itself may be a date (old format)
+            const day = val.day || (convoKey.match(/^\d{4}-\d{2}-\d{2}$/) ? convoKey : new Date(val.updated_at).toISOString().split("T")[0]);
+            convos.push({ id: convoKey, day, messages: val.messages, updated_at: val.updated_at });
           }
         }
       } catch { /* ignore */ }

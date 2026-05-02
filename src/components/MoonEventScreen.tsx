@@ -164,11 +164,16 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
   const sign = moonEvent?.zodiacSign || moonPhase.label;
   const correspondences = PHASE_CORRESPONDENCES[kind === "full" ? "full" : "new"];
   const illumination = moonPhase.illumination; // real computed value
+  const isEclipse = moonEvent?.isEclipse ?? false;
 
   // Best-for tags
-  const bestFor = kind === "full"
-    ? ["Release", "Celebration", "Gratitude", "Charging"]
-    : ["Intentions", "Planting seeds", "Vision work", "Divination"];
+  const bestFor = isEclipse
+    ? kind === "full"
+      ? ["Shadow work", "Release", "Revelation", "Emotional clarity"]
+      : ["Reset", "New beginnings", "Setting intentions", "Transformation"]
+    : kind === "full"
+      ? ["Release", "Celebration", "Gratitude", "Charging"]
+      : ["Intentions", "Planting seeds", "Vision work", "Divination"];
 
   const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -204,7 +209,7 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
         {/* Moon name + date */}
         <div className="text-center pb-2">
           <p className="text-[9px] tracking-[0.25em] uppercase mb-1.5" style={{ opacity: 0.4 }}>
-            ✦ {kind === "full" ? "Full Moon" : "New Moon"} ✦
+            ✦ {isEclipse ? (kind === "full" ? "Lunar Eclipse" : "Solar Eclipse") : (kind === "full" ? "Full Moon" : "New Moon")} ✦
           </p>
           <h1 className="text-[28px] font-bold mb-1" style={{ fontFamily: "Georgia, serif" }}>
             {moonName === "Full Moon" || moonName === "New Moon" ? moonName : `The ${moonName}`}
@@ -240,6 +245,17 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
                 <p className="text-[20px]">🔵</p>
                 <p className="text-[9px] uppercase tracking-[0.15em] mt-1" style={{ opacity: 0.35 }}>
                   Blue Moon
+                </p>
+              </div>
+            </>
+          )}
+          {isEclipse && (
+            <>
+              <div style={{ width: 1, background: "rgba(255,255,255,0.1)" }} />
+              <div>
+                <p className="text-[20px]">{kind === "full" ? "🌑" : "🌘"}</p>
+                <p className="text-[9px] uppercase tracking-[0.15em] mt-1" style={{ opacity: 0.35 }}>
+                  {kind === "full" ? "Lunar" : "Solar"} Eclipse
                 </p>
               </div>
             </>

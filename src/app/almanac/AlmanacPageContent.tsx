@@ -428,8 +428,14 @@ export default function AlmanacPageContent() {
             </h2>
 
             <p
-              className="text-[12px] mb-3"
+              className="text-[12px] mb-1"
               style={{ color: "var(--foreground-muted)" }}
+            >
+              {thisMoon.phaseLabel} · Moon in {thisMoon.moonSign}
+            </p>
+            <p
+              className="text-[11px] mb-3"
+              style={{ color: "var(--foreground-faint)" }}
             >
               Full moon: {thisMoon.fullDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
             </p>
@@ -438,7 +444,7 @@ export default function AlmanacPageContent() {
               className="text-[13px] leading-relaxed mb-3"
               style={{ color: "var(--foreground)" }}
             >
-              {thisMoon.lore}
+              {thisMoon.dailyInsight}
             </p>
 
             <p

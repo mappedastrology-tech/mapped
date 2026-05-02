@@ -66,6 +66,9 @@ export interface ThisMoonResult {
   lore: string;
   otherNames: string[];
   daysUntilFull: number;
+  dailyInsight: string;   // Changes each day — ties the moon's lore to today's sky
+  moonSign: string;       // Current moon sign
+  phaseLabel: string;     // e.g. "Waxing Crescent"
 }
 
 export interface ComingUpEvent {
@@ -304,10 +307,14 @@ function getSunTimes(date: Date): { sunrise: number; sunset: number } {
   const angle = ((doy - 172) / 365.25) * 2 * Math.PI;
 
   // Sunrise: oscillates around 6:22 with amplitude ~0.88 hours
-  const sunrise = 6.37 + 0.88 * Math.cos(angle);
+  // At summer solstice (angle=0), cos=1 → earliest sunrise (6.37 - 0.88 = 5:29)
+  // At winter solstice (angle=π), cos=-1 → latest sunrise (6.37 + 0.88 = 7:15)
+  const sunrise = 6.37 - 0.88 * Math.cos(angle);
 
   // Sunset: oscillates around 19:02 (7:02 PM) with amplitude ~1.55 hours
-  const sunset = 19.03 - 1.55 * Math.cos(angle);
+  // At summer solstice (angle=0), cos=1 → latest sunset (19.03 + 1.55 = 20:35)
+  // At winter solstice (angle=π), cos=-1 → earliest sunset (19.03 - 1.55 = 17:28)
+  const sunset = 19.03 + 1.55 * Math.cos(angle);
 
   return { sunrise, sunset };
 }
@@ -551,6 +558,28 @@ export function getThisMoon(date: Date): ThisMoonResult {
     ? Math.max(0, nextFull.daysUntil)
     : Math.max(0, Math.round((fullDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
 
+  // Build a daily insight that changes with the moon sign and phase
+  const moonSign = getMoonSign(date);
+  const moonPhase = getMoonPhase(date);
+  const phaseLabel = moonPhase.label;
+  const element = SIGN_ELEMENTS[moonSign];
+  const signTheme = SIGN_THEMES[moonSign] || "balanced energy";
+
+  // Daily insight pool — varies by phase position relative to the full moon
+  let dailyInsight: string;
+  if (daysUntilFull === 0) {
+    dailyInsight = `The ${moonInfo.name} is full tonight in ${moonSign}. This is the peak of the lunar cycle — a moment of illumination, harvest, and release.`;
+  } else if (daysUntilFull <= 3) {
+    dailyInsight = `The ${moonInfo.name} is ${daysUntilFull} day${daysUntilFull === 1 ? "" : "s"} away. The moon in ${moonSign} (${element}) is building toward fullness. Energy is rising — good for ${signTheme}.`;
+  } else if (daysUntilFull <= 7) {
+    dailyInsight = `We're in the waxing half of the ${moonInfo.name} cycle. With the moon moving through ${moonSign}, today favors ${signTheme}. The light is still growing.`;
+  } else if (daysUntilFull <= 14) {
+    dailyInsight = `The ${moonInfo.name} is still two weeks out. The moon is in ${moonSign} right now, which brings a ${element} quality to the day — ${signTheme}.`;
+  } else {
+    // After full moon (waning phase) — daysUntilFull wraps to next month
+    dailyInsight = `The moon is waning through ${moonSign}. This ${element} sign invites ${signTheme}. A good time to integrate what the last full moon stirred up.`;
+  }
+
   return {
     name: moonInfo.name,
     fullDate,
@@ -558,6 +587,9 @@ export function getThisMoon(date: Date): ThisMoonResult {
     lore: loreEntry?.story ?? `The ${moonInfo.name} rises this month.`,
     otherNames: moonInfo.otherNames,
     daysUntilFull,
+    dailyInsight,
+    moonSign,
+    phaseLabel,
   };
 }
 

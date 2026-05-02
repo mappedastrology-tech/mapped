@@ -1263,6 +1263,20 @@ export interface TodaysMoonEvent {
   lore?: MoonNameLore;    // rich lore data
 }
 
+// 2026 eclipse dates for cross-referencing with moon events
+const ECLIPSE_DATES_2026: { month: number; day: number; type: "solar" | "lunar" }[] = [
+  { month: 1, day: 17, type: "solar" },   // Feb 17 — Solar eclipse (new moon)
+  { month: 2, day: 3, type: "lunar" },    // Mar 3 — Lunar eclipse (full moon)
+  { month: 7, day: 12, type: "solar" },   // Aug 12 — Solar eclipse (new moon)
+  { month: 7, day: 28, type: "lunar" },   // Aug 28 — Lunar eclipse (full moon)
+];
+
+function isEclipseDate(date: Date): boolean {
+  const m = date.getMonth();
+  const d = date.getDate();
+  return ECLIPSE_DATES_2026.some(e => e.month === m && e.day === d);
+}
+
 export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
   const { nextFull, nextNew } = getNextMoonEvents(date);
 
@@ -1273,7 +1287,7 @@ export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
       moonName: name,
       zodiacSign: nextFull.zodiacSign || getCurrentZodiacSeason(date).sign,
       isBlue: name === "Blue Moon",
-      isEclipse: false, // TODO: cross-reference eclipse dates
+      isEclipse: isEclipseDate(date),
       lore: name ? MOON_LORE[name] : undefined,
     };
   }
@@ -1283,7 +1297,7 @@ export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
       kind: "new",
       zodiacSign: nextNew.zodiacSign || getCurrentZodiacSeason(date).sign,
       isBlue: false,
-      isEclipse: false,
+      isEclipse: isEclipseDate(date),
       lore: NEW_MOON_LORE,
     };
   }
@@ -1313,7 +1327,7 @@ export function getFullMoonsForYear(year: number): YearMoonEntry[] {
     { month: 4, day: 31, name: "Blue Moon", sign: "Sagittarius", isBlue: true, emoji: "🔵" },
     { month: 5, day: 29, name: "Strawberry Moon", sign: "Capricorn", isBlue: false, emoji: "🍓" },
     { month: 6, day: 29, name: "Buck Moon", sign: "Aquarius", isBlue: false, emoji: "🦌" },
-    { month: 7, day: 27, name: "Sturgeon Moon", sign: "Pisces", isBlue: false, emoji: "🐟" },
+    { month: 7, day: 28, name: "Sturgeon Moon", sign: "Pisces", isBlue: false, emoji: "🐟" },
     { month: 8, day: 26, name: "Harvest Moon", sign: "Aries", isBlue: false, emoji: "🌾" },
     { month: 9, day: 25, name: "Hunter's Moon", sign: "Taurus", isBlue: false, emoji: "🏹" },
     { month: 10, day: 24, name: "Beaver Moon", sign: "Gemini", isBlue: false, emoji: "🦫" },
