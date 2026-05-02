@@ -28,7 +28,7 @@ import Image from "next/image";
 type View = "decks" | "spreads" | "picking" | "spread-view" | "card-detail" | "freestyle-fan" | "freestyle-scatter";
 type DeckTab = "my-decks" | "store";
 
-const CARD_W = 58;
+const CARD_W = 74;
 const CARD_H = Math.round(CARD_W * 1.6);
 
 interface UserChart {
@@ -1024,7 +1024,7 @@ export default function TarotTab() {
             {allRevealed ? "Tap any card to read its message" : "Tap each card to reveal it"}
           </p>
 
-          <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 180 : selectedSpread.cardCount <= 5 ? 280 : 380 }}>
+          <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
             {pickedOracleCards.map((oc, i) => {
               const pos = selectedSpread.positions[i];
               if (!pos) return null;
@@ -1050,7 +1050,7 @@ export default function TarotTab() {
                     perspective: "600px",
                   }}
                 >
-                  <div className="relative w-full h-full transition-transform duration-700"
+                  <div className="relative w-full h-full transition-transform duration-400"
                     style={{ transformStyle: "preserve-3d", transform: oc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                   >
                     {/* Back — deck back image */}
@@ -1184,7 +1184,7 @@ export default function TarotTab() {
           {allRevealed ? "Tap any card to read its full meaning" : "Tap each card to reveal it"}
         </p>
 
-        <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 180 : selectedSpread.cardCount <= 5 ? 280 : 380 }}>
+        <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
           {pickedCards.map((dc, i) => {
             const pos = selectedSpread.positions[i];
             if (!pos) return null;
@@ -1211,7 +1211,7 @@ export default function TarotTab() {
                   perspective: "600px",
                 }}
               >
-                <div className="relative w-full h-full transition-transform duration-700"
+                <div className="relative w-full h-full transition-transform duration-400"
                   style={{ transformStyle: "preserve-3d", transform: dc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                 >
                   {/* Card back */}
@@ -1470,9 +1470,9 @@ export default function TarotTab() {
                     else { setDetailOracleCard(oc.card); setView("card-detail"); }
                   }}
                   className="transition-all duration-300"
-                  style={{ width: 52, height: 52 * 1.6, perspective: "600px" }}
+                  style={{ width: 64, height: 64 * 1.6, perspective: "600px" }}
                 >
-                  <div className="w-full h-full transition-transform duration-700"
+                  <div className="w-full h-full transition-transform duration-400"
                     style={{ transformStyle: "preserve-3d", transform: oc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                   >
                     <div className="absolute inset-0 rounded-lg border border-foreground/18 flex items-center justify-center"
@@ -1601,9 +1601,9 @@ export default function TarotTab() {
                     else { setDetailOracleCard(oc.card); setView("card-detail"); }
                   }}
                   className="transition-all duration-300"
-                  style={{ width: 52, height: 52 * 1.6, perspective: "600px" }}
+                  style={{ width: 64, height: 64 * 1.6, perspective: "600px" }}
                 >
-                  <div className="w-full h-full transition-transform duration-700"
+                  <div className="w-full h-full transition-transform duration-400"
                     style={{ transformStyle: "preserve-3d", transform: oc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
                   >
                     <div className="absolute inset-0 rounded-lg border border-foreground/18 flex items-center justify-center"
@@ -1653,9 +1653,9 @@ function SmallCard({ dc, onTap }: { dc: DrawnCard; onTap: () => void }) {
   const suitColor = SUIT_INFO[dc.card.suit]?.color || "#888";
   return (
     <button onClick={onTap} className="transition-all duration-300"
-      style={{ width: 52, height: 52 * 1.6, perspective: "600px" }}
+      style={{ width: 64, height: 64 * 1.6, perspective: "600px" }}
     >
-      <div className="w-full h-full transition-transform duration-700"
+      <div className="w-full h-full transition-transform duration-400"
         style={{ transformStyle: "preserve-3d", transform: dc.revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
       >
         <div className="absolute inset-0 rounded-lg border border-foreground/20 flex items-center justify-center"

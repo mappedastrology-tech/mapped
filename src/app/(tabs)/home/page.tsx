@@ -952,7 +952,7 @@ export default function HomeTab() {
               </button>
             ) : tarotFlipping ? (
               <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
-                <div className="w-full h-full transition-transform duration-700"
+                <div className="w-full h-full transition-transform duration-400"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
                     style={{ backfaceVisibility: "hidden" }}>
@@ -1016,7 +1016,7 @@ export default function HomeTab() {
               </button>
             ) : oracleFlipping ? (
               <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
-                <div className="w-full h-full transition-transform duration-700"
+                <div className="w-full h-full transition-transform duration-400"
                   style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
                   <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
                     style={{ backfaceVisibility: "hidden" }}>
