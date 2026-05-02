@@ -1082,15 +1082,58 @@ function getAspectInterpretation(p1: string, p2: string, aspect: string): string
   };
 
   const context = PAIR_CONTEXT[pair] || PAIR_CONTEXT[pairRev] || `${p1} and ${p2}`;
+  const p1l = p1.toLowerCase();
+  const p2l = p2.toLowerCase();
 
-  if (nature === "fusion") return `${context} are merged in your chart — they operate as one unit. When one activates, the other fires too. You don't experience ${p1.toLowerCase()} energy without ${p2.toLowerCase()} energy showing up alongside it. This makes you intense and integrated in these areas, but it can also feel like there's no off switch.`;
-  if (nature === "harmony") return `${context} are naturally aligned in your chart. This means you don't have to work hard to make these areas of life cooperate — they just do. When you lean into ${p1.toLowerCase()} matters, ${p2.toLowerCase()} benefits automatically. Most people have to fight for this kind of internal agreement. You got it for free.`;
-  if (nature === "opportunity") return `${context} have an open channel between them, but you have to use it deliberately. The potential is real — when you consciously connect how you handle ${p1.toLowerCase()} stuff with your ${p2.toLowerCase()} instincts, good things happen. The key word is "consciously." This doesn't happen on autopilot.`;
-  if (nature === "tension") return `${context} are in conflict. You feel this as an internal push-pull — one part of you wants something that the other part resists. This isn't comfortable, and it's not supposed to be. The friction forces you to deal with both sides honestly instead of defaulting to the easier one. Growth lives in this discomfort.`;
-  if (nature === "talent") return `${context} connect in an unusual, creative way that's specific to you. You do something with this combination that other people can't easily replicate — it's instinctive, not learned. You might not even realize it's a talent because it comes so naturally. But watch how other people struggle with the same thing, and you'll see it.`;
-  if (nature === "adjustment") return `${context} don't speak the same language. You can't fully satisfy one without slightly neglecting the other, which creates a low-grade tension that never fully resolves. The trick isn't to force them together — it's to get comfortable with the fact that some parts of yourself will always need manual calibration.`;
-  if (nature === "irritation") return `${context} rub against each other in a way that's too quiet to demand attention but too persistent to ignore. Small frustrations accumulate around these themes — the kind you brush off individually but that shape your behavior over time. Paying attention to what specifically irritates you here reveals something worth addressing.`;
-  return `${context} sit at opposite ends of your chart, creating a seesaw effect. You might over-identify with one side and project the other onto the people closest to you. The real work is owning both — not choosing sides.`;
+  // Hash the pair name to pick a variant so the same pair always gets the same text,
+  // but different pairs get different templates even if they share a nature.
+  const hash = (p1 + p2 + aspect).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+
+  const TEMPLATES: Record<string, string[]> = {
+    fusion: [
+      `${context} are fused in your chart. There's no separating them — when ${p1l} lights up, ${p2l} is right there. You're all-or-nothing in this area. It makes you powerful here but can mean you don't have a dimmer switch.`,
+      `In your chart, ${context.toLowerCase()} run on the same circuit. You can't activate one without the other switching on too. People notice this about you — it gives you a concentrated intensity that's hard to fake.`,
+      `${context} are locked together. This is one of the most defining patterns in your chart because there's no half-measure: you bring the full weight of both into every situation where either is relevant.`,
+    ],
+    harmony: [
+      `${context} flow together effortlessly. You have a natural gift here — where other people have to negotiate between these parts of their life, yours just cooperate. Lean into it; this is one of your easiest strengths.`,
+      `There's an easy current between ${context.toLowerCase()}. This part of your chart works without much maintenance — ${p1l} feeds ${p2l}, ${p2l} supports ${p1l}. You may take this for granted because it's always been this smooth.`,
+      `${context} are on good terms. Things that involve both of these areas tend to go well for you without a lot of strategizing. This isn't luck — it's wired into your chart. Use it more deliberately and it gets even better.`,
+    ],
+    opportunity: [
+      `${context} have a doorway between them that you have to choose to walk through. The connection is there but it's not automatic — you notice it most when you actively bring ${p1l} into ${p2l} situations. Worth cultivating.`,
+      `There's latent potential between ${context.toLowerCase()}. Think of it as a skill you can develop: the more you practice connecting how you handle ${p1l} with your ${p2l} instincts, the more naturally it flows.`,
+      `${context} can work well together, but only when you make it happen. This isn't a freebie — it's a reward for paying attention. When you do link these two up consciously, the results tend to surprise you.`,
+    ],
+    tension: [
+      `${context} are at odds. One wants something the other resists, and you feel this as an internal tug-of-war. The discomfort is the point — it won't let you get lazy about either side. People with this aspect tend to develop serious depth here because they have to.`,
+      `There's real friction between ${context.toLowerCase()}. This shows up as situations where satisfying one means frustrating the other. It's not a flaw — it's a pressure cooker that forces growth. You'll handle ${p1l}-${p2l} issues better than most people eventually, because you've had to.`,
+      `${context} clash. You've probably felt this your whole life — a push-pull between two things you both want. The resolution isn't picking one. It's building something that honors both, even though that's harder.`,
+    ],
+    talent: [
+      `${context} are wired together in a way that's uniquely yours. You do something instinctive with this combination that other people can't easily replicate. It often shows up as an unusual skill or perspective that you might undervalue because it comes so easily.`,
+      `There's a creative link between ${context.toLowerCase()} in your chart. You approach ${p1l} matters with a ${p2l} twist that gives you an edge. It's unconventional, and it works precisely because nobody else does it your way.`,
+      `${context} connect at an odd angle that happens to be productive. You have an offbeat talent here — something you figured out intuitively that other people would need a manual for. The trick is recognizing it as a real strength.`,
+    ],
+    adjustment: [
+      `${context} need constant fine-tuning. Whenever you give one what it wants, the other feels slightly shortchanged. This isn't something you fix once — it's an ongoing calibration. Getting comfortable with "good enough on both sides" is the real skill here.`,
+      `There's a persistent mismatch between ${context.toLowerCase()}. Neither is wrong, they just want different things. You'll keep coming back to this balancing act throughout your life, and you'll keep getting better at it.`,
+      `${context} don't naturally sync up. Imagine two rhythms that are almost in time but not quite — that slight off-beat feeling is this aspect. You manage it by making small, frequent adjustments rather than looking for a permanent fix.`,
+    ],
+    irritation: [
+      `${context} produce a subtle friction — not a crisis, but a persistent itch. Small annoyances related to these themes tend to pile up until you address the underlying pattern. What specifically bugs you here is worth examining.`,
+      `There's a low-level restlessness between ${context.toLowerCase()}. It's the kind of thing that doesn't ruin your day but shapes your habits over time. You might find yourself unconsciously overcompensating in one direction — noticing that is the first step.`,
+      `${context} nag at each other quietly. This aspect doesn't scream; it whispers. The frustration is in the details — little mismatches between what you feel and what you do in situations involving both ${p1l} and ${p2l}.`,
+    ],
+    polarity: [
+      `${context} sit across from each other in your chart like two ends of a rope. You might lean heavily into one and project the other onto partners or close friends. The growth here is owning both sides instead of outsourcing one.`,
+      `There's a seesaw between ${context.toLowerCase()}. At different points in your life, you'll swing from emphasizing one to emphasizing the other. Balance isn't the goal — awareness of which side you're on right now is.`,
+      `${context} face off in your chart. This creates a dynamic tension that often plays out through relationships — you attract people who embody the side you're not currently expressing. Integrating both yourself changes what you attract.`,
+    ],
+  };
+
+  const variants = TEMPLATES[nature] || TEMPLATES["polarity"];
+  return variants[hash % variants.length];
 }
 
 function elementBg(sign: string): string {
