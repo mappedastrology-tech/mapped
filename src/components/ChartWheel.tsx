@@ -83,6 +83,10 @@ interface ChartWheelProps {
 }
 
 export default function ChartWheel({ planets, houses }: ChartWheelProps) {
+  // Guard against bad data — filter out any planets/houses with NaN positions
+  const safePlanets = (planets || []).filter(p => p && typeof p.absPosition === "number" && isFinite(p.absPosition));
+  const safeHouses = (houses || []).filter(h => h && typeof h.absPosition === "number" && isFinite(h.absPosition));
+
   const size = 400;
   const cx = size / 2;
   const cy = size / 2;
@@ -93,7 +97,7 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
   const innerR = 40;
   const glyphSize = 20;
 
-  const ascDeg = houses[0]?.absPosition || 0;
+  const ascDeg = safeHouses[0]?.absPosition || 0;
 
   function eclipticToAngle(deg: number): number {
     return 180 - (deg - ascDeg);
@@ -110,7 +114,7 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
 
   // Resolve planets: keep at true angle, stack radially when close
   const resolvedPlanets = useMemo(() => {
-    const sorted = [...planets].sort((a, b) => a.absPosition - b.absPosition);
+    const sorted = [...safePlanets].sort((a, b) => a.absPosition - b.absPosition);
     const minAngularSep = 6; // degrees — tighter packing before bumping to next ring
     const rings = [
       signR - 14,  // ring 0: just inside sign ring
@@ -155,7 +159,7 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
       r: rings[p.ringIdx],
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planets, ascDeg]);
+  }, [safePlanets, ascDeg]);
 
   return (
     <div className="relative w-full max-w-[400px] mx-auto">
@@ -205,14 +209,14 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
           })}
 
           {/* House divisions + roman numerals + cusp labels */}
-          {houses.map((house, i) => {
+          {safeHouses.map((house, i) => {
             const angle = eclipticToAngle(house.absPosition);
             const [x1, y1] = polarToXY(angle, signR);
             const [x2, y2] = polarToXY(angle, innerR);
             const isAxis = i === 0 || i === 3 || i === 6 || i === 9;
 
             // Roman numeral in middle of house
-            const next = houses[(i + 1) % 12];
+            const next = safeHouses[(i + 1) % safeHouses.length];
             let midAbs = (house.absPosition + next.absPosition) / 2;
             if (next.absPosition < house.absPosition) {
               midAbs = (house.absPosition + next.absPosition + 360) / 2;
@@ -298,8 +302,8 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
             { label: "DSC", idx: 6 },
             { label: "MC", idx: 9 },
             { label: "IC", idx: 3 },
-          ].map(({ label, idx }) => {
-            const angle = eclipticToAngle(houses[idx].absPosition);
+          ].filter(({ idx }) => safeHouses[idx]).map(({ label, idx }) => {
+            const angle = eclipticToAngle(safeHouses[idx].absPosition);
             const [lx, ly] = polarToXY(angle, outerR + 12);
             return (
               <text key={label} x={lx} y={ly}

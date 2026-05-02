@@ -781,6 +781,41 @@ function fmtDateRange(start?: string, end?: string): string {
    ═══════════════════════════════════════════ */
 
 // Aspect weights for romantic compatibility scoring
+/* ═══════════════════════════════════════════
+   Data sanitizer — ensures connection data is safe to render
+   ═══════════════════════════════════════════ */
+function sanitizeConnection(conn: Connection): Connection {
+  const safeNum = (v: unknown): number => (typeof v === "number" && isFinite(v) ? v : 0);
+
+  // Sanitize planets — filter out entries with NaN/missing positions
+  const planets = Array.isArray(conn.planets)
+    ? conn.planets.filter(p => p && typeof p.name === "string" && typeof p.sign === "string")
+        .map(p => ({ ...p, absPosition: safeNum(p.absPosition), position: safeNum(p.position) }))
+    : null;
+
+  // Sanitize houses
+  const houses = Array.isArray(conn.houses)
+    ? (conn.houses as any[]).filter(h => h && typeof h.sign === "string")
+        .map(h => ({ ...h, absPosition: safeNum(h.absPosition), position: safeNum(h.position) }))
+    : null;
+
+  // Sanitize synastry
+  let synastry = conn.synastry;
+  if (synastry) {
+    synastry = {
+      ...synastry,
+      crossAspects: Array.isArray(synastry.crossAspects) ? synastry.crossAspects : [],
+      themes: Array.isArray(synastry.themes) ? synastry.themes : [],
+      fatedContacts: Array.isArray(synastry.fatedContacts) ? synastry.fatedContacts : [],
+      harmony: typeof synastry.harmony === "number" ? synastry.harmony : 0,
+      tension: typeof synastry.tension === "number" ? synastry.tension : 0,
+      totalAspects: typeof synastry.totalAspects === "number" ? synastry.totalAspects : 0,
+    };
+  }
+
+  return { ...conn, planets, houses, synastry };
+}
+
 const ASPECT_WEIGHT: Record<string, number> = {
   conjunction: 1.0,
   trine: 0.9,
@@ -2389,10 +2424,10 @@ export default function MapsTab() {
     return groups;
   }, [connections]);
 
-  const selected = useMemo(
-    () => connections.find((c) => c.id === selectedId) || null,
-    [connections, selectedId]
-  );
+  const selected = useMemo(() => {
+    const raw = connections.find((c) => c.id === selectedId) || null;
+    return raw ? sanitizeConnection(raw) : null;
+  }, [connections, selectedId]);
 
   // ─── Add person ───
   const handleAddPerson = useCallback(async () => {
