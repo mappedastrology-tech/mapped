@@ -1,44 +1,171 @@
 /**
- * Journal system — daily entries + AI-generated prompts and reflections.
+ * Journal Service Layer — the chart-shaped journaling system.
  *
- * Storage: Supabase `journal_entries` table
- * Prompts: derived from daily horoscope + celestial context
- * Reflections: AI-generated at weekly/monthly/quarterly/yearly/new-year cadences
+ * Features: auto-tagging, tier gating (8/month free), metadata pattern
+ * surfacing, privacy zones, crisis detection, burn-after-writing.
+ *
+ * Storage: localStorage primary with Supabase sync.
  */
 
 import { supabase } from "./supabase";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface JournalEntry {
   id: string;
   user_id: string;
-  date: string;              // YYYY-MM-DD
-  prompt: string;            // AI-generated prompt for this day
-  content: string;           // user's written entry
-  mood?: string;             // optional mood tag
-  celestial_context?: {      // snapshot of what was happening in the sky
+  text: string;
+  date: string; // YYYY-MM-DD (kept for backwards compat)
+  created_at: string; // ISO
+  updated_at: string; // ISO
+  prompt_id: string | null;
+  prompt_text: string | null;
+  is_burn: boolean;
+  is_voice: boolean;
+  // Legacy compat
+  prompt?: string;
+  content?: string;
+  mood?: string;
+  celestial_context?: {
     moonPhase: string;
     zodiacSeason: string;
     planetaryDay: string;
     nakshatra: string;
   };
-  created_at: string;
-  updated_at: string;
+
+  // Auto-tags (sky metadata)
+  tags: JournalTags;
+}
+
+export interface JournalTags {
+  moonPhase: string;
+  planetaryDay: string;
+  lordOfYear: string | null;
+  activeTransits: string[];
+  wordCount: number;
+  timeOfDay: "morning" | "afternoon" | "evening" | "night";
 }
 
 export interface JournalReflection {
   id: string;
   user_id: string;
   cadence: "weekly" | "monthly" | "quarterly" | "yearly" | "new-year";
-  period_start: string;      // start of the period this covers
-  period_end: string;        // end of the period
-  content: string;           // AI-generated reflection
-  entry_count: number;       // how many journal entries were in this period
+  period_start: string;
+  period_end: string;
+  content: string;
+  entry_count: number;
   created_at: string;
 }
 
-// ─── ENTRY CRUD ───────────────────────────────────────────────────────────────
+export interface JournalPattern {
+  id: string;
+  type: "frequency" | "length" | "cyclical" | "event" | "topical" | "word_frequency";
+  text: string;
+  supportingEntryIds: string[];
+  surfacedAt: string;
+  dismissed: boolean;
+}
+
+export type FilterKey = "all" | "new_moon" | "full_moon" | "quarter_moon" | "by_planet_day" | "by_transit" | "by_lord" | "date_range";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const JOURNAL_ENTRIES_KEY = "mapped:journal-entries";
+const JOURNAL_PATTERNS_KEY = "mapped:journal_patterns";
+const JOURNAL_DISMISSED_KEY = "mapped:journal_dismissed_patterns";
+
+export const FREE_MONTHLY_CAP = 8;
+
+const PLANETARY_DAYS: Record<number, string> = {
+  0: "Sun", 1: "Moon", 2: "Mars", 3: "Mercury", 4: "Jupiter", 5: "Venus", 6: "Saturn",
+};
+
+// ─── Auto-tagging ────────────────────────────────────────────────────────────
+
+export function getTimeOfDay(hour: number): "morning" | "afternoon" | "evening" | "night" {
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 21) return "evening";
+  return "night";
+}
+
+export function getPlanetaryDay(date: Date): string {
+  return PLANETARY_DAYS[date.getDay()] || "Sun";
+}
+
+export function autoTag(
+  text: string,
+  date: Date,
+  moonPhase: string,
+  lordOfYear: string | null,
+  activeTransits: string[]
+): JournalTags {
+  return {
+    moonPhase,
+    planetaryDay: getPlanetaryDay(date),
+    lordOfYear,
+    activeTransits,
+    wordCount: text.trim().split(/\s+/).filter(Boolean).length,
+    timeOfDay: getTimeOfDay(date.getHours()),
+  };
+}
+
+// ─── Entry CRUD ──────────────────────────────────────────────────────────────
+
+export function getLocalEntries(): JournalEntry[] {
+  try {
+    const raw = localStorage.getItem(JOURNAL_ENTRIES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalEntries(entries: JournalEntry[]) {
+  localStorage.setItem(JOURNAL_ENTRIES_KEY, JSON.stringify(entries.slice(0, 500)));
+}
+
+export function addEntry(entry: JournalEntry) {
+  const entries = getLocalEntries();
+  entries.unshift(entry);
+  saveLocalEntries(entries);
+}
+
+export function updateEntry(id: string, text: string) {
+  const entries = getLocalEntries();
+  const idx = entries.findIndex((e) => e.id === id);
+  if (idx >= 0) {
+    entries[idx].text = text;
+    entries[idx].content = text;
+    entries[idx].updated_at = new Date().toISOString();
+    entries[idx].tags.wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    saveLocalEntries(entries);
+  }
+}
+
+export function deleteEntry(id: string) {
+  const entries = getLocalEntries().filter((e) => e.id !== id);
+  saveLocalEntries(entries);
+}
+
+export function getEntriesThisMonth(): number {
+  const entries = getLocalEntries();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  return entries.filter((e) => new Date(e.created_at) >= monthStart).length;
+}
+
+export function canWriteEntry(tier: "free" | "mid" | "top"): boolean {
+  if (tier !== "free") return true;
+  return getEntriesThisMonth() < FREE_MONTHLY_CAP;
+}
+
+export function getRemainingEntries(tier: "free" | "mid" | "top"): number | null {
+  if (tier !== "free") return null;
+  return Math.max(0, FREE_MONTHLY_CAP - getEntriesThisMonth());
+}
+
+// ─── Supabase Sync (backwards compatible) ────────────────────────────────────
 
 export async function getJournalEntry(userId: string, date: string): Promise<JournalEntry | null> {
   try {
@@ -48,15 +175,11 @@ export async function getJournalEntry(userId: string, date: string): Promise<Jou
       .eq("user_id", userId)
       .eq("date", date)
       .single();
-
     if (!error && data) return data as JournalEntry;
   } catch { /* Supabase unavailable */ }
 
-  // Fall back to localStorage
-  try {
-    const lsEntries = JSON.parse(localStorage.getItem("mapped:journal-entries") || "[]") as JournalEntry[];
-    return lsEntries.find(e => e.date === date) || null;
-  } catch { return null; }
+  const lsEntries = getLocalEntries();
+  return lsEntries.find((e) => e.date === date) || null;
 }
 
 export async function saveJournalEntry(
@@ -68,33 +191,26 @@ export async function saveJournalEntry(
   celestialContext?: JournalEntry["celestial_context"]
 ): Promise<JournalEntry | null> {
   const now = new Date().toISOString();
-
-  // Build the entry object for localStorage fallback
   const localEntry: JournalEntry = {
-    id: `local-${date}-${userId}`,
+    id: `local-${date}-${Date.now()}`,
     user_id: userId,
     date,
+    text: content,
     content,
     prompt: prompt || "(no prompt)",
+    prompt_id: null,
+    prompt_text: prompt || null,
     mood: mood || undefined,
     celestial_context: celestialContext || undefined,
+    is_burn: false,
+    is_voice: false,
+    tags: autoTag(content, new Date(), celestialContext?.moonPhase || "unknown", null, []),
     created_at: now,
     updated_at: now,
   };
 
-  // Always save to localStorage first (guaranteed to work)
-  try {
-    const lsKey = "mapped:journal-entries";
-    const existing = JSON.parse(localStorage.getItem(lsKey) || "[]") as JournalEntry[];
-    const idx = existing.findIndex(e => e.date === date);
-    if (idx >= 0) {
-      existing[idx] = { ...existing[idx], ...localEntry, id: existing[idx].id };
-    } else {
-      existing.unshift(localEntry);
-    }
-    // Keep last 200
-    localStorage.setItem(lsKey, JSON.stringify(existing.slice(0, 200)));
-  } catch { /* localStorage full or unavailable */ }
+  // Save to localStorage
+  addEntry(localEntry);
 
   // Try Supabase
   try {
@@ -117,36 +233,14 @@ export async function saveJournalEntry(
 
     if (existingRow) {
       const { user_id: _uid, date: _d, ...updatePayload } = payload;
-      const { data, error } = await supabase
-        .from("journal_entries")
-        .update(updatePayload)
-        .eq("user_id", userId)
-        .eq("date", date)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Journal update error:", JSON.stringify(error));
-        return localEntry; // Return localStorage version instead of null
-      }
-      return data as JournalEntry;
+      void _uid; void _d;
+      await supabase.from("journal_entries").update(updatePayload).eq("user_id", userId).eq("date", date);
     } else {
-      const { data, error } = await supabase
-        .from("journal_entries")
-        .insert(payload)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Journal insert error:", JSON.stringify(error));
-        return localEntry; // Return localStorage version instead of null
-      }
-      return data as JournalEntry;
+      await supabase.from("journal_entries").insert(payload);
     }
-  } catch (err) {
-    console.error("Journal Supabase error:", err);
-    return localEntry; // Supabase totally failed, but localStorage worked
-  }
+  } catch { /* Supabase failed, localStorage is the fallback */ }
+
+  return localEntry;
 }
 
 export async function getJournalEntries(
@@ -162,22 +256,17 @@ export async function getJournalEntries(
       .eq("user_id", userId)
       .order("date", { ascending: false })
       .range(offset, offset + limit - 1);
-
     if (!error && data) dbEntries = data as JournalEntry[];
   } catch { /* Supabase unavailable */ }
 
-  // Merge localStorage entries that Supabase might not have
-  try {
-    const lsEntries = JSON.parse(localStorage.getItem("mapped:journal-entries") || "[]") as JournalEntry[];
-    for (const lse of lsEntries) {
-      if (!dbEntries.some(e => e.date === lse.date)) {
-        dbEntries.push(lse);
-      }
+  // Merge localStorage
+  const lsEntries = getLocalEntries();
+  for (const lse of lsEntries) {
+    if (!dbEntries.some((e) => e.date === lse.date)) {
+      dbEntries.push(lse);
     }
-    // Re-sort by date descending
-    dbEntries.sort((a, b) => b.date.localeCompare(a.date));
-  } catch { /* ignore */ }
-
+  }
+  dbEntries.sort((a, b) => (b.created_at || b.date).localeCompare(a.created_at || a.date));
   return dbEntries;
 }
 
@@ -193,12 +282,11 @@ export async function getJournalEntriesForPeriod(
     .gte("date", startDate)
     .lte("date", endDate)
     .order("date", { ascending: true });
-
   if (error) return [];
   return (data || []) as JournalEntry[];
 }
 
-// ─── REFLECTIONS ──────────────────────────────────────────────────────────────
+// ─── Reflections (kept for backwards compat) ─────────────────────────────────
 
 export async function getReflections(
   userId: string,
@@ -209,11 +297,7 @@ export async function getReflections(
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-
-  if (cadence) {
-    query = query.eq("cadence", cadence);
-  }
-
+  if (cadence) query = query.eq("cadence", cadence);
   const { data, error } = await query.limit(20);
   if (error) return [];
   return (data || []) as JournalReflection[];
@@ -229,25 +313,172 @@ export async function saveReflection(
 ): Promise<JournalReflection | null> {
   const { data, error } = await supabase
     .from("journal_reflections")
-    .insert({
-      user_id: userId,
-      cadence,
-      period_start: periodStart,
-      period_end: periodEnd,
-      content,
-      entry_count: entryCount,
-    })
+    .insert({ user_id: userId, cadence, period_start: periodStart, period_end: periodEnd, content, entry_count: entryCount })
     .select()
     .single();
-
-  if (error) {
-    console.error("Reflection save error:", error);
-    return null;
-  }
+  if (error) return null;
   return data as JournalReflection;
 }
 
-// ─── PROMPT GENERATION (called from API) ──────────────────────────────────────
+// ─── Filtered Views ──────────────────────────────────────────────────────────
+
+export function filterEntries(entries: JournalEntry[], filter: FilterKey, filterValue?: string): JournalEntry[] {
+  switch (filter) {
+    case "all": return entries;
+    case "new_moon": return entries.filter((e) => e.tags?.moonPhase === "new");
+    case "full_moon": return entries.filter((e) => e.tags?.moonPhase === "full");
+    case "quarter_moon": return entries.filter((e) => e.tags?.moonPhase === "first_quarter" || e.tags?.moonPhase === "last_quarter");
+    case "by_planet_day": return entries.filter((e) => e.tags?.planetaryDay === filterValue);
+    case "by_transit": return entries.filter((e) => e.tags?.activeTransits?.includes(filterValue || ""));
+    case "by_lord": return entries.filter((e) => e.tags?.lordOfYear === filterValue);
+    case "date_range":
+      if (filterValue) {
+        const [start, end] = filterValue.split("|");
+        return entries.filter((e) => e.created_at >= start && e.created_at <= end);
+      }
+      return entries;
+    default: return entries;
+  }
+}
+
+// ─── Metadata Pattern Surfacing (mid+) ───────────────────────────────────────
+
+export function surfaceMetadataPatterns(entries: JournalEntry[]): JournalPattern[] {
+  if (entries.length < 5) return [];
+  const patterns: JournalPattern[] = [];
+  const now = new Date();
+  const validEntries = entries.filter((e) => e.tags);
+
+  // Full moon frequency
+  const fullMoonEntries = validEntries.filter((e) => e.tags.moonPhase === "full");
+  if (fullMoonEntries.length >= 3) {
+    patterns.push({
+      id: "pat_full_moon_freq", type: "frequency",
+      text: `You've written ${fullMoonEntries.length} entries on full moons — ${Math.round(fullMoonEntries.length / validEntries.length * 100)}% of your journal.`,
+      supportingEntryIds: fullMoonEntries.map((e) => e.id),
+      surfacedAt: now.toISOString(), dismissed: false,
+    });
+  }
+
+  // Length by moon phase
+  const avgLength = validEntries.reduce((s, e) => s + (e.tags.wordCount || 0), 0) / validEntries.length;
+  const fullMoonAvg = fullMoonEntries.length > 0
+    ? fullMoonEntries.reduce((s, e) => s + (e.tags.wordCount || 0), 0) / fullMoonEntries.length : 0;
+  if (fullMoonAvg > avgLength * 1.4 && fullMoonEntries.length >= 3) {
+    patterns.push({
+      id: "pat_full_moon_length", type: "length",
+      text: `Your full moon entries are ${(fullMoonAvg / avgLength).toFixed(1)}x longer than average.`,
+      supportingEntryIds: fullMoonEntries.map((e) => e.id),
+      surfacedAt: now.toISOString(), dismissed: false,
+    });
+  }
+
+  // On this day last year
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const nearbyEntry = validEntries.find((e) => {
+    const d = new Date(e.created_at);
+    return Math.abs(d.getTime() - oneYearAgo.getTime()) < 3 * 24 * 60 * 60 * 1000;
+  });
+  if (nearbyEntry) {
+    const text = nearbyEntry.text || nearbyEntry.content || "";
+    const preview = text.slice(0, 60);
+    patterns.push({
+      id: "pat_this_day_last_year", type: "cyclical",
+      text: `On this day last year, you wrote: "${preview}${text.length > 60 ? "..." : ""}"`,
+      supportingEntryIds: [nearbyEntry.id],
+      surfacedAt: now.toISOString(), dismissed: false,
+    });
+  }
+
+  // Time of day pattern
+  const timeGroups = validEntries.reduce((acc, e) => {
+    const t = e.tags.timeOfDay || "night";
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topTime = Object.entries(timeGroups).sort((a, b) => b[1] - a[1])[0];
+  if (topTime && topTime[1] > validEntries.length * 0.45) {
+    patterns.push({
+      id: "pat_time_of_day", type: "frequency",
+      text: `You write most entries in the ${topTime[0]}. ${topTime[1]} out of ${validEntries.length} total.`,
+      supportingEntryIds: validEntries.filter((e) => e.tags.timeOfDay === topTime[0]).map((e) => e.id),
+      surfacedAt: now.toISOString(), dismissed: false,
+    });
+  }
+
+  // Planet day clustering
+  const dayGroups = validEntries.reduce((acc, e) => {
+    const d = e.tags.planetaryDay || "Sun";
+    acc[d] = (acc[d] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topDay = Object.entries(dayGroups).sort((a, b) => b[1] - a[1])[0];
+  if (topDay && topDay[1] >= 4 && topDay[1] > validEntries.length / 7 * 1.5) {
+    patterns.push({
+      id: `pat_day_${topDay[0].toLowerCase()}`, type: "frequency",
+      text: `You write most on ${topDay[0]} days — ${topDay[1]} entries, more than any other day of the week.`,
+      supportingEntryIds: validEntries.filter((e) => e.tags.planetaryDay === topDay[0]).map((e) => e.id),
+      surfacedAt: now.toISOString(), dismissed: false,
+    });
+  }
+
+  // Load dismissed patterns
+  const dismissed = getDismissedPatterns();
+  return patterns.filter((p) => !dismissed.has(p.id)).slice(0, 10);
+}
+
+function getDismissedPatterns(): Set<string> {
+  try {
+    const raw = localStorage.getItem(JOURNAL_DISMISSED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+export function dismissPattern(patternId: string) {
+  const dismissed = getDismissedPatterns();
+  dismissed.add(patternId);
+  localStorage.setItem(JOURNAL_DISMISSED_KEY, JSON.stringify([...dismissed]));
+}
+
+// ─── Privacy & Copy ──────────────────────────────────────────────────────────
+
+export const JOURNAL_PRIVACY_COPY = {
+  welcome: `This isn't a productivity tool. It's a place where the chart asks the question and you answer.\n\nEvery entry stamps with what's happening in the sky — moon phase, planet day, what's hitting your chart. Over time, patterns surface. Your journaling becomes a record of your life through astrology.\n\nYou can write or speak. Your entries are yours. We don't read them unless you ask us to.`,
+
+  privacyPromise: `Your journal is yours. Mapped doesn't read your entries unless you specifically ask us to. We never train on your content. We never share it. You can delete anything, export everything.`,
+
+  textPatternOptIn: `To surface deeper patterns — like "you mention your mother more during Cancer transits" — Mapped needs to read your entries. We process them privately, never train on them, and you can turn this off at any time. Want to enable deeper patterns?`,
+
+  burnConfirmation: `Your words have left no trace.`,
+
+  firstEntrySaved: `Saved. This entry will live in your journal forever, tagged with what was happening in the sky today. Come back when you have something else to say.`,
+
+  capReached: (remaining: number) =>
+    remaining === 0
+      ? `You've used all 8 entries this month. Upgrade to mid for unlimited journaling + pattern surfacing.`
+      : `${remaining} entries remaining this month.`,
+};
+
+// ─── Crisis Detection ────────────────────────────────────────────────────────
+
+const CRISIS_PHRASES = [
+  "kill myself", "want to die", "self-harm", "end my life",
+  "suicide", "don't want to be here", "better off dead",
+  "harm myself", "cut myself",
+];
+
+export function detectCrisisContent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return CRISIS_PHRASES.some((phrase) => lower.includes(phrase));
+}
+
+export const CRISIS_RESPONSE = {
+  text: `What you wrote sounds heavy. You don't have to be alone with it. The 988 Suicide & Crisis Lifeline is free and confidential — you can call or text 988 anytime.`,
+  options: ["Talk to Dolly", "Just rest", "I'm okay"] as const,
+};
+
+// ─── Legacy compat ───────────────────────────────────────────────────────────
 
 export function buildJournalPromptContext(horoscope: string, celestial: {
   moonPhase: string;
