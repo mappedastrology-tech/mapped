@@ -16,6 +16,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { usePaywall } from "@/hooks/usePaywall";
+import { useTier } from "@/components/TierProvider";
+import { BirthTimeRepromptBanner } from "@/components/BirthTimeCue";
+import { getPullUsageToday, incrementPullUsage } from "@/lib/tier";
 
 // ─── Almanac tip category preferences ──────────────────────────────────────
 const ALMANAC_PREFS_KEY = "mapped:almanac-prefs";
@@ -130,6 +134,8 @@ type SheetKind =
 
 export default function HomeTab() {
   const router = useRouter();
+  const { gate, PaywallModal } = usePaywall();
+  const { tier } = useTier();
   const [userName, setUserName] = useState<string | null>(null);
   const [hasChart, setHasChart] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -513,6 +519,9 @@ export default function HomeTab() {
     <>
       <style>{`@keyframes cardFlip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }`}</style>
       <main className="w-full max-w-lg mx-auto px-5 py-6 pb-28">
+        {/* ─── Birth time re-prompt banner (shows on days 3/7/14/30) ─── */}
+        <BirthTimeRepromptBanner />
+
         {/* ─── Greeting header with moon ─── */}
         <header className="flex items-start justify-between gap-4 mb-8">
           <div className="flex-1 min-w-0">
@@ -925,6 +934,11 @@ export default function HomeTab() {
             {!tarotRevealed && !tarotFlipping ? (
               <button
                 onClick={() => {
+                  // Gate: free tier only gets 1 pull/day (first is free)
+                  if (tier === "free" && getPullUsageToday() >= 1) {
+                    if (gate("unlimited_pulls")) return;
+                  }
+                  incrementPullUsage();
                   setTarotFlipping(true);
                   setTimeout(() => {
                     setTarotRevealed(true);
@@ -1013,6 +1027,11 @@ export default function HomeTab() {
             {!oracleRevealed && !oracleFlipping ? (
               <button
                 onClick={() => {
+                  // Gate: free tier only gets 1 pull/day (first is free)
+                  if (tier === "free" && getPullUsageToday() >= 1) {
+                    if (gate("unlimited_pulls")) return;
+                  }
+                  incrementPullUsage();
                   setOracleFlipping(true);
                   setTimeout(() => {
                     setOracleRevealed(true);
@@ -1365,6 +1384,7 @@ export default function HomeTab() {
           onClose={() => setShowMoonEvent(false)}
         />
       )}
+      {PaywallModal}
     </>
   );
 }

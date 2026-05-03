@@ -17,6 +17,9 @@ import {
   saveCustomRitual,
   addToWizardHistory,
 } from "@/lib/customRituals";
+import { usePaywall } from "@/hooks/usePaywall";
+import { useTier } from "@/components/TierProvider";
+import { getWizardUsageThisMonth, incrementWizardUsage } from "@/lib/tier";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +61,8 @@ interface RitualWizardProps {
 }
 
 export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
+  const { gate, PaywallModal } = usePaywall();
+  const { tier, limits } = useTier();
   const [step, setStep] = useState<WizardStep>("onboarding");
 
   // Wizard inputs
@@ -157,6 +162,13 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
   // ─── Generate ritual ──────────────────────────────────────────────────
 
   const generateRitual = useCallback(async () => {
+    // Tier gate: wizard feature
+    if (gate("wizard")) return;
+    // Mid-tier monthly limit check
+    if (tier === "mid" && getWizardUsageThisMonth() >= limits.wizardPerMonth) {
+      if (gate("wizard")) return;
+      return;
+    }
     setStep("generating");
     setStreamedText("");
     setError(null);
@@ -252,6 +264,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       if (ritual) {
         setGeneratedRitual(ritual);
         addToWizardHistory(ritual, false);
+        incrementWizardUsage();
         setStep("result");
       } else {
         setError("Couldn't parse the ritual output. Try again?");
@@ -262,7 +275,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setStep("result");
     }
-  }, [intention, bodyLevel, tools, minutes, timing, chart, transits, userName]);
+  }, [intention, bodyLevel, tools, minutes, timing, chart, transits, userName, gate, tier, limits]);
 
   // ─── Handlers ──────────────────────────────────────────────────────────
 
@@ -596,6 +609,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             Create my ritual
           </button>
         </div>
+        {PaywallModal}
       </div>
     );
   }
@@ -696,6 +710,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
               </button>
             </div>
           </div>
+          {PaywallModal}
         </div>
       );
     }
@@ -814,5 +829,5 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     );
   }
 
-  return null;
+  return <>{PaywallModal}</>;
 }

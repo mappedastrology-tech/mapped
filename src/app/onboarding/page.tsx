@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * Onboarding — full-screen swipeable cards, paper aesthetic.
+ * Onboarding — 10-screen flow.
  *
- * Steps:
- *  0  Birth data (required — no skip until complete)
- *  1  "Your Big Three" education
- *  2  "Houses & Aspects" education
- *  3  Tour — Your Chart (You tab)
- *  4  Tour — Your Connections (Maps tab)
- *  5  Tour — Daily Guidance (Home + Rituals)
- *  6  All set — CTA to enter app
- *
- * After birth data is submitted, a Skip button appears on every
- * remaining card. Swipe left/right or tap arrows to navigate.
+ * Screens:
+ *  0  Welcome
+ *  1  Birth data capture + account creation
+ *  2  Demographics (optional)
+ *  3  Sect reveal
+ *  4  Headline cards (chart ruler, sect light, lord of the year)
+ *  5  Meet Dolly
+ *  6  Pick your free deck
+ *  7  Notifications opt-in
+ *  8  Moon practice prompt
+ *  9  Final orientation
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -21,8 +21,12 @@ import { useRouter } from "next/navigation";
 import CitySearch, { LocationResult } from "@/components/CitySearch";
 import { supabase } from "@/lib/supabase";
 import { saveChart } from "@/lib/saveChart";
+import { SIGN_FULL } from "@/lib/knowledge";
+import { getSectLight, getLordOfTheYear } from "@/lib/rulers";
+import { getChartRuler } from "@/lib/chartRuler";
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 10;
+const LS_KEY = "mapped:onboarding-step";
 
 /* ── palette ── */
 const PAPER = "var(--background)";
@@ -31,26 +35,28 @@ const INK = "var(--foreground)";
 const TERRACOTTA = "var(--terracotta)";
 const AMBER = "var(--amber)";
 const SAGE = "var(--sage)";
+const CREAM = "var(--cream)";
 
-/* ── sign abbreviation → full name ── */
-const SIGN_FULL: Record<string, string> = {
-  Ari: "Aries",
-  Tau: "Taurus",
-  Gem: "Gemini",
-  Can: "Cancer",
-  Leo: "Leo",
-  Vir: "Virgo",
-  Lib: "Libra",
-  Sco: "Scorpio",
-  Sag: "Sagittarius",
-  Cap: "Capricorn",
-  Aqu: "Aquarius",
-  Pis: "Pisces",
-};
-
-function fullSign(s?: string): string {
+function fullSign(s?: string | null): string {
   if (!s) return "?";
   return SIGN_FULL[s] || s;
+}
+
+/* ── Types for chart data ── */
+interface ChartPlanet {
+  name: string;
+  sign: string;
+  house: string | null;
+}
+interface ChartHouse {
+  number: number;
+  sign: string;
+}
+interface ChartData {
+  planets: ChartPlanet[];
+  houses: ChartHouse[];
+  bigThree?: { sun?: string; moon?: string; rising?: string };
+  [key: string]: unknown;
 }
 
 export default function OnboardingPage() {
@@ -66,6 +72,10 @@ export default function OnboardingPage() {
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("12:00");
   const [unknownTime, setUnknownTime] = useState(false);
+  const [timePrecision, setTimePrecision] = useState<"exact" | "approximate" | "unknown">("exact");
+  const [timeWindow, setTimeWindow] = useState<string | null>(null);
+  const [dayNightKnown, setDayNightKnown] = useState(false);
+  const [isDaytime, setIsDaytime] = useState<boolean | null>(null);
   const [cityQuery, setCityQuery] = useState("");
   const [location, setLocation] = useState<LocationResult | null>(null);
   const [zodiacSystem, setZodiacSystem] = useState<"tropical" | "sidereal">("tropical");
@@ -82,7 +92,71 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [birthDataDone, setBirthDataDone] = useState(false);
 
-  /* ── check if user is already signed in (e.g. via Google OAuth) ── */
+  /* ── chart results (for screens 3-4) ── */
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+
+  /* ── demographics ── */
+  const [pronouns, setPronouns] = useState("");
+  const [lifeStage, setLifeStage] = useState<string[]>([]);
+  const [familySituation, setFamilySituation] = useState<string[]>([]);
+  const [professionalStatus, setProfessionalStatus] = useState("");
+
+  /* ── deck choice ── */
+  const [deckChoice, setDeckChoice] = useState<"classic_tarot" | "mapped_oracle" | null>(null);
+
+  /* ── notifications (richer model) ── */
+  const [notifPref, setNotifPref] = useState<"all" | "important" | "none" | null>(null);
+  const [notifSubStep, setNotifSubStep] = useState<0 | 1 | 2>(0); // 0=philosophy, 1=preferences, 2=time
+  const [notifToggles, setNotifToggles] = useState<Record<string, boolean>>({
+    daily_content: false,
+    full_moon: true,
+    new_moon: true,
+    quarter_moon: false,
+    major_transits: true,
+    retrograde_stations: true,
+    birthday_week: true,
+    solar_return: true,
+    eclipses: true,
+    mercury_retrograde: true,
+    major_ingresses: true,
+    practice_reminders: true,
+    re_engagement: true,
+  });
+  const [notifHour, setNotifHour] = useState(19); // 7 PM default
+
+  /* ── headline cards swipe index ── */
+  const [cardIndex, setCardIndex] = useState(0);
+
+  /* ── swipe handling ── */
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  /* ── Restore step from localStorage ── */
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed < TOTAL_STEPS) {
+        // Only restore if we have chart data for later screens
+        const storedChart = sessionStorage.getItem("mapped:chartData");
+        if (parsed >= 2 && storedChart) {
+          setChartData(JSON.parse(storedChart));
+          setBirthDataDone(true);
+          setStep(parsed);
+        } else if (parsed < 2) {
+          setStep(parsed);
+        }
+      }
+    }
+  }, []);
+
+  /* ── Persist step changes ── */
+  useEffect(() => {
+    localStorage.setItem(LS_KEY, String(step));
+  }, [step]);
+
+  /* ── check if user is already signed in ── */
   useEffect(() => {
     async function checkSession() {
       try {
@@ -99,22 +173,11 @@ export default function OnboardingPage() {
     checkSession();
   }, []);
 
-  /* ── big three (for personalizing education cards) ── */
-  const [bigThree, setBigThree] = useState<{ sun?: string; moon?: string; rising?: string } | null>(null);
-
-  /* ── swipe handling ── */
-  const touchStartX = useRef(0);
-  const touchDeltaX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const canGoNext = step < TOTAL_STEPS - 1 && (step !== 0 || birthDataDone);
-  const canGoPrev = step > 0;
-
+  /* ── navigation helpers ── */
   const goTo = useCallback(
     (next: number, dir: "left" | "right") => {
       if (animating) return;
       if (next < 0 || next >= TOTAL_STEPS) return;
-      if (next > 0 && !birthDataDone) return;
       setDirection(dir);
       setAnimating(true);
       setTimeout(() => {
@@ -122,11 +185,11 @@ export default function OnboardingPage() {
         setAnimating(false);
       }, 280);
     },
-    [animating, birthDataDone],
+    [animating],
   );
 
-  const next = useCallback(() => canGoNext && goTo(step + 1, "left"), [canGoNext, goTo, step]);
-  const prev = useCallback(() => canGoPrev && goTo(step - 1, "right"), [canGoPrev, goTo, step]);
+  const goNext = useCallback(() => goTo(step + 1, "left"), [goTo, step]);
+  const goPrev = useCallback(() => goTo(step - 1, "right"), [goTo, step]);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
@@ -137,42 +200,30 @@ export default function OnboardingPage() {
   }
   function onTouchEnd() {
     if (Math.abs(touchDeltaX.current) > 50) {
-      if (touchDeltaX.current < 0) next();
-      else prev();
+      if (touchDeltaX.current < 0 && step < TOTAL_STEPS - 1) goNext();
+      else if (touchDeltaX.current > 0 && step > 0) goPrev();
     }
   }
 
-  /* ── skip to app ── */
+  /* ── finish onboarding ── */
   async function finishOnboarding() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       await supabase
         .from("profiles")
         .update({ onboarding_completed: true })
         .eq("id", session.user.id);
     }
-    router.replace("/home");
-  }
-
-  /* ── launch guided tour inside the real app ── */
-  async function launchTour() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase
-        .from("profiles")
-        .update({ onboarding_completed: true })
-        .eq("id", session.user.id);
-    }
-    sessionStorage.setItem("showAppTour", "true");
+    localStorage.removeItem(LS_KEY);
     router.replace("/you");
   }
 
   /* ── birth data submit ── */
-  const birthValid = name.trim() && birthDate && birthTime && location;
+  const birthValid = name.trim() && birthDate && location && (
+    timePrecision === "unknown" || birthTime
+  ) && (
+    timePrecision !== "approximate" || timeWindow
+  );
   const accountValid = existingUserId ? true : (email.trim() && password.length >= 6);
 
   async function handleBirthSubmit() {
@@ -187,8 +238,12 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: name.trim(),
           birthDate,
-          birthTime,
-          unknownTime,
+          birthTime: timePrecision === "unknown" ? null : birthTime,
+          unknownTime: timePrecision === "unknown",
+          birthTimePrecision: timePrecision,
+          birthTimeWindow: timeWindow,
+          dayNightKnown,
+          isDaytime,
           latitude: parseFloat(location!.lat),
           longitude: parseFloat(location!.lon),
           cityName: location!.display_name,
@@ -197,13 +252,14 @@ export default function OnboardingPage() {
         }),
       });
       if (!res.ok) throw new Error("Chart calculation failed. Try again.");
-      const chartData = await res.json();
+      const result = await res.json();
 
-      if (chartData.bigThree) setBigThree(chartData.bigThree);
+      setChartData(result as ChartData);
+      sessionStorage.setItem("mapped:chartData", JSON.stringify(result));
 
       let userId: string | null = existingUserId;
       if (existingUserId) {
-        // Already signed in (e.g. via Google) — skip auth
+        // Already signed in (e.g. via Google)
       } else if (hasAccount) {
         const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
         if (e) throw new Error(e.message.includes("Invalid login") ? "Wrong email or password." : e.message);
@@ -215,10 +271,6 @@ export default function OnboardingPage() {
           options: { data: { name: name.trim() } },
         });
         if (e) {
-          // Self-heal: if the email is already registered (e.g. from a
-          // previous failed attempt where signup succeeded but saveChart
-          // crashed), try to sign in with the same password instead of
-          // forcing the user to toggle a checkbox.
           if (
             e.message.includes("already registered") ||
             e.message.toLowerCase().includes("user already")
@@ -240,26 +292,28 @@ export default function OnboardingPage() {
         } else if (data.user && data.session) {
           userId = data.user.id;
         } else if (data.user && !data.session) {
-          sessionStorage.setItem("chartResult", JSON.stringify(chartData));
+          sessionStorage.setItem("chartResult", JSON.stringify(result));
           sessionStorage.setItem("pendingSave", "true");
           setBirthDataDone(true);
-          next();
+          goNext();
           return;
         }
       }
 
       if (userId) {
-        await saveChart(userId, chartData);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await saveChart(userId, result as any);
+        // Save birth time precision data
+        await supabase.from("profiles").update({
+          birth_time_precision: timePrecision,
+          birth_time_window: timeWindow,
+          day_night_known: dayNightKnown,
+          is_daytime: isDaytime,
+        }).eq("id", userId);
       }
 
       setBirthDataDone(true);
-      // auto-advance to Big Three (step 1)
-      setDirection("left");
-      setAnimating(true);
-      setTimeout(() => {
-        setStep(1);
-        setAnimating(false);
-      }, 280);
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -267,46 +321,180 @@ export default function OnboardingPage() {
     }
   }
 
+  /* ── demographics save ── */
+  async function saveDemographics() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.from("profiles").update({
+        pronouns: pronouns || null,
+        life_stage: lifeStage.length ? lifeStage : null,
+        family_situation: familySituation.length ? familySituation : null,
+        professional_status: professionalStatus || null,
+      }).eq("id", session.user.id);
+    }
+    goNext();
+  }
+
+  /* ── deck save ── */
+  async function saveDeck() {
+    if (!deckChoice) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.from("profiles").update({
+        free_deck: deckChoice,
+      }).eq("id", session.user.id);
+    }
+    goNext();
+  }
+
+  /* ── notification pref save (granular) ── */
+  async function saveNotifPref() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.from("profiles").update({
+        notification_preferences: {
+          ...notifToggles,
+          preferred_hour: notifHour,
+          paused_until: null,
+          email_marketing: false,
+        },
+      }).eq("id", session.user.id);
+    }
+    goNext();
+  }
+
+  /* ── moon practice save ── */
+  async function saveMoonPractice(wantIt: boolean) {
+    if (wantIt) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.from("profiles").update({
+          wants_moon_practice: true,
+        }).eq("id", session.user.id);
+      }
+    }
+    goNext();
+  }
+
+  /* ── computed chart insights ── */
+  const sectInfo = chartData
+    ? getSectLight(chartData.planets, chartData.houses)
+    : null;
+  const chartRulerInfo = chartData
+    ? getChartRuler(chartData.planets, chartData.houses)
+    : null;
+  const lordInfo = chartData && birthDate
+    ? getLordOfTheYear(birthDate, chartData.planets, chartData.houses)
+    : null;
+
+  /* ── multi-select helper ── */
+  function toggleMulti(arr: string[], val: string, setter: (v: string[]) => void) {
+    if (arr.includes(val)) {
+      setter(arr.filter((x) => x !== val));
+    } else {
+      setter([...arr, val]);
+    }
+  }
+
   /* ── progress dots ── */
   const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i);
 
-  /* ── shared input style (paper aesthetic) ── */
+  /* ── shared styles ── */
   const inputClass = `w-full px-4 py-2.5 rounded-xl
                       bg-card/50 border border-foreground/15
                       text-foreground placeholder:text-foreground/35
                       focus:outline-none focus:border-terracotta focus:ring-2 focus:ring-terracotta/20
                       text-sm`;
-
   const labelClass = "text-[10px] uppercase tracking-widest text-foreground/55 font-semibold";
 
-  /* ── animation classes ── */
   const slideClass = animating
     ? direction === "left"
       ? "translate-x-[-100%] opacity-0"
       : "translate-x-[100%] opacity-0"
     : "translate-x-0 opacity-100";
 
-  /* ── section ghost card — used across all education/tour steps ── */
-  const ghostCard = "rounded-2xl border border-foreground/12 bg-card/45 px-4 py-3";
+  const pillBtn = (active: boolean) =>
+    `px-3 py-2 rounded-full text-xs font-semibold border transition-all ${
+      active
+        ? "border-terracotta text-terracotta bg-terracotta/10"
+        : "border-foreground/15 text-foreground/55 bg-card/40"
+    }`;
+
+  const ctaBtn = (enabled: boolean) =>
+    `w-full py-3.5 rounded-full font-bold text-sm tracking-wide transition-all ${
+      enabled
+        ? "bg-terracotta text-cream hover:opacity-90 active:scale-[0.98]"
+        : "bg-foreground/15 text-foreground/40 cursor-not-allowed"
+    }`;
+
+  const ctaShadow = {
+    boxShadow: "0 8px 20px -6px rgba(180, 81, 40, 0.4), 0 3px 8px -3px rgba(180, 81, 40, 0.25)",
+  };
+
+  /* ── headline cards data ── */
+  const headlineCards = [
+    chartRulerInfo
+      ? {
+          title: "Your chart ruler",
+          planet: chartRulerInfo.planet,
+          sign: fullSign(chartRulerInfo.rulerSign),
+          house: chartRulerInfo.rulerHouse || "?",
+          summary: chartRulerInfo.summary,
+        }
+      : null,
+    sectInfo
+      ? {
+          title: "Your sect light",
+          planet: sectInfo.sectLight,
+          sign: fullSign(sectInfo.sectLightSign),
+          house: sectInfo.sectLightHouse || "?",
+          summary: sectInfo.summary,
+        }
+      : null,
+    lordInfo
+      ? {
+          title: "Lord of the year",
+          planet: lordInfo.lordPlanet,
+          sign: fullSign(lordInfo.lordSign),
+          house: lordInfo.lordHouse || "?",
+          summary: lordInfo.summary,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    title: string;
+    planet: string;
+    sign: string;
+    house: string;
+    summary: string;
+  }>;
 
   return (
     <main
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at top, ${PAPER} 0%, ${PAPER_DEEP} 100%)`,
-        color: INK,
+        background:
+          step === 3 && sectInfo
+            ? sectInfo.sect === "day"
+              ? "linear-gradient(180deg, #d4a853 0%, #c49234 100%)"
+              : "linear-gradient(180deg, #1a2744 0%, #0f1a30 100%)"
+            : step === 0
+            ? `var(--cream)`
+            : `radial-gradient(ellipse at top, ${PAPER} 0%, ${PAPER_DEEP} 100%)`,
+        color: step === 3 && sectInfo?.sect === "night" ? "#e8e0d4" : INK,
       }}
     >
-      {/* Paper grain */}
-      <div
-        className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-multiply"
-        style={{
-          backgroundImage: `radial-gradient(${INK} 0.5px, transparent 0.5px)`,
-          backgroundSize: "3px 3px",
-        }}
-      />
+      {/* Paper grain (hidden on sect reveal) */}
+      {step !== 3 && (
+        <div
+          className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-multiply"
+          style={{
+            backgroundImage: `radial-gradient(${INK} 0.5px, transparent 0.5px)`,
+            backgroundSize: "3px 3px",
+          }}
+        />
+      )}
 
-      {/* ── Mobile-width column, centered ── */}
+      {/* ── Mobile-width column ── */}
       <div
         ref={containerRef}
         onTouchStart={onTouchStart}
@@ -315,33 +503,55 @@ export default function OnboardingPage() {
         className="relative z-10 w-full max-w-[440px] mx-auto flex-1 flex flex-col overflow-hidden"
       >
         {/* ── Progress bar ── */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-4 pt-4">
-          {dots.map((i) => (
-            <div
-              key={i}
-              className="flex-1 h-0.5 rounded-full transition-all duration-300"
-              style={{
-                backgroundColor:
-                  i < step ? TERRACOTTA : i === step ? INK : "rgba(42,31,24,0.15)",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* ── Skip button (only after birth data) ── */}
-        {birthDataDone && step < TOTAL_STEPS - 1 && (
-          <button
-            onClick={finishOnboarding}
-            className="absolute top-8 right-5 z-30 text-foreground/55 text-xs font-semibold uppercase tracking-widest hover:text-foreground transition-colors"
-          >
-            Skip
-          </button>
+        {step > 0 && (
+          <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-4 pt-4">
+            {dots.map((i) => (
+              <div
+                key={i}
+                className="flex-1 h-0.5 rounded-full transition-all duration-300"
+                style={{
+                  backgroundColor:
+                    i < step
+                      ? TERRACOTTA
+                      : i === step
+                      ? step === 3 && sectInfo?.sect === "night"
+                        ? "#e8e0d4"
+                        : INK
+                      : "rgba(42,31,24,0.15)",
+                }}
+              />
+            ))}
+          </div>
         )}
 
         {/* ── Card area ── */}
         <div className={`flex-1 flex flex-col transition-all duration-280 ease-out ${slideClass}`}>
-          {/* ══════════ Step 0: Birth Data ══════════ */}
+
+          {/* ══════════ Screen 0: Welcome ══════════ */}
           {step === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <img
+                src="/logo-terracotta-cropped.png"
+                alt="Mapped"
+                className="w-40 mb-8"
+              />
+              <p
+                className="text-foreground/80 text-base leading-relaxed max-w-xs mb-10"
+              >
+                Hi. We&apos;re Mapped. Most astrology apps will tell you your sun sign. We do something different.
+              </p>
+              <button
+                onClick={goNext}
+                className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
+                style={ctaShadow}
+              >
+                Begin
+              </button>
+            </div>
+          )}
+
+          {/* ══════════ Screen 1: Birth Data ══════════ */}
+          {step === 1 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
@@ -377,38 +587,136 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                {/* Birth time */}
-                <div className="flex flex-col gap-1">
+                {/* Birth time — 3-option system */}
+                <div className="flex flex-col gap-2">
                   <label className={labelClass}>Birth time</label>
-                  <input
-                    type="time"
-                    value={birthTime}
-                    onChange={(e) => setBirthTime(e.target.value)}
-                    disabled={unknownTime}
-                    className={`${inputClass} ${unknownTime ? "opacity-40" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUnknownTime(!unknownTime);
-                      if (!unknownTime) setBirthTime("12:00");
-                    }}
-                    className="flex items-center gap-2 mt-1 self-start"
-                  >
-                    <span
-                      className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                        unknownTime ? "border-terracotta" : "border-foreground/30"
-                      }`}
-                      style={{ backgroundColor: unknownTime ? TERRACOTTA : "transparent" }}
-                    >
-                      {unknownTime && (
-                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke={PAPER} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+
+                  {/* Precision selector */}
+                  <div className="flex rounded-xl overflow-hidden border border-foreground/18">
+                    {([
+                      { key: "exact", label: "Exact" },
+                      { key: "approximate", label: "Rough idea" },
+                      { key: "unknown", label: "Don’t know" },
+                    ] as const).map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setTimePrecision(key);
+                          setUnknownTime(key === "unknown");
+                          if (key === "unknown") { setBirthTime("12:00"); setTimeWindow(null); }
+                          if (key === "exact") setTimeWindow(null);
+                        }}
+                        className={`flex-1 py-2 text-[11px] font-medium transition-colors ${
+                          timePrecision === key
+                            ? "bg-ink text-cream"
+                            : "bg-foreground/5 text-foreground/40"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Exact: time picker */}
+                  {timePrecision === "exact" && (
+                    <input
+                      type="time"
+                      value={birthTime}
+                      onChange={(e) => setBirthTime(e.target.value)}
+                      className={inputClass}
+                    />
+                  )}
+
+                  {/* Approximate: time window grid */}
+                  {timePrecision === "approximate" && (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {([
+                        { key: "early_morning", label: "Early morning", desc: "5–8 AM" },
+                        { key: "morning", label: "Morning", desc: "8–11 AM" },
+                        { key: "midday", label: "Midday", desc: "11 AM–2 PM" },
+                        { key: "afternoon", label: "Afternoon", desc: "2–5 PM" },
+                        { key: "early_evening", label: "Early evening", desc: "5–8 PM" },
+                        { key: "evening", label: "Evening", desc: "8–11 PM" },
+                        { key: "late_night", label: "Late night", desc: "11 PM–2 AM" },
+                        { key: "overnight", label: "Overnight", desc: "2–5 AM" },
+                      ] as const).map(({ key, label, desc }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setTimeWindow(key);
+                            // Set midpoint for calculation
+                            const midpoints: Record<string, string> = {
+                              early_morning: "06:30", morning: "09:30", midday: "12:30",
+                              afternoon: "15:30", early_evening: "18:30", evening: "21:30",
+                              late_night: "00:30", overnight: "03:30",
+                            };
+                            setBirthTime(midpoints[key] || "12:00");
+                          }}
+                          className={`p-2 rounded-lg text-left border transition-all ${
+                            timeWindow === key
+                              ? "border-terracotta bg-terracotta/10"
+                              : "border-foreground/12 bg-foreground/3"
+                          }`}
+                        >
+                          <span className={`text-[11px] font-medium block ${timeWindow === key ? "text-terracotta" : "text-foreground/70"}`}>
+                            {label}
+                          </span>
+                          <span className="text-[10px] text-foreground/40">{desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Unknown: day/night checkbox */}
+                  {timePrecision === "unknown" && (
+                    <div className="rounded-xl border border-foreground/12 bg-foreground/3 p-3">
+                      <p className="text-[11px] text-foreground/55 mb-2">
+                        Don&apos;t know your birth time? We&apos;ll calculate everything we can without it — a lot, actually.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setDayNightKnown(!dayNightKnown)}
+                        className="flex items-center gap-2"
+                      >
+                        <span
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                            dayNightKnown ? "border-sage bg-sage" : "border-foreground/30"
+                          }`}
+                        >
+                          {dayNightKnown && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke={PAPER} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="text-[11px] text-foreground/60">I know if it was day or night</span>
+                      </button>
+                      {dayNightKnown && (
+                        <div className="flex gap-2 mt-2 ml-6">
+                          <button
+                            type="button"
+                            onClick={() => setIsDaytime(true)}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                              isDaytime === true ? "border-amber bg-amber/10 text-amber" : "border-foreground/15 text-foreground/50"
+                            }`}
+                          >
+                            ☀️ Daytime
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsDaytime(false)}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                              isDaytime === false ? "border-sage bg-sage/10 text-sage" : "border-foreground/15 text-foreground/50"
+                            }`}
+                          >
+                            🌙 Nighttime
+                          </button>
+                        </div>
                       )}
-                    </span>
-                    <span className="text-[11px] text-foreground/55">I don&apos;t know my exact birth time</span>
-                  </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* City */}
@@ -422,7 +730,7 @@ export default function OnboardingPage() {
                     }}
                     onSelect={(loc) => setLocation(loc)}
                   />
-                  {location && <p className="text-[11px]" style={{ color: SAGE }}>✓ {location.display_name}</p>}
+                  {location && <p className="text-[11px]" style={{ color: SAGE }}>&#10003; {location.display_name}</p>}
                 </div>
 
                 {/* Zodiac system */}
@@ -465,7 +773,7 @@ export default function OnboardingPage() {
                   )}
                 </div>
 
-                {/* Account — hidden if already signed in */}
+                {/* Account */}
                 {existingUserId ? (
                   <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-sage/10 border border-sage/25">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SAGE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -478,10 +786,7 @@ export default function OnboardingPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Divider */}
                     <div className="h-px bg-foreground/12 my-1" />
-
-                    {/* Account */}
                     <div className="flex flex-col gap-2">
                       <label className={labelClass}>Create your account</label>
                       <input
@@ -528,19 +833,8 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleBirthSubmit}
                   disabled={!birthValid || !accountValid || isSubmitting}
-                  className={`w-full py-3.5 rounded-full font-bold text-sm tracking-wide transition-all mt-1 ${
-                    birthValid && accountValid && !isSubmitting
-                      ? "bg-terracotta text-cream hover:bg-terracotta-light active:scale-[0.98]"
-                      : "bg-foreground/15 text-foreground/40 cursor-not-allowed"
-                  }`}
-                  style={
-                    birthValid && accountValid && !isSubmitting
-                      ? {
-                          boxShadow:
-                            "0 8px 20px -6px rgba(180, 81, 40, 0.4), 0 3px 8px -3px rgba(180, 81, 40, 0.25)",
-                        }
-                      : undefined
-                  }
+                  className={ctaBtn(!!birthValid && !!accountValid && !isSubmitting)}
+                  style={birthValid && accountValid && !isSubmitting ? ctaShadow : undefined}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -552,11 +846,10 @@ export default function OnboardingPage() {
                   )}
                 </button>
 
-                {/* Sign in link — hidden if already signed in */}
                 {!existingUserId && (
                   <button
                     onClick={() => router.push("/account?mode=signin")}
-                    className="text-terracotta text-xs hover:text-terracotta-light transition-colors self-center pb-2"
+                    className="text-terracotta text-xs hover:opacity-80 transition-colors self-center pb-2"
                   >
                     Already have an account?{" "}
                     <span className="underline underline-offset-2">Sign in</span>
@@ -566,144 +859,559 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Step 1: Your Big Three ══════════ */}
-          {step === 1 && (
-            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-14 pb-16">
-              <div
-                className="text-3xl mb-4 opacity-60"
-                style={{ fontFamily: "'Noto Sans Symbols 2'", color: TERRACOTTA }}
-              >
-                ☉ ☽ ↑
-              </div>
+          {/* ══════════ Screen 2: Demographics ══════════ */}
+          {step === 2 && (
+            <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1
-                className="text-[34px] text-foreground mb-3 tracking-tight leading-tight"
+                className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Your Big Three
+                Tell us about you
               </h1>
+              <p className="text-foreground/55 text-xs mb-4">
+                All optional. Helps us personalize what you see.
+              </p>
 
-              {bigThree && (
-                <div className="flex gap-2 mb-5 w-full max-w-sm">
-                  {[
-                    { label: "Sun", sign: bigThree.sun },
-                    { label: "Moon", sign: bigThree.moon },
-                    { label: "Rising", sign: bigThree.rising },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex-1 min-w-0 text-center py-2.5 px-2 rounded-xl border border-terracotta/30 bg-terracotta/10"
-                    >
-                      <p className="text-foreground text-[13px] font-bold tracking-tight truncate">
-                        {fullSign(item.sign)}
-                      </p>
-                      <p className="text-foreground/50 text-[9px] uppercase tracking-widest mt-0.5 font-semibold">
-                        {item.label}
-                      </p>
-                    </div>
-                  ))}
+              <div className="flex flex-col gap-4">
+                {/* Pronouns */}
+                <div className="flex flex-col gap-1.5">
+                  <label className={labelClass}>Pronouns</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["she/her", "he/him", "they/them", "other/prefer not to say"].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPronouns(pronouns === p ? "" : p)}
+                        className={pillBtn(pronouns === p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
 
-              <div className="space-y-2.5 text-left w-full max-w-sm">
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">☉ Sun Sign</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Your core identity — who you are at the deepest level. This is what most people know as their &ldquo;sign.&rdquo; It shapes your ego, willpower, and life direction.
-                  </p>
+                {/* Life stage */}
+                <div className="flex flex-col gap-1.5">
+                  <label className={labelClass}>Where you are in life</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Single", "Dating", "In a partnership", "Married",
+                      "Going through a breakup or divorce", "Recently widowed", "It's complicated",
+                    ].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => toggleMulti(lifeStage, opt, setLifeStage)}
+                        className={pillBtn(lifeStage.includes(opt))}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">☽ Moon Sign</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Your emotional inner world — how you process feelings, what you need to feel safe, and how you nurture yourself and others.
-                  </p>
+
+                {/* Family */}
+                <div className="flex flex-col gap-1.5">
+                  <label className={labelClass}>Family situation</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "No kids", "Pregnant or expecting", "Parent of young kids",
+                      "Parent of older kids / adult kids", "Caretaker for a parent or family member",
+                      "Prefer not to say",
+                    ].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => toggleMulti(familySituation, opt, setFamilySituation)}
+                        className={pillBtn(familySituation.includes(opt))}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">↑ Rising Sign</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Your outward persona — the energy you project to the world, your first impression, and the lens through which you approach new experiences.
-                  </p>
+
+                {/* Professional */}
+                <div className="flex flex-col gap-1.5">
+                  <label className={labelClass}>Professional</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Student", "Corporate", "Creative/arts", "Self-employed",
+                      "Between jobs", "Stay-at-home parent", "Retired", "Other",
+                    ].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setProfessionalStatus(professionalStatus === opt ? "" : opt)}
+                        className={pillBtn(professionalStatus === opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CTAs */}
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    onClick={saveDemographics}
+                    className={ctaBtn(true)}
+                    style={ctaShadow}
+                  >
+                    Use this to personalize
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                  >
+                    Skip — I&apos;ll fill in later
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              <button
-                onClick={next}
-                className="mt-6 px-8 py-2.5 rounded-full border-2 border-foreground text-foreground text-xs font-bold uppercase tracking-widest hover:bg-foreground hover:text-background active:scale-95 transition-all"
+          {/* ══════════ Screen 3: Sect Reveal ══════════ */}
+          {step === 3 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <h1
+                className="text-[38px] mb-4 tracking-tight leading-tight"
+                style={{ fontFamily: "var(--font-display)" }}
               >
-                Next
+                {name ? name.split(" ")[0] : "You"}
+              </h1>
+              <p className="text-lg leading-relaxed max-w-xs mb-3 opacity-90">
+                {sectInfo?.sect === "day"
+                  ? "You were born during the day."
+                  : "You were born at night."}
+              </p>
+              <p className="text-sm leading-relaxed max-w-xs opacity-75 mb-10">
+                {sectInfo?.sect === "day"
+                  ? "Your Sun leads the team. Day charts are externally driven, visible, action-oriented."
+                  : "Your Moon leads the team. Night charts are internal, reflective, emotionally driven."}
+              </p>
+              <button
+                onClick={goNext}
+                className="px-10 py-3.5 rounded-full font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
+                style={{
+                  backgroundColor: sectInfo?.sect === "day" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.15)",
+                  color: sectInfo?.sect === "day" ? "#2a1f18" : "#e8e0d4",
+                }}
+              >
+                Tell me more
               </button>
             </div>
           )}
 
-          {/* ══════════ Step 2: Houses & Aspects ══════════ */}
-          {step === 2 && (
-            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pt-14 pb-16">
-              <div className="text-2xl mb-4 opacity-60">🏠 ⚡</div>
+          {/* ══════════ Screen 4: Headline Cards ══════════ */}
+          {step === 4 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
               <h1
-                className="text-[34px] text-foreground mb-2 tracking-tight leading-tight"
+                className="text-[24px] text-foreground mb-5 tracking-tight text-center"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Houses & Aspects
+                Three things to know
               </h1>
-              <p className="text-foreground/55 text-xs mb-5 max-w-xs">
-                Two more building blocks that make your chart uniquely yours.
+
+              {headlineCards.length > 0 && (
+                <>
+                  <div className="w-full max-w-sm overflow-hidden">
+                    <div
+                      className="flex transition-transform duration-300 ease-out"
+                      style={{ transform: `translateX(-${cardIndex * 100}%)` }}
+                    >
+                      {headlineCards.map((card, idx) => (
+                        <div key={idx} className="w-full flex-shrink-0 px-1">
+                          <div className="rounded-2xl border border-foreground/12 bg-card/60 p-5">
+                            <p className="text-terracotta text-[10px] font-bold uppercase tracking-widest mb-2">
+                              {card.title}
+                            </p>
+                            <p className="text-foreground text-lg font-bold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+                              {card.planet}
+                            </p>
+                            <p className="text-foreground/60 text-xs mb-3">
+                              in {card.sign} &middot; house {card.house}
+                            </p>
+                            <p className="text-foreground/75 text-[13px] leading-relaxed">
+                              {card.summary}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dots */}
+                  <div className="flex gap-2 mt-4">
+                    {headlineCards.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCardIndex(idx)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          idx === cardIndex ? "bg-terracotta" : "bg-foreground/20"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Nav arrows for cards */}
+                  <div className="flex gap-4 mt-4">
+                    <button
+                      onClick={() => setCardIndex(Math.max(0, cardIndex - 1))}
+                      disabled={cardIndex === 0}
+                      className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground/50 disabled:opacity-30"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setCardIndex(Math.min(headlineCards.length - 1, cardIndex + 1))}
+                      disabled={cardIndex === headlineCards.length - 1}
+                      className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground/50 disabled:opacity-30"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <button
+                onClick={goNext}
+                className={`mt-6 ${ctaBtn(true)}`}
+                style={ctaShadow}
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* ══════════ Screen 5: Meet Dolly ══════════ */}
+          {step === 5 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <div className="text-4xl mb-4">&#x1F4AC;</div>
+              <h1
+                className="text-[30px] text-foreground mb-3 tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Meet Dolly
+              </h1>
+              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-3">
+                Dolly is your AI astrology guide. She knows your chart, your transits, and the context you gave us.
+              </p>
+              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-3">
+                She does not predict the future. She helps you think clearly about what is happening right now and what options you have.
+              </p>
+              <p className="text-foreground/55 text-xs leading-relaxed max-w-xs mb-8">
+                Ask her anything about your chart, your relationships, your timing. She is specific, grounded, and won&apos;t waste your time.
+              </p>
+              <button
+                onClick={goNext}
+                className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
+                style={ctaShadow}
+              >
+                Got it
+              </button>
+            </div>
+          )}
+
+          {/* ══════════ Screen 6: Pick Your Free Deck ══════════ */}
+          {step === 6 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
+              <h1
+                className="text-[26px] text-foreground mb-2 tracking-tight text-center"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Pick your free deck
+              </h1>
+              <p className="text-foreground/55 text-xs mb-6 text-center">
+                You can buy more anytime, $5.55 each.
               </p>
 
-              <div className="space-y-2.5 text-left w-full max-w-sm">
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">The 12 Houses</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Houses are life areas — career, relationships, home, creativity, spirituality. Where a planet lands in your chart tells you which area of life it activates. Your chart has all 12, and we'll show you exactly where each one falls.
-                  </p>
-                </div>
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">Aspects</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Aspects are angles between planets. Harmonious (trines, sextiles) — things flow. Tense (squares, oppositions) — they create friction but drive growth. Tension builds character.
-                  </p>
-                </div>
-                <div className={ghostCard}>
-                  <p className="text-terracotta text-[11px] font-bold mb-1 uppercase tracking-wide">Putting it together</p>
-                  <p className="text-foreground/70 text-[11px] leading-relaxed">
-                    Planet = what energy. Sign = how it expresses. House = where in life. Aspects = how planets talk to each other. That&apos;s the whole framework.
-                  </p>
-                </div>
+              <div className="flex gap-3 w-full max-w-sm mb-8">
+                {/* Classic Tarot */}
+                <button
+                  onClick={() => setDeckChoice("classic_tarot")}
+                  className={`flex-1 rounded-2xl border-2 p-4 text-center transition-all ${
+                    deckChoice === "classic_tarot"
+                      ? "border-terracotta bg-terracotta/10"
+                      : "border-foreground/15 bg-card/40"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">&#x1F0CF;</div>
+                  <p className="text-foreground font-bold text-sm mb-1">Classic Tarot</p>
+                  <p className="text-foreground/55 text-[11px]">78 cards</p>
+                </button>
+
+                {/* Mapped Oracle */}
+                <button
+                  onClick={() => setDeckChoice("mapped_oracle")}
+                  className={`flex-1 rounded-2xl border-2 p-4 text-center transition-all ${
+                    deckChoice === "mapped_oracle"
+                      ? "border-terracotta bg-terracotta/10"
+                      : "border-foreground/15 bg-card/40"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">&#x2728;</div>
+                  <p className="text-foreground font-bold text-sm mb-1">Mapped Starter Oracle</p>
+                  <p className="text-foreground/55 text-[11px]">22 cards</p>
+                </button>
               </div>
 
               <button
-                onClick={launchTour}
-                className="mt-6 px-10 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide hover:bg-terracotta-light active:scale-95 transition-all"
-                style={{
-                  boxShadow:
-                    "0 12px 24px -8px rgba(180, 81, 40, 0.4), 0 4px 8px -4px rgba(180, 81, 40, 0.25)",
-                }}
+                onClick={saveDeck}
+                disabled={!deckChoice}
+                className={ctaBtn(!!deckChoice)}
+                style={deckChoice ? ctaShadow : undefined}
               >
-                Show me around →
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* ══════════ Screen 7: Notifications (3-part) ══════════ */}
+          {step === 7 && (
+            <div className="flex-1 flex flex-col px-6 pt-14 pb-8 overflow-y-auto">
+              {/* Sub-step 0: Philosophy */}
+              {notifSubStep === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <h1
+                    className="text-[26px] text-foreground mb-3 tracking-tight"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Notifications
+                  </h1>
+                  <p className="text-foreground/55 text-sm mb-2 max-w-xs leading-relaxed">
+                    Want a heads-up when something significant moves?
+                  </p>
+                  <p className="text-foreground/40 text-xs mb-8 max-w-xs leading-relaxed">
+                    We don&apos;t do notification spam. We&apos;ll only send what you actually want. Pick what you want — change anything later.
+                  </p>
+                  <button
+                    onClick={() => setNotifSubStep(1)}
+                    className={ctaBtn(true)}
+                    style={ctaShadow}
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
+
+              {/* Sub-step 1: Category preferences */}
+              {notifSubStep === 1 && (
+                <div className="flex flex-col gap-5">
+                  <h2 className="text-foreground text-base font-bold" style={{ fontFamily: "var(--font-display)" }}>
+                    What do you want to hear about?
+                  </h2>
+
+                  {/* Group: Today's content */}
+                  <div>
+                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Today&apos;s content</p>
+                    <label className="flex items-center gap-3 py-2 cursor-pointer">
+                      <input type="checkbox" checked={notifToggles.daily_content} onChange={(e) => setNotifToggles(p => ({ ...p, daily_content: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
+                      <span className="text-foreground text-sm">One daily note from us</span>
+                    </label>
+                  </div>
+
+                  {/* Group: Moon phases */}
+                  <div>
+                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Moon phases</p>
+                    {[
+                      { key: "full_moon", label: "Full moons" },
+                      { key: "new_moon", label: "New moons" },
+                      { key: "quarter_moon", label: "Quarter moons" },
+                    ].map(item => (
+                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
+                        <span className="text-foreground text-sm">{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Group: Your chart */}
+                  <div>
+                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Your chart</p>
+                    {[
+                      { key: "major_transits", label: "Major transits hitting your chart" },
+                      { key: "retrograde_stations", label: "Retrograde stations on your placements" },
+                      { key: "birthday_week", label: "Birthday week (your year ruler change)" },
+                      { key: "solar_return", label: "Your Solar Return moment" },
+                    ].map(item => (
+                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
+                        <span className="text-foreground text-sm">{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Group: The collective sky */}
+                  <div>
+                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">The collective sky</p>
+                    {[
+                      { key: "eclipses", label: "Eclipses" },
+                      { key: "mercury_retrograde", label: "Mercury retrograde starts" },
+                      { key: "major_ingresses", label: "Major planet ingresses" },
+                    ].map(item => (
+                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
+                        <span className="text-foreground text-sm">{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {/* Group: Quiet check-ins */}
+                  <div>
+                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Quiet check-ins</p>
+                    <label className="flex items-center gap-3 py-1.5 cursor-pointer">
+                      <input type="checkbox" checked={notifToggles.re_engagement} onChange={(e) => setNotifToggles(p => ({ ...p, re_engagement: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
+                      <span className="text-foreground text-sm">If I haven&apos;t opened in a while, gently let me know</span>
+                    </label>
+                  </div>
+
+                  {/* Turn everything off */}
+                  <button
+                    onClick={() => setNotifToggles(Object.fromEntries(Object.keys(notifToggles).map(k => [k, false])))}
+                    className="text-foreground/40 text-xs self-start mt-1"
+                  >
+                    Turn everything off
+                  </button>
+
+                  {/* Continue */}
+                  <button
+                    onClick={() => setNotifSubStep(2)}
+                    className={`mt-4 ${ctaBtn(true)}`}
+                    style={ctaShadow}
+                  >
+                    Save &amp; continue
+                  </button>
+                </div>
+              )}
+
+              {/* Sub-step 2: Preferred time */}
+              {notifSubStep === 2 && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <h1
+                    className="text-[26px] text-foreground mb-3 tracking-tight"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    When should we send these?
+                  </h1>
+
+                  <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
+                    {[
+                      { label: "Morning (8 AM)", hour: 8 },
+                      { label: "Late morning (10 AM)", hour: 10 },
+                      { label: "Lunchtime (12 PM)", hour: 12 },
+                      { label: "Late afternoon (5 PM)", hour: 17 },
+                      { label: "Evening (7 PM)", hour: 19 },
+                      { label: "Night (9 PM)", hour: 21 },
+                    ].map(opt => (
+                      <button
+                        key={opt.hour}
+                        onClick={() => setNotifHour(opt.hour)}
+                        className={`w-full py-2.5 px-4 rounded-xl text-sm text-left border transition-all ${
+                          notifHour === opt.hour
+                            ? "border-terracotta text-terracotta bg-terracotta/10 font-semibold"
+                            : "border-foreground/15 text-foreground/70 bg-card/40"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-foreground/35 text-[11px] mb-6 max-w-xs leading-relaxed">
+                    Some events have natural timing — sunset for new moons, the exact moment of your Solar Return. Those override your preference. Everything else lands here.
+                  </p>
+
+                  <button
+                    onClick={saveNotifPref}
+                    className={ctaBtn(true)}
+                    style={ctaShadow}
+                  >
+                    That&apos;s me
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══════════ Screen 8: Moon Practice ══════════ */}
+          {step === 8 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <div className="text-4xl mb-4">&#x1F319;</div>
+              <h1
+                className="text-[26px] text-foreground mb-3 tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Moon practice
+              </h1>
+              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-8">
+                A moon practice sends you a short check-in at each new and full moon. It takes two minutes and builds self-awareness over time.
+              </p>
+
+              <div className="flex flex-col gap-3 w-full max-w-sm">
+                <button
+                  onClick={() => saveMoonPractice(true)}
+                  className={ctaBtn(true)}
+                  style={ctaShadow}
+                >
+                  Yes, set it up now
+                </button>
+                <button
+                  onClick={() => saveMoonPractice(false)}
+                  className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                >
+                  Maybe later — I&apos;ll explore first
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════ Screen 9: Final Orientation ══════════ */}
+          {step === 9 && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <h1
+                className="text-[30px] text-foreground mb-4 tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                You&apos;re set up.
+              </h1>
+              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-6">
+                Here is where everything lives:
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 w-full max-w-xs mb-8">
+                {[
+                  { label: "You", desc: "Your chart" },
+                  { label: "Home", desc: "Daily guidance" },
+                  { label: "Tarot", desc: "Card pulls" },
+                  { label: "Ritual", desc: "Moon work" },
+                  { label: "Maps", desc: "Connections" },
+                  { label: "Dolly", desc: "AI guide" },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-foreground/12 bg-card/50 py-3 px-2 text-center"
+                  >
+                    <p className="text-foreground text-xs font-bold">{item.label}</p>
+                    <p className="text-foreground/45 text-[10px] mt-0.5">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={finishOnboarding}
+                className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
+                style={ctaShadow}
+              >
+                Open my chart
               </button>
             </div>
           )}
         </div>
-
-        {/* ── Bottom nav arrows (not on birth data) ── */}
-        {step >= 1 && step < TOTAL_STEPS - 1 && (
-          <div className="absolute bottom-6 left-0 right-0 flex justify-between px-6 z-20">
-            <button
-              onClick={prev}
-              className="w-10 h-10 rounded-full border border-foreground/25 bg-card/40 flex items-center justify-center text-foreground/60 hover:text-foreground hover:border-foreground/50 transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <button
-              onClick={next}
-              className="w-10 h-10 rounded-full border border-foreground/25 bg-card/40 flex items-center justify-center text-foreground/60 hover:text-foreground hover:border-foreground/50 transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
-        )}
       </div>
     </main>
   );

@@ -11,6 +11,10 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { usePaywall } from "@/hooks/usePaywall";
+import { useTier } from "@/components/TierProvider";
+import { useBirthTime } from "@/components/BirthTimeProvider";
+import { TierBPlaceholder } from "@/components/BirthTimeCue";
 import { SIGN_FULL } from "@/lib/knowledge";
 import InfoTip from "@/components/InfoTip";
 import CitySearch, { type LocationResult } from "@/components/CitySearch";
@@ -2143,6 +2147,9 @@ function getElement(sign: string): string {
    ═══════════════════════════════════════════ */
 
 export default function MapsTab() {
+  const { gate, PaywallModal } = usePaywall();
+  const { tier } = useTier();
+  const { precision: birthTimePrecision, shouldRender: shouldRenderTimeFeature } = useBirthTime();
   // ─── State ───
   const [userChart, setUserChart] = useState<UserChart | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -2164,6 +2171,9 @@ export default function MapsTab() {
   const [cityLat, setCityLat] = useState<number | null>(null);
   const [cityLng, setCityLng] = useState<number | null>(null);
   // cityChart and cityLoading removed — astrocartography doesn't need city charts
+
+  // Birth time placeholder
+  const [showBirthTimePlaceholder, setShowBirthTimePlaceholder] = useState(false);
 
   // Astrocartography
   const [showAstroMap, setShowAstroMap] = useState(false);
@@ -2475,6 +2485,10 @@ export default function MapsTab() {
       setFormError("Please select a birth city.");
       return;
     }
+    // Gate: free tier can only have 1 synastry partner
+    if (tier === "free" && connections.length >= 1) {
+      if (gate("multiple_synastry")) return;
+    }
 
     setIsSubmitting(true);
     setFormError("");
@@ -2574,7 +2588,7 @@ export default function MapsTab() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formName, formRelationship, formBirthDate, formBirthTime, formUnknownTime, formCity, formLat, formLng, userChart, userId, connections]);
+  }, [formName, formRelationship, formBirthDate, formBirthTime, formUnknownTime, formCity, formLat, formLng, userChart, userId, connections, tier, gate]);
 
   // ─── Remove a connection ───
   const handleRemoveConnection = useCallback(async (connId: string) => {
@@ -6031,6 +6045,23 @@ export default function MapsTab() {
   const mapH = maxY + 70;
 
 
+  // ─── Birth Time Placeholder for Astrocartography ───
+  if (showBirthTimePlaceholder) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+          <button onClick={() => setShowBirthTimePlaceholder(false)} className="text-foreground/50 hover:text-foreground transition-colors">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+          <h2 className="text-base font-semibold text-foreground">Astrocartography</h2>
+        </div>
+        <div className="px-5 py-8">
+          <TierBPlaceholder feature="astrocartography" showRectification={true} showSkip onSkip={() => setShowBirthTimePlaceholder(false)} />
+        </div>
+      </div>
+    );
+  }
+
   // ─── Astrocartography View (main city experience) ───
   if (showAstroMap && userChart) {
     const svgW = 800;
@@ -6849,9 +6880,24 @@ export default function MapsTab() {
                                     </div>
                                     <div>
                                       <label className="text-foreground/30 text-[10px] mb-0.5 block">To</label>
-                                      {editPresent ? (
-                                        <div className="bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-sage border border-foreground/18">Present</div>
-                                      ) : (
+                                      {/* Segmented toggle: Date vs Present */}
+                                      <div className="flex rounded-lg overflow-hidden border border-foreground/18 mb-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditPresent(false)}
+                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${!editPresent ? "bg-ink text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                                        >
+                                          Date
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setEditPresent(true); setEditEnd(""); }}
+                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${editPresent ? "bg-sage text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                                        >
+                                          Still here
+                                        </button>
+                                      </div>
+                                      {!editPresent && (
                                         <input
                                           type="date"
                                           value={editEnd}
@@ -6859,15 +6905,6 @@ export default function MapsTab() {
                                           className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                         />
                                       )}
-                                      <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-                                        <input
-                                          type="checkbox"
-                                          checked={editPresent}
-                                          onChange={(e) => { setEditPresent(e.target.checked); if (e.target.checked) setEditEnd(""); }}
-                                          className="w-3 h-3 rounded accent-sage"
-                                        />
-                                        <span className="text-foreground/30 text-[10px]">Still here</span>
-                                      </label>
                                     </div>
                                   </div>
                                   <div className="flex gap-2">
@@ -6966,9 +7003,24 @@ export default function MapsTab() {
                     </div>
                     <div>
                       <label className="text-foreground/40 text-xs mb-1 block">To</label>
-                      {tlPresent ? (
-                        <div className="bg-foreground/5 rounded-lg px-3 py-2 text-sm text-sage border border-foreground/18">Present</div>
-                      ) : (
+                      {/* Segmented toggle: Date vs Present */}
+                      <div className="flex rounded-lg overflow-hidden border border-foreground/18 mb-1">
+                        <button
+                          type="button"
+                          onClick={() => setTlPresent(false)}
+                          className={`flex-1 py-2 text-xs font-medium transition-colors ${!tlPresent ? "bg-ink text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                        >
+                          Date
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setTlPresent(true); setTlEnd(""); }}
+                          className={`flex-1 py-2 text-xs font-medium transition-colors ${tlPresent ? "bg-sage text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                        >
+                          I still live here
+                        </button>
+                      </div>
+                      {!tlPresent && (
                         <input
                           type="date"
                           value={tlEnd}
@@ -6976,27 +7028,31 @@ export default function MapsTab() {
                           className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                         />
                       )}
-                      <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={tlPresent}
-                          onChange={(e) => { setTlPresent(e.target.checked); if (e.target.checked) setTlEnd(""); }}
-                          className="w-3.5 h-3.5 rounded accent-sage"
-                        />
-                        <span className="text-foreground/40 text-xs">I still live here</span>
-                      </label>
                     </div>
                   </div>
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        if (!tlCity || !tlLat || !tlStart) return;
+                      onClick={async () => {
+                        if (!tlCity || !tlStart) return;
+                        // If lat is missing (user typed but didn't select), geocode now
+                        let lat = tlLat;
+                        let lng = tlLng;
+                        if (!lat) {
+                          try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(tlCity)}&limit=1`, { headers: { "User-Agent": "Mapped-Astrology-App" } });
+                            const data = await res.json();
+                            if (data && data[0]) {
+                              lat = parseFloat(data[0].lat);
+                              lng = parseFloat(data[0].lon);
+                            }
+                          } catch { /* proceed without coords */ }
+                        }
                         const newEntry: TimelineEntry = {
                           id: `tl-${Date.now()}`,
                           cityName: tlCity,
-                          lat: tlLat,
-                          lng: tlLng || 0,
+                          lat: lat || 0,
+                          lng: lng || 0,
                           startDate: tlStart,
                           endDate: tlPresent ? "present" : (tlEnd || "present"),
                         };
@@ -7008,7 +7064,7 @@ export default function MapsTab() {
                         setTlStart(""); setTlEnd(""); setTlPresent(false);
                         setExpandedTimeline(newEntry.id); // Auto-expand the new entry
                       }}
-                      disabled={!tlCity || !tlLat || !tlStart}
+                      disabled={!tlCity || !tlStart}
                       className="flex-1 py-2.5 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-40"
                     >
                       Add to timeline
@@ -7188,6 +7244,13 @@ export default function MapsTab() {
             return (
               <g key={cat} className="cursor-pointer" onClick={() => {
                 if (isCity) {
+                  // Gate: astrocartography needs exact birth time
+                  if (!shouldRenderTimeFeature("astrocartography")) {
+                    setShowBirthTimePlaceholder(true);
+                    return;
+                  }
+                  // Gate: astrocartography is a paid feature
+                  if (gate("astrocartography")) return;
                   // Go straight to astrocartography
                   if (userChart) {
                     if (!userChart.birthDate) {
@@ -7509,6 +7572,7 @@ export default function MapsTab() {
       )}
 
       <div className="h-8" />
+      {PaywallModal}
     </main>
   );
 }

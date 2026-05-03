@@ -17,6 +17,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import AppTour from "@/components/AppTour";
+import { TierProvider } from "@/components/TierProvider";
+import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 
 export default function TabsLayout({
   children,
@@ -43,14 +45,16 @@ export default function TabsLayout({
   }, []);
 
   return (
-    <>
-      <TopBar />
-      {/* flex-1 fills height, min-h-0 allows flex child to shrink & scroll */}
-      <div className="flex-1 min-h-0 pb-28">
-        {children}
-      </div>
-      <BottomNav />
-      {showTour && <AppTour onComplete={handleTourComplete} />}
-    </>
+    <TierProvider>
+      <BirthTimeProvider>
+        <TopBar />
+        {/* flex-1 fills height, min-h-0 allows flex child to shrink & scroll */}
+        <div className="flex-1 min-h-0 pb-28">
+          {children}
+        </div>
+        <BottomNav />
+        {showTour && <AppTour onComplete={handleTourComplete} />}
+      </BirthTimeProvider>
+    </TierProvider>
   );
 }

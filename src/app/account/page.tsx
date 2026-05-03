@@ -295,6 +295,84 @@ const ALMANAC_CONTENT_OPTIONS = [
   { id: "star-visibility", icon: "🌟", label: "Star Visibility", desc: "What to look for tonight" },
 ];
 
+function BirthTimeSettingsSection() {
+  const router = useRouter();
+  const [precision, setPrecision] = useState<string>("unknown");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
+        const { data } = await supabase
+          .from("profiles")
+          .select("birth_time_precision, birth_time, birth_time_window")
+          .eq("id", user.id)
+          .single();
+        if (data) {
+          setPrecision(data.birth_time_precision || "unknown");
+        }
+      } catch { /* ignore */ }
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return null;
+
+  const precisionLabels: Record<string, string> = {
+    exact: "Exact time recorded",
+    approximate: "Approximate time",
+    rectified: "Rectified (estimated)",
+    unknown: "No birth time entered",
+  };
+
+  const badgeColors: Record<string, string> = {
+    exact: "text-sage",
+    approximate: "text-amber",
+    rectified: "text-amber",
+    unknown: "text-foreground/40",
+  };
+
+  return (
+    <div id="birth-time" className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Birth Time</p>
+      <div className="flex items-center justify-between mb-3">
+        <span className={`text-sm font-medium ${badgeColors[precision]}`}>
+          {precisionLabels[precision] || "Unknown"}
+        </span>
+        {precision === "rectified" && (
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber/10 border border-amber/20 text-amber italic">rectified</span>
+        )}
+      </div>
+
+      {precision !== "exact" && (
+        <div className="flex flex-col gap-2 mt-2">
+          <button
+            onClick={() => router.push("/account#edit-birth-time")}
+            className="w-full py-2.5 rounded-xl bg-terracotta/10 border border-terracotta/20 text-terracotta text-xs font-medium hover:bg-terracotta/15 transition-colors"
+          >
+            Update with exact time
+          </button>
+          {precision === "unknown" && (
+            <button
+              onClick={() => router.push("/rectification")}
+              className="w-full py-2.5 rounded-xl border border-foreground/15 text-foreground/50 text-xs font-medium hover:border-foreground/25 transition-colors"
+            >
+              Try rectification
+            </button>
+          )}
+          <p className="text-[10px] text-foreground/35 leading-relaxed mt-1">
+            {precision === "unknown"
+              ? "Your chart is reduced without a birth time. Most features work, but some (like astrocartography) need the exact minute."
+              : "Your Rising sign and houses are best-guess based on the window you provided."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AlmanacPrefsSection() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({});
 
@@ -354,6 +432,159 @@ function AlmanacPrefsSection() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ─── Notification Settings section ─── */
+
+function NotificationSettingsSection() {
+  const [prefs, setPrefs] = useState<Record<string, boolean | number | string | null>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pauseHours, setPauseHours] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase.from("profiles").select("notification_preferences").eq("id", session.user.id).single();
+      if (data?.notification_preferences) {
+        setPrefs(data.notification_preferences);
+      } else {
+        // Use defaults
+        setPrefs({
+          daily_content: false, full_moon: true, new_moon: true, quarter_moon: false,
+          major_transits: true, retrograde_stations: true, birthday_week: true, solar_return: true,
+          eclipses: true, mercury_retrograde: true, major_ingresses: true,
+          practice_reminders: true, re_engagement: true,
+          preferred_hour: 19, paused_until: null, email_marketing: false,
+        });
+      }
+      setLoaded(true);
+    }
+    load();
+  }, []);
+
+  async function save(updated: Record<string, boolean | number | string | null>) {
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.from("profiles").update({ notification_preferences: updated }).eq("id", session.user.id);
+    }
+    setSaving(false);
+  }
+
+  function toggle(key: string) {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    setPrefs(updated);
+    save(updated);
+  }
+
+  function setHour(hour: number) {
+    const updated = { ...prefs, preferred_hour: hour };
+    setPrefs(updated);
+    save(updated);
+  }
+
+  function pauseAll(hours: number) {
+    const until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    const updated = { ...prefs, paused_until: until };
+    setPrefs(updated);
+    save(updated);
+    setPauseHours(null);
+  }
+
+  function unpause() {
+    const updated = { ...prefs, paused_until: null };
+    setPrefs(updated);
+    save(updated);
+  }
+
+  if (!loaded) return null;
+
+  const isPaused = prefs.paused_until && new Date(prefs.paused_until as string) > new Date();
+
+  const groups = [
+    { title: "Today's content", items: [{ key: "daily_content", label: "One daily note" }] },
+    { title: "Moon phases", items: [{ key: "full_moon", label: "Full moons" }, { key: "new_moon", label: "New moons" }, { key: "quarter_moon", label: "Quarter moons" }] },
+    { title: "Your chart", items: [{ key: "major_transits", label: "Major transits" }, { key: "retrograde_stations", label: "Retrograde stations" }, { key: "birthday_week", label: "Birthday week" }, { key: "solar_return", label: "Solar Return" }] },
+    { title: "Collective sky", items: [{ key: "eclipses", label: "Eclipses" }, { key: "mercury_retrograde", label: "Mercury retrograde" }, { key: "major_ingresses", label: "Major ingresses" }] },
+    { title: "Practice", items: [{ key: "practice_reminders", label: "Phase reminders" }] },
+    { title: "Check-ins", items: [{ key: "re_engagement", label: "If I haven't opened in a while" }] },
+  ];
+
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Notifications</p>
+
+      {/* Pause toggle */}
+      {isPaused ? (
+        <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-amber/10 border border-amber/30">
+          <span className="text-foreground/70 text-xs">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
+          <button onClick={unpause} className="text-terracotta text-xs font-semibold">Resume</button>
+        </div>
+      ) : (
+        <div className="mb-4">
+          {pauseHours === null ? (
+            <button onClick={() => setPauseHours(0)} className="text-foreground/40 text-xs">Pause all notifications...</button>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              {[{ label: "1 day", h: 24 }, { label: "3 days", h: 72 }, { label: "1 week", h: 168 }].map(opt => (
+                <button key={opt.h} onClick={() => pauseAll(opt.h)} className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/60 text-xs hover:border-terracotta hover:text-terracotta transition-colors">
+                  {opt.label}
+                </button>
+              ))}
+              <button onClick={() => setPauseHours(null)} className="text-foreground/30 text-xs px-2">Cancel</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Category toggles */}
+      <div className="space-y-4">
+        {groups.map(group => (
+          <div key={group.title}>
+            <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-1.5">{group.title}</p>
+            {group.items.map(item => (
+              <label key={item.key} className="flex items-center justify-between py-1.5 cursor-pointer">
+                <span className="text-foreground/70 text-xs">{item.label}</span>
+                <input type="checkbox" checked={!!prefs[item.key]} onChange={() => toggle(item.key)} className="w-4 h-4 rounded accent-terracotta" />
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Preferred time */}
+      <div className="mt-4 pt-4 border-t border-foreground/10">
+        <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-2">Preferred time</p>
+        <div className="flex flex-wrap gap-1.5">
+          {[{ label: "8AM", h: 8 }, { label: "10AM", h: 10 }, { label: "12PM", h: 12 }, { label: "5PM", h: 17 }, { label: "7PM", h: 19 }, { label: "9PM", h: 21 }].map(opt => (
+            <button
+              key={opt.h}
+              onClick={() => setHour(opt.h)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                prefs.preferred_hour === opt.h
+                  ? "border-terracotta text-terracotta bg-terracotta/10"
+                  : "border-foreground/15 text-foreground/50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Email pref */}
+      <div className="mt-4 pt-4 border-t border-foreground/10">
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-foreground/70 text-xs">Marketing emails (max 1/month)</span>
+          <input type="checkbox" checked={!!prefs.email_marketing} onChange={() => toggle("email_marketing")} className="w-4 h-4 rounded accent-terracotta" />
+        </label>
+      </div>
+
+      {saving && <p className="text-foreground/30 text-[10px] mt-2">Saving...</p>}
     </div>
   );
 }
@@ -986,11 +1217,17 @@ function AccountPage() {
             </p>
           </div>
 
+          {/* ─── Birth Time ─── */}
+          <BirthTimeSettingsSection />
+
           {/* ─── Ritual Tools ─── */}
           <RitualToolsSection />
 
           {/* ─── Almanac Preferences ─── */}
           <AlmanacPrefsSection />
+
+          {/* ─── Notifications ─── */}
+          <NotificationSettingsSection />
 
           {/* ─── Appearance / Theme ─── */}
           <ThemeSection />

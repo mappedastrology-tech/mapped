@@ -9,6 +9,9 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { usePaywall } from "@/hooks/usePaywall";
+import { useTier } from "@/components/TierProvider";
+import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
 
 /* ═══════════════════════════════════════════
    Types
@@ -81,6 +84,8 @@ function generateConvoId(): string {
 }
 
 export default function DollyTab() {
+  const { gate, PaywallModal } = usePaywall();
+  const { tier } = useTier();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -295,7 +300,13 @@ export default function DollyTab() {
     const msg = (text || input).trim();
     if (!msg || isStreaming) return;
 
+    // Tier gate: free tier limited to 5 messages/day
+    if (tier === "free" && getDollyUsageToday() >= 5) {
+      if (gate("unlimited_dolly")) return;
+    }
+
     setInput("");
+    incrementDollyUsage();
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
@@ -862,6 +873,7 @@ export default function DollyTab() {
           Dolly uses astrology as a lens, not a prediction. You always have agency.
         </p>
       </div>
+      {PaywallModal}
     </main>
   );
 }
