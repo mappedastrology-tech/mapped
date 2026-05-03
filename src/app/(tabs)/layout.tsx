@@ -37,6 +37,8 @@ export default function TabsLayout({
     if (!syncRan.current) {
       syncRan.current = true;
       import("@/lib/completionSync").then((m) => m.syncAllData()).catch(() => {});
+      // Initialize push notifications if already permitted
+      import("@/lib/notifications").then((m) => m.initPushNotifications()).catch(() => {});
     }
   }, []);
 

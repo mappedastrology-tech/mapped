@@ -459,3 +459,192 @@ export const PAUSE_OPTIONS = [
 export function getPauseUntil(hours: number): string {
   return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 }
+
+/* ═══════════════════════════════════════════════════════
+   ═══  WEB PUSH — Service Worker + Subscription  ═══
+   ═══════════════════════════════════════════════════════ */
+
+import { supabase } from "@/lib/supabase";
+
+export type PushPermissionState = "default" | "granted" | "denied" | "unsupported";
+
+/**
+ * Check if push notifications are supported in this browser.
+ */
+export function isPushSupported(): boolean {
+  if (typeof window === "undefined") return false;
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+/**
+ * Get the current notification permission state.
+ */
+export function getPermissionState(): PushPermissionState {
+  if (!isPushSupported()) return "unsupported";
+  return Notification.permission as PushPermissionState;
+}
+
+/**
+ * Request notification permission from the user.
+ */
+export async function requestPermission(): Promise<PushPermissionState> {
+  if (!isPushSupported()) return "unsupported";
+  const result = await Notification.requestPermission();
+  return result as PushPermissionState;
+}
+
+/* ─── Service Worker Registration ─── */
+
+let swRegistration: ServiceWorkerRegistration | null = null;
+
+export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!isPushSupported()) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    swRegistration = registration;
+    await navigator.serviceWorker.ready;
+    return registration;
+  } catch (err) {
+    console.error("[notifications] SW registration failed:", err);
+    return null;
+  }
+}
+
+export async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (swRegistration) return swRegistration;
+  if (!isPushSupported()) return null;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    swRegistration = registration || null;
+    return swRegistration;
+  } catch { return null; }
+}
+
+/* ─── Push Subscription ─── */
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * Subscribe this browser to push notifications.
+ * Saves the subscription to Supabase for server-side sending.
+ */
+export async function subscribeToPush(): Promise<boolean> {
+  let reg = await getRegistration();
+  if (!reg) {
+    reg = await registerServiceWorker();
+    if (!reg) return false;
+  }
+
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidKey) {
+    console.warn("[notifications] No VAPID public key. Using test mode — notifications will only work locally.");
+    return true; // Still allow local notifications
+  }
+
+  try {
+    let subscription = await reg.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+      });
+    }
+
+    // Save to Supabase
+    const json = subscription.toJSON();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user && json.endpoint) {
+      await supabase.from("push_subscriptions").upsert({
+        user_id: session.user.id,
+        endpoint: json.endpoint,
+        keys_p256dh: json.keys?.p256dh || "",
+        keys_auth: json.keys?.auth || "",
+        created_at: new Date().toISOString(),
+      }, { onConflict: "endpoint" });
+    }
+
+    return true;
+  } catch (err) {
+    console.error("[notifications] Push subscription failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Unsubscribe from push and remove from Supabase.
+ */
+export async function unsubscribeFromPush(): Promise<void> {
+  const reg = await getRegistration();
+  if (!reg) return;
+
+  try {
+    const subscription = await reg.pushManager.getSubscription();
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+      await subscription.unsubscribe();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+      }
+    }
+  } catch (err) {
+    console.error("[notifications] Unsubscribe failed:", err);
+  }
+}
+
+/* ─── Local Notifications (when app is open) ─── */
+
+/**
+ * Show a notification immediately via the service worker.
+ */
+export function showLocalNotification(title: string, body: string, url?: string): void {
+  if (getPermissionState() !== "granted") return;
+
+  const reg = swRegistration;
+  if (reg) {
+    reg.showNotification(title, {
+      body,
+      icon: "/logo-terracotta-cropped.png",
+      badge: "/logo-terracotta-cropped.png",
+      tag: "mapped-local-" + Date.now(),
+      data: { url: url || "/home" },
+    });
+  }
+}
+
+/* ─── Initialization ─── */
+
+/**
+ * Call on app load. If permission already granted, register SW and subscribe.
+ */
+export async function initPushNotifications(): Promise<void> {
+  if (!isPushSupported()) return;
+  if (Notification.permission === "granted") {
+    await registerServiceWorker();
+    await subscribeToPush();
+  }
+}
+
+/* ─── Test Notification ─── */
+
+/**
+ * Send a test notification to verify the system works.
+ */
+export function sendTestNotification(): void {
+  showLocalNotification(
+    "Mapped",
+    "Notifications are working. You’ll hear from us when the sky has something to say."
+  );
+}

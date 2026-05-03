@@ -12,6 +12,9 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/ThemeProvider";
+import { useTier } from "@/components/TierProvider";
+import { PlansPage } from "@/components/Paywall";
+import { TIERS, FEATURES, type TierLevel } from "@/lib/tier";
 
 export default function AccountPageWrapper() {
   return (
@@ -443,8 +446,18 @@ function NotificationSettingsSection() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pauseHours, setPauseHours] = useState<number | null>(null);
+  const [permissionState, setPermissionState] = useState<string>("default");
+  const [requesting, setRequesting] = useState(false);
+  const [testSent, setTestSent] = useState(false);
 
   useEffect(() => {
+    // Check push support and permission
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermissionState(Notification.permission);
+    } else {
+      setPermissionState("unsupported");
+    }
+
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
@@ -452,19 +465,49 @@ function NotificationSettingsSection() {
       if (data?.notification_preferences) {
         setPrefs(data.notification_preferences);
       } else {
-        // Use defaults
         setPrefs({
           daily_content: false, full_moon: true, new_moon: true, quarter_moon: false,
           major_transits: true, retrograde_stations: true, birthday_week: true, solar_return: true,
           eclipses: true, mercury_retrograde: true, major_ingresses: true,
           practice_reminders: true, re_engagement: true,
-          preferred_hour: 19, paused_until: null, email_marketing: false,
+          preferred_hour: 9, paused_until: null, email_marketing: false,
         });
       }
       setLoaded(true);
     }
     load();
+
+    // Initialize service worker if already granted
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      import("@/lib/notifications").then(({ initPushNotifications }) => {
+        initPushNotifications();
+      });
+    }
   }, []);
+
+  async function handleEnableNotifications() {
+    setRequesting(true);
+    try {
+      const { requestPermission, registerServiceWorker, subscribeToPush } = await import("@/lib/notifications");
+      const result = await requestPermission();
+      setPermissionState(result);
+
+      if (result === "granted") {
+        await registerServiceWorker();
+        await subscribeToPush();
+      }
+    } catch (err) {
+      console.error("Permission request failed:", err);
+    }
+    setRequesting(false);
+  }
+
+  async function handleSendTest() {
+    const { sendTestNotification } = await import("@/lib/notifications");
+    sendTestNotification();
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 3000);
+  }
 
   async function save(updated: Record<string, boolean | number | string | null>) {
     setSaving(true);
@@ -503,10 +546,10 @@ function NotificationSettingsSection() {
 
   if (!loaded) return null;
 
-  const isPaused = prefs.paused_until && new Date(prefs.paused_until as string) > new Date();
+  const notifsPaused = prefs.paused_until && new Date(prefs.paused_until as string) > new Date();
 
   const groups = [
-    { title: "Today's content", items: [{ key: "daily_content", label: "One daily note" }] },
+    { title: "Today's content", items: [{ key: "daily_content", label: "One daily note from us" }] },
     { title: "Moon phases", items: [{ key: "full_moon", label: "Full moons" }, { key: "new_moon", label: "New moons" }, { key: "quarter_moon", label: "Quarter moons" }] },
     { title: "Your chart", items: [{ key: "major_transits", label: "Major transits" }, { key: "retrograde_stations", label: "Retrograde stations" }, { key: "birthday_week", label: "Birthday week" }, { key: "solar_return", label: "Solar Return" }] },
     { title: "Collective sky", items: [{ key: "eclipses", label: "Eclipses" }, { key: "mercury_retrograde", label: "Mercury retrograde" }, { key: "major_ingresses", label: "Major ingresses" }] },
@@ -518,65 +561,112 @@ function NotificationSettingsSection() {
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Notifications</p>
 
-      {/* Pause toggle */}
-      {isPaused ? (
-        <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-amber/10 border border-amber/30">
-          <span className="text-foreground/70 text-xs">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
-          <button onClick={unpause} className="text-terracotta text-xs font-semibold">Resume</button>
+      {/* Permission status */}
+      {permissionState === "unsupported" ? (
+        <div className="py-3 px-4 rounded-xl bg-foreground/5 border border-foreground/10 mb-4">
+          <p className="text-foreground/60 text-xs leading-relaxed">
+            Push notifications aren&apos;t supported in this browser. Try opening Mapped from your home screen (Add to Home Screen) for the full experience.
+          </p>
+        </div>
+      ) : permissionState === "denied" ? (
+        <div className="py-3 px-4 rounded-xl bg-red-500/5 border border-red-400/20 mb-4">
+          <p className="text-foreground/60 text-xs leading-relaxed">
+            Notifications are blocked. To enable them, open your browser settings and allow notifications for this site.
+          </p>
+        </div>
+      ) : permissionState === "default" ? (
+        <div className="mb-4">
+          <p className="text-foreground/60 text-xs leading-relaxed mb-3">
+            Get notified about full moons, transits to your chart, and other moments that matter. Max 4 per week — we text like a friend who actually has something to say.
+          </p>
+          <button
+            onClick={handleEnableNotifications}
+            disabled={requesting}
+            className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {requesting ? "Requesting..." : "Enable notifications"}
+          </button>
         </div>
       ) : (
-        <div className="mb-4">
-          {pauseHours === null ? (
-            <button onClick={() => setPauseHours(0)} className="text-foreground/40 text-xs">Pause all notifications...</button>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              {[{ label: "1 day", h: 24 }, { label: "3 days", h: 72 }, { label: "1 week", h: 168 }].map(opt => (
-                <button key={opt.h} onClick={() => pauseAll(opt.h)} className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/60 text-xs hover:border-terracotta hover:text-terracotta transition-colors">
-                  {opt.label}
-                </button>
-              ))}
-              <button onClick={() => setPauseHours(null)} className="text-foreground/30 text-xs px-2">Cancel</button>
-            </div>
-          )}
+        /* granted — show status + test button */
+        <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-sage/10 border border-sage/20">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-sage animate-pulse" />
+            <span className="text-foreground/70 text-xs font-medium">Notifications active</span>
+          </div>
+          <button
+            onClick={handleSendTest}
+            className="text-terracotta text-xs font-semibold"
+          >
+            {testSent ? "Sent!" : "Test"}
+          </button>
         </div>
       )}
 
-      {/* Category toggles */}
-      <div className="space-y-4">
-        {groups.map(group => (
-          <div key={group.title}>
-            <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-1.5">{group.title}</p>
-            {group.items.map(item => (
-              <label key={item.key} className="flex items-center justify-between py-1.5 cursor-pointer">
-                <span className="text-foreground/70 text-xs">{item.label}</span>
-                <input type="checkbox" checked={!!prefs[item.key]} onChange={() => toggle(item.key)} className="w-4 h-4 rounded accent-terracotta" />
-              </label>
+      {/* Only show preferences if permission is granted */}
+      {permissionState === "granted" && (
+        <>
+          {/* Pause toggle */}
+          {notifsPaused ? (
+            <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-amber/10 border border-amber/30">
+              <span className="text-foreground/70 text-xs">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
+              <button onClick={unpause} className="text-terracotta text-xs font-semibold">Resume</button>
+            </div>
+          ) : (
+            <div className="mb-4">
+              {pauseHours === null ? (
+                <button onClick={() => setPauseHours(0)} className="text-foreground/40 text-xs">Pause all notifications...</button>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {[{ label: "1 day", h: 24 }, { label: "3 days", h: 72 }, { label: "1 week", h: 168 }].map(opt => (
+                    <button key={opt.h} onClick={() => pauseAll(opt.h)} className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/60 text-xs hover:border-terracotta hover:text-terracotta transition-colors">
+                      {opt.label}
+                    </button>
+                  ))}
+                  <button onClick={() => setPauseHours(null)} className="text-foreground/30 text-xs px-2">Cancel</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Category toggles */}
+          <div className="space-y-4">
+            {groups.map(group => (
+              <div key={group.title}>
+                <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-1.5">{group.title}</p>
+                {group.items.map(item => (
+                  <label key={item.key} className="flex items-center justify-between py-1.5 cursor-pointer">
+                    <span className="text-foreground/70 text-xs">{item.label}</span>
+                    <input type="checkbox" checked={!!prefs[item.key]} onChange={() => toggle(item.key)} className="w-4 h-4 rounded accent-terracotta" />
+                  </label>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
-      </div>
 
-      {/* Preferred time */}
-      <div className="mt-4 pt-4 border-t border-foreground/10">
-        <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-2">Preferred time</p>
-        <div className="flex flex-wrap gap-1.5">
-          {[{ label: "8AM", h: 8 }, { label: "10AM", h: 10 }, { label: "12PM", h: 12 }, { label: "5PM", h: 17 }, { label: "7PM", h: 19 }, { label: "9PM", h: 21 }].map(opt => (
-            <button
-              key={opt.h}
-              onClick={() => setHour(opt.h)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                prefs.preferred_hour === opt.h
-                  ? "border-terracotta text-terracotta bg-terracotta/10"
-                  : "border-foreground/15 text-foreground/50"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+          {/* Preferred time */}
+          <div className="mt-4 pt-4 border-t border-foreground/10">
+            <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-2">Preferred time</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[{ label: "8AM", h: 8 }, { label: "10AM", h: 10 }, { label: "12PM", h: 12 }, { label: "5PM", h: 17 }, { label: "7PM", h: 19 }, { label: "9PM", h: 21 }].map(opt => (
+                <button
+                  key={opt.h}
+                  onClick={() => setHour(opt.h)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    prefs.preferred_hour === opt.h
+                      ? "border-terracotta text-terracotta bg-terracotta/10"
+                      : "border-foreground/15 text-foreground/50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Email pref */}
+      {/* Email pref — always visible regardless of push state */}
       <div className="mt-4 pt-4 border-t border-foreground/10">
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-foreground/70 text-xs">Marketing emails (max 1/month)</span>
@@ -586,6 +676,92 @@ function NotificationSettingsSection() {
 
       {saving && <p className="text-foreground/30 text-[10px] mt-2">Saving...</p>}
     </div>
+  );
+}
+
+/* ─── Subscription / Plan section ─── */
+
+function SubscriptionSection() {
+  const { tier } = useTier();
+  const [showPlans, setShowPlans] = useState(false);
+
+  const tierInfo = TIERS[tier];
+  const tierFeatures = FEATURES.filter(f => {
+    const order: Record<TierLevel, number> = { free: 0, mid: 1, top: 2 };
+    return order[f.minTier] <= order[tier];
+  });
+
+  // Show a few highlighted features for the current tier
+  const highlights = tier === "free"
+    ? ["Full natal chart", "Daily transit & moon phase", "One ritual per day", "Dolly (5 msgs/day)"]
+    : tier === "mid"
+    ? ["Ritual Wizard", "Full transits", "Unlimited Dolly", "Astrocartography"]
+    : ["Unlimited Wizard", "ZR timeline", "Fixed stars", "Composite charts"];
+
+  return (
+    <>
+      <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+        <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Plan</p>
+
+        {/* Current tier badge */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${
+              tier === "free" ? "bg-foreground/30" : tier === "mid" ? "bg-sage" : "bg-terracotta"
+            }`} />
+            <span className="text-foreground text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              {tierInfo.name}
+            </span>
+          </div>
+          <span className="text-foreground/50 text-sm">
+            {tierInfo.price === 0 ? "Free" : `$${tierInfo.price}/mo`}
+          </span>
+        </div>
+
+        {/* Feature highlights */}
+        <div className="space-y-1.5 mb-4">
+          {highlights.map((h, i) => (
+            <div key={i} className="flex items-center gap-2 text-foreground/60 text-xs">
+              <span className="text-sage">✓</span>
+              <span>{h}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Upgrade / See plans CTA */}
+        {tier !== "top" ? (
+          <button
+            onClick={() => setShowPlans(true)}
+            className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all"
+          >
+            {tier === "free" ? "See plans" : "Upgrade to Top"}
+          </button>
+        ) : (
+          <p className="text-center text-sage/70 text-xs font-medium py-2">
+            You have access to everything ✦
+          </p>
+        )}
+
+        {/* Manage billing note */}
+        {tier !== "free" && (
+          <p className="text-center text-foreground/30 text-[10px] mt-2">
+            Cancel or change plan anytime in your app store subscriptions.
+          </p>
+        )}
+      </div>
+
+      {/* Plans comparison modal */}
+      {showPlans && (
+        <PlansPage
+          currentTier={tier}
+          onClose={() => setShowPlans(false)}
+          onSelectTier={() => {
+            // TODO: Wire to IAP / Stripe when ready
+            setShowPlans(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -1059,6 +1235,9 @@ function AccountPage() {
               <p className="text-amber text-sm font-medium">Set your new password below</p>
             </div>
           )}
+
+          {/* ─── Subscription Plan ─── */}
+          <SubscriptionSection />
 
           {/* ─── Editable name ─── */}
           <EditableField

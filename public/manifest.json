@@ -7,6 +7,10 @@
   "background_color": "#f5efe6",
   "theme_color": "#B76B48",
   "orientation": "portrait",
+  "serviceworker": {
+    "src": "/sw.js",
+    "scope": "/"
+  },
   "icons": [
     {
       "src": "/logo-terracotta-cropped.png",
