@@ -92,8 +92,6 @@ import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
 import { getTodaysMoonEvent } from "@/lib/celestialCalendar";
 import { getCurrentMoonSign, getCurrentPlanetSign } from "@/lib/astro/currentSky";
-import { selectRightNow, refreshRightNow, markRightNowShown, buildSkyEvents, type RightNowResult, type ChartState } from "@/lib/rightNowEngine";
-import { getLordOfTheYear } from "@/lib/rulers";
 
 interface DailyHoroscope {
   headline: string;
@@ -154,8 +152,6 @@ export default function HomeTab() {
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [tarotFlipping, setTarotFlipping] = useState(false);
   const [oracleFlipping, setOracleFlipping] = useState(false);
-  const [rightNow, setRightNow] = useState<RightNowResult | null>(null);
-  const [rightNowExpanded, setRightNowExpanded] = useState(false);
 
   // Card pull state — remember reveals for today (use local date, not UTC)
   const [tarotRevealed, setTarotRevealed] = useState(() => {
@@ -432,39 +428,6 @@ export default function HomeTab() {
         setHoroscopeStatus("done");
         try { localStorage.setItem(todayKey, JSON.stringify(data)); } catch { /* quota */ }
 
-        // ─── Compute Right Now card ───
-        try {
-          const loy = getLordOfTheYear(
-            chartData.birth_date || "",
-            chartData.planets || [],
-            chartData.houses || [],
-          );
-          const chartState: ChartState = {
-            planets: chartData.planets || [],
-            houses: chartData.houses || [],
-            lordOfYear: loy?.lordPlanet?.toLowerCase() || null,
-            transits: (transits?.aspects || transits || []).map((t: Record<string, unknown>) => ({
-              transitPlanet: String(t.transitPlanet || ""),
-              transitSign: String(t.transitSign || ""),
-              transitRetrograde: !!t.transitRetrograde,
-              natalPlanet: String(t.natalPlanet || ""),
-              natalSign: String(t.natalSign || ""),
-              natalHouse: t.natalHouse as number | null,
-              transitHouse: (t.transitHouse as number) || 0,
-              aspect: String(t.aspect || ""),
-              orb: (t.orb as number) || 0,
-            })),
-            skyEvents: buildSkyEvents({
-              moonPhase: moon,
-              moonSign: getCurrentMoonSign(today).full,
-            }),
-          };
-          const result = selectRightNow(chartState, todayLocal);
-          if (result) {
-            markRightNowShown(result.phrase.id, result.matchedTrigger.condition, todayLocal);
-            setRightNow(result);
-          }
-        } catch { /* Right Now is a bonus feature — don't crash the page */ }
       } catch (err) {
         setHoroscopeError("Exception: " + String(err));
         setHoroscopeStatus("error");
@@ -474,6 +437,7 @@ export default function HomeTab() {
     doFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasChart, horoscopeStatus]);
+
 
   // Moon sign label (sidereal, from almanac data or celestial calendar)
   const moonSignLabel = useMemo(() => {
@@ -912,55 +876,6 @@ export default function HomeTab() {
           )}
         </div>
 
-        {/* ─── Right Now card ─── */}
-        {rightNow ? (
-          <button
-            type="button"
-            onClick={() => setRightNowExpanded(!rightNowExpanded)}
-            className="w-full text-left mb-6 rounded-2xl overflow-hidden active:scale-[0.99] transition-all"
-            style={{
-              backgroundColor: "var(--background-card)",
-              border: "1px solid var(--border-card)",
-              boxShadow: "var(--card-shadow)",
-            }}
-          >
-            <div className="px-5 py-5">
-              {/* Module label + chart driver */}
-              <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-3" style={{ color: "var(--sage)", letterSpacing: "0.2em" }}>
-                Right Now · {rightNow.matchedTrigger.contextHeader}
-              </p>
-
-              {/* The phrase — the headline */}
-              <p
-                className="text-[17px] leading-[1.4] italic mb-3"
-                style={{ color: "var(--foreground)", fontFamily: "var(--font-body)" }}
-              >
-                {rightNow.phrase.phrase}
-              </p>
-
-              {/* Why-copy — always visible (truncated unless expanded) */}
-              <p
-                className={`text-[13px] leading-[1.7] transition-all ${rightNowExpanded ? "" : "line-clamp-3"}`}
-                style={{ color: "var(--foreground)", opacity: 0.6 }}
-              >
-                {rightNow.matchedTrigger.whyCopy}
-              </p>
-
-              {/* CTA — only when expanded */}
-              {rightNowExpanded && rightNow.phrase.cta && (
-                <p className="text-[12px] font-semibold mt-3" style={{ color: "var(--terracotta)" }}>
-                  {rightNow.phrase.cta.label}
-                </p>
-              )}
-            </div>
-          </button>
-        ) : horoscopeStatus === "done" && (
-          <div className="mb-6 px-5 py-3">
-            <p className="text-[11px] italic text-center" style={{ color: "var(--foreground)", opacity: 0.3 }}>
-              The sky is quiet for you today. Right Now will return when something shifts.
-            </p>
-          </div>
-        )}
 
         {/* ─── Daily phrase ─── */}
         <div className="mb-6 rounded-2xl px-5 py-5" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>

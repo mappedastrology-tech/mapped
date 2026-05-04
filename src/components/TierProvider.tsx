@@ -16,6 +16,7 @@ import {
   getLimits,
   USAGE_LIMITS,
 } from "@/lib/tier";
+import { getActivePromoTier, type PromoRedemption } from "@/lib/promoCodes";
 
 type Limits = { dollyMessagesPerDay: number; pullsPerDay: number; synastryPartners: number; familyMembers: number; wizardPerMonth: number; transitsShown: number };
 
@@ -39,30 +40,12 @@ const TierContext = createContext<TierContextValue>({
 });
 
 export function TierProvider({ children }: { children: ReactNode }) {
-  const [tier, setTier] = useState<TierLevel>("free");
-  const [loading, setLoading] = useState(true);
+  // Tiers disabled — everyone gets full access until payments are wired up
+  const [tier] = useState<TierLevel>("top");
+  const [loading] = useState(false);
 
   const fetchTier = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setTier("free");
-        setLoading(false);
-        return;
-      }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("tier")
-        .eq("id", session.user.id)
-        .single();
-
-      const userTier = profile?.tier as TierLevel | undefined;
-      setTier(userTier && ["free", "mid", "top"].includes(userTier) ? userTier : "free");
-    } catch {
-      setTier("free");
-    } finally {
-      setLoading(false);
-    }
+    // no-op while tiers are disabled
   }, []);
 
   useEffect(() => {

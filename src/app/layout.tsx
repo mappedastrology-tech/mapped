@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         {/* Typography system:
              Bodoni Moda — primary display/header (Palmore-like retro condensed)

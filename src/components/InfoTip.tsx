@@ -16,7 +16,7 @@ interface InfoTipProps {
 
 export default function InfoTip({ term, explanation }: InfoTipProps) {
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -62,14 +62,17 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
 
   return (
     <>
-      <button
+      <span
         ref={btnRef}
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
           setOpen(!open);
         }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); setOpen(!open); } }}
         className={`inline-flex items-center justify-center w-4 h-4 rounded-full
-                    text-[9px] font-bold ml-1 transition-all flex-shrink-0
+                    text-[9px] font-bold ml-1 transition-all flex-shrink-0 cursor-pointer select-none
                     ${open
                       ? "bg-terracotta/30 text-terracotta"
                       : "bg-foreground/8 text-foreground/30 hover:bg-foreground/12 hover:text-foreground/50"
@@ -77,7 +80,7 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
         aria-label={`Learn about ${term}`}
       >
         i
-      </button>
+      </span>
 
       {open &&
         pos &&

@@ -46,9 +46,7 @@ import {
   PLANETARY_DAYS,
 } from "@/lib/celestialCalendar";
 
-type View = "welcome" | "home" | "compose" | "entry" | "patterns";
-
-const WELCOME_KEY = "mapped:journal_welcomed";
+type View = "home" | "compose" | "entry" | "patterns";
 
 export default function JournalPageWrapper() {
   return (
@@ -68,6 +66,9 @@ function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"calendar" | "pulls">("calendar");
 
   // Compose state
   const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt | null>(null);
@@ -91,6 +92,9 @@ function JournalPage() {
   // Filter
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
 
+  // Pulls tab
+  const [pullHistory, setPullHistory] = useState<Array<{ date: string; cards: Array<{ name: string; reversed?: boolean }>; spread?: string; question?: string }>>([]);
+
   // ─── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -112,9 +116,16 @@ function JournalPage() {
         setEntries(local);
       }
 
-      // Check first-time
-      if (!localStorage.getItem(WELCOME_KEY)) {
-        setView("welcome");
+      // First-time users go straight to compose with today's prompt
+      const hasEntries = local.length > 0 || (user && (await getJournalEntries(user.id, 1, 0)).length > 0);
+      if (!hasEntries) {
+        const prompt = selectPrompt({
+          moonPhase: getMoonPhase(new Date())?.phase || "waxing-crescent",
+          dayOfWeek: new Date().getDay(),
+          activeTransits: [],
+        });
+        setCurrentPrompt(prompt);
+        setView("compose");
       }
 
       // Generate patterns
@@ -126,6 +137,14 @@ function JournalPage() {
       setLoading(false);
     })();
   }, [tier]);
+
+  // Load tarot pull history
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mapped:tarot-history");
+      if (saved) setPullHistory(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
 
   // ─── Prompt Context ────────────────────────────────────────────────────────
   const promptContext: PromptContext = useMemo(() => {
@@ -251,37 +270,14 @@ function JournalPage() {
   // ─── Filtered entries ──────────────────────────────────────────────────────
   const filteredEntries = useMemo(() => filterEntries(entries, activeFilter), [entries, activeFilter]);
   const remaining = getRemainingEntries(tier as "free" | "mid" | "top");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const todayPrompt = useMemo(() => selectPrompt(promptContext), []);
 
   if (loading) {
     return <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" /></div>;
   }
 
   // ─── Welcome View ──────────────────────────────────────────────────────────
-  if (view === "welcome") {
-    return (
-      <main className="min-h-screen bg-background px-6 py-12 flex flex-col justify-center max-w-md mx-auto animate-in fade-in duration-500">
-        <h1 className="text-2xl font-bold text-foreground mb-5">Your Journal</h1>
-        <p className="text-sm text-foreground/60 leading-relaxed whitespace-pre-line mb-8">
-          {JOURNAL_PRIVACY_COPY.welcome}
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => { localStorage.setItem(WELCOME_KEY, "true"); setView("home"); startCompose(); }}
-            className="px-6 py-3 rounded-full bg-terracotta text-cream text-sm font-medium"
-          >
-            Yes, start
-          </button>
-          <button
-            onClick={() => { localStorage.setItem(WELCOME_KEY, "true"); setView("home"); }}
-            className="px-6 py-3 rounded-full border border-foreground/18 text-foreground/60 text-sm"
-          >
-            Tell me about privacy first
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   // ─── Compose View ──────────────────────────────────────────────────────────
   if (view === "compose") {
     return (
@@ -499,136 +495,259 @@ function JournalPage() {
   }
 
   // ─── Home View (default) ───────────────────────────────────────────────────
-  const todayPrompt = useMemo(() => selectPrompt(promptContext), []);
-
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-5 py-6 pb-28">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-foreground">Journal</h1>
-          {remaining !== null && (
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push("/home")}
+              className="w-8 h-8 flex items-center justify-center rounded-full border border-foreground/12 text-foreground/50 hover:text-foreground/70 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>Journal</h1>
+          </div>
+          {remaining !== null && activeTab === "calendar" && (
             <span className="text-[10px] text-foreground/35 bg-foreground/5 px-2 py-1 rounded-full">
               {remaining} left this month
             </span>
           )}
         </div>
 
+        {/* ─── Tabs ─── */}
+        <div className="flex gap-1 mb-5 bg-foreground/5 rounded-xl p-1">
+          {([
+            { key: "calendar" as const, label: "Calendar" },
+            { key: "pulls" as const, label: "Card Pulls" },
+          ]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                activeTab === key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-foreground/40"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* First save celebration */}
-        {showFirstSaveMsg && (
+        {showFirstSaveMsg && activeTab === "calendar" && (
           <div className="mb-4 rounded-xl border border-sage/20 bg-sage/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
             <p className="text-xs text-sage leading-relaxed">{JOURNAL_PRIVACY_COPY.firstEntrySaved}</p>
           </div>
         )}
 
-        {/* ─── Today's Prompt Card ─── */}
-        <div className="rounded-2xl border border-foreground/12 bg-foreground/3 p-5 mb-6">
-          <p className="text-[10px] uppercase tracking-widest text-foreground/30 font-semibold mb-2">Today</p>
-          <p className="text-sm text-foreground/75 italic leading-relaxed mb-4">{todayPrompt.text}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={startCompose}
-              className="px-4 py-2 rounded-full bg-terracotta text-cream text-xs font-medium"
-            >
-              Begin entry
-            </button>
-            <button
-              onClick={startCompose}
-              className="px-4 py-2 rounded-full border border-foreground/15 text-foreground/50 text-xs"
-            >
-              Write something else
-            </button>
-          </div>
-        </div>
-
-        {/* ─── Filter chips (mid+) ─── */}
-        {tier !== "free" && entries.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
-            {([
-              { key: "all", label: "All" },
-              { key: "full_moon", label: "Full moons" },
-              { key: "new_moon", label: "New moons" },
-              { key: "quarter_moon", label: "Quarters" },
-            ] as { key: FilterKey; label: string }[]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveFilter(key)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap border transition-all ${
-                  activeFilter === key
-                    ? "border-terracotta text-terracotta bg-terracotta/8"
-                    : "border-foreground/12 text-foreground/40"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ─── Recent Entries ─── */}
-        <div className="mb-6">
-          <p className="text-[10px] uppercase tracking-widest text-foreground/30 font-semibold mb-3">
-            {activeFilter === "all" ? "Recent" : activeFilter.replace("_", " ")}
-          </p>
-          {filteredEntries.length === 0 ? (
-            <div className="rounded-xl border border-foreground/8 bg-foreground/3 p-6 text-center">
-              <p className="text-foreground/35 text-sm">No entries yet.</p>
-              <p className="text-foreground/25 text-xs mt-1">Tap &quot;Begin entry&quot; to start.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredEntries.slice(0, 10).map((entry) => {
-                const text = entry.text || entry.content || "";
-                const preview = text.slice(0, 80);
-                return (
-                  <button
-                    key={entry.id}
-                    onClick={() => openEntry(entry)}
-                    className="w-full text-left rounded-xl border border-foreground/8 bg-foreground/3 p-4 hover:border-foreground/15 transition-colors"
+        {/* ═══════════════ PULLS TAB ═══════════════ */}
+        {activeTab === "pulls" && (
+          <>
+            <p className="text-[10px] uppercase tracking-widest text-foreground/30 font-semibold mb-3">Card Pull History</p>
+            {pullHistory.length === 0 ? (
+              <div className="rounded-xl border border-foreground/8 bg-foreground/3 p-6 text-center">
+                <p className="text-foreground/35 text-sm">No card pulls yet.</p>
+                <p className="text-foreground/25 text-xs mt-1">Pull a card from the home screen to see it here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pullHistory.slice(0, 20).map((pull, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-foreground/8 bg-foreground/3 p-4"
                   >
-                    <p className="text-xs text-foreground/35 mb-1">
-                      {new Date(entry.created_at || entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </p>
-                    <p className="text-sm text-foreground/65 leading-snug">
-                      {preview}{text.length > 80 ? "..." : ""}
-                    </p>
-                    {entry.tags && (
-                      <div className="flex gap-1 mt-2">
-                        {entry.tags.moonPhase && entry.tags.moonPhase !== "unknown" && (
-                          <span className="text-[9px] text-foreground/25">{entry.tags.moonPhase.replace("_", " ")}</span>
-                        )}
-                        {entry.tags.planetaryDay && (
-                          <span className="text-[9px] text-foreground/25">· {entry.tags.planetaryDay} day</span>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-foreground/35">
+                        {new Date(pull.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </p>
+                      {pull.spread && (
+                        <span className="text-[9px] text-foreground/25 bg-foreground/5 px-2 py-0.5 rounded-full">{pull.spread}</span>
+                      )}
+                    </div>
+                    {pull.question && (
+                      <p className="text-xs text-foreground/40 italic mb-2">{pull.question}</p>
                     )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ─── Patterns Card (mid+) ─── */}
-        {tier !== "free" && patterns.length > 0 && (
-          <div className="rounded-2xl border border-sage/15 bg-sage/5 p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-widest text-sage/60 font-semibold">Your patterns</p>
-              <button onClick={() => setView("patterns")} className="text-[10px] text-sage/70 hover:text-sage">See all</button>
-            </div>
-            <p className="text-sm text-foreground/60 leading-relaxed">{patterns[0].text}</p>
-          </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pull.cards.map((card, j) => (
+                        <span
+                          key={j}
+                          className="text-xs text-foreground/60 bg-foreground/5 px-2.5 py-1 rounded-lg"
+                        >
+                          {card.name}{card.reversed ? " ↓" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Cap reached message */}
-        {remaining === 0 && (
-          <div className="mt-4 rounded-xl border border-amber/20 bg-amber/5 p-4 text-center">
-            <p className="text-xs text-amber/80">{JOURNAL_PRIVACY_COPY.capReached(0)}</p>
-          </div>
+        {/* ═══════════════ CALENDAR TAB ═══════════════ */}
+        {activeTab === "calendar" && (
+          <>
+            <JournalCalendar entries={entries} onSelectEntry={openEntry} />
+
+            {/* Today's Prompt Card */}
+            <div className="rounded-2xl border border-foreground/12 bg-foreground/3 p-5 mb-5 mt-6">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/30 font-semibold mb-2">Today</p>
+              <p className="text-sm text-foreground/75 italic leading-relaxed mb-4">{todayPrompt.text}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={startCompose}
+                  className="px-4 py-2 rounded-full bg-terracotta text-cream text-xs font-medium"
+                >
+                  Begin entry
+                </button>
+                <button
+                  onClick={startCompose}
+                  className="px-4 py-2 rounded-full border border-foreground/15 text-foreground/50 text-xs"
+                >
+                  Write something else
+                </button>
+              </div>
+            </div>
+
+            {/* Recent Entries */}
+            <div className="mb-6">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/30 font-semibold mb-3">Recent</p>
+              {entries.length === 0 ? (
+                <div className="rounded-xl border border-foreground/8 bg-foreground/3 p-6 text-center">
+                  <p className="text-foreground/35 text-sm">No entries yet.</p>
+                  <p className="text-foreground/25 text-xs mt-1">Tap &quot;Begin entry&quot; to start.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {entries.slice(0, 10).map((entry) => {
+                    const text = entry.text || entry.content || "";
+                    const preview = text.slice(0, 80);
+                    return (
+                      <button
+                        key={entry.id}
+                        onClick={() => openEntry(entry)}
+                        className="w-full text-left rounded-xl border border-foreground/8 bg-foreground/3 p-4 hover:border-foreground/15 transition-colors"
+                      >
+                        <p className="text-xs text-foreground/35 mb-1">
+                          {new Date(entry.created_at || entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                        <p className="text-sm text-foreground/65 leading-snug">
+                          {preview}{text.length > 80 ? "..." : ""}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Cap reached message */}
+            {remaining === 0 && (
+              <div className="mt-4 rounded-xl border border-amber/20 bg-amber/5 p-4 text-center">
+                <p className="text-xs text-amber/80">{JOURNAL_PRIVACY_COPY.capReached(0)}</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {PaywallModal}
     </main>
+  );
+}
+
+/* ─── Journal Calendar Component ─── */
+
+function JournalCalendar({ entries, onSelectEntry }: { entries: JournalEntry[]; onSelectEntry: (e: JournalEntry) => void }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  // Map entry dates to day numbers
+  const entryDays = new Map<number, JournalEntry>();
+  for (const entry of entries) {
+    const d = new Date(entry.created_at || entry.date);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      entryDays.set(d.getDate(), entry);
+    }
+  }
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const todayDate = today.getDate();
+
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+
+  const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  return (
+    <div>
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full border border-foreground/12 text-foreground/40">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <p className="text-sm font-semibold text-foreground/70">{monthLabel}</p>
+        <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full border border-foreground/12 text-foreground/40">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      {/* Day names */}
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {dayNames.map((d) => (
+          <div key={d} className="text-center text-[9px] text-foreground/30 font-semibold uppercase py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {/* Empty cells for offset */}
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square" />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const hasEntry = entryDays.has(day);
+          const isToday = isCurrentMonth && day === todayDate;
+          const entry = entryDays.get(day);
+
+          return (
+            <button
+              key={day}
+              onClick={() => entry && onSelectEntry(entry)}
+              disabled={!hasEntry}
+              className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-colors relative ${
+                isToday
+                  ? "border border-terracotta/30 text-terracotta font-semibold"
+                  : hasEntry
+                  ? "text-foreground/70 hover:bg-foreground/5"
+                  : "text-foreground/20"
+              }`}
+            >
+              {day}
+              {hasEntry && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-sage" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Entries for selected month summary */}
+      {entryDays.size > 0 && (
+        <p className="text-[10px] text-foreground/30 text-center mt-4">
+          {entryDays.size} {entryDays.size === 1 ? "entry" : "entries"} this month
+        </p>
+      )}
+    </div>
   );
 }

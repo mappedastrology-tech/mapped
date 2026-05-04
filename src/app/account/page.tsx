@@ -682,7 +682,7 @@ function NotificationSettingsSection() {
 /* ─── Subscription / Plan section ─── */
 
 function SubscriptionSection() {
-  const { tier } = useTier();
+  const { tier, refreshTier } = useTier();
   const [showPlans, setShowPlans] = useState(false);
 
   const tierInfo = TIERS[tier];
@@ -755,13 +755,99 @@ function SubscriptionSection() {
         <PlansPage
           currentTier={tier}
           onClose={() => setShowPlans(false)}
-          onSelectTier={() => {
-            // TODO: Wire to IAP / Stripe when ready
+          onSelectTier={async (selectedTier) => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.user) return;
+              await supabase
+                .from("profiles")
+                .update({ tier: selectedTier })
+                .eq("id", session.user.id);
+              await refreshTier();
+            } catch { /* ignore */ }
             setShowPlans(false);
           }}
         />
       )}
     </>
+  );
+}
+
+/* ─── Promo Code section ─── */
+
+function PromoCodeSection() {
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+  const { refreshTier } = useTier();
+
+  const handleRedeem = async () => {
+    if (!code.trim()) return;
+    setStatus("loading");
+    setMessage("");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setStatus("error");
+        setMessage("Please sign in first.");
+        return;
+      }
+
+      const res = await fetch("/api/promo/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setStatus("success");
+        setMessage(data.message || "Code redeemed!");
+        setCode("");
+        // Refresh tier in case it was upgraded
+        await refreshTier();
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Invalid code.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Something went wrong. Try again.");
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Promo Code</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => { setCode(e.target.value.toUpperCase()); setStatus("idle"); setMessage(""); }}
+          placeholder="Enter code"
+          className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm placeholder:text-foreground/30 focus:outline-none focus:border-sage/50 tracking-wider font-mono"
+          onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
+          disabled={status === "loading"}
+        />
+        <button
+          onClick={handleRedeem}
+          disabled={!code.trim() || status === "loading"}
+          className="px-4 py-2.5 rounded-xl bg-ink text-cream text-sm font-semibold disabled:opacity-40 active:scale-[0.97] transition-all"
+        >
+          {status === "loading" ? "..." : "Apply"}
+        </button>
+      </div>
+      {message && (
+        <p className={`text-xs mt-2 ${status === "success" ? "text-sage" : "text-red-400"}`}>
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -1238,6 +1324,9 @@ function AccountPage() {
 
           {/* ─── Subscription Plan ─── */}
           <SubscriptionSection />
+
+          {/* ─── Promo Code ─── */}
+          <PromoCodeSection />
 
           {/* ─── Editable name ─── */}
           <EditableField

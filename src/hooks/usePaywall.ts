@@ -18,10 +18,11 @@
 import { useState, useCallback, createElement } from "react";
 import { useTier } from "@/components/TierProvider";
 import { type FeatureKey, isPaywallCoolingDown } from "@/lib/tier";
+import { supabase } from "@/lib/supabase";
 import Paywall, { PlansPage } from "@/components/Paywall";
 
 export function usePaywall() {
-  const { tier, hasAccess } = useTier();
+  const { tier, hasAccess, refreshTier } = useTier();
   const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
   const [showPlans, setShowPlans] = useState(false);
 
@@ -60,8 +61,17 @@ export function usePaywall() {
     ? createElement(PlansPage, {
         currentTier: tier,
         onClose: () => setShowPlans(false),
-        onSelectTier: () => {
-          // TODO: integrate with IAP when ready
+        onSelectTier: async (selectedTier: "free" | "mid" | "top") => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              await supabase
+                .from("profiles")
+                .update({ tier: selectedTier })
+                .eq("id", session.user.id);
+              await refreshTier();
+            }
+          } catch { /* ignore */ }
           setShowPlans(false);
         },
       })

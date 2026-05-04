@@ -8,6 +8,7 @@
  * ApproximateBadge: badge shown on chart wheel for approximate time
  */
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useBirthTime } from "@/components/BirthTimeProvider";
 import { BIRTH_TIME_COPY } from "@/lib/birth-time";
@@ -134,10 +135,14 @@ export function BirthTimeRepromptBanner() {
   const { precision, repromptDay, dismissReprompts, markRepromptShown } = useBirthTime();
   const router = useRouter();
 
-  if (precision !== "unknown" || !repromptDay) return null;
+  // Mark as shown (in effect, not during render)
+  useEffect(() => {
+    if (precision === "unknown" && repromptDay) {
+      markRepromptShown(repromptDay);
+    }
+  }, [precision, repromptDay, markRepromptShown]);
 
-  // Mark as shown
-  markRepromptShown(repromptDay);
+  if (precision !== "unknown" || !repromptDay) return null;
 
   const copy = getRepromptCopyLocal(repromptDay);
 
