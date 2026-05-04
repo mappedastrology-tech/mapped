@@ -151,12 +151,14 @@ function JournalPage() {
     const now = new Date();
     const moonPhase = getMoonPhase(now);
     const dayOfWeek = now.getDay();
-    // Lord of year from localStorage if available
+    // Lord of year from sessionStorage if available (guard for SSR)
     let lordOfYear: string | undefined;
-    try {
-      const chart = JSON.parse(sessionStorage.getItem("mapped:chartData") || "{}");
-      if (chart.lordOfYear) lordOfYear = chart.lordOfYear;
-    } catch { /* ignore */ }
+    if (typeof window !== "undefined") {
+      try {
+        const chart = JSON.parse(sessionStorage.getItem("mapped:chartData") || "{}");
+        if (chart.lordOfYear) lordOfYear = chart.lordOfYear;
+      } catch { /* ignore */ }
+    }
 
     return {
       moonPhase: moonPhase?.phase || "waxing-crescent",
