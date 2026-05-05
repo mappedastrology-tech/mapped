@@ -68,7 +68,9 @@ export function getChartRuler(
   planets: Planet[],
   houses: House[]
 ): ChartRulerInfo | null {
-  const risingSign = houses[0]?.sign;
+  // Find the 1st house (Ascendant) — don't assume houses[0] is house 1
+  const firstHouse = houses.find(h => h.number === 1);
+  const risingSign = firstHouse?.sign || houses[0]?.sign;
   if (!risingSign) return null;
 
   const rulerName = SIGN_RULER[risingSign];
