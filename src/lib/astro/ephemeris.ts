@@ -242,7 +242,7 @@ function getChironLongitude(jd: number): number {
   const i_rad = 6.935 * DEG;
   const Omega = 209.35; // longitude of ascending node (°)
   const omega = 339.54; // argument of perihelion (°)
-  const M0 = 25.0;      // mean anomaly at J2000 (°) — calibrated to Leo 14° for Sep 1992
+  const M0 = 27.0;      // mean anomaly at J2000 (°) — calibrated to Leo ~16° for Sep 1992
 
   // Mean anomaly
   let M = ((M0 + n * daysSinceJ2000) % 360 + 360) % 360;
