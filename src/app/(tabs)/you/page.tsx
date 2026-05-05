@@ -20,6 +20,7 @@ import InfoTip from "@/components/InfoTip";
 import ShareCard from "@/components/ShareCard";
 import { getGlossaryEntry } from "@/lib/glossary";
 import { supabase } from "@/lib/supabase";
+import { calculateChart } from "@/lib/astro/calculateChart";
 import { getMeanLilithData } from "@/lib/astro/lilithClient";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
@@ -1172,91 +1173,59 @@ export default function YouTab() {
           .single();
 
         if (data) {
-          // Always recalculate on load to guarantee latest algorithm.
-          // Show loading state until recalc finishes; fall back to stored
-          // data only if the recalc request fails.
-          const fallbackChart = {
-            name: metaName || data.name,
-            birthDate: data.birth_date,
-            birthTime: data.birth_time,
-            unknownTime: data.unknown_time,
-            cityName: data.city_name,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            timezone: data.timezone,
-            bigThree: data.big_three,
-            planets: data.planets,
-            houses: data.houses,
-            aspects: data.aspects,
-            specialPoints: data.special_points || [],
-            midheaven: data.midheaven || null,
-          };
+          // Recalculate client-side — no API call, no serverless dependency.
+          // This runs the exact same calculateChart() in the browser.
+          try {
+            const recalc = calculateChart({
+              name: data.name,
+              birthDate: data.birth_date,
+              birthTime: data.birth_time,
+              unknownTime: data.unknown_time,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              cityName: data.city_name,
+              zodiacSystem: data.zodiac_system || "tropical",
+              ...(data.zodiac_system === "sidereal" ? { ayanamsa: data.ayanamsa || "lahiri" } : {}),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            }) as any;
 
-          (async () => {
-            try {
-              const res = await fetch("/api/chart/calculate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  name: data.name,
-                  birthDate: data.birth_date,
-                  birthTime: data.birth_time,
-                  unknownTime: data.unknown_time,
-                  latitude: data.latitude,
-                  longitude: data.longitude,
-                  cityName: data.city_name,
-                  zodiacSystem: data.zodiac_system || "tropical",
-                  ...(data.zodiac_system === "sidereal" ? { ayanamsa: data.ayanamsa || "lahiri" } : {}),
-                }),
-              });
-              if (!res.ok) {
-                const body = await res.text().catch(() => "");
-                console.error("[recalc] API error", res.status, body);
-                // Fall back to stored data so page still renders
-                setChartData(fallbackChart);
-                setIsLoading(false);
-                return;
-              }
-              const recalc = await res.json();
-
-              // Show freshly-calculated chart
-              setChartData({
-                name: metaName || data.name,
-                birthDate: data.birth_date,
-                birthTime: data.birth_time,
-                unknownTime: data.unknown_time,
-                cityName: data.city_name,
-                latitude: data.latitude,
-                longitude: data.longitude,
-                timezone: data.timezone,
-                bigThree: recalc.bigThree,
-                planets: recalc.planets,
-                houses: recalc.houses,
-                aspects: recalc.aspects,
-                specialPoints: recalc.specialPoints || [],
-                midheaven: recalc.midheaven || null,
-              });
-              setIsLoading(false);
-
-              // Persist recalculated data back to Supabase (best-effort).
-              // Omit chart_version to avoid failure if column doesn't exist.
-              const { error: updateErr } = await supabase.from("charts").update({
-                big_three: recalc.bigThree,
-                planets: recalc.planets,
-                houses: recalc.houses,
-                aspects: recalc.aspects,
-                special_points: recalc.specialPoints || null,
-                midheaven: recalc.midheaven || null,
-              }).eq("id", data.id);
-              if (updateErr) {
-                console.error("[recalc] Supabase persist failed:", updateErr.message, updateErr.code, updateErr.details);
-              }
-            } catch (err) {
-              console.error("[recalc] Unexpected error:", err);
-              setChartData(fallbackChart);
-              setIsLoading(false);
-            }
-          })();
+            setChartData({
+              name: metaName || data.name,
+              birthDate: data.birth_date,
+              birthTime: data.birth_time,
+              unknownTime: data.unknown_time,
+              cityName: data.city_name,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              timezone: data.timezone,
+              bigThree: recalc.bigThree,
+              planets: recalc.planets,
+              houses: recalc.houses,
+              aspects: recalc.aspects,
+              specialPoints: recalc.specialPoints || [],
+              midheaven: recalc.midheaven || null,
+            });
+          } catch (err) {
+            console.error("[recalc] Client-side calculation failed:", err);
+            // Fall back to stored data
+            setChartData({
+              name: metaName || data.name,
+              birthDate: data.birth_date,
+              birthTime: data.birth_time,
+              unknownTime: data.unknown_time,
+              cityName: data.city_name,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              timezone: data.timezone,
+              bigThree: data.big_three,
+              planets: data.planets,
+              houses: data.houses,
+              aspects: data.aspects,
+              specialPoints: data.special_points || [],
+              midheaven: data.midheaven || null,
+            });
+          }
+          setIsLoading(false);
           return;
         }
       }
