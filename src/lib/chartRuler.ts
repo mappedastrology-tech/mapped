@@ -66,11 +66,13 @@ function formatHouseOrdinal(house: string | number | null): string {
 /** Generate chart ruler info from chart data */
 export function getChartRuler(
   planets: Planet[],
-  houses: House[]
+  houses: House[],
+  risingSignOverride?: string
 ): ChartRulerInfo | null {
-  // Find the 1st house (Ascendant) — don't assume houses[0] is house 1
+  // Use explicit rising sign if provided (most reliable source is big_three.rising)
+  // Otherwise try to find house 1, then fall back to houses[0]
   const firstHouse = houses.find(h => h.number === 1);
-  const risingSign = firstHouse?.sign || houses[0]?.sign;
+  const risingSign = risingSignOverride || firstHouse?.sign || houses[0]?.sign;
   if (!risingSign) return null;
 
   const rulerName = SIGN_RULER[risingSign];

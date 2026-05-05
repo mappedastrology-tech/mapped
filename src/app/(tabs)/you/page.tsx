@@ -1264,8 +1264,8 @@ export default function YouTab() {
   // Compute chart ruler, contradictions, and stelliums
   const chartRuler = useMemo(() => {
     if (!chartData) return null;
-    return getChartRuler(chartData.planets, effectiveHouses);
-  }, [chartData, effectiveHouses]);
+    return getChartRuler(chartData.planets, effectiveHouses, effectiveBigThree?.rising);
+  }, [chartData, effectiveHouses, effectiveBigThree]);
 
   // Compute Sect Light (day/night chart)
   const sectLight = useMemo<SectLightInfo | null>(() => {

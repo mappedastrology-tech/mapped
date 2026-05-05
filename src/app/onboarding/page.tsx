@@ -381,7 +381,7 @@ export default function OnboardingPage() {
     ? getSectLight(chartData.planets, chartData.houses)
     : null;
   const chartRulerInfo = chartData
-    ? getChartRuler(chartData.planets, chartData.houses)
+    ? getChartRuler(chartData.planets, chartData.houses, chartData.bigThree?.rising)
     : null;
   const lordInfo = chartData && birthDate
     ? getLordOfTheYear(birthDate, chartData.planets, chartData.houses)
