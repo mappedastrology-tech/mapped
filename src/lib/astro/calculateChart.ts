@@ -39,14 +39,13 @@ export function calculateChart(data: ChartInput) {
   const isSidereal = zodiacSystem === "sidereal";
   const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
 
-  // Compute Julian Day — swisseph needs UTC hour.
-  // For simplicity we treat the input time as local and let the ephemeris
-  // handle it. The timezone offset is small enough to not change the sign
-  // for most cases. A production version would convert local→UTC first.
-  // However, for astrology apps, the convention is to calculate the chart
-  // using LOCAL time as-if-UTC then apply the geographic longitude for houses.
-  // This matches what Kerykeion does internally.
-  const jd = julday(year, month, day, decimalHour);
+  // Convert local birth time to UTC using Local Mean Time (LMT).
+  // LMT offset = longitude / 15 hours. This is the standard astrological
+  // convention — more astronomically precise than timezone-based conversion
+  // because timezones are political constructs that don't reflect true local time.
+  // The julday formula handles hour overflow/underflow naturally via continuous math.
+  const utcHour = decimalHour - data.longitude / 15;
+  const jd = julday(year, month, day, utcHour);
 
   // --- Planets ---
   const rawPlanets = getAllPlanetPositions(jd);
