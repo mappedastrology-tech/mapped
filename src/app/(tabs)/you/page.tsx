@@ -1190,10 +1190,9 @@ export default function YouTab() {
           });
           setIsLoading(false);
 
-          // Auto-recalculate charts that were computed before the LMT timezone fix.
-          // We check a version marker — if absent, the chart used the old broken
-          // calculation that treated local time as UTC.
-          if (!data.chart_version || data.chart_version < 2) {
+          // Auto-recalculate charts with outdated calculations.
+          // v2 = geo-tz timezone fix, v3 = corrected Placidus house cusps.
+          if (!data.chart_version || data.chart_version < 3) {
             (async () => {
               try {
                 const res = await fetch("/api/chart/calculate", {
@@ -1221,7 +1220,7 @@ export default function YouTab() {
                   aspects: recalc.aspects,
                   special_points: recalc.specialPoints || null,
                   midheaven: recalc.midheaven || null,
-                  chart_version: 2,
+                  chart_version: 3,
                 }).eq("id", data.id);
                 // Update local state with corrected chart
                 setChartData({
