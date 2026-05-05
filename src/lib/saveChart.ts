@@ -61,7 +61,6 @@ export async function saveChart(
       zodiac_system: chartData.zodiacSystem || "tropical",
       ayanamsa: chartData.ayanamsa || "lahiri",
       interpretations: interpretations || null,
-      chart_version: 3,
     })
     .select("id")
     .single();

@@ -1172,7 +1172,10 @@ export default function YouTab() {
           .single();
 
         if (data) {
-          setChartData({
+          // Always recalculate on load to guarantee latest algorithm.
+          // Show loading state until recalc finishes; fall back to stored
+          // data only if the recalc request fails.
+          const fallbackChart = {
             name: metaName || data.name,
             birthDate: data.birth_date,
             birthTime: data.birth_time,
@@ -1187,61 +1190,73 @@ export default function YouTab() {
             aspects: data.aspects,
             specialPoints: data.special_points || [],
             midheaven: data.midheaven || null,
-          });
-          setIsLoading(false);
+          };
 
-          // Auto-recalculate charts with outdated calculations.
-          // v2 = geo-tz timezone fix, v3 = corrected Placidus house cusps.
-          if (!data.chart_version || data.chart_version < 3) {
-            (async () => {
-              try {
-                const res = await fetch("/api/chart/calculate", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    name: data.name,
-                    birthDate: data.birth_date,
-                    birthTime: data.birth_time,
-                    unknownTime: data.unknown_time,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    cityName: data.city_name,
-                    zodiacSystem: data.zodiac_system || "tropical",
-                    ...(data.zodiac_system === "sidereal" ? { ayanamsa: data.ayanamsa || "lahiri" } : {}),
-                  }),
-                });
-                if (!res.ok) return;
-                const recalc = await res.json();
-                // Update Supabase with corrected data + version marker
-                await supabase.from("charts").update({
-                  big_three: recalc.bigThree,
-                  planets: recalc.planets,
-                  houses: recalc.houses,
-                  aspects: recalc.aspects,
-                  special_points: recalc.specialPoints || null,
-                  midheaven: recalc.midheaven || null,
-                  chart_version: 3,
-                }).eq("id", data.id);
-                // Update local state with corrected chart
-                setChartData({
-                  name: metaName || data.name,
+          (async () => {
+            try {
+              const res = await fetch("/api/chart/calculate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: data.name,
                   birthDate: data.birth_date,
                   birthTime: data.birth_time,
                   unknownTime: data.unknown_time,
-                  cityName: data.city_name,
                   latitude: data.latitude,
                   longitude: data.longitude,
-                  timezone: data.timezone,
-                  bigThree: recalc.bigThree,
-                  planets: recalc.planets,
-                  houses: recalc.houses,
-                  aspects: recalc.aspects,
-                  specialPoints: recalc.specialPoints || [],
-                  midheaven: recalc.midheaven || null,
-                });
-              } catch { /* silent — display old data on failure */ }
-            })();
-          }
+                  cityName: data.city_name,
+                  zodiacSystem: data.zodiac_system || "tropical",
+                  ...(data.zodiac_system === "sidereal" ? { ayanamsa: data.ayanamsa || "lahiri" } : {}),
+                }),
+              });
+              if (!res.ok) {
+                const body = await res.text().catch(() => "");
+                console.error("[recalc] API error", res.status, body);
+                // Fall back to stored data so page still renders
+                setChartData(fallbackChart);
+                setIsLoading(false);
+                return;
+              }
+              const recalc = await res.json();
+
+              // Show freshly-calculated chart
+              setChartData({
+                name: metaName || data.name,
+                birthDate: data.birth_date,
+                birthTime: data.birth_time,
+                unknownTime: data.unknown_time,
+                cityName: data.city_name,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                timezone: data.timezone,
+                bigThree: recalc.bigThree,
+                planets: recalc.planets,
+                houses: recalc.houses,
+                aspects: recalc.aspects,
+                specialPoints: recalc.specialPoints || [],
+                midheaven: recalc.midheaven || null,
+              });
+              setIsLoading(false);
+
+              // Persist recalculated data back to Supabase (best-effort).
+              // Omit chart_version to avoid failure if column doesn't exist.
+              const { error: updateErr } = await supabase.from("charts").update({
+                big_three: recalc.bigThree,
+                planets: recalc.planets,
+                houses: recalc.houses,
+                aspects: recalc.aspects,
+                special_points: recalc.specialPoints || null,
+                midheaven: recalc.midheaven || null,
+              }).eq("id", data.id);
+              if (updateErr) {
+                console.error("[recalc] Supabase persist failed:", updateErr.message, updateErr.code, updateErr.details);
+              }
+            } catch (err) {
+              console.error("[recalc] Unexpected error:", err);
+              setChartData(fallbackChart);
+              setIsLoading(false);
+            }
+          })();
           return;
         }
       }
