@@ -315,7 +315,15 @@ function calcMC(ramc: number, obliquity: number): number {
 
 /**
  * Placidus house cusp calculation.
- * Uses the standard Placidus semi-arc method.
+ *
+ * Uses the standard Placidus trisection of semi-arcs:
+ * - Cusp 11: RA(λ) = RAMC + (1/3)×DSA(λ)
+ * - Cusp 12: RA(λ) = RAMC + (2/3)×DSA(λ)
+ * - Cusp 2:  RA(λ) = RAMC + DSA(λ) + (1/3)×NSA(λ)
+ * - Cusp 3:  RA(λ) = RAMC + DSA(λ) + (2/3)×NSA(λ)
+ *
+ * Iterates by computing DSA for the current guess, deriving the target RA,
+ * then converting back to ecliptic longitude until convergence.
  */
 function calcPlacidusCusp(
   cuspNum: number, // 2,3,11,12 (the non-angular cusps)
@@ -326,84 +334,77 @@ function calcPlacidusCusp(
   const oblRad = obliquity * DEG;
   const latRad = latitude * DEG;
 
-  // Fractions for Placidus semi-arcs
-  let f: number;
-  let isAboveHorizon: boolean;
-
-  switch (cuspNum) {
-    case 2: f = 1/3; isAboveHorizon = false; break;
-    case 3: f = 2/3; isAboveHorizon = false; break;
-    case 11: f = 2/3; isAboveHorizon = true; break;
-    case 12: f = 1/3; isAboveHorizon = true; break;
-    default: return 0;
-  }
-
-  // Iterative Placidus: start with equal-house guess and refine
   const mc = calcMC(ramc, obliquity);
-  const ic = (mc + 180) % 360;
   const asc = calcAscendant(ramc, obliquity, latitude);
-  const dsc = (asc + 180) % 360;
+  const ic = (mc + 180) % 360;
 
-  // For cusps above horizon (10-12, 1), we work between MC and ASC
-  // For cusps below horizon (4-6, 7), between IC and DSC
-  // Cusps 2,3 are between ASC and IC
-  // Cusps 11,12 are between MC and ASC
-
-  // Simple approach: interpolate between angles, then correct with Placidus formula
-  // This gives good results for most latitudes
-  let guess: number;
-  if (isAboveHorizon) {
-    // Between MC (10th cusp) and ASC (1st cusp)
-    let diff = ((asc - mc) % 360 + 360) % 360;
-    guess = (mc + diff * f) % 360;
-  } else {
-    // Between ASC (1st cusp) and IC (4th cusp)
-    let diff = ((ic - asc) % 360 + 360) % 360;
-    guess = (asc + diff * f) % 360;
-  }
-
-  // Iterative refinement for Placidus (5 iterations is enough)
-  for (let iter = 0; iter < 8; iter++) {
-    const guessRad = guess * DEG;
-    const decl = Math.asin(
-      Math.sin(oblRad) * Math.sin(guessRad)
-    );
-
-    // Semi-arc
-    const cosH = -Math.tan(latRad) * Math.tan(decl);
-    if (Math.abs(cosH) >= 1) break; // no solution at extreme latitudes
-
-    const semiArc = Math.acos(cosH) * RAD;
-    const dayArc = semiArc;
-    const nightArc = 180 - semiArc;
-
-    // Right ascension of cusp point
-    const ra = Math.atan2(
-      Math.sin(guessRad) * Math.cos(oblRad),
-      Math.cos(guessRad)
-    ) * RAD;
-
-    // Meridian distance
-    let md = ((ra - ramc) % 360 + 360) % 360;
-    if (md > 180) md -= 360;
-
-    // Target fraction of semi-arc
-    let targetMD: number;
-    if (isAboveHorizon) {
-      targetMD = dayArc * f;
-    } else {
-      targetMD = nightArc * f;
-      if (cuspNum === 2) targetMD = nightArc * (1/3);
-      if (cuspNum === 3) targetMD = nightArc * (2/3);
+  // Initial guess: equal-house interpolation
+  let lambda: number;
+  switch (cuspNum) {
+    case 11: {
+      const diff = ((asc - mc) % 360 + 360) % 360;
+      lambda = (mc + diff * (1 / 3)) % 360;
+      break;
     }
-
-    // Adjust guess based on the discrepancy
-    const correction = (targetMD - Math.abs(md)) * 0.3;
-    if (Math.abs(correction) < 0.01) break;
-    guess = ((guess + correction) % 360 + 360) % 360;
+    case 12: {
+      const diff = ((asc - mc) % 360 + 360) % 360;
+      lambda = (mc + diff * (2 / 3)) % 360;
+      break;
+    }
+    case 2: {
+      const diff = ((ic - asc) % 360 + 360) % 360;
+      lambda = (asc + diff * (1 / 3)) % 360;
+      break;
+    }
+    case 3: {
+      const diff = ((ic - asc) % 360 + 360) % 360;
+      lambda = (asc + diff * (2 / 3)) % 360;
+      break;
+    }
+    default:
+      return 0;
   }
 
-  return ((guess % 360) + 360) % 360;
+  // Iterate to find the ecliptic longitude whose RA satisfies the Placidus condition
+  for (let iter = 0; iter < 50; iter++) {
+    // Declination and diurnal semi-arc of current guess
+    const decl = Math.asin(Math.sin(oblRad) * Math.sin(lambda * DEG));
+    const cosH = -Math.tan(latRad) * Math.tan(decl);
+
+    let dsa: number;
+    if (cosH >= 1) dsa = 0;
+    else if (cosH <= -1) dsa = 180;
+    else dsa = Math.acos(cosH) * RAD;
+
+    const nsa = 180 - dsa;
+
+    // Compute target RA based on cusp type
+    let targetRA: number;
+    switch (cuspNum) {
+      case 11: targetRA = ramc + (1 / 3) * dsa; break;
+      case 12: targetRA = ramc + (2 / 3) * dsa; break;
+      case 2:  targetRA = ramc + dsa + (1 / 3) * nsa; break;
+      case 3:  targetRA = ramc + dsa + (2 / 3) * nsa; break;
+      default: targetRA = ramc;
+    }
+    targetRA = ((targetRA % 360) + 360) % 360;
+
+    // Convert target RA back to ecliptic longitude
+    // For a point on the ecliptic: λ = atan2(sin(RA)/cos(ε), cos(RA))
+    const targetRARad = targetRA * DEG;
+    const newLambda = ((Math.atan2(
+      Math.sin(targetRARad) / Math.cos(oblRad),
+      Math.cos(targetRARad)
+    ) * RAD) % 360 + 360) % 360;
+
+    let diff = Math.abs(newLambda - lambda);
+    if (diff > 180) diff = 360 - diff;
+
+    lambda = newLambda;
+    if (diff < 0.0001) break;
+  }
+
+  return ((lambda % 360) + 360) % 360;
 }
 
 /**
