@@ -8,6 +8,7 @@
  */
 
 import * as Astronomy from "astronomy-engine";
+import { getChironLongitude } from "./chironEphemeris";
 
 // ─── Planet name mapping ───
 export const PLANETS = {
@@ -220,80 +221,9 @@ function getMeanNodeLongitude(jd: number): number {
   return Math.round(omega * 100) / 100;
 }
 
-// ��── Chiron (approximate) ───
-
-/**
- * Geocentric ecliptic longitude of Chiron.
- *
- * Uses Keplerian orbital elements to compute heliocentric position,
- * applies inclination projection, then converts heliocentric → geocentric
- * using Earth's position from astronomy-engine.
- *
- * Orbital elements at J2000.0 from JPL:
- * a=13.708 AU, e=0.37891, i=6.935°, Ω=209.35°, ω=339.54°, M0=16.04°, P=50.76yr
- */
-function getChironLongitude(jd: number): number {
-  const daysSinceJ2000 = jd - 2451545.0;
-  const n = 360.0 / (50.76 * 365.25); // mean motion deg/day
-
-  // Orbital elements (JPL/Horizons-derived for J2000.0)
-  const a = 13.708;
-  const e = 0.37891;
-  const i_rad = 6.935 * DEG;
-  const Omega = 209.35; // longitude of ascending node (°)
-  const omega = 339.54; // argument of perihelion (°)
-  const M0 = 27.0;      // mean anomaly at J2000 (°) — calibrated to Leo ~16° for Sep 1992
-
-  // Mean anomaly
-  let M = ((M0 + n * daysSinceJ2000) % 360 + 360) % 360;
-
-  // Solve Kepler's equation
-  let Ea = M * DEG;
-  for (let iter = 0; iter < 20; iter++) {
-    Ea = Ea - (Ea - e * Math.sin(Ea) - M * DEG) / (1 - e * Math.cos(Ea));
-  }
-
-  // True anomaly
-  const nu = 2 * Math.atan2(
-    Math.sqrt(1 + e) * Math.sin(Ea / 2),
-    Math.sqrt(1 - e) * Math.cos(Ea / 2)
-  );
-
-  // Heliocentric distance
-  const r = a * (1 - e * Math.cos(Ea));
-
-  // Argument of latitude (u = ω + ν)
-  const u = (omega * DEG) + nu;
-
-  // Heliocentric ecliptic coordinates (with inclination)
-  const OmegaRad = Omega * DEG;
-  const xEcl = r * (Math.cos(OmegaRad) * Math.cos(u) - Math.sin(OmegaRad) * Math.sin(u) * Math.cos(i_rad));
-  const yEcl = r * (Math.sin(OmegaRad) * Math.cos(u) + Math.cos(OmegaRad) * Math.sin(u) * Math.cos(i_rad));
-  const zEcl = r * (Math.sin(u) * Math.sin(i_rad));
-
-  // Earth's heliocentric position (Sun's geocentric position, negated)
-  const time = jdToAstroTime(jd);
-  const sunGeo = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
-  const sunEcl = Astronomy.Ecliptic(sunGeo);
-  // Sun's geocentric ecliptic coords → Earth's heliocentric = -Sun's geocentric
-  const earthDist = Math.sqrt(sunGeo.x * sunGeo.x + sunGeo.y * sunGeo.y + sunGeo.z * sunGeo.z);
-  const sunLonRad = sunEcl.elon * DEG;
-  const sunLatRad = sunEcl.elat * DEG;
-  // Earth heliocentric = opposite of Sun geocentric
-  const xEarth = -earthDist * Math.cos(sunLatRad) * Math.cos(sunLonRad);
-  const yEarth = -earthDist * Math.cos(sunLatRad) * Math.sin(sunLonRad);
-  const zEarth = -earthDist * Math.sin(sunLatRad);
-
-  // Geocentric ecliptic coordinates of Chiron
-  const xGeo = xEcl - xEarth;
-  const yGeo = yEcl - yEarth;
-  // const zGeo = zEcl - zEarth;
-
-  let lon = Math.atan2(yGeo, xGeo) * RAD;
-  lon = ((lon % 360) + 360) % 360;
-
-  return Math.round(lon * 100) / 100;
-}
+// ─── Chiron ───
+// Chiron longitude is now imported from ./chironEphemeris.ts
+// (correction-enhanced Keplerian model calibrated against known positions)
 
 // ─── Placidus House System ───
 
