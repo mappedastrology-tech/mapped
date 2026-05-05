@@ -16,7 +16,7 @@ import {
 import {
   julday, getAllPlanetPositions, getSpecialPoints, getHouses,
 } from "./ephemeris";
-import { find as findTimezone } from "geo-tz";
+import { getTimezoneForCoords } from "./timezone";
 
 interface ChartInput {
   name: string;
@@ -32,11 +32,11 @@ interface ChartInput {
 
 /**
  * Get the UTC offset (in hours, east-positive) for a given location and date.
- * Uses geo-tz to find the IANA timezone, then Intl to determine the offset
- * at the specific date (accounting for DST).
+ * Uses a pure-JS timezone lookup (no filesystem dependencies) and Intl
+ * to determine the offset at the specific date (correctly handling DST).
  */
 function getUtcOffsetHours(lat: number, lon: number, year: number, month: number, day: number): number {
-  const tzName = findTimezone(lat, lon)[0];
+  const tzName = getTimezoneForCoords(lat, lon);
   if (!tzName) return 0;
 
   // Use a noon reference to determine the offset at this date
@@ -64,8 +64,8 @@ export function calculateChart(data: ChartInput) {
   const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
 
   // Convert local birth time to UTC using the real timezone for this location.
-  // geo-tz determines the IANA timezone from coordinates, and Intl gives the
-  // UTC offset at the specific birth date (correctly handling DST).
+  // Pure-JS timezone lookup determines the IANA timezone from coordinates,
+  // then Intl gives the UTC offset at the specific birth date (handling DST).
   const tzOffset = getUtcOffsetHours(data.latitude, data.longitude, year, month, day);
   const utcHour = decimalHour - tzOffset;
   const jd = julday(year, month, day, utcHour);
