@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { calculateChart } from "@/lib/astro/calculateChart";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { useBirthTime } from "@/components/BirthTimeProvider";
@@ -2371,7 +2372,39 @@ export default function MapsTab() {
             .from("connections").select("*")
             .eq("user_id", signedInUserId)
             .order("created_at", { ascending: true });
-          if (conns && conns.length > 0) setConnections(conns);
+          if (conns && conns.length > 0) {
+            // Recalculate every connection's chart client-side to ensure
+            // correct timezone + Placidus house cusps.
+            const recalculated = conns.map((conn: any) => {
+              if (!conn.birth_date || !conn.birth_time || conn.latitude == null || conn.longitude == null) return conn;
+              try {
+                const fresh = calculateChart({
+                  name: conn.name || "",
+                  birthDate: conn.birth_date,
+                  birthTime: conn.birth_time,
+                  unknownTime: conn.unknown_time,
+                  latitude: conn.latitude,
+                  longitude: conn.longitude,
+                  cityName: conn.city_name,
+                  zodiacSystem: conn.zodiac_system || "tropical",
+                  ...(conn.zodiac_system === "sidereal" ? { ayanamsa: conn.ayanamsa || "lahiri" } : {}),
+                }) as any;
+                return {
+                  ...conn,
+                  big_three: fresh.bigThree,
+                  planets: fresh.planets,
+                  houses: fresh.houses,
+                  aspects: fresh.aspects,
+                  special_points: fresh.specialPoints || null,
+                  midheaven: fresh.midheaven || null,
+                };
+              } catch (err) {
+                console.error("[maps recalc] Failed for", conn.name, err);
+                return conn;
+              }
+            });
+            setConnections(recalculated);
+          }
           else setConnections(loadLocalConnections());
         } catch { setConnections(loadLocalConnections()); }
       } else {
