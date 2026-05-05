@@ -16,6 +16,7 @@ import {
 import {
   julday, getAllPlanetPositions, getSpecialPoints, getHouses,
 } from "./ephemeris";
+import { find as findTimezone } from "geo-tz";
 
 interface ChartInput {
   name: string;
@@ -29,6 +30,29 @@ interface ChartInput {
   ayanamsa?: "lahiri" | "krishnamurti" | "raman";
 }
 
+/**
+ * Get the UTC offset (in hours, east-positive) for a given location and date.
+ * Uses geo-tz to find the IANA timezone, then Intl to determine the offset
+ * at the specific date (accounting for DST).
+ */
+function getUtcOffsetHours(lat: number, lon: number, year: number, month: number, day: number): number {
+  const tzName = findTimezone(lat, lon)[0];
+  if (!tzName) return 0;
+
+  // Use a noon reference to determine the offset at this date
+  const ref = new Date(Date.UTC(year, month - 1, day, 12, 0));
+  const utcStr = ref.toLocaleString("en-US", { timeZone: "UTC", hour: "numeric", hour12: false, minute: "numeric" });
+  const locStr = ref.toLocaleString("en-US", { timeZone: tzName, hour: "numeric", hour12: false, minute: "numeric" });
+
+  const [utcH, utcM] = utcStr.split(":").map(Number);
+  const [locH, locM] = locStr.split(":").map(Number);
+
+  let offset = (locH - utcH) + (locM - utcM) / 60;
+  if (offset > 12) offset -= 24;
+  if (offset < -12) offset += 24;
+  return offset;
+}
+
 export function calculateChart(data: ChartInput) {
   const [year, month, day] = data.birthDate.split("-").map(Number);
   const [hour, minute] = data.birthTime.split(":").map(Number);
@@ -39,12 +63,11 @@ export function calculateChart(data: ChartInput) {
   const isSidereal = zodiacSystem === "sidereal";
   const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
 
-  // Convert local birth time to UTC using Local Mean Time (LMT).
-  // LMT offset = longitude / 15 hours. This is the standard astrological
-  // convention — more astronomically precise than timezone-based conversion
-  // because timezones are political constructs that don't reflect true local time.
-  // The julday formula handles hour overflow/underflow naturally via continuous math.
-  const utcHour = decimalHour - data.longitude / 15;
+  // Convert local birth time to UTC using the real timezone for this location.
+  // geo-tz determines the IANA timezone from coordinates, and Intl gives the
+  // UTC offset at the specific birth date (correctly handling DST).
+  const tzOffset = getUtcOffsetHours(data.latitude, data.longitude, year, month, day);
+  const utcHour = decimalHour - tzOffset;
   const jd = julday(year, month, day, utcHour);
 
   // --- Planets ---
