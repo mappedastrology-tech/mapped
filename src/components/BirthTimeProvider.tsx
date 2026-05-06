@@ -74,12 +74,17 @@ export function BirthTimeProvider({ children }: { children: ReactNode }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("birth_time_precision, birth_time_window, day_night_known, is_daytime, created_at")
+        .select("birth_time_precision, birth_time_window, day_night_known, is_daytime, created_at, birth_time")
         .eq("id", user.id)
         .single();
 
       if (profile) {
-        setPrecision(profile.birth_time_precision || "unknown");
+        // If user has a birth time saved but precision was never set (pre-onboarding account),
+        // treat it as "exact" so they aren't blocked from time-dependent features
+        const effectivePrecision = (!profile.birth_time_precision && profile.birth_time)
+          ? "exact"
+          : (profile.birth_time_precision || "unknown");
+        setPrecision(effectivePrecision);
         setTimeWindow(profile.birth_time_window || null);
         setDayNightKnown(profile.day_night_known || false);
         setIsDaytime(profile.is_daytime ?? null);
