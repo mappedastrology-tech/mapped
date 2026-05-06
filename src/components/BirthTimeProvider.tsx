@@ -74,16 +74,28 @@ export function BirthTimeProvider({ children }: { children: ReactNode }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("birth_time_precision, birth_time_window, day_night_known, is_daytime, created_at, birth_time")
+        .select("birth_time_precision, birth_time_window, day_night_known, is_daytime, created_at")
         .eq("id", user.id)
         .single();
 
       if (profile) {
-        // If user has a birth time saved but precision was never set (pre-onboarding account),
-        // treat it as "exact" so they aren't blocked from time-dependent features
-        const effectivePrecision = (!profile.birth_time_precision && profile.birth_time)
-          ? "exact"
-          : (profile.birth_time_precision || "unknown");
+        let effectivePrecision = profile.birth_time_precision || "unknown";
+
+        // If precision was never set (pre-onboarding account), check if user has
+        // a chart with a birth time — if so, treat as "exact" so they aren't blocked
+        if (effectivePrecision === "unknown") {
+          const { data: chart } = await supabase
+            .from("charts")
+            .select("birth_time, unknown_time")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (chart?.birth_time && !chart?.unknown_time) {
+            effectivePrecision = "exact";
+          }
+        }
+
         setPrecision(effectivePrecision);
         setTimeWindow(profile.birth_time_window || null);
         setDayNightKnown(profile.day_night_known || false);
