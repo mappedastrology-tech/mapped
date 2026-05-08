@@ -439,19 +439,41 @@ function AlmanacPrefsSection() {
   );
 }
 
+/* ─── Toggle Switch component ─── */
+
+function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-[26px] w-[46px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50 disabled:opacity-40 disabled:cursor-not-allowed ${
+        checked ? "bg-terracotta" : "bg-foreground/20"
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-[22px] w-[22px] transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+          checked ? "translate-x-[20px]" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 /* ─── Notification Settings section ─── */
 
 function NotificationSettingsSection() {
   const [prefs, setPrefs] = useState<Record<string, boolean | number | string | null>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [pauseHours, setPauseHours] = useState<number | null>(null);
+  const [showPauseOptions, setShowPauseOptions] = useState(false);
   const [permissionState, setPermissionState] = useState<string>("default");
   const [requesting, setRequesting] = useState(false);
   const [testSent, setTestSent] = useState(false);
 
   useEffect(() => {
-    // Check push support and permission
     if (typeof window !== "undefined" && "Notification" in window) {
       setPermissionState(Notification.permission);
     } else {
@@ -477,7 +499,6 @@ function NotificationSettingsSection() {
     }
     load();
 
-    // Initialize service worker if already granted
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
       import("@/lib/notifications").then(({ initPushNotifications }) => {
         initPushNotifications();
@@ -491,7 +512,6 @@ function NotificationSettingsSection() {
       const { requestPermission, registerServiceWorker, subscribeToPush } = await import("@/lib/notifications");
       const result = await requestPermission();
       setPermissionState(result);
-
       if (result === "granted") {
         await registerServiceWorker();
         await subscribeToPush();
@@ -535,7 +555,7 @@ function NotificationSettingsSection() {
     const updated = { ...prefs, paused_until: until };
     setPrefs(updated);
     save(updated);
-    setPauseHours(null);
+    setShowPauseOptions(false);
   }
 
   function unpause() {
@@ -548,114 +568,188 @@ function NotificationSettingsSection() {
 
   const notifsPaused = prefs.paused_until && new Date(prefs.paused_until as string) > new Date();
 
-  const groups = [
-    { title: "Today's content", items: [{ key: "daily_content", label: "One daily note from us" }] },
-    { title: "Moon phases", items: [{ key: "full_moon", label: "Full moons" }, { key: "new_moon", label: "New moons" }, { key: "quarter_moon", label: "Quarter moons" }] },
-    { title: "Your chart", items: [{ key: "major_transits", label: "Major transits" }, { key: "retrograde_stations", label: "Retrograde stations" }, { key: "birthday_week", label: "Birthday week" }, { key: "solar_return", label: "Solar Return" }] },
-    { title: "Collective sky", items: [{ key: "eclipses", label: "Eclipses" }, { key: "mercury_retrograde", label: "Mercury retrograde" }, { key: "major_ingresses", label: "Major ingresses" }] },
-    { title: "Practice", items: [{ key: "practice_reminders", label: "Phase reminders" }] },
-    { title: "Check-ins", items: [{ key: "re_engagement", label: "If I haven't opened in a while" }] },
+  const groups: { title: string; icon: string; items: { key: string; label: string; desc: string }[] }[] = [
+    {
+      title: "Daily", icon: "☀️",
+      items: [
+        { key: "daily_content", label: "Morning message", desc: "A phrase, transit, or nudge each day" },
+      ],
+    },
+    {
+      title: "Moon phases", icon: "🌙",
+      items: [
+        { key: "full_moon", label: "Full moons", desc: "Twice a month" },
+        { key: "new_moon", label: "New moons", desc: "Twice a month" },
+        { key: "quarter_moon", label: "Quarter moons", desc: "The quieter phases" },
+      ],
+    },
+    {
+      title: "Your chart", icon: "✦",
+      items: [
+        { key: "major_transits", label: "Major transits", desc: "When planets aspect your placements" },
+        { key: "retrograde_stations", label: "Retrogrades", desc: "Stations over your chart" },
+        { key: "birthday_week", label: "Birthday week", desc: "Your year ruler changeover" },
+        { key: "solar_return", label: "Solar Return", desc: "The exact moment, once a year" },
+      ],
+    },
+    {
+      title: "Collective sky", icon: "🌌",
+      items: [
+        { key: "eclipses", label: "Eclipses", desc: "4–6 per year" },
+        { key: "mercury_retrograde", label: "Mercury retrograde", desc: "3–4 per year" },
+        { key: "major_ingresses", label: "Major ingresses", desc: "Saturn, Jupiter, Pluto sign changes" },
+      ],
+    },
+    {
+      title: "Practice", icon: "🕯️",
+      items: [
+        { key: "practice_reminders", label: "Ritual reminders", desc: "Before each phase you have a ritual for" },
+      ],
+    },
+    {
+      title: "Check-ins", icon: "💌",
+      items: [
+        { key: "re_engagement", label: "Gentle nudges", desc: "If you haven't opened in a while (max 3 ever)" },
+      ],
+    },
   ];
 
   return (
-    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Notifications</p>
+    <div className="rounded-2xl bg-surface border border-foreground/15 overflow-hidden">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3">
+        <p className="text-xs uppercase tracking-widest text-foreground/40 font-semibold">Notifications</p>
+      </div>
 
-      {/* Permission status */}
-      {permissionState === "unsupported" ? (
-        <div className="py-3 px-4 rounded-xl bg-foreground/5 border border-foreground/10 mb-4">
-          <p className="text-foreground/60 text-xs leading-relaxed">
-            Push notifications aren&apos;t supported in this browser. Try opening Mapped from your home screen (Add to Home Screen) for the full experience.
-          </p>
-        </div>
-      ) : permissionState === "denied" ? (
-        <div className="py-3 px-4 rounded-xl bg-red-500/5 border border-red-400/20 mb-4">
-          <p className="text-foreground/60 text-xs leading-relaxed">
-            Notifications are blocked. To enable them, open your browser settings and allow notifications for this site.
-          </p>
-        </div>
-      ) : permissionState === "default" ? (
-        <div className="mb-4">
-          <p className="text-foreground/60 text-xs leading-relaxed mb-3">
-            Get notified about full moons, transits to your chart, and other moments that matter. Max 4 per week — we text like a friend who actually has something to say.
-          </p>
-          <button
-            onClick={handleEnableNotifications}
-            disabled={requesting}
-            className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            {requesting ? "Requesting..." : "Enable notifications"}
-          </button>
-        </div>
-      ) : (
-        /* granted — show status + test button */
-        <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-sage/10 border border-sage/20">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-sage animate-pulse" />
-            <span className="text-foreground/70 text-xs font-medium">Notifications active</span>
+      {/* Permission prompt or status */}
+      <div className="px-5 pb-4">
+        {permissionState === "unsupported" ? (
+          <div className="py-3 px-4 rounded-xl bg-foreground/5 border border-foreground/10">
+            <p className="text-foreground/50 text-xs leading-relaxed">
+              Push notifications aren&apos;t supported here. Try adding Mapped to your home screen for the full experience.
+            </p>
           </div>
-          <button
-            onClick={handleSendTest}
-            className="text-terracotta text-xs font-semibold"
-          >
-            {testSent ? "Sent!" : "Test"}
-          </button>
-        </div>
-      )}
+        ) : permissionState === "denied" ? (
+          <div className="py-3 px-4 rounded-xl bg-red-500/5 border border-red-400/20">
+            <p className="text-foreground/50 text-xs leading-relaxed">
+              Notifications are blocked. Open your browser or phone settings to allow notifications for this site.
+            </p>
+          </div>
+        ) : permissionState === "default" ? (
+          <div>
+            <p className="text-foreground/50 text-[13px] leading-relaxed mb-3">
+              Full moons, transits to your chart, and other moments that matter. Max 4 per week.
+            </p>
+            <button
+              onClick={handleEnableNotifications}
+              disabled={requesting}
+              className="w-full py-3.5 rounded-2xl bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {requesting ? "Requesting..." : "Allow notifications"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-sage/10 border border-sage/20">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-sage animate-pulse" />
+              <span className="text-foreground/70 text-[13px] font-medium">Active</span>
+            </div>
+            <button
+              onClick={handleSendTest}
+              className="text-terracotta text-[13px] font-semibold active:scale-95 transition-transform"
+            >
+              {testSent ? "Sent ✓" : "Send test"}
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* Only show preferences if permission is granted */}
+      {/* Preferences — always show if granted */}
       {permissionState === "granted" && (
         <>
-          {/* Pause toggle */}
+          {/* Pause banner */}
           {notifsPaused ? (
-            <div className="flex items-center justify-between mb-4 py-2 px-3 rounded-xl bg-amber/10 border border-amber/30">
-              <span className="text-foreground/70 text-xs">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
-              <button onClick={unpause} className="text-terracotta text-xs font-semibold">Resume</button>
+            <div className="mx-5 mb-4 flex items-center justify-between py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-400/20">
+              <span className="text-foreground/60 text-[13px]">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
+              <button onClick={unpause} className="text-terracotta text-[13px] font-semibold">Resume</button>
             </div>
           ) : (
-            <div className="mb-4">
-              {pauseHours === null ? (
-                <button onClick={() => setPauseHours(0)} className="text-foreground/40 text-xs">Pause all notifications...</button>
+            <div className="mx-5 mb-3">
+              {!showPauseOptions ? (
+                <button onClick={() => setShowPauseOptions(true)} className="text-foreground/35 text-xs hover:text-foreground/50 transition-colors">
+                  Pause all...
+                </button>
               ) : (
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground/40 text-xs mr-1">Pause for:</span>
                   {[{ label: "1 day", h: 24 }, { label: "3 days", h: 72 }, { label: "1 week", h: 168 }].map(opt => (
-                    <button key={opt.h} onClick={() => pauseAll(opt.h)} className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/60 text-xs hover:border-terracotta hover:text-terracotta transition-colors">
+                    <button
+                      key={opt.h}
+                      onClick={() => pauseAll(opt.h)}
+                      className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/50 text-xs hover:border-terracotta hover:text-terracotta transition-colors active:scale-95"
+                    >
                       {opt.label}
                     </button>
                   ))}
-                  <button onClick={() => setPauseHours(null)} className="text-foreground/30 text-xs px-2">Cancel</button>
+                  <button onClick={() => setShowPauseOptions(false)} className="text-foreground/25 text-xs ml-1">✕</button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Category toggles */}
-          <div className="space-y-4">
-            {groups.map(group => (
-              <div key={group.title}>
-                <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-1.5">{group.title}</p>
-                {group.items.map(item => (
-                  <label key={item.key} className="flex items-center justify-between py-1.5 cursor-pointer">
-                    <span className="text-foreground/70 text-xs">{item.label}</span>
-                    <input type="checkbox" checked={!!prefs[item.key]} onChange={() => toggle(item.key)} className="w-4 h-4 rounded accent-terracotta" />
-                  </label>
-                ))}
+          {/* Category groups */}
+          <div className="border-t border-foreground/8">
+            {groups.map((group, gi) => (
+              <div key={group.title} className={gi > 0 ? "border-t border-foreground/8" : ""}>
+                <div className="px-5 pt-4 pb-2">
+                  <p className="text-foreground/40 text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                    <span>{group.icon}</span> {group.title}
+                  </p>
+                </div>
+                <div>
+                  {group.items.map((item, ii) => (
+                    <div
+                      key={item.key}
+                      className={`flex items-center justify-between px-5 py-3 ${
+                        ii < group.items.length - 1 ? "border-b border-foreground/5" : ""
+                      }`}
+                    >
+                      <div className="flex-1 mr-4">
+                        <p className="text-foreground/80 text-[13px] font-medium">{item.label}</p>
+                        <p className="text-foreground/35 text-[11px] mt-0.5">{item.desc}</p>
+                      </div>
+                      <ToggleSwitch
+                        checked={!!prefs[item.key]}
+                        onChange={() => toggle(item.key)}
+                        disabled={!!notifsPaused}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Preferred time */}
-          <div className="mt-4 pt-4 border-t border-foreground/10">
-            <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold mb-2">Preferred time</p>
-            <div className="flex flex-wrap gap-1.5">
-              {[{ label: "8AM", h: 8 }, { label: "10AM", h: 10 }, { label: "12PM", h: 12 }, { label: "5PM", h: 17 }, { label: "7PM", h: 19 }, { label: "9PM", h: 21 }].map(opt => (
+          {/* Preferred delivery time */}
+          <div className="border-t border-foreground/8 px-5 py-4">
+            <p className="text-foreground/40 text-[11px] uppercase tracking-widest font-semibold mb-3">Delivery time</p>
+            <p className="text-foreground/35 text-[11px] mb-3">When we send your daily message. Moon and transit alerts arrive at their natural time.</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "8 AM", h: 8 },
+                { label: "10 AM", h: 10 },
+                { label: "12 PM", h: 12 },
+                { label: "5 PM", h: 17 },
+                { label: "7 PM", h: 19 },
+                { label: "9 PM", h: 21 },
+              ].map(opt => (
                 <button
                   key={opt.h}
                   onClick={() => setHour(opt.h)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  className={`px-4 py-2 rounded-full text-[13px] font-medium border-2 transition-all active:scale-95 ${
                     prefs.preferred_hour === opt.h
-                      ? "border-terracotta text-terracotta bg-terracotta/10"
-                      : "border-foreground/15 text-foreground/50"
+                      ? "border-terracotta text-terracotta bg-terracotta/8"
+                      : "border-foreground/12 text-foreground/45 hover:border-foreground/25"
                   }`}
                 >
                   {opt.label}
@@ -666,15 +760,22 @@ function NotificationSettingsSection() {
         </>
       )}
 
-      {/* Email pref — always visible regardless of push state */}
-      <div className="mt-4 pt-4 border-t border-foreground/10">
-        <label className="flex items-center justify-between cursor-pointer">
-          <span className="text-foreground/70 text-xs">Marketing emails (max 1/month)</span>
-          <input type="checkbox" checked={!!prefs.email_marketing} onChange={() => toggle("email_marketing")} className="w-4 h-4 rounded accent-terracotta" />
-        </label>
+      {/* Email — always visible */}
+      <div className="border-t border-foreground/8 px-5 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 mr-4">
+            <p className="text-foreground/80 text-[13px] font-medium">Email updates</p>
+            <p className="text-foreground/35 text-[11px] mt-0.5">Occasional updates, max 1 per month</p>
+          </div>
+          <ToggleSwitch checked={!!prefs.email_marketing} onChange={() => toggle("email_marketing")} />
+        </div>
       </div>
 
-      {saving && <p className="text-foreground/30 text-[10px] mt-2">Saving...</p>}
+      {saving && (
+        <div className="px-5 pb-3">
+          <p className="text-foreground/25 text-[10px]">Saving...</p>
+        </div>
+      )}
     </div>
   );
 }
