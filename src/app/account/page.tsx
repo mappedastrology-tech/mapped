@@ -468,10 +468,8 @@ function NotificationSettingsSection() {
   const [prefs, setPrefs] = useState<Record<string, boolean | number | string | null>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showPauseOptions, setShowPauseOptions] = useState(false);
   const [permissionState, setPermissionState] = useState<string>("default");
   const [requesting, setRequesting] = useState(false);
-  const [testSent, setTestSent] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -485,14 +483,20 @@ function NotificationSettingsSection() {
       if (!session?.user) return;
       const { data } = await supabase.from("profiles").select("notification_preferences").eq("id", session.user.id).single();
       if (data?.notification_preferences) {
-        setPrefs(data.notification_preferences);
+        const np = data.notification_preferences;
+        // Map full prefs back to simplified view (handles existing users)
+        if ("moon_phases" in np) {
+          setPrefs(np);
+        } else {
+          setPrefs({
+            moon_phases: np.full_moon ?? true,
+            your_chart: np.major_transits ?? true,
+            daily_message: np.daily_content ?? false,
+          });
+        }
       } else {
         setPrefs({
-          daily_content: false, full_moon: true, new_moon: true, quarter_moon: false,
-          major_transits: true, retrograde_stations: true, birthday_week: true, solar_return: true,
-          eclipses: true, mercury_retrograde: true, major_ingresses: true,
-          practice_reminders: true, re_engagement: true,
-          preferred_hour: 9, paused_until: null, email_marketing: false,
+          moon_phases: true, your_chart: true, daily_message: false,
         });
       }
       setLoaded(true);
@@ -506,7 +510,11 @@ function NotificationSettingsSection() {
     }
   }, []);
 
-  async function handleEnableNotifications() {
+  async function handleToggleNotifications() {
+    if (permissionState === "granted") {
+      // Already granted — toggling off just updates prefs, browser permission stays
+      return;
+    }
     setRequesting(true);
     try {
       const { requestPermission, registerServiceWorker, subscribeToPush } = await import("@/lib/notifications");
@@ -522,18 +530,30 @@ function NotificationSettingsSection() {
     setRequesting(false);
   }
 
-  async function handleSendTest() {
-    const { sendTestNotification } = await import("@/lib/notifications");
-    sendTestNotification();
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
-  }
-
   async function save(updated: Record<string, boolean | number | string | null>) {
     setSaving(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      await supabase.from("profiles").update({ notification_preferences: updated }).eq("id", session.user.id);
+      // Map simplified prefs to the full preference structure for the cron handler
+      const fullPrefs = {
+        full_moon: !!updated.moon_phases,
+        new_moon: !!updated.moon_phases,
+        quarter_moon: false,
+        major_transits: !!updated.your_chart,
+        retrograde_stations: !!updated.your_chart,
+        birthday_week: !!updated.your_chart,
+        solar_return: !!updated.your_chart,
+        eclipses: !!updated.moon_phases,
+        mercury_retrograde: !!updated.your_chart,
+        major_ingresses: !!updated.your_chart,
+        daily_content: !!updated.daily_message,
+        practice_reminders: !!updated.moon_phases,
+        re_engagement: true,
+        preferred_hour: 19,
+        paused_until: null,
+        email_marketing: false,
+      };
+      await supabase.from("profiles").update({ notification_preferences: fullPrefs }).eq("id", session.user.id);
     }
     setSaving(false);
   }
@@ -544,236 +564,58 @@ function NotificationSettingsSection() {
     save(updated);
   }
 
-  function setHour(hour: number) {
-    const updated = { ...prefs, preferred_hour: hour };
-    setPrefs(updated);
-    save(updated);
-  }
-
-  function pauseAll(hours: number) {
-    const until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
-    const updated = { ...prefs, paused_until: until };
-    setPrefs(updated);
-    save(updated);
-    setShowPauseOptions(false);
-  }
-
-  function unpause() {
-    const updated = { ...prefs, paused_until: null };
-    setPrefs(updated);
-    save(updated);
-  }
-
   if (!loaded) return null;
 
-  const notifsPaused = prefs.paused_until && new Date(prefs.paused_until as string) > new Date();
+  const isEnabled = permissionState === "granted";
 
-  const groups: { title: string; icon: string; items: { key: string; label: string; desc: string }[] }[] = [
-    {
-      title: "Daily", icon: "☀️",
-      items: [
-        { key: "daily_content", label: "Morning message", desc: "A phrase, transit, or nudge each day" },
-      ],
-    },
-    {
-      title: "Moon phases", icon: "🌙",
-      items: [
-        { key: "full_moon", label: "Full moons", desc: "Twice a month" },
-        { key: "new_moon", label: "New moons", desc: "Twice a month" },
-        { key: "quarter_moon", label: "Quarter moons", desc: "The quieter phases" },
-      ],
-    },
-    {
-      title: "Your chart", icon: "✦",
-      items: [
-        { key: "major_transits", label: "Major transits", desc: "When planets aspect your placements" },
-        { key: "retrograde_stations", label: "Retrogrades", desc: "Stations over your chart" },
-        { key: "birthday_week", label: "Birthday week", desc: "Your year ruler changeover" },
-        { key: "solar_return", label: "Solar Return", desc: "The exact moment, once a year" },
-      ],
-    },
-    {
-      title: "Collective sky", icon: "🌌",
-      items: [
-        { key: "eclipses", label: "Eclipses", desc: "4–6 per year" },
-        { key: "mercury_retrograde", label: "Mercury retrograde", desc: "3–4 per year" },
-        { key: "major_ingresses", label: "Major ingresses", desc: "Saturn, Jupiter, Pluto sign changes" },
-      ],
-    },
-    {
-      title: "Practice", icon: "🕯️",
-      items: [
-        { key: "practice_reminders", label: "Ritual reminders", desc: "Before each phase you have a ritual for" },
-      ],
-    },
-    {
-      title: "Check-ins", icon: "💌",
-      items: [
-        { key: "re_engagement", label: "Gentle nudges", desc: "If you haven't opened in a while (max 3 ever)" },
-      ],
-    },
+  const categories = [
+    { key: "moon_phases", label: "Moon phases", desc: "Full moons, new moons, and eclipses" },
+    { key: "your_chart", label: "Your chart", desc: "Transits, retrogrades, and birthdays" },
+    { key: "daily_message", label: "Daily message", desc: "A short note each morning" },
   ];
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 overflow-hidden">
-      {/* Header */}
-      <div className="px-5 pt-5 pb-3">
-        <p className="text-xs uppercase tracking-widest text-foreground/40 font-semibold">Notifications</p>
-      </div>
-
-      {/* Permission prompt or status */}
-      <div className="px-5 pb-4">
-        {permissionState === "unsupported" ? (
-          <div className="py-3 px-4 rounded-xl bg-foreground/5 border border-foreground/10">
-            <p className="text-foreground/50 text-xs leading-relaxed">
-              Push notifications aren&apos;t supported here. Try adding Mapped to your home screen for the full experience.
-            </p>
-          </div>
-        ) : permissionState === "denied" ? (
-          <div className="py-3 px-4 rounded-xl bg-red-500/5 border border-red-400/20">
-            <p className="text-foreground/50 text-xs leading-relaxed">
-              Notifications are blocked. Open your browser or phone settings to allow notifications for this site.
-            </p>
-          </div>
-        ) : permissionState === "default" ? (
-          <div>
-            <p className="text-foreground/50 text-[13px] leading-relaxed mb-3">
-              Full moons, transits to your chart, and other moments that matter. Max 4 per week.
-            </p>
-            <button
-              onClick={handleEnableNotifications}
-              disabled={requesting}
-              className="w-full py-3.5 rounded-2xl bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              {requesting ? "Requesting..." : "Allow notifications"}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-sage/10 border border-sage/20">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-sage animate-pulse" />
-              <span className="text-foreground/70 text-[13px] font-medium">Active</span>
-            </div>
-            <button
-              onClick={handleSendTest}
-              className="text-terracotta text-[13px] font-semibold active:scale-95 transition-transform"
-            >
-              {testSent ? "Sent ✓" : "Send test"}
-            </button>
-          </div>
+      {/* Master toggle row */}
+      <div className="flex items-center justify-between px-5 py-4">
+        <div>
+          <p className="text-foreground text-[15px] font-semibold">Notifications</p>
+          {permissionState === "denied" && (
+            <p className="text-foreground/40 text-[11px] mt-0.5">Blocked in browser settings</p>
+          )}
+          {permissionState === "unsupported" && (
+            <p className="text-foreground/40 text-[11px] mt-0.5">Add to home screen to enable</p>
+          )}
+        </div>
+        {permissionState !== "unsupported" && (
+          <ToggleSwitch
+            checked={isEnabled}
+            onChange={handleToggleNotifications}
+            disabled={requesting || permissionState === "denied"}
+          />
         )}
       </div>
 
-      {/* Preferences — always show if granted */}
-      {permissionState === "granted" && (
-        <>
-          {/* Pause banner */}
-          {notifsPaused ? (
-            <div className="mx-5 mb-4 flex items-center justify-between py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-400/20">
-              <span className="text-foreground/60 text-[13px]">Paused until {new Date(prefs.paused_until as string).toLocaleDateString()}</span>
-              <button onClick={unpause} className="text-terracotta text-[13px] font-semibold">Resume</button>
-            </div>
-          ) : (
-            <div className="mx-5 mb-3">
-              {!showPauseOptions ? (
-                <button onClick={() => setShowPauseOptions(true)} className="text-foreground/35 text-xs hover:text-foreground/50 transition-colors">
-                  Pause all...
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-foreground/40 text-xs mr-1">Pause for:</span>
-                  {[{ label: "1 day", h: 24 }, { label: "3 days", h: 72 }, { label: "1 week", h: 168 }].map(opt => (
-                    <button
-                      key={opt.h}
-                      onClick={() => pauseAll(opt.h)}
-                      className="px-3 py-1.5 rounded-full border border-foreground/15 text-foreground/50 text-xs hover:border-terracotta hover:text-terracotta transition-colors active:scale-95"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                  <button onClick={() => setShowPauseOptions(false)} className="text-foreground/25 text-xs ml-1">✕</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Category groups */}
-          <div className="border-t border-foreground/8">
-            {groups.map((group, gi) => (
-              <div key={group.title} className={gi > 0 ? "border-t border-foreground/8" : ""}>
-                <div className="px-5 pt-4 pb-2">
-                  <p className="text-foreground/40 text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                    <span>{group.icon}</span> {group.title}
-                  </p>
-                </div>
-                <div>
-                  {group.items.map((item, ii) => (
-                    <div
-                      key={item.key}
-                      className={`flex items-center justify-between px-5 py-3 ${
-                        ii < group.items.length - 1 ? "border-b border-foreground/5" : ""
-                      }`}
-                    >
-                      <div className="flex-1 mr-4">
-                        <p className="text-foreground/80 text-[13px] font-medium">{item.label}</p>
-                        <p className="text-foreground/35 text-[11px] mt-0.5">{item.desc}</p>
-                      </div>
-                      <ToggleSwitch
-                        checked={!!prefs[item.key]}
-                        onChange={() => toggle(item.key)}
-                        disabled={!!notifsPaused}
-                      />
-                    </div>
-                  ))}
-                </div>
+      {/* Category toggles — only shown when enabled */}
+      {isEnabled && (
+        <div className="border-t border-foreground/8">
+          {categories.map((cat, i) => (
+            <div
+              key={cat.key}
+              className={`flex items-center justify-between px-5 py-3.5 ${
+                i < categories.length - 1 ? "border-b border-foreground/5" : ""
+              }`}
+            >
+              <div className="flex-1 mr-4">
+                <p className="text-foreground/80 text-[14px] font-medium">{cat.label}</p>
+                <p className="text-foreground/35 text-[12px] mt-0.5">{cat.desc}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Preferred delivery time */}
-          <div className="border-t border-foreground/8 px-5 py-4">
-            <p className="text-foreground/40 text-[11px] uppercase tracking-widest font-semibold mb-3">Delivery time</p>
-            <p className="text-foreground/35 text-[11px] mb-3">When we send your daily message. Moon and transit alerts arrive at their natural time.</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "8 AM", h: 8 },
-                { label: "10 AM", h: 10 },
-                { label: "12 PM", h: 12 },
-                { label: "5 PM", h: 17 },
-                { label: "7 PM", h: 19 },
-                { label: "9 PM", h: 21 },
-              ].map(opt => (
-                <button
-                  key={opt.h}
-                  onClick={() => setHour(opt.h)}
-                  className={`px-4 py-2 rounded-full text-[13px] font-medium border-2 transition-all active:scale-95 ${
-                    prefs.preferred_hour === opt.h
-                      ? "border-terracotta text-terracotta bg-terracotta/8"
-                      : "border-foreground/12 text-foreground/45 hover:border-foreground/25"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              <ToggleSwitch
+                checked={!!prefs[cat.key]}
+                onChange={() => toggle(cat.key)}
+              />
             </div>
-          </div>
-        </>
-      )}
-
-      {/* Email — always visible */}
-      <div className="border-t border-foreground/8 px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 mr-4">
-            <p className="text-foreground/80 text-[13px] font-medium">Email updates</p>
-            <p className="text-foreground/35 text-[11px] mt-0.5">Occasional updates, max 1 per month</p>
-          </div>
-          <ToggleSwitch checked={!!prefs.email_marketing} onChange={() => toggle("email_marketing")} />
-        </div>
-      </div>
-
-      {saving && (
-        <div className="px-5 pb-3">
-          <p className="text-foreground/25 text-[10px]">Saving...</p>
+          ))}
         </div>
       )}
     </div>
