@@ -191,15 +191,20 @@ export default function OnboardingPage() {
   const goNext = useCallback(() => goTo(step + 1, "left"), [goTo, step]);
   const goPrev = useCallback(() => goTo(step - 1, "right"), [goTo, step]);
 
+  const touchStartY = useRef(0);
+
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
     touchDeltaX.current = 0;
   }
   function onTouchMove(e: React.TouchEvent) {
     touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
   }
-  function onTouchEnd() {
-    if (Math.abs(touchDeltaX.current) > 50) {
+  function onTouchEnd(e: React.TouchEvent) {
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    // Only navigate if swipe was mostly horizontal (not a scroll gesture)
+    if (Math.abs(touchDeltaX.current) > 50 && Math.abs(touchDeltaX.current) > deltaY * 1.5) {
       if (touchDeltaX.current < 0 && step < TOTAL_STEPS - 1) goNext();
       else if (touchDeltaX.current > 0 && step > 0) goPrev();
     }
@@ -1171,170 +1176,64 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 7: Notifications (3-part) ══════════ */}
+          {/* ══════════ Screen 7: Notifications ══════════ */}
           {step === 7 && (
-            <div className="flex-1 flex flex-col px-6 pt-14 pb-8 overflow-y-auto">
-              {/* Sub-step 0: Philosophy */}
-              {notifSubStep === 0 && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <h1
-                    className="text-[26px] text-foreground mb-3 tracking-tight"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Notifications
-                  </h1>
-                  <p className="text-foreground/55 text-sm mb-2 max-w-xs leading-relaxed">
-                    Want a heads-up when something significant moves?
-                  </p>
-                  <p className="text-foreground/40 text-xs mb-8 max-w-xs leading-relaxed">
-                    We don&apos;t do notification spam. We&apos;ll only send what you actually want. Pick what you want — change anything later.
-                  </p>
-                  <button
-                    onClick={() => setNotifSubStep(1)}
-                    className={ctaBtn(true)}
-                    style={ctaShadow}
-                  >
-                    Continue
-                  </button>
-                </div>
-              )}
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <div className="text-4xl mb-5">&#x1F514;</div>
+              <h1
+                className="text-[26px] text-foreground mb-3 tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Stay in the loop
+              </h1>
+              <p className="text-foreground/55 text-sm mb-2 max-w-xs leading-relaxed">
+                Get notified for full moons, transits to your chart, and other moments that matter.
+              </p>
+              <p className="text-foreground/40 text-xs mb-8 max-w-xs leading-relaxed">
+                Max a few per week. You can change this anytime in settings.
+              </p>
 
-              {/* Sub-step 1: Category preferences */}
-              {notifSubStep === 1 && (
-                <div className="flex flex-col gap-5">
-                  <h2 className="text-foreground text-base font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                    What do you want to hear about?
-                  </h2>
-
-                  {/* Group: Today's content */}
-                  <div>
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Today&apos;s content</p>
-                    <label className="flex items-center gap-3 py-2 cursor-pointer">
-                      <input type="checkbox" checked={notifToggles.daily_content} onChange={(e) => setNotifToggles(p => ({ ...p, daily_content: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
-                      <span className="text-foreground text-sm">One daily note from us</span>
-                    </label>
-                  </div>
-
-                  {/* Group: Moon phases */}
-                  <div>
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Moon phases</p>
-                    {[
-                      { key: "full_moon", label: "Full moons" },
-                      { key: "new_moon", label: "New moons" },
-                      { key: "quarter_moon", label: "Quarter moons" },
-                    ].map(item => (
-                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
-                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
-                        <span className="text-foreground text-sm">{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Group: Your chart */}
-                  <div>
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Your chart</p>
-                    {[
-                      { key: "major_transits", label: "Major transits hitting your chart" },
-                      { key: "retrograde_stations", label: "Retrograde stations on your placements" },
-                      { key: "birthday_week", label: "Birthday week (your year ruler change)" },
-                      { key: "solar_return", label: "Your Solar Return moment" },
-                    ].map(item => (
-                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
-                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
-                        <span className="text-foreground text-sm">{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Group: The collective sky */}
-                  <div>
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">The collective sky</p>
-                    {[
-                      { key: "eclipses", label: "Eclipses" },
-                      { key: "mercury_retrograde", label: "Mercury retrograde starts" },
-                      { key: "major_ingresses", label: "Major planet ingresses" },
-                    ].map(item => (
-                      <label key={item.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
-                        <input type="checkbox" checked={notifToggles[item.key]} onChange={(e) => setNotifToggles(p => ({ ...p, [item.key]: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
-                        <span className="text-foreground text-sm">{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Group: Quiet check-ins */}
-                  <div>
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Quiet check-ins</p>
-                    <label className="flex items-center gap-3 py-1.5 cursor-pointer">
-                      <input type="checkbox" checked={notifToggles.re_engagement} onChange={(e) => setNotifToggles(p => ({ ...p, re_engagement: e.target.checked }))} className="w-4 h-4 rounded accent-terracotta" />
-                      <span className="text-foreground text-sm">If I haven&apos;t opened in a while, gently let me know</span>
-                    </label>
-                  </div>
-
-                  {/* Turn everything off */}
-                  <button
-                    onClick={() => setNotifToggles(Object.fromEntries(Object.keys(notifToggles).map(k => [k, false])))}
-                    className="text-foreground/40 text-xs self-start mt-1"
-                  >
-                    Turn everything off
-                  </button>
-
-                  {/* Continue */}
-                  <button
-                    onClick={() => setNotifSubStep(2)}
-                    className={`mt-4 ${ctaBtn(true)}`}
-                    style={ctaShadow}
-                  >
-                    Save &amp; continue
-                  </button>
-                </div>
-              )}
-
-              {/* Sub-step 2: Preferred time */}
-              {notifSubStep === 2 && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <h1
-                    className="text-[26px] text-foreground mb-3 tracking-tight"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    When should we send these?
-                  </h1>
-
-                  <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
-                    {[
-                      { label: "Morning (8 AM)", hour: 8 },
-                      { label: "Late morning (10 AM)", hour: 10 },
-                      { label: "Lunchtime (12 PM)", hour: 12 },
-                      { label: "Late afternoon (5 PM)", hour: 17 },
-                      { label: "Evening (7 PM)", hour: 19 },
-                      { label: "Night (9 PM)", hour: 21 },
-                    ].map(opt => (
-                      <button
-                        key={opt.hour}
-                        onClick={() => setNotifHour(opt.hour)}
-                        className={`w-full py-2.5 px-4 rounded-xl text-sm text-left border transition-all ${
-                          notifHour === opt.hour
-                            ? "border-terracotta text-terracotta bg-terracotta/10 font-semibold"
-                            : "border-foreground/15 text-foreground/70 bg-card/40"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <p className="text-foreground/35 text-[11px] mb-6 max-w-xs leading-relaxed">
-                    Some events have natural timing — sunset for new moons, the exact moment of your Solar Return. Those override your preference. Everything else lands here.
-                  </p>
-
-                  <button
-                    onClick={saveNotifPref}
-                    className={ctaBtn(true)}
-                    style={ctaShadow}
-                  >
-                    That&apos;s me
-                  </button>
-                </div>
-              )}
+              <div className="flex flex-col gap-3 w-full max-w-sm">
+                <button
+                  onClick={async () => {
+                    try {
+                      const { requestPermission, registerServiceWorker, subscribeToPush } = await import("@/lib/notifications");
+                      const result = await requestPermission();
+                      if (result === "granted") {
+                        await registerServiceWorker();
+                        await subscribeToPush();
+                      }
+                      // Save default preferences
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (session?.user) {
+                        await supabase.from("profiles").update({
+                          notification_preferences: {
+                            full_moon: true, new_moon: true, quarter_moon: false,
+                            major_transits: true, retrograde_stations: true,
+                            birthday_week: true, solar_return: true,
+                            eclipses: true, mercury_retrograde: true, major_ingresses: true,
+                            daily_content: false, practice_reminders: true, re_engagement: true,
+                            preferred_hour: 19, paused_until: null, email_marketing: false,
+                          },
+                        }).eq("id", session.user.id);
+                      }
+                    } catch (err) {
+                      console.error("Notification setup failed:", err);
+                    }
+                    goNext();
+                  }}
+                  className={ctaBtn(true)}
+                  style={ctaShadow}
+                >
+                  Allow notifications
+                </button>
+                <button
+                  onClick={goNext}
+                  className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                >
+                  Not now
+                </button>
+              </div>
             </div>
           )}
 
