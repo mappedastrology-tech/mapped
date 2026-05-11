@@ -145,7 +145,7 @@ interface SavedReading {
   date: string;
   deck: string;
   spreadName: string;
-  cards: { name: string; position?: string; reversed?: boolean }[];
+  cards: { name: string; keywords?: string[]; position?: string; reversed?: boolean }[];
 }
 
 export async function pushReadingToSupabase(reading: SavedReading): Promise<void> {

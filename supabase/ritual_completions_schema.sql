@@ -70,6 +70,10 @@ CREATE POLICY "Users insert own readings"
   ON tarot_readings FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Users update own readings"
+  ON tarot_readings FOR UPDATE
+  USING (auth.uid() = user_id);
+
 CREATE POLICY "Users delete own readings"
   ON tarot_readings FOR DELETE
   USING (auth.uid() = user_id);

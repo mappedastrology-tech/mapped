@@ -175,6 +175,7 @@ export default function TarotTab() {
 
   /* ─── Auto-save when all cards are revealed ─── */
   const readingSavedRef = useRef(false);
+  const [showSavedBanner, setShowSavedBanner] = useState(false);
   useEffect(() => {
     if (readingSavedRef.current) return;
     const hasCards = pickedCards.length > 0 || pickedOracleCards.length > 0 || freestylePicks.length > 0;
@@ -187,11 +188,15 @@ export default function TarotTab() {
     if (allRevealed && selectedSpread && (isOracleDeck ? pickedOracleCards.length >= selectedSpread.cardCount : pickedCards.length >= selectedSpread.cardCount)) {
       saveReading();
       readingSavedRef.current = true;
+      setShowSavedBanner(true);
+      setTimeout(() => setShowSavedBanner(false), 3000);
     }
     // Freestyle readings: save when at least 1 card is picked and all are revealed
     if (!selectedSpread && freestylePicks.length > 0 && freestylePicks.every(c => c.revealed)) {
       saveReading();
       readingSavedRef.current = true;
+      setShowSavedBanner(true);
+      setTimeout(() => setShowSavedBanner(false), 3000);
     }
   }, [pickedCards, pickedOracleCards, freestylePicks, isOracleDeck, selectedSpread, saveReading]);
 
@@ -825,7 +830,7 @@ export default function TarotTab() {
                       onClick={(e) => {
                         e.stopPropagation();
                         const cardsSummary = reading.cards.map(c =>
-                          `${c.position ? c.position + ": " : ""}${c.name}${c.reversed ? " (Reversed)" : ""} — ${c.keywords.slice(0, 3).join(", ")}`
+                          `${c.position ? c.position + ": " : ""}${c.name}${c.reversed ? " (Reversed)" : ""}${c.keywords?.length ? " — " + c.keywords.slice(0, 3).join(", ") : ""}`
                         ).join(". ");
                         const dollyContext = `I did a ${reading.spreadName} reading on ${new Date(reading.date).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Cards: ${cardsSummary}. Help me revisit this reading and understand what these cards were telling me.`;
                         sessionStorage.setItem("dolly-context", dollyContext);
@@ -1024,6 +1029,12 @@ export default function TarotTab() {
             {allRevealed ? "Tap any card to read its message" : "Tap each card to reveal it"}
           </p>
 
+          {showSavedBanner && (
+            <div className="text-center mb-3 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 inline-flex items-center gap-1.5 mx-auto text-sage text-xs font-medium" style={{ display: "flex", justifyContent: "center" }}>
+              <span>Reading saved</span>
+            </div>
+          )}
+
           <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
             {pickedOracleCards.map((oc, i) => {
               const pos = selectedSpread.positions[i];
@@ -1183,6 +1194,12 @@ export default function TarotTab() {
         <p className="text-foreground/30 text-xs text-center mb-4">
           {allRevealed ? "Tap any card to read its full meaning" : "Tap each card to reveal it"}
         </p>
+
+        {showSavedBanner && (
+          <div className="text-center mb-3 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 inline-flex items-center gap-1.5 mx-auto text-sage text-xs font-medium" style={{ display: "flex", justifyContent: "center" }}>
+            <span>Reading saved</span>
+          </div>
+        )}
 
         <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
           {pickedCards.map((dc, i) => {
@@ -1403,6 +1420,11 @@ export default function TarotTab() {
 
         <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>Fanned</h1>
         <p className="text-foreground/30 text-[10px] text-center mb-2">Swipe or drag through the deck · Tap cards that call to you · {totalPicked} picked</p>
+        {showSavedBanner && (
+          <div className="text-center mb-2 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 text-sage text-xs font-medium mx-auto" style={{ display: "flex", justifyContent: "center", width: "fit-content" }}>
+            Reading saved
+          </div>
+        )}
 
         {/* Fan */}
         <div
