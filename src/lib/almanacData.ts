@@ -106,72 +106,120 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
     { activity: "Beginning an exercise routine", icon: "💪" },
     { activity: "Getting a haircut for growth", icon: "✂️" },
     { activity: "Having that hard conversation", icon: "🗣️" },
+    { activity: "Asking directly for what you want", icon: "🎯" },
+    { activity: "Trying a new sport or workout", icon: "🥊" },
+    { activity: "Making the bold decision you've been circling", icon: "⚡" },
+    { activity: "Tackling the hardest task first", icon: "🏁" },
   ],
   Taurus: [
     { activity: "Starting a skincare routine", icon: "🧴" },
     { activity: "Making a big purchase you've researched", icon: "💎" },
     { activity: "Hosting a gathering", icon: "🍽️" },
     { activity: "Planting something", icon: "🌱" },
+    { activity: "Cooking a slow, comforting meal", icon: "🍲" },
+    { activity: "Reviewing your budget or savings", icon: "💰" },
+    { activity: "Spending unhurried time in nature", icon: "🌳" },
+    { activity: "Savoring a small, sensory luxury", icon: "🕯️" },
   ],
   Gemini: [
     { activity: "Going on a first date", icon: "💬" },
     { activity: "Signing contracts or agreements", icon: "📝" },
     { activity: "Starting a creative writing project", icon: "✍️" },
     { activity: "Reaching out to someone you've lost touch with", icon: "📱" },
+    { activity: "Brainstorming or mind-mapping ideas", icon: "💡" },
+    { activity: "Clearing your inbox and messages", icon: "📨" },
+    { activity: "Learning something new in short bursts", icon: "🧠" },
+    { activity: "Running errands and short trips", icon: "🚲" },
   ],
   Cancer: [
     { activity: "Deep cleaning your space", icon: "🧹" },
     { activity: "Starting a home improvement", icon: "🏠" },
     { activity: "Cooking or preserving food", icon: "🥘" },
     { activity: "Nurturing an important relationship", icon: "💛" },
+    { activity: "Looking through old photos or keepsakes", icon: "📷" },
+    { activity: "Baking something from scratch", icon: "🥧" },
+    { activity: "Calling family or chosen family", icon: "📞" },
+    { activity: "Planning a cozy night in", icon: "🛋️" },
   ],
   Leo: [
     { activity: "Getting a tattoo or piercing", icon: "🎨" },
     { activity: "Throwing or attending a party", icon: "🎉" },
     { activity: "Working on a creative project", icon: "🎭" },
     { activity: "Expressing yourself boldly", icon: "👑" },
+    { activity: "Sharing your work publicly", icon: "📣" },
+    { activity: "Planning a date night", icon: "💘" },
+    { activity: "Refreshing your look or wardrobe", icon: "🪞" },
+    { activity: "Playing — with kids, pets, or friends", icon: "🐾" },
   ],
   Virgo: [
     { activity: "Starting a health routine", icon: "🥗" },
     { activity: "Organizing your space or schedule", icon: "📋" },
     { activity: "Deep cleaning and decluttering", icon: "✨" },
     { activity: "Scheduling a dental or doctor appointment", icon: "🩺" },
+    { activity: "Tidying up your digital files", icon: "💻" },
+    { activity: "Meal prepping for the week", icon: "🍱" },
+    { activity: "Making a detailed to-do list", icon: "✅" },
+    { activity: "Fixing the small thing that's been bugging you", icon: "🔧" },
   ],
   Libra: [
     { activity: "Getting a beauty treatment", icon: "💅" },
     { activity: "Going on a first date", icon: "🌹" },
     { activity: "Redecorating a room", icon: "🖼️" },
     { activity: "Working on a partnership", icon: "🤝" },
+    { activity: "Smoothing over a disagreement", icon: "🕊️" },
+    { activity: "Writing a thoughtful thank-you note", icon: "💌" },
+    { activity: "Curating something beautiful — a playlist, a shelf", icon: "🎨" },
+    { activity: "Collaborating on a shared project", icon: "👥" },
   ],
   Scorpio: [
     { activity: "Quitting a bad habit", icon: "🔥" },
     { activity: "Doing shadow work or therapy", icon: "🪞" },
     { activity: "Having a deep conversation", icon: "🌊" },
     { activity: "Scheduling surgery or procedures", icon: "⚕️" },
+    { activity: "Reviewing debts, taxes, or investments", icon: "💳" },
+    { activity: "Decluttering with ruthless honesty", icon: "🗑️" },
+    { activity: "Researching something all the way down", icon: "🔎" },
+    { activity: "Setting a firm boundary", icon: "🛑" },
   ],
   Sagittarius: [
     { activity: "Booking or starting travel", icon: "✈️" },
     { activity: "Starting a class or course", icon: "📚" },
     { activity: "Big-picture planning", icon: "🗺️" },
     { activity: "Doing something adventurous", icon: "🏔️" },
+    { activity: "Trying food from a new cuisine", icon: "🌮" },
+    { activity: "Teaching someone what you know", icon: "🎓" },
+    { activity: "Reading about far-off places or big ideas", icon: "🌏" },
+    { activity: "Saying yes to a spontaneous invitation", icon: "🎲" },
   ],
   Capricorn: [
     { activity: "Making a career move", icon: "📈" },
     { activity: "Submitting a job application", icon: "💼" },
     { activity: "Financial planning", icon: "🏦" },
     { activity: "Committing to something long-term", icon: "🪨" },
+    { activity: "Updating your resume or portfolio", icon: "📁" },
+    { activity: "Building a system that saves future time", icon: "⚙️" },
+    { activity: "Asking for the raise or the bigger role", icon: "🧗" },
+    { activity: "Knocking out paperwork and admin", icon: "🗂️" },
   ],
   Aquarius: [
     { activity: "Trying something totally new", icon: "⚡" },
     { activity: "Joining or starting a group project", icon: "🤲" },
     { activity: "Volunteering or humanitarian work", icon: "🌍" },
     { activity: "Innovating on a problem", icon: "💡" },
+    { activity: "Connecting with your wider community", icon: "🌐" },
+    { activity: "Learning a new tool or technology", icon: "🖥️" },
+    { activity: "Brainstorming unconventional solutions", icon: "🧪" },
+    { activity: "Reconnecting with friends who get you", icon: "🛸" },
   ],
   Pisces: [
     { activity: "Spiritual practice or meditation", icon: "🧘" },
     { activity: "Dream journaling", icon: "🌙" },
     { activity: "Making art", icon: "🎨" },
     { activity: "Healing work — yours or someone else's", icon: "💜" },
+    { activity: "Listening to music with full attention", icon: "🎶" },
+    { activity: "Taking a long bath or a swim", icon: "🛁" },
+    { activity: "Writing poetry or free-form journaling", icon: "🖋️" },
+    { activity: "Resting without guilt", icon: "😴" },
   ],
 };
 
@@ -201,11 +249,33 @@ interface SkyObservation {
 }
 
 const SKY_OBSERVATIONS: SkyObservation[] = [
-  // Moon-phase driven
+  // Moon-phase driven — new
   { text: "The sky is moonless tonight. Every star is sharper for it.", emoji: "✨", condition: { phaseGroup: "new" } },
+  { text: "With no moon to wash them out, even the faint stars come through tonight. The longer you look, the more appear.", emoji: "✨", condition: { phaseGroup: "new" } },
+  { text: "Tonight's darkness is the deepest of the lunar month — the best night to hunt for the Milky Way's faint glow.", emoji: "🌌", condition: { phaseGroup: "new" } },
+  { text: "The moon is hiding near the sun tonight, lost in the daytime sky. The night belongs entirely to the stars.", emoji: "🌑", condition: { phaseGroup: "new" } },
+  { text: "On moonless nights like this, your eyes can pick out stars a hundred times fainter than usual. Give them twenty minutes to adjust.", emoji: "👁️", condition: { phaseGroup: "new" } },
+
+  // Moon-phase driven — waxing
   { text: "A thin crescent hangs in the west after sunset — the kind of moon that feels like a secret.", emoji: "🌙", condition: { phaseGroup: "waxing" } },
+  { text: "The growing moon sets before the night is over, leaving the late hours dark and starry.", emoji: "🌒", condition: { phaseGroup: "waxing" } },
+  { text: "Look along the moon's shadowed edge tonight — that line is where lunar mountains are catching their first sunrise.", emoji: "🔭", condition: { phaseGroup: "waxing" } },
+  { text: "Tonight's moon shows a little more of itself than last night — the same face, with a little more sunlight on it.", emoji: "🌔", condition: { phaseGroup: "waxing" } },
+  { text: "The waxing moon keeps you company in the evening, then sets and hands the rest of the night to the stars.", emoji: "🌌", condition: { phaseGroup: "waxing" } },
+
+  // Moon-phase driven — full
   { text: "The moon rises early tonight — bright enough to read by, if you're outside.", emoji: "🌕", condition: { phaseGroup: "full" } },
+  { text: "Look for the rabbit in the moon tonight — the dark lava plains that different cultures see as a rabbit, a face, or a pair of hands.", emoji: "🐇", condition: { phaseGroup: "full" } },
+  { text: "A full moon is bright enough to cast shadows. Step outside and find yours.", emoji: "🌕", condition: { phaseGroup: "full" } },
+  { text: "The full moon rises near sunset and sets near sunrise — it keeps the whole night lit from edge to edge.", emoji: "🌝", condition: { phaseGroup: "full" } },
+  { text: "Moonlight is just sunlight on a detour — bouncing off lunar rock and reaching your eyes about 1.3 seconds later.", emoji: "💫", condition: { phaseGroup: "full" } },
+
+  // Moon-phase driven — waning
   { text: "The waning moon won't rise until well after midnight. The early evening belongs to the stars.", emoji: "🌌", condition: { phaseGroup: "waning" } },
+  { text: "The moon is sleeping in this week, rising later each night. Catch it after sunrise instead — a pale ghost in the morning blue.", emoji: "🌗", condition: { phaseGroup: "waning" } },
+  { text: "Early evening is moonless and dark right now — prime stargazing hours before the waning moon climbs up.", emoji: "✨", condition: { phaseGroup: "waning" } },
+  { text: "Each night the moon rises about 50 minutes later. Right now, that gift goes to the stargazers.", emoji: "⏳", condition: { phaseGroup: "waning" } },
+  { text: "The shrinking moon is a morning companion now — look for it hanging high in the daytime sky tomorrow.", emoji: "🌄", condition: { phaseGroup: "waning" } },
 
   // Seasonal — Spring (season 0)
   { text: "Venus is the brightest point in the western sky after sunset tonight.", emoji: "💫", condition: { season: 0 } },
@@ -213,6 +283,9 @@ const SKY_OBSERVATIONS: SkyObservation[] = [
   { text: "The Big Dipper is high in the northeast tonight. Follow the arc of its handle to find Arcturus, one of the brightest stars.", emoji: "⭐", condition: { season: 0 } },
   { text: "The spring sky turns over slowly tonight — winter constellations sinking, summer ones rising in the east.", emoji: "🌅", condition: { season: 0 } },
   { text: "If you can find Virgo tonight (look south), you're looking toward a cluster of thousands of galaxies.", emoji: "🌌", condition: { season: 0 } },
+  { text: "Follow the Big Dipper's handle tonight: arc to golden Arcturus, then keep going to spike to Spica, Virgo's blue-white beacon.", emoji: "✨", condition: { season: 0 } },
+  { text: "Spring is galaxy season — between Leo and Virgo lies a window out of the Milky Way's dust, into deep space.", emoji: "🔭", condition: { season: 0 } },
+  { text: "Look high in the south for Regulus, the heart of Leo — it sits almost exactly on the moon's path, so they meet often.", emoji: "💙", condition: { season: 0 } },
 
   // Seasonal — Summer (season 1)
   { text: "The Summer Triangle — Vega, Deneb, Altair — is nearly overhead. Three stars, three eagles, one sky.", emoji: "🔺", condition: { season: 1 } },
@@ -220,6 +293,9 @@ const SKY_OBSERVATIONS: SkyObservation[] = [
   { text: "Arcturus, the brightest star in the northern sky, blazes almost directly overhead tonight. Find it by following the arc of the Big Dipper's handle.", emoji: "🌟", condition: { season: 1 } },
   { text: "The Milky Way is at its best on moonless summer nights. If you can get away from city lights, it's worth it.", emoji: "🌌", condition: { season: 1 } },
   { text: "Warm nights and late sunsets make this the easiest time of year to stargaze. No coat required.", emoji: "🌃", condition: { season: 1 } },
+  { text: "Cygnus the Swan flies down the Milky Way overhead tonight — its tail star, Deneb, shines from some 1,500 light-years away.", emoji: "🦢", condition: { season: 1 } },
+  { text: "The stars of Sagittarius form a teapot low in the south tonight, with the Milky Way rising from its spout like steam.", emoji: "🫖", condition: { season: 1 } },
+  { text: "Vega blazes nearly overhead on summer evenings — just 25 light-years away, one of our brightest, closest neighbors.", emoji: "💫", condition: { season: 1 } },
 
   // Seasonal — Fall (season 2)
   { text: "The Fomalhaut star hangs low in the south tonight — a lone bright point in an otherwise empty patch of sky. The ancients called it the Lonely One.", emoji: "⭐", condition: { season: 2 } },
@@ -227,6 +303,9 @@ const SKY_OBSERVATIONS: SkyObservation[] = [
   { text: "Nights are growing noticeably longer. The sky gets dark early enough to stargaze before bedtime.", emoji: "🌙", condition: { season: 2 } },
   { text: "Andromeda — the nearest large galaxy, 2.5 million light-years away — is visible tonight as a faint smudge near Pegasus.", emoji: "🌀", condition: { season: 2 } },
   { text: "The autumn sky has a quiet grandeur. Fewer bright stars, but the ones that are there feel closer.", emoji: "✨", condition: { season: 2 } },
+  { text: "The Pleiades are back in the evening sky — rising in the east, the little cluster signals that winter's stars are on their way.", emoji: "💠", condition: { season: 2 } },
+  { text: "Cassiopeia's W rides high in the north on fall evenings, circling opposite the sinking Big Dipper.", emoji: "👑", condition: { season: 2 } },
+  { text: "Look east after dark for Taurus rising — the V-shaped Hyades cluster and the bright orange eye of Aldebaran.", emoji: "🐂", condition: { season: 2 } },
 
   // Seasonal — Winter (season 3)
   { text: "Orion dominates the southern sky tonight. Its three belt stars point to Sirius, the brightest star.", emoji: "⭐", condition: { season: 3 } },
@@ -234,6 +313,9 @@ const SKY_OBSERVATIONS: SkyObservation[] = [
   { text: "The Pleiades — a tiny cluster of blue-white stars — are high overhead. The Japanese call them Subaru.", emoji: "💠", condition: { season: 3 } },
   { text: "Winter has the most bright stars of any season. Step outside after dinner and look south — it's a light show.", emoji: "🌟", condition: { season: 3 } },
   { text: "The longest nights of the year mean the most starlight. Bundle up — it's worth it.", emoji: "🧣", condition: { season: 3 } },
+  { text: "Betelgeuse, Orion's red shoulder, is a dying giant — placed where our sun is, it would swallow the orbits of all the inner planets.", emoji: "🔴", condition: { season: 3 } },
+  { text: "The Winter Hexagon — six bright stars from six constellations — fills the southern sky tonight, with Sirius anchoring its lowest corner.", emoji: "🔷", condition: { season: 3 } },
+  { text: "Sirius twinkles wildly on winter nights, flashing through colors as its light bends through the cold, turbulent air.", emoji: "🌈", condition: { season: 3 } },
 
   // Meteor showers / special events (by day-of-year range)
   { text: "The Quadrantid meteor shower peaks around now — look northeast after midnight for fast, bright streaks.", emoji: "☄️", condition: { dayRange: [2, 5] } },
@@ -464,11 +546,15 @@ export function getGoodForToday(date: Date): GoodForResult {
 
   const signActivities = MOON_SIGN_ACTIVITIES[moonSign] || MOON_SIGN_ACTIVITIES["Aries"];
 
-  // Pick 2-3 sign activities based on date seed (deterministic)
+  // Pick 3 sign activities based on date seed (deterministic).
+  // Each item gets its own seeded key (seed × index) so the full 8-item pool
+  // genuinely reshuffles every day — consecutive days in the same moon sign
+  // surface different picks.
   const seed = dayOfYear(date) * 7 + date.getFullYear();
-  const shuffled = [...signActivities].sort(
-    (a, b) => seededRandom(seed + a.activity.length) - seededRandom(seed + b.activity.length)
-  );
+  const shuffled = signActivities
+    .map((item, i) => ({ item, key: seededRandom(seed * 31 + i * 13) }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.item);
   const picked = shuffled.slice(0, 3);
 
   // Add one waxing or waning bonus
@@ -627,28 +713,25 @@ export function getTonightSky(date: Date, lat?: number | null): TonightSkyResult
     return { observation: dayRangeMatch.text, emoji: dayRangeMatch.emoji };
   }
 
-  // Next, try phase-specific observations
+  // Build tonight's eligible pool: phase-group observations PLUS seasonal
+  // ones (northern sky) or hemisphere-neutral lines south of the equator.
+  // Previously the phase branch returned early every night, so seasonal
+  // observations never surfaced and the same phase line repeated for the
+  // entire ~7-day phase group.
   const phaseMatches = SKY_OBSERVATIONS.filter((obs) => obs.condition.phaseGroup === phaseGroup);
-  if (phaseMatches.length > 0) {
-    // Use date seed to pick deterministically so the same phase doesn't always show the same text
-    const seed = doy + date.getFullYear() * 3;
-    const idx = Math.floor(seededRandom(seed) * phaseMatches.length);
-    return { observation: phaseMatches[idx].text, emoji: phaseMatches[idx].emoji };
+  const extraMatches: { text: string; emoji: string }[] = isSouthern
+    ? NEUTRAL_SKY_OBSERVATIONS
+    : SKY_OBSERVATIONS.filter((obs) => obs.condition.season === season);
+  const pool: { text: string; emoji: string }[] = [...phaseMatches, ...extraMatches];
+  if (pool.length === 0) {
+    return { observation: SKY_OBSERVATIONS[0].text, emoji: SKY_OBSERVATIONS[0].emoji };
   }
 
-  // Fall back to seasonal observations. The seasonal set describes the
-  // northern sky, so southern-hemisphere users get hemisphere-neutral lines.
-  if (isSouthern) {
-    const seed = doy + date.getFullYear() * 7;
-    const idx = Math.floor(seededRandom(seed) * NEUTRAL_SKY_OBSERVATIONS.length);
-    const pick = NEUTRAL_SKY_OBSERVATIONS[idx];
-    return { observation: pick.text, emoji: pick.emoji };
-  }
-  const seasonMatches = SKY_OBSERVATIONS.filter((obs) => obs.condition.season === season);
-  const seed = doy + date.getFullYear() * 7;
-  const idx = Math.floor(seededRandom(seed) * seasonMatches.length);
-  const pick = seasonMatches[idx] || SKY_OBSERVATIONS[0];
-  return { observation: pick.text, emoji: pick.emoji };
+  // Modular day cycle with a seeded yearly offset: deterministic per date,
+  // and consecutive nights are guaranteed to show different observations.
+  const offset = Math.floor(seededRandom(date.getFullYear() * 3) * pool.length);
+  const idx = (doy + offset) % pool.length;
+  return { observation: pool[idx].text, emoji: pool[idx].emoji };
 }
 
 /**

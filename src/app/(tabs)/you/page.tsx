@@ -380,6 +380,13 @@ const ASPECT_INTERPRETATIONS: Record<string, Record<string, string>> = {
     square: "Your head and heart frequently disagree. You might rationalize away feelings or let emotions cloud your judgment. This tension creates anxiety but also pushes you toward deeper emotional honesty.",
     opposition: "You swing between pure logic and pure emotion, struggling to hold both at once. Others may experience you as either too heady or too reactive depending on the day. Integration is the lifetime project.",
   },
+  "Moon-Venus": {
+    conjunction: "Feeling loved and feeling safe are the same thing for you. You have a natural warmth that draws people in — affection, comfort, and beauty are emotional necessities, not luxuries. The shadow side: you may avoid conflict to keep the peace, even when the peace isn't real.",
+    trine: "Your heart and your affections flow in the same direction. You love easily, comfort naturally, and people relax around you without knowing why. Home, food, beauty, and tenderness are languages you speak fluently.",
+    sextile: "There's a gentle rapport between what you need and what you love. When you let yourself enjoy things — good meals, soft evenings, people you trust — your emotional tank actually refills. Pleasure is genuinely restorative for you.",
+    square: "What soothes you and what you desire don't always agree. You might crave closeness but choose partners who unsettle you, or eat your feelings instead of naming them. The friction teaches you to want what's actually good for you — slowly, honestly.",
+    opposition: "You look for emotional security in one place and pleasure in another, and the two rarely sit in the same room. Relationships can feel like choosing between comfort and desire. The growth is realizing you're allowed to ask for both from the same person — starting with yourself.",
+  },
   "Sun-Venus": {
     conjunction: "Love, beauty, and pleasure are core to your identity. You're naturally charming and aesthetically attuned. Relationships and creative expression feel essential to who you are — not extras, but the main event.",
     trine: "You attract love and beauty naturally. There's an ease to your relationships and creative life that others envy. You know what you like, and what you like tends to like you back.",
@@ -997,10 +1004,123 @@ const ANGLE_INTERPRETATIONS: Record<string, Record<string, string>> = {
   },
 };
 
-/** Get interpretation for an aspect, with fallback */
+/**
+ * Some interpretation keys were hand-written out of alphabetical order
+ * (e.g. "Saturn-Mercury", "Pluto-Moon"). aspectKey() always sorts, so
+ * normalize every key once at module load — otherwise that copy silently
+ * never matches and falls through to the generated fallback.
+ */
+function normalizeAspectKeys(
+  table: Record<string, Record<string, string>>
+): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  for (const [key, value] of Object.entries(table)) {
+    // Planet names never contain "-" (spaces only, e.g. "North Node")
+    const parts = key.split("-");
+    out[parts.length === 2 ? aspectKey(parts[0], parts[1]) : key] = value;
+  }
+  return out;
+}
+
+/**
+ * Theme fragments for composing pair-specific aspect copy.
+ * `noun` is a possessive noun phrase; `wants` completes "the part of you that …".
+ */
+const PLANET_THEMES: Record<string, { noun: string; wants: string }> = {
+  Sun: { noun: "your core identity", wants: "wants to be seen and taken seriously" },
+  Moon: { noun: "your emotional needs", wants: "needs to feel safe before anything else" },
+  Mercury: { noun: "your thinking", wants: "wants to name things and understand them" },
+  Venus: { noun: "what you love and value", wants: "wants pleasure, beauty, and real connection" },
+  Mars: { noun: "your drive", wants: "wants to act now and explain later" },
+  Jupiter: { noun: "your appetite for growth", wants: "wants more room, more meaning, more yes" },
+  Saturn: { noun: "your discipline", wants: "wants rules, proof, and a margin of safety" },
+  Uranus: { noun: "your rebellious streak", wants: "wants to break whatever feels too settled" },
+  Neptune: { noun: "your imagination", wants: "wants to soften the edges and drift past the literal" },
+  Pluto: { noun: "your transformative intensity", wants: "wants to go all the way down or not at all" },
+  Chiron: { noun: "your oldest wound", wants: "aches to be acknowledged so it can finally heal" },
+  Lilith: { noun: "your untamed side", wants: "refuses to be managed or made polite" },
+  "North Node": { noun: "your growth direction", wants: "keeps pulling you toward unfamiliar ground" },
+  "South Node": { noun: "your old comfort zone", wants: "keeps offering the familiar way out" },
+  Ascendant: { noun: "the way you come across", wants: "shapes every first impression you make" },
+  Descendant: { noun: "what you look for in others", wants: "seeks completion through partnership" },
+  "Medium Coeli": { noun: "your public direction", wants: "wants to be known for something that lasts" },
+  "Imum Coeli": { noun: "your roots", wants: "needs somewhere safe to land" },
+};
+
+function capFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Compose an interpretation from both planets' themes so every
+ * pair × aspect combination reads differently. Three sentence structures
+ * per aspect nature (picked deterministically per pair) keep adjacent
+ * list items from opening the same way.
+ */
+function composeAspectText(p1: string, p2: string, nature: string, aspect: string): string {
+  const t1 = PLANET_THEMES[p1] || { noun: `your ${p1}`, wants: "moves to its own rhythm" };
+  const t2 = PLANET_THEMES[p2] || { noun: `your ${p2}`, wants: "moves to its own rhythm" };
+  const a = t1.noun;
+  const b = t2.noun;
+  const w1 = t1.wants;
+  const w2 = t2.wants;
+
+  const hash = (p1 + p2 + aspect).split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+
+  const TEMPLATES: Record<string, string[]> = {
+    fusion: [
+      `${capFirst(a)} and ${b} are welded together in you. The part of you that ${w1} and the part that ${w2} fire at the same moment, every time — there's no doing one without the other coming along. That gives you a concentrated, unmistakable intensity here; the catch is that you don't get a dimmer switch.`,
+      `In your chart, ${a} and ${b} run on a single circuit. Whatever touches one lights up the other — so the side of you that ${w1} is permanently tangled with the side that ${w2}. People feel this fusion in you even when they can't name it.`,
+      `${capFirst(a)} and ${b} act as one force in you. Where most people keep these separate, yours merged early — and the combination is stronger than either piece alone. Your job isn't to untangle them; it's to point the whole thing somewhere worth the voltage.`,
+    ],
+    harmony: [
+      `${capFirst(a)} and ${b} cooperate without being asked. The part of you that ${w1} genuinely feeds the part that ${w2} — a truce most people have to negotiate, handed to you at birth. Gifts this quiet are easy to overlook; use this one on purpose.`,
+      `There's an easy current between ${a} and ${b}. When one moves, the other moves with it — no friction, no committee meeting. Because it's always been this smooth, you may not realize how rare it is. Lean on it deliberately and it gets even stronger.`,
+      `Some planets argue; in your chart, ${a} and ${b} finish each other's sentences. The instinct that ${w1} and the instinct that ${w2} pull in the same direction here, which makes this one of the low-maintenance strengths you can build a life on.`,
+    ],
+    opportunity: [
+      `${capFirst(a)} and ${b} are on friendly terms, but the connection isn't automatic — you have to make the introduction. When you consciously bring the part of you that ${w1} together with the part that ${w2}, the result is better than either alone. This is a door that opens every time you knock.`,
+      `There's an open channel between ${a} and ${b} that rewards attention. Left alone, nothing happens; actively worked, the side of you that ${w2} becomes a real ally to the side that ${w1}. Think of it as a skill you were pre-approved for but still have to practice.`,
+      `When you deliberately connect ${a} with ${b}, things click. It's not a freebie like a trine — it's a standing invitation. The more often you let these two work a problem together, the more natural the partnership becomes.`,
+    ],
+    tension: [
+      `${capFirst(a)} and ${b} are in a standing argument. One side of you ${w1}; another side ${w2} — and satisfying one usually shortchanges the other. It's uncomfortable by design: the friction won't let you go numb in either area, and over the years it builds a depth here that easier charts never develop.`,
+      `You can feel the grind between ${a} and ${b} — two parts of you that want different things and refuse to pretend otherwise. Most days you manage it; some days it manages you. The way through isn't picking a winner. It's building a life with room for the part that ${w1} and the part that ${w2}.`,
+      `${capFirst(a)} works against ${b} in your chart, the way a whetstone works against a blade. The part of you that ${w1} keeps colliding with the part that ${w2}, and every collision sharpens both. People with this aspect tend to earn real mastery here — precisely because nothing about it came free.`,
+    ],
+    polarity: [
+      `${capFirst(a)} and ${b} hold opposite ends of a rope in your chart. Lean too far into one and the other yanks back — often through other people, who show up embodying whichever end you've been ignoring. The point isn't a permanent balance; it's noticing which end you're gripping right now.`,
+      `Your chart stretches a line between ${a} and ${b}, and you live somewhere along it. Seasons of your life favor the part that ${w1}; others favor the part that ${w2}. Partners and close friends tend to mirror whichever side you've disowned — that's the opposition doing its teaching.`,
+      `${capFirst(a)} faces off against ${b} across your chart. You'll be tempted to pick a side and outsource the other to someone close to you, but the assignment is harder and better: own both. The part of you that ${w2} isn't the enemy of the part that ${w1} — it's the other half of the same question.`,
+    ],
+    talent: [
+      `${capFirst(a)} and ${b} link up at an unusual angle — and it works. You do something instinctive with this combination that other people would need a manual for: the part of you that ${w1} borrows tricks from the part that ${w2} without asking permission. It comes so easily you probably undervalue it. Don't.`,
+      `There's a streak of originality where ${a} meets ${b} in your chart. The blend doesn't follow anyone's standard recipe, which is exactly why it's yours — an offbeat skill or perspective that shows up when you stop trying to do things the official way.`,
+      `${capFirst(a)} and ${b} make an odd couple that happens to be productive. What ${w1} and what ${w2} shouldn't combine this smoothly, but in you they do — a quiet creative signature that nobody taught you and nobody else can quite copy.`,
+    ],
+    adjustment: [
+      `${capFirst(a)} and ${b} never quite settle into a rhythm. Give the part of you that ${w1} what it asks for, and the part that ${w2} feels shortchanged — then vice versa. This isn't something you fix once; it's a calibration you'll keep refining, and you genuinely get better at it with age.`,
+      `There's a persistent mismatch between ${a} and ${b} — not a war, just two instincts speaking different dialects. Neither is wrong. You manage this one with small, frequent adjustments rather than grand resolutions, like tuning an instrument that drifts a little every week.`,
+      `${capFirst(a)} and ${b} sit at an awkward angle to each other — close enough to interact, too different to merge. The result is a blind spot you keep rediscovering: just when one side feels handled, the other needs attention. Awareness, not perfection, is the win condition here.`,
+    ],
+    irritation: [
+      `${capFirst(a)} and ${b} rub against each other quietly — not a crisis, an itch. Small mismatches between what ${w1} and what ${w2} pile up until you finally address the pattern underneath. Pay attention to what specifically bugs you here; it's more informative than it looks.`,
+      `There's a low-grade static between ${a} and ${b}. It won't ruin your day, but it shapes your habits — you may catch yourself overcompensating toward one side without noticing. Naming the friction out loud is most of the cure.`,
+      `${capFirst(a)} and ${b} nag at each other in the background of your chart. This aspect whispers instead of shouting, so it's easy to dismiss — but the recurring little frustrations are pointing at a real pattern worth a closer look.`,
+    ],
+  };
+
+  const variants = TEMPLATES[nature] || TEMPLATES["polarity"];
+  return variants[hash % variants.length];
+}
+
+const NORMALIZED_ASPECT_INTERPRETATIONS = normalizeAspectKeys(ASPECT_INTERPRETATIONS);
+const NORMALIZED_ANGLE_INTERPRETATIONS = normalizeAspectKeys(ANGLE_INTERPRETATIONS);
+
+/** Get interpretation for an aspect, with composed pair-specific fallback */
 function getAspectInterpretation(p1: string, p2: string, aspect: string): string {
   const key = aspectKey(p1, p2);
-  const entry = ASPECT_INTERPRETATIONS[key];
+  const entry = NORMALIZED_ASPECT_INTERPRETATIONS[key];
   if (entry && entry[aspect]) return entry[aspect];
 
   // Check angle interpretations (Ascendant/Descendant)
@@ -1010,134 +1130,20 @@ function getAspectInterpretation(p1: string, p2: string, aspect: string): string
   const angle1 = p1 === "Ascendant" || p1 === "Descendant" ? p1 : (p2 === "Ascendant" || p2 === "Descendant" ? p2 : null);
   if (angle1) {
     const ascKey = aspectKey("Ascendant", other1);
-    const angleEntry = ANGLE_INTERPRETATIONS[ascKey];
+    const angleEntry = NORMALIZED_ANGLE_INTERPRETATIONS[ascKey];
     if (angleEntry) {
       const lookupAspect = angle1 === "Descendant" ? (ASPECT_FLIP[aspect] || aspect) : aspect;
       if (angleEntry[lookupAspect]) return angleEntry[lookupAspect];
     }
   }
 
-  // Smart fallback — use planet-specific context to build an interpretation
-  // that reads like someone explaining YOUR chart, not a textbook.
+  // Composed fallback — blend both planets' themes into aspect-specific prose
+  // so every uncovered pair × aspect combination reads differently.
   const typeInfo = ASPECT_TYPE_INFO[aspect];
   if (!typeInfo) return "";
-
-  // Build concrete, planet-specific sentences instead of generic templates
-  const nature = typeInfo.nature;
-  const pair = `${p1}-${p2}`;
-  const pairRev = `${p2}-${p1}`;
-
-  // Common planet pair descriptions — what does THIS specific combo mean in real life?
-  const PAIR_CONTEXT: Record<string, string> = {
-    "Sun-Moon": "Your sense of self and your emotional needs",
-    "Sun-Mercury": "Your identity and how you communicate",
-    "Sun-Venus": "Who you are and what you love",
-    "Sun-Mars": "Your ego and your drive",
-    "Sun-Jupiter": "Your identity and your sense of possibility",
-    "Sun-Saturn": "Who you are and what holds you back",
-    "Sun-Uranus": "Your identity and your need to be different",
-    "Sun-Neptune": "Your sense of self and your imagination",
-    "Sun-Pluto": "Your conscious self and your deepest power",
-    "Moon-Mercury": "Your feelings and your thinking mind",
-    "Moon-Venus": "Your emotional needs and your desires",
-    "Moon-Mars": "How you feel and how you act",
-    "Moon-Jupiter": "Your emotional world and your faith",
-    "Moon-Saturn": "Your vulnerability and your self-control",
-    "Moon-Uranus": "Your emotional patterns and your need for freedom",
-    "Moon-Neptune": "Your inner world and your imagination",
-    "Moon-Pluto": "Your emotions and your survival instincts",
-    "Mercury-Venus": "How you think and what you value",
-    "Mercury-Mars": "Your mind and your willpower",
-    "Mercury-Jupiter": "Your thinking and your beliefs",
-    "Mercury-Saturn": "How you communicate and your fear of being wrong",
-    "Mercury-Uranus": "Your mind and your unconventional streak",
-    "Mercury-Neptune": "Your logic and your intuition",
-    "Mercury-Pluto": "Your words and your ability to see what's hidden",
-    "Venus-Mars": "What you want and how you go after it",
-    "Venus-Jupiter": "Your values and your optimism",
-    "Venus-Saturn": "What you love and what you fear losing",
-    "Venus-Uranus": "Your desires and your need for independence",
-    "Venus-Neptune": "Your love life and your idealism",
-    "Venus-Pluto": "Your attachments and your intensity",
-    "Mars-Jupiter": "Your ambition and your sense of purpose",
-    "Mars-Saturn": "Your drive and your discipline",
-    "Mars-Uranus": "Your energy and your rebellious side",
-    "Mars-Neptune": "Your willpower and your sensitivity",
-    "Mars-Pluto": "Your assertiveness and your need for control",
-    "Jupiter-Saturn": "Your hope and your realism",
-    "Jupiter-Uranus": "Your growth and your restlessness",
-    "Jupiter-Neptune": "Your faith and your fantasy",
-    "Jupiter-Pluto": "Your ambitions and your transformative power",
-    "Saturn-Uranus": "Your need for structure and your need for freedom",
-    "Saturn-Neptune": "Your pragmatism and your dreams",
-    "Saturn-Pluto": "Your discipline and your depth",
-    "Uranus-Neptune": "Your originality and your spiritual instincts",
-    "Uranus-Pluto": "Your revolutionary streak and your transformative drive",
-    "Neptune-Pluto": "Your imagination and your survival instincts",
-    "Sun-Chiron": "Your identity and your deepest wound",
-    "Moon-Chiron": "Your emotions and your oldest hurt",
-    "Venus-Chiron": "How you love and where love has hurt you",
-    "Mars-Chiron": "Your drive and the thing that once stopped you",
-    "Sun-North Node": "Who you are and who you're becoming",
-    "Moon-North Node": "Your comfort zone and your growth edge",
-    "Venus-North Node": "What you value and what your life is asking you to value",
-    "Mars-North Node": "How you act and the direction your soul is pulled toward",
-  };
-
-  const context = PAIR_CONTEXT[pair] || PAIR_CONTEXT[pairRev] || `${p1} and ${p2}`;
-  const p1l = p1.toLowerCase();
-  const p2l = p2.toLowerCase();
-
-  // Hash the pair name to pick a variant so the same pair always gets the same text,
-  // but different pairs get different templates even if they share a nature.
-  const hash = (p1 + p2 + aspect).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-
-  const TEMPLATES: Record<string, string[]> = {
-    fusion: [
-      `${context} are fused in your chart. There's no separating them — when ${p1l} lights up, ${p2l} is right there. You're all-or-nothing in this area. It makes you powerful here but can mean you don't have a dimmer switch.`,
-      `In your chart, ${context.toLowerCase()} run on the same circuit. You can't activate one without the other switching on too. People notice this about you — it gives you a concentrated intensity that's hard to fake.`,
-      `${context} are locked together. This is one of the most defining patterns in your chart because there's no half-measure: you bring the full weight of both into every situation where either is relevant.`,
-    ],
-    harmony: [
-      `${context} flow together effortlessly. You have a natural gift here — where other people have to negotiate between these parts of their life, yours just cooperate. Lean into it; this is one of your easiest strengths.`,
-      `There's an easy current between ${context.toLowerCase()}. This part of your chart works without much maintenance — ${p1l} feeds ${p2l}, ${p2l} supports ${p1l}. You may take this for granted because it's always been this smooth.`,
-      `${context} are on good terms. Things that involve both of these areas tend to go well for you without a lot of strategizing. This isn't luck — it's wired into your chart. Use it more deliberately and it gets even better.`,
-    ],
-    opportunity: [
-      `${context} have a doorway between them that you have to choose to walk through. The connection is there but it's not automatic — you notice it most when you actively bring ${p1l} into ${p2l} situations. Worth cultivating.`,
-      `There's latent potential between ${context.toLowerCase()}. Think of it as a skill you can develop: the more you practice connecting how you handle ${p1l} with your ${p2l} instincts, the more naturally it flows.`,
-      `${context} can work well together, but only when you make it happen. This isn't a freebie — it's a reward for paying attention. When you do link these two up consciously, the results tend to surprise you.`,
-    ],
-    tension: [
-      `${context} are at odds. One wants something the other resists, and you feel this as an internal tug-of-war. The discomfort is the point — it won't let you get lazy about either side. People with this aspect tend to develop serious depth here because they have to.`,
-      `There's real friction between ${context.toLowerCase()}. This shows up as situations where satisfying one means frustrating the other. It's not a flaw — it's a pressure cooker that forces growth. You'll handle ${p1l}-${p2l} issues better than most people eventually, because you've had to.`,
-      `${context} clash. You've probably felt this your whole life — a push-pull between two things you both want. The resolution isn't picking one. It's building something that honors both, even though that's harder.`,
-    ],
-    talent: [
-      `${context} are wired together in a way that's uniquely yours. You do something instinctive with this combination that other people can't easily replicate. It often shows up as an unusual skill or perspective that you might undervalue because it comes so easily.`,
-      `There's a creative link between ${context.toLowerCase()} in your chart. You approach ${p1l} matters with a ${p2l} twist that gives you an edge. It's unconventional, and it works precisely because nobody else does it your way.`,
-      `${context} connect at an odd angle that happens to be productive. You have an offbeat talent here — something you figured out intuitively that other people would need a manual for. The trick is recognizing it as a real strength.`,
-    ],
-    adjustment: [
-      `${context} need constant fine-tuning. Whenever you give one what it wants, the other feels slightly shortchanged. This isn't something you fix once — it's an ongoing calibration. Getting comfortable with "good enough on both sides" is the real skill here.`,
-      `There's a persistent mismatch between ${context.toLowerCase()}. Neither is wrong, they just want different things. You'll keep coming back to this balancing act throughout your life, and you'll keep getting better at it.`,
-      `${context} don't naturally sync up. Imagine two rhythms that are almost in time but not quite — that slight off-beat feeling is this aspect. You manage it by making small, frequent adjustments rather than looking for a permanent fix.`,
-    ],
-    irritation: [
-      `${context} produce a subtle friction — not a crisis, but a persistent itch. Small annoyances related to these themes tend to pile up until you address the underlying pattern. What specifically bugs you here is worth examining.`,
-      `There's a low-level restlessness between ${context.toLowerCase()}. It's the kind of thing that doesn't ruin your day but shapes your habits over time. You might find yourself unconsciously overcompensating in one direction — noticing that is the first step.`,
-      `${context} nag at each other quietly. This aspect doesn't scream; it whispers. The frustration is in the details — little mismatches between what you feel and what you do in situations involving both ${p1l} and ${p2l}.`,
-    ],
-    polarity: [
-      `${context} sit across from each other in your chart like two ends of a rope. You might lean heavily into one and project the other onto partners or close friends. The growth here is owning both sides instead of outsourcing one.`,
-      `There's a seesaw between ${context.toLowerCase()}. At different points in your life, you'll swing from emphasizing one to emphasizing the other. Balance isn't the goal — awareness of which side you're on right now is.`,
-      `${context} face off in your chart. This creates a dynamic tension that often plays out through relationships — you attract people who embody the side you're not currently expressing. Integrating both yourself changes what you attract.`,
-    ],
-  };
-
-  const variants = TEMPLATES[nature] || TEMPLATES["polarity"];
-  return variants[hash % variants.length];
+  return composeAspectText(p1, p2, typeInfo.nature, aspect);
 }
+
 
 function elementBg(sign: string): string {
   if (["Ari", "Leo", "Sag"].includes(sign)) return "bg-terracotta/15 border-terracotta/25";

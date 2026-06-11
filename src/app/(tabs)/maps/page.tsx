@@ -488,6 +488,134 @@ const TRANSIT_PAIR_DESC: Record<string, Record<string, string>> = {
   },
 };
 
+/* ── Composed fallback descriptions ──
+   For transit pairs without a hand-written TRANSIT_PAIR_DESC entry, build a
+   distinct line from three parts: what the transiting planet brings, which
+   natal life area it touches, and how the aspect delivers it. */
+
+const TRANSIT_FORCE: Record<string, { brings: string; direct: string; flowing: string; friction: string }> = {
+  Sun: {
+    brings: "a spotlight",
+    direct: "For the next few weeks, visibility and vitality concentrate here whether they invite it or not.",
+    flowing: "What they put forward in this area gets seen in its best light — worth showing up deliberately.",
+    friction: "The light falls on exactly what they'd rather keep offstage — uncomfortable, but clarifying.",
+  },
+  Moon: {
+    brings: "a tide of feeling",
+    direct: "It only lasts a day or two, but while it does, this part of life carries a real emotional charge.",
+    flowing: "Instinct and circumstance line up for a day or two — a good window to act on a hunch here.",
+    friction: "For a day or two, passing moods color this area more than facts do — feel it fully, decide later.",
+  },
+  Mercury: {
+    brings: "a rewiring of the conversation",
+    direct: "For a couple of weeks, the thinking and talking around this area speeds up and sharpens.",
+    flowing: "Words come easier here right now — the conversation, message, or pitch they've been postponing will land better than usual.",
+    friction: "Crossed wires are likely here — details slip, tones get misread. Saying it twice, plainly, is the workaround.",
+  },
+  Venus: {
+    brings: "a softening",
+    direct: "For a few weeks, this area warms up — more pull toward pleasure, connection, and what feels good.",
+    flowing: "Ease finds this area on its own right now — appreciation, attraction, and small luck arrive without being chased.",
+    friction: "The urge here is to smooth things over rather than deal with them — comfort now, cost later.",
+  },
+  Mars: {
+    brings: "a charge of ignition",
+    direct: "For the next several weeks this area runs hot — more energy, more urgency, a shorter fuse.",
+    flowing: "There's clean fuel for this area right now — initiative gets rewarded, so start rather than deliberate.",
+    friction: "Heat builds fast here — impatience, friction, forced moves. Physical effort burns it off better than arguing does.",
+  },
+  Jupiter: {
+    brings: "a wave of expansion",
+    direct: "Over the better part of a year, this area simply gets bigger — more opportunity, more appetite, more of everything.",
+    flowing: "This is growth that doesn't need forcing — saying yes a little more often than usual will pay off here.",
+    friction: "The hazard is too much of a good thing — promising past capacity, mistaking appetite for ability.",
+  },
+  Saturn: {
+    brings: "a slow pressure test",
+    direct: "This runs for a year or more, and it works like an audit — what's solid gets certified, what's flimsy gets rebuilt.",
+    flowing: "Slow, structural effort compounds here right now — what they build under this transit tends to last.",
+    friction: "Progress feels heavier than it should here — that's the test working. Whatever survives it is genuinely theirs.",
+  },
+  Uranus: {
+    brings: "a current of disruption",
+    direct: "This is a long transit with one job — to make this area unrecognizable, starting with whatever's gone stale.",
+    flowing: "Change shows up here as a refresh instead of a rupture — experiments are cheap right now, so run a few.",
+    friction: "Stability isn't on offer here for a while — but neither is staying stuck, and that's the trade.",
+  },
+  Neptune: {
+    brings: "a fine fog",
+    direct: "This unfolds over years, not weeks — the hard edges of this area slowly soften until something more imaginative can take shape.",
+    flowing: "Intuition is a reliable instrument in this area right now — inspiration will outperform analysis.",
+    friction: "Clarity is the first casualty here — facts blur and wishful thinking creeps in, so double-check anything that sounds perfect.",
+  },
+  Pluto: {
+    brings: "an excavation",
+    direct: "This is once-in-a-lifetime weather — whatever was buried in this area is surfacing, and what gets rebuilt will be permanent.",
+    flowing: "Depth is available without the wreckage — this area can be transformed deliberately instead of by force.",
+    friction: "Watch where the grip tightens — whatever they're trying hardest to control in this area is exactly what's being pried open.",
+  },
+};
+
+const NATAL_AREA: Record<string, string> = {
+  Sun: "their natal Sun — the core of who they are and where their life is pointed",
+  Moon: "their natal Moon — moods, home, and what makes them feel safe",
+  Mercury: "their natal Mercury — how they think, speak, and take in the world",
+  Venus: "their natal Venus — love, money, and what they find worth wanting",
+  Mars: "their natal Mars — drive, temper, and how they go after things",
+  Jupiter: "their natal Jupiter — beliefs, optimism, and the appetite for more",
+  Saturn: "their natal Saturn — the structures, duties, and limits their life is built on",
+  Uranus: "their natal Uranus — the wiring for freedom and rebellion",
+  Neptune: "their natal Neptune — ideals, imagination, and escape hatches",
+  Pluto: "their natal Pluto — the deep machinery of power and control",
+  "North Node": "their North Node — the direction their growth is being pulled",
+  "South Node": "their South Node — the comfort zone they keep defaulting back to",
+  Chiron: "their Chiron — the old wound they've learned to work around",
+};
+
+function composeTransitDescription(ta: TransitAspect): string {
+  const tp = ta.transitPlanet;
+  const f = TRANSIT_FORCE[tp];
+  const theme = PLANET_THEMES[ta.natalPlanet];
+  const area =
+    NATAL_AREA[ta.natalPlanet] ||
+    (theme ? `their natal ${ta.natalPlanet} — ${theme}` : `their natal ${ta.natalPlanet}`);
+  if (!f) return `${tp} is activating ${area}.`;
+
+  // Deterministic variant pick so the same transit always reads the same way,
+  // but neighboring pairs don't share sentence skeletons.
+  const hash = (tp + ta.natalPlanet).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const alt = hash % 2 === 1;
+
+  switch (ta.aspect) {
+    case "conjunction":
+      return alt
+        ? `Direct contact: ${tp} has landed squarely on ${area}. No buffer, no angle — the two are fused for the duration. ${f.direct}`
+        : `${tp} is sitting directly on ${area}. A conjunction doesn't negotiate — it merges, and for now ${f.brings} runs through everything this point touches. ${f.direct}`;
+    case "trine":
+      return alt
+        ? `An easy channel is open from ${tp} into ${area}. Nothing needs forcing here — effort travels further than usual. ${f.flowing}`
+        : `Right now the path is greased between ${tp} and ${area}. Trines don't announce themselves — the ease is quiet, real, and easy to waste. ${f.flowing}`;
+    case "sextile":
+      return alt
+        ? `A quiet offer is on the table between ${tp} and ${area}. Sextiles stay theoretical until acted on — the door is unlocked, not open. ${f.flowing}`
+        : `${tp} is cracking a door open for ${area}. Sextiles are invitations rather than events — nothing moves unless they do. ${f.flowing}`;
+    case "square":
+      return alt
+        ? `Something has to give: ${tp} is working at cross-purposes with ${area}. The tension won't resolve on its own. ${f.friction}`
+        : `${tp} is grinding against ${area}. The friction is the point — squares force the fix that comfort kept postponing. ${f.friction}`;
+    case "opposition":
+      return alt
+        ? `${tp} has moved directly opposite ${area}. Expect the tug-of-war to play out through other people before it feels like their own. ${f.friction}`
+        : `From the far side of the chart, ${tp} is pulling against ${area}. Oppositions tend to wear someone else's face — notice who's holding the other end of the rope. ${f.friction}`;
+    case "quincunx":
+      return alt
+        ? `A low-grade itch: ${tp} keeps brushing against ${area}. Close enough to feel, too off-kilter to blend — small adjustments are the only fix. ${f.friction}`
+        : `${tp} sits at an awkward angle to ${area}. No open conflict — these two just don't speak the same language right now, and recalibration beats force. ${f.friction}`;
+    default:
+      return `${tp} is activating ${area}. ${f.direct}`;
+  }
+}
+
 function getTransitDescription(ta: TransitAspect): string {
   const tp = TRANSIT_PLANET_ENERGY[ta.transitPlanet];
   const house = HOUSE_THEMES[ta.transitHouse];
@@ -500,33 +628,9 @@ function getTransitDescription(ta: TransitAspect): string {
   const pairDescs = TRANSIT_PAIR_DESC[pairKey];
   let description = pairDescs?.[ta.aspect] || "";
 
-  // Fallback: generate varied descriptions for pairs without specific entries
+  // Fallback: compose a distinct description for pairs without hand-written copy
   if (!description) {
-    const natalTheme = PLANET_THEMES[ta.natalPlanet] || ta.natalPlanet;
-    const harmoniousTemplates = [
-      `${ta.transitPlanet} is giving their ${natalTheme} a green light. This is one of those rare windows where effort and luck align — they should lean in.`,
-      `The energy around their ${natalTheme} is flowing more easily right now. ${ta.transitPlanet} is smoothing the path, making progress feel natural rather than forced.`,
-      `${ta.transitPlanet} is amplifying the best qualities of their natal ${ta.natalPlanet}. Doors that were stuck may swing open with minimal effort.`,
-    ];
-    const challengingTemplates = [
-      `${ta.transitPlanet} is creating friction with their ${natalTheme}. This isn't punishment — it's pressure that reveals what needs to change.`,
-      `Their ${natalTheme} is being stress-tested by ${ta.transitPlanet}. The parts that are solid will hold; the parts that aren't will crack. That's the point.`,
-      `Something about their ${natalTheme} isn't working anymore, and ${ta.transitPlanet} is making that impossible to ignore. Growth lives on the other side of this discomfort.`,
-    ];
-    const neutralTemplates = [
-      `${ta.transitPlanet} is sitting directly on their natal ${ta.natalPlanet}, fusing these energies into something new. Their ${natalTheme} is being rewritten in real time.`,
-      `This conjunction puts their ${natalTheme} front and center. ${ta.transitPlanet}'s energy is indistinguishable from their own right now — they ARE this transit.`,
-      `${ta.transitPlanet} and their natal ${ta.natalPlanet} are merging. Whatever their ${natalTheme} represents, it's about to get a full system reboot.`,
-    ];
-    // Use a hash of the pair to pick consistently but variably
-    const hash = (ta.transitPlanet + ta.natalPlanet + ta.aspect).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    if (aspectNature.nature === "harmonious") {
-      description = harmoniousTemplates[hash % harmoniousTemplates.length];
-    } else if (aspectNature.nature === "challenging") {
-      description = challengingTemplates[hash % challengingTemplates.length];
-    } else {
-      description = neutralTemplates[hash % neutralTemplates.length];
-    }
+    description = composeTransitDescription(ta);
   }
 
   if (house) {

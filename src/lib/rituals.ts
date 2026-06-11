@@ -23,6 +23,23 @@ import {
   getCurrentNakshatra,
 } from "./celestialCalendar";
 
+// ─── DATE-SEEDED ROTATION HELPERS ────────────────────────────────────────────
+// Same deterministic pattern used in almanacData.ts — keeps daily picks stable
+// for a given date while rotating day-to-day.
+
+/** Day of year (1-366) */
+function dayOfYear(date: Date): number {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const diff = date.getTime() - start.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+/** Deterministic pseudo-random based on a seed number (0-1 range) */
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface Ritual {
@@ -647,13 +664,20 @@ export function getDailyRituals(date: Date, chart?: ChartInfo, modalities?: Moda
   const seasonRitual = getSeasonRitual(energy.zodiacSeason);
   const personalRitual = chart ? getPersonalRitual(chart, energy.zodiacSeason) : undefined;
 
-  // Featured ritual: pick based on what's most notable today
+  // Featured ritual: pick based on what's most notable today.
+  // Priority buckets are preserved (full/new moon specials > current events >
+  // personal/contextual), but WITHIN a bucket the pick is date-seeded so the
+  // featured ritual rotates day-to-day instead of repeating while a moon
+  // phase (3-4 days), weekday, or zodiac season context stays the same.
+  const rotationSeed = dayOfYear(date) * 11 + date.getFullYear() * 17;
   let featured = moonRitual;
   if (energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new") {
     featured = moonRitual; // full/new moon always takes priority
   } else if (energy.currentEvents.length > 0) {
-    // Build a ritual from the current event
-    const event = energy.currentEvents[0];
+    // Build a ritual from a current event — rotate if several overlap
+    const event = energy.currentEvents[
+      Math.floor(seededRandom(rotationSeed) * energy.currentEvents.length)
+    ];
     featured = {
       id: `event-${event.id}`,
       title: event.name,
@@ -664,8 +688,17 @@ export function getDailyRituals(date: Date, chart?: ChartInfo, modalities?: Moda
       element: event.element || energy.zodiacSeason.element,
       source: `${event.tradition.charAt(0).toUpperCase() + event.tradition.slice(1)} tradition`,
     };
-  } else if (personalRitual) {
-    featured = personalRitual;
+  } else {
+    // Rotate through today's eligible pool (moon phase + weekday + season
+    // context). A personal ritual keeps elevated priority via double weight,
+    // but no single ritual repeats every day of a phase/season anymore.
+    const pool: Ritual[] = personalRitual
+      ? [personalRitual, moonRitual, dayRitual, personalRitual, seasonRitual]
+      : [moonRitual, dayRitual, seasonRitual];
+    // Modular day cycle (not pure random) so consecutive days are guaranteed
+    // to feature different rituals; the year term shifts which ritual lands
+    // on a given weekday so the same Tuesday isn't identical every week.
+    featured = pool[(dayOfYear(date) + date.getFullYear()) % pool.length];
   }
 
   // Nakshatra suggestion

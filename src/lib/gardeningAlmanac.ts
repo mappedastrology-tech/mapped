@@ -309,6 +309,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Plant bare-root trees and roses", category: "plant", icon: "🌹" },
     { task: "Start onion sets indoors", category: "plant", icon: "🧅" },
     { task: "Turn and aerate compost", category: "maintain", icon: "♻️" },
+    { task: "Sharpen and oil pruning tools", category: "prepare", icon: "🪚" },
+    { task: "Sketch out this year's crop rotation", category: "prepare", icon: "🗺️" },
   ],
   1: [ // February
     { task: "Direct-sow cool-season crops (lettuce, spinach, peas)", category: "plant", icon: "🥬" },
@@ -317,6 +319,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Prune roses before new growth", category: "maintain", icon: "🌹" },
     { task: "Apply pre-emergent for summer weeds", category: "maintain", icon: "🌿" },
     { task: "Divide perennials", category: "maintain", icon: "✂️" },
+    { task: "Build a cold frame for early starts", category: "prepare", icon: "🪟" },
+    { task: "Force flowering branches indoors (forsythia, quince)", category: "plant", icon: "🌸" },
   ],
   2: [ // March
     { task: "Transplant tomatoes and peppers after last frost", category: "plant", icon: "🍅" },
@@ -325,6 +329,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Set out marigolds and zinnias", category: "plant", icon: "🌼" },
     { task: "Mulch beds heavily (3-4 inches)", category: "maintain", icon: "🍂" },
     { task: "Start composting spring clippings", category: "maintain", icon: "♻️" },
+    { task: "Harden off seedlings before transplanting", category: "prepare", icon: "🌬️" },
+    { task: "Set up rain barrels before spring storms", category: "prepare", icon: "🌧️" },
   ],
   3: [ // April
     { task: "Plant okra, sweet potatoes, and melons", category: "plant", icon: "🍈" },
@@ -333,6 +339,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Watch for tomato hornworms", category: "maintain", icon: "🐛" },
     { task: "Deep-water established trees", category: "maintain", icon: "💧" },
     { task: "Plant sunflowers for summer cutting", category: "plant", icon: "🌻" },
+    { task: "Thin crowded seedlings for stronger plants", category: "maintain", icon: "🌱" },
+    { task: "Stake tomatoes and tall flowers early", category: "maintain", icon: "🪵" },
   ],
   4: [ // May
     { task: "Harvest spring onions and garlic", category: "harvest", icon: "🧅" },
@@ -341,6 +349,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Set up drip irrigation for summer", category: "prepare", icon: "💧" },
     { task: "Mulch heavily before heat arrives", category: "maintain", icon: "🍂" },
     { task: "Succession-plant heat-tolerant beans and peas", category: "plant", icon: "🫘" },
+    { task: "Pinch back herbs to encourage bushiness", category: "maintain", icon: "🌿" },
+    { task: "Side-dress heavy feeders with compost", category: "maintain", icon: "♻️" },
   ],
   5: [ // June
     { task: "Harvest tomatoes, peppers, and squash", category: "harvest", icon: "🍅" },
@@ -349,6 +359,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Harvest herbs before they bolt", category: "harvest", icon: "🌿" },
     { task: "Check for spider mites in heat", category: "maintain", icon: "🔍" },
     { task: "Preserve and can summer bounty", category: "harvest", icon: "🫙" },
+    { task: "Shade-cloth lettuce and tender greens", category: "maintain", icon: "⛱️" },
+    { task: "Deadhead flowers to extend blooming", category: "maintain", icon: "🌼" },
   ],
   6: [ // July
     { task: "Start fall garden planning", category: "prepare", icon: "📋" },
@@ -357,6 +369,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Solarize empty beds for fall", category: "prepare", icon: "☀️" },
     { task: "Water container plants daily", category: "maintain", icon: "💧" },
     { task: "Sow pumpkins for fall harvest", category: "plant", icon: "🎃" },
+    { task: "Harvest and dry herbs in the morning", category: "harvest", icon: "🌿" },
+    { task: "Refresh mulch where summer has thinned it", category: "maintain", icon: "🍂" },
   ],
   7: [ // August
     { task: "Transplant fall tomatoes and peppers", category: "plant", icon: "🍅" },
@@ -365,6 +379,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Plant fall-blooming perennials", category: "plant", icon: "🌸" },
     { task: "Divide iris and daylilies", category: "maintain", icon: "✂️" },
     { task: "Prep beds for fall planting", category: "prepare", icon: "🪴" },
+    { task: "Collect seeds from spent flowers", category: "harvest", icon: "🌻" },
+    { task: "Take herb cuttings to root indoors", category: "plant", icon: "✂️" },
   ],
   8: [ // September
     { task: "Plant cool-season veggies (broccoli, kale, greens)", category: "plant", icon: "🥦" },
@@ -373,6 +389,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Harvest sweet potatoes before frost", category: "harvest", icon: "🍠" },
     { task: "Overseed lawn with winter rye", category: "maintain", icon: "🌾" },
     { task: "Amend soil with compost for fall", category: "prepare", icon: "♻️" },
+    { task: "Bring tender houseplants back inside", category: "maintain", icon: "🪴" },
+    { task: "Cure onions and winter squash for storage", category: "harvest", icon: "🧅" },
   ],
   9: [ // October
     { task: "Plant spring-blooming bulbs (tulips, daffodils)", category: "plant", icon: "🌷" },
@@ -381,6 +399,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Plant trees and shrubs (ideal time)", category: "plant", icon: "🌳" },
     { task: "Collect and save seeds", category: "harvest", icon: "🌻" },
     { task: "Add fallen leaves to compost", category: "maintain", icon: "🍂" },
+    { task: "Empty and store hoses before hard freezes", category: "prepare", icon: "🚿" },
+    { task: "Pot up herbs for a windowsill garden", category: "plant", icon: "🪴" },
   ],
   10: [ // November
     { task: "Plant onion sets and multipliers", category: "plant", icon: "🧅" },
@@ -389,6 +409,8 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Plant cover crops in empty beds", category: "plant", icon: "🌾" },
     { task: "Clean and store summer tools", category: "prepare", icon: "🧹" },
     { task: "Mulch around perennials", category: "maintain", icon: "🍂" },
+    { task: "Drain irrigation lines for winter", category: "prepare", icon: "💧" },
+    { task: "Wrap young tree trunks against sunscald", category: "maintain", icon: "🌳" },
   ],
   11: [ // December
     { task: "Plan next year's garden", category: "prepare", icon: "📋" },
@@ -397,8 +419,27 @@ const SEASONAL_TASKS: Record<number, SeasonalTask[]> = {
     { task: "Protect tender perennials from hard freezes", category: "maintain", icon: "🧊" },
     { task: "Build or repair raised beds", category: "prepare", icon: "🪵" },
     { task: "Test soil and amend for spring", category: "prepare", icon: "🧪" },
+    { task: "Browse seed catalogs and dream a little", category: "prepare", icon: "📖" },
+    { task: "Check stored bulbs and produce for rot", category: "maintain", icon: "🔍" },
   ],
 };
+
+/**
+ * Rotate the visible subset of a month's tasks by week-of-month so the same
+ * 6-8 tasks don't sit on screen all month. Deterministic: the same date
+ * always yields the same 4 tasks, but each week of the month surfaces a
+ * different seeded selection from the full pool.
+ */
+function pickWeeklyTasks(tasks: SeasonalTask[], date: Date): SeasonalTask[] {
+  if (tasks.length <= 4) return tasks;
+  const weekOfMonth = Math.floor((date.getDate() - 1) / 7); // 0-4
+  const seed = (date.getFullYear() * 12 + date.getMonth()) * 7 + weekOfMonth * 3;
+  const shuffled = tasks
+    .map((task, i) => ({ task, key: seededRandom(seed * 31 + i * 13) }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.task);
+  return shuffled.slice(0, 4);
+}
 
 // --------------------------------------------------------------------------
 // Frost dates — resolved per USDA zone via USDA_ZONES (defined below).
@@ -464,27 +505,73 @@ function resolveZone(userZone?: string): ZoneInfo {
 // Moon Phase Gardening Guide
 // --------------------------------------------------------------------------
 
-function getMoonPhaseGardeningNote(moonPhaseName: string): string {
+/** Deterministic pseudo-random based on a seed number (0-1 range) — same
+ * pattern as almanacData.ts so daily picks are stable but rotate. */
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
+// 2-3 phrasings per phase so the note isn't verbatim every time the same
+// phase comes back around each month. The date seeds which variant shows.
+const MOON_PHASE_GARDENING_NOTES: { match: (phase: string) => boolean; notes: string[] }[] = [
+  {
+    match: (p) => p.includes("new"),
+    notes: [
+      "New Moon — plant above-ground leafy annuals. Sap rises, encouraging leaf growth. Best for lettuce, spinach, cabbage, celery, and grain crops.",
+      "New Moon — the dark of the moon favors leafy growth. Sow lettuce, spinach, brassicas, and herbs grown for their leaves; save root crops for the waning weeks.",
+      "New Moon — a fresh lunar cycle begins. Traditional growers sow seeds of leafy crops now, trusting the rising sap to push the first green growth upward.",
+    ],
+  },
+  {
+    match: (p) => p.includes("waxing crescent") || p.includes("first quarter"),
+    notes: [
+      "Waxing Moon — plant above-ground crops that bear fruit with seeds inside (tomatoes, beans, peppers, squash). Increasing light stimulates leaf growth and strong stems.",
+      "Waxing Moon — moisture is being drawn upward. A strong window for sowing beans, peas, tomatoes, and anything that fruits above ground.",
+      "Waxing Moon — growth energy is building with the light. Sow fruiting crops, feed seedlings, and graft fruit trees while the sap runs high.",
+    ],
+  },
+  {
+    match: (p) => p.includes("waxing gibbous"),
+    notes: [
+      "Waxing Gibbous — excellent transplanting days. Strong root and leaf growth. Plant perennials, biennials, and anything you want to establish quickly.",
+      "Waxing Gibbous — the last stretch before full is prime for setting out transplants and sowing fruiting crops; establishment energy is at its peak.",
+    ],
+  },
+  {
+    match: (p) => p.includes("full"),
+    notes: [
+      "Full Moon — plant root crops (carrots, potatoes, beets, turnips). Energy is pulling downward. Also good for transplanting and pruning.",
+      "Full Moon — gravity and moisture begin shifting toward the roots. Sow carrots, beets, and onions, divide perennials, and harvest herbs at peak potency.",
+    ],
+  },
+  {
+    match: (p) => p.includes("waning gibbous") || p.includes("third quarter"),
+    notes: [
+      "Waning Moon — plant root crops, bulbs, and perennials. Decreasing light favors root development. Good for planting trees and dividing plants.",
+      "Waning Moon — energy settles into the soil. Plant bulbs, root vegetables, and trees; it's also a steady window for pruning to slow growth.",
+    ],
+  },
+  {
+    match: (p) => p.includes("waning crescent") || p.includes("last quarter"),
+    notes: [
+      "Dark/Waning Moon — rest period. Do not plant. Focus on weeding, pruning, turning compost, pest control, and soil preparation.",
+      "Dark Moon — the garden's quiet week. Weed, mulch, sharpen tools, and turn compost; let the beds rest before the next planting cycle.",
+    ],
+  },
+];
+
+function getMoonPhaseGardeningNote(moonPhaseName: string, date: Date): string {
   const phase = moonPhaseName.toLowerCase();
-  if (phase.includes("new")) {
-    return "New Moon — plant above-ground leafy annuals. Sap rises, encouraging leaf growth. Best for lettuce, spinach, cabbage, celery, and grain crops.";
+  const entry = MOON_PHASE_GARDENING_NOTES.find((e) => e.match(phase));
+  if (!entry) {
+    return "Waning Moon — a rest phase for the garden. Focus on maintenance: weeding, composting, pest control, and preparing beds for the next cycle.";
   }
-  if (phase.includes("waxing crescent") || phase.includes("first quarter")) {
-    return "Waxing Moon — plant above-ground crops that bear fruit with seeds inside (tomatoes, beans, peppers, squash). Increasing light stimulates leaf growth and strong stems.";
-  }
-  if (phase.includes("waxing gibbous")) {
-    return "Waxing Gibbous — excellent transplanting days. Strong root and leaf growth. Plant perennials, biennials, and anything you want to establish quickly.";
-  }
-  if (phase.includes("full")) {
-    return "Full Moon — plant root crops (carrots, potatoes, beets, turnips). Energy is pulling downward. Also good for transplanting and pruning.";
-  }
-  if (phase.includes("waning gibbous") || phase.includes("third quarter")) {
-    return "Waning Moon — plant root crops, bulbs, and perennials. Decreasing light favors root development. Good for planting trees and dividing plants.";
-  }
-  if (phase.includes("waning crescent") || phase.includes("last quarter")) {
-    return "Dark/Waning Moon — rest period. Do not plant. Focus on weeding, pruning, turning compost, pest control, and soil preparation.";
-  }
-  return "Waning Moon — a rest phase for the garden. Focus on maintenance: weeding, composting, pest control, and preparing beds for the next cycle.";
+  // Date-seeded variant pick: stable for a given day, rotates across the
+  // days of a phase and across months so the repeat isn't verbatim.
+  const seed = getDayOfYear(date) * 5 + date.getFullYear() * 3;
+  const idx = Math.floor(seededRandom(seed) * entry.notes.length);
+  return entry.notes[idx];
 }
 
 // --------------------------------------------------------------------------
@@ -508,14 +595,15 @@ export function getGardeningData(
   // Planting guidance from moon sign
   const planting = MOON_SIGN_PLANTING[moonSign] || MOON_SIGN_PLANTING["Aries"];
 
-  // Seasonal tasks for this month (hemisphere-adjusted)
-  const seasonalTasks = SEASONAL_TASKS[month] || [];
+  // Seasonal tasks for this month (hemisphere-adjusted), with a weekly
+  // rotating subset so the visible list changes through the month
+  const seasonalTasks = pickWeeklyTasks(SEASONAL_TASKS[month] || [], date);
 
   // Frost calculations (zone- and hemisphere-aware)
   const frost = computeFrostInfo(dayOfYear, userZone, southernHemisphere);
 
-  // Moon phase gardening note
-  const moonPhaseGardening = getMoonPhaseGardeningNote(moonPhaseName);
+  // Moon phase gardening note (date-seeded variant)
+  const moonPhaseGardening = getMoonPhaseGardeningNote(moonPhaseName, date);
 
   // Build today's summary
   const todaysSummary = buildTodaySummary(planting, frost, moonPhaseName, month);

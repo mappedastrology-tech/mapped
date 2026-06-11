@@ -687,8 +687,24 @@ function personalizePattern(pattern: ChartPattern, planets: Planet[]): string {
 
     text += `Here's what each planet brings to this pile-up:\n\n${planetDescs.join("\n")}\n\n`;
 
-    const areaName = houseNum ? houseMeaning : signFull;
-    text += `What this means in practice: imagine ${pattern.planets.length} people all trying to talk at once in the same room — that's your inner life around ${areaName || "this area"}. `;
+    // Blend the actual planets' themes so a Sun/Mercury/Pluto stellium reads
+    // differently from a Moon/Venus/Jupiter one in the same sign.
+    const meanings = pattern.planets
+      .map((p) => PLANET_MEANING[p])
+      .filter((m): m is string => Boolean(m));
+    const blendList =
+      meanings.length >= 2
+        ? meanings.length === 2
+          ? `${meanings[0]} and ${meanings[1]}`
+          : `${meanings.slice(0, -1).join(", ")}, and ${meanings[meanings.length - 1]}`
+        : "";
+
+    text += `What this means in practice: `;
+    if (blendList) {
+      text += `it's specifically ${blendList} that are all wired into ${locDisplay}. These aren't separate dials you can adjust one at a time — turn one and the others move with it. `;
+    } else {
+      text += `imagine ${pattern.planets.length} people all trying to talk at once in the same room — that's your inner life around ${(houseNum ? houseMeaning : signFull) || "this area"}. `;
+    }
     text += `You have extraordinary depth here that most people can't match. `;
     text += `But it also means other parts of life can feel underdeveloped by comparison. `;
     text += `The key is to lean into this as your superpower while deliberately giving attention to the areas that don't come as naturally.`;

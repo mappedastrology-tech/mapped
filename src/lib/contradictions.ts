@@ -239,6 +239,41 @@ const STELLIUM_DESCRIPTIONS: Record<string, { meaning: string; lived: string }> 
   },
 };
 
+/** What each planet pours into a stellium — short clauses that compose into a sentence. */
+const STELLIUM_PLANET_FLAVOR: Record<string, string> = {
+  Sun: "your core identity",
+  Moon: "your emotional life",
+  Mercury: "how you think and speak",
+  Venus: "what you love and value",
+  Mars: "your drive and your temper",
+  Jupiter: "your appetite for growth",
+  Saturn: "your discipline and your fears",
+  Uranus: "your need to break the mold",
+  Neptune: "your imagination",
+  Pluto: "your relationship to power and transformation",
+  Chiron: "your oldest wound",
+  Lilith: "your untamed side",
+  "North Node": "the direction your life is growing toward",
+  "South Node": "the patterns you're moving beyond",
+};
+
+/** Join a list into natural English: "a, b, and c" */
+function joinNatural(items: string[]): string {
+  if (items.length <= 1) return items[0] || "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+/** Describe what THIS specific combination of planets concentrates in one sign. */
+function stelliumPlanetBlend(names: string[], sign: string): string {
+  const flavors = names
+    .map((n) => STELLIUM_PLANET_FLAVOR[n])
+    .filter((f): f is string => Boolean(f));
+  if (flavors.length < 2) return "";
+  const signFull = SIGN_FULL[sign] || sign;
+  return `With ${joinNatural(names)} stacked here, it's specifically ${joinNatural(flavors)} that all run through the ${signFull} filter — these parts of you don't operate independently; they move as one block. `;
+}
+
 export function detectStelliums(planets: Planet[]): Stellium[] {
   const signGroups: Record<string, string[]> = {};
 
@@ -252,10 +287,10 @@ export function detectStelliums(planets: Planet[]): Stellium[] {
   for (const [sign, names] of Object.entries(signGroups)) {
     if (names.length >= 3) {
       const description = STELLIUM_DESCRIPTIONS[sign];
-      const planetList = names.join(", ");
+      const blend = stelliumPlanetBlend(names, sign);
       const summary = description
-        ? `${planetList}. ${description.meaning} ${description.lived}`
-        : `You have a stellium with ${planetList} all in ${sign}. That's a massive concentration of energy in one sign.`;
+        ? `${blend}${description.meaning} ${description.lived}`
+        : `${blend || `You have a stellium with ${names.join(", ")} all in ${SIGN_FULL[sign] || sign}. `}That's a massive concentration of energy in one sign.`;
 
       stelliums.push({
         sign,
