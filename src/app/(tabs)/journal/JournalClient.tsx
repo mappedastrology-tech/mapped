@@ -382,7 +382,9 @@ function JournalPage() {
     const entry: JournalEntry = {
       id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       user_id: userId || "local",
-      date: now.toISOString().slice(0, 10),
+      // Local calendar date — toISOString() is UTC and stamps evening
+      // entries with tomorrow's date.
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
       text: composeText,
       content: composeText,
       prompt_id: currentPrompt?.id || null,

@@ -89,14 +89,18 @@ export async function fetchUserLocation(userId: string): Promise<UserLocation | 
     // fall through to birth location
   }
 
-  // 2. Birth location from chart
+  // 2. Birth location from chart. Users can have multiple chart rows
+  // (historic duplicates), so take the most recent — .maybeSingle()
+  // would error on duplicates and silently lose the location.
   try {
-    const { data: chart } = await supabase
+    const { data: chartRows } = await supabase
       .from("charts")
       .select("latitude, longitude, city_name")
       .eq("user_id", userId)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
 
+    const chart = chartRows?.[0];
     if (chart && typeof chart.latitude === "number" && typeof chart.longitude === "number") {
       const loc: UserLocation = {
         lat: chart.latitude,
