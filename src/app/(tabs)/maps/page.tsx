@@ -12,6 +12,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
+import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { useBirthTime } from "@/components/BirthTimeProvider";
@@ -2655,6 +2656,22 @@ export default function MapsTab() {
     const raw = connections.find((c) => c.id === selectedId) || null;
     return raw ? sanitizeConnection(raw) : null;
   }, [connections, selectedId]);
+
+  // Auto-refresh stale synastry: stored synastry JSON predating the current
+  // SYNASTRY_VERSION (old copy, nodal duplicates, direction bugs) gets
+  // recalculated once when the connection is opened.
+  const autoRecalcedIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedId || !userChart) return;
+    const raw = connections.find((c) => c.id === selectedId);
+    if (!raw || !raw.planets || !raw.synastry) return;
+    const storedVersion = (raw.synastry as { version?: number }).version ?? 0;
+    if (storedVersion >= SYNASTRY_VERSION) return;
+    if (autoRecalcedIds.current.has(raw.id)) return;
+    autoRecalcedIds.current.add(raw.id);
+    void recalcSynastry(raw);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, userChart, connections]);
 
   // ─── Add person ───
   const handleAddPerson = useCallback(async () => {

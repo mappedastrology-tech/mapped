@@ -725,6 +725,13 @@ function generateThemes(
 
 // ---------- Main export ----------
 
+/**
+ * Bump this whenever the synastry copy/structure changes. Stored synastry
+ * JSON carries the version; the Maps page auto-recalculates any connection
+ * whose stored version is older, so users never see stale copy.
+ */
+export const SYNASTRY_VERSION = 2;
+
 export function calculateSynastry(
   chart1: ChartData,
   chart2: ChartData,
@@ -786,6 +793,7 @@ export function calculateSynastry(
   ).length;
 
   return {
+    version: SYNASTRY_VERSION,
     crossAspects: crossAspects.slice(0, 30),
     fatedContacts: dedupedFated,
     elementBalance: { person1: elem1, person2: elem2 },
