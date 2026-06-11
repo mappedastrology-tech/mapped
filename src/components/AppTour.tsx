@@ -92,6 +92,9 @@ export default function AppTour({ onComplete }: { onComplete?: () => void }) {
     <>
       {/* Semi-transparent overlay */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="App tour"
         className="fixed inset-0 z-[90] transition-opacity duration-300"
         style={{ backgroundColor: "var(--modal-overlay)", opacity: visible ? 1 : 0, pointerEvents: visible ? "auto" : "none" }}
         onClick={handleNext}
@@ -132,14 +135,14 @@ export default function AppTour({ onComplete }: { onComplete?: () => void }) {
           >
             {currentStep?.title}
           </h3>
-          <p className="text-foreground/60 text-sm leading-relaxed mb-4">
+          <p className="text-secondary text-sm leading-relaxed mb-4">
             {currentStep?.description}
           </p>
 
           <div className="flex items-center justify-between">
             <button
               onClick={handleSkip}
-              className="text-foreground/40 text-xs hover:text-foreground/60 transition-colors"
+              className="text-muted text-xs hover:text-foreground transition-colors"
             >
               Skip tour
             </button>

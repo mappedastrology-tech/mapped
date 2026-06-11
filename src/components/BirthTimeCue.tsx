@@ -33,7 +33,7 @@ export function TierABadge({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex items-center gap-2 mt-1">
-      <span className="text-[10px] italic text-foreground/40">Needs exact birth time</span>
+      <span className="text-[10px] italic text-muted">Needs exact birth time</span>
       <button
         onClick={() => router.push("/account#birth-time")}
         className="text-[10px] text-terracotta/70 hover:text-terracotta transition-colors underline"
@@ -67,7 +67,7 @@ export function TierBPlaceholder({
 
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/3 p-5">
-      <p className="text-sm text-foreground/60 leading-relaxed mb-4">{copy}</p>
+      <p className="text-sm text-secondary leading-relaxed mb-4">{copy}</p>
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => router.push("/account#birth-time")}
@@ -78,7 +78,7 @@ export function TierBPlaceholder({
         {showRectification && (
           <button
             onClick={() => router.push("/rectification")}
-            className="px-4 py-2 rounded-full border border-foreground/15 text-foreground/50 text-xs font-medium hover:border-foreground/25 transition-colors"
+            className="px-4 py-2 rounded-full border border-foreground/15 text-muted text-xs font-medium hover:border-foreground/25 transition-colors"
           >
             Try rectification
           </button>
@@ -86,7 +86,7 @@ export function TierBPlaceholder({
         {showSkip && onSkip && (
           <button
             onClick={onSkip}
-            className="px-4 py-2 text-foreground/35 text-xs hover:text-foreground/50 transition-colors"
+            className="px-4 py-2 text-muted text-xs hover:text-foreground transition-colors"
           >
             Skip — show me other things
           </button>
@@ -148,8 +148,8 @@ export function BirthTimeRepromptBanner() {
 
   return (
     <div className="mx-4 mb-3 rounded-xl border border-amber/20 bg-amber/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-      <p className="text-sm font-medium text-foreground/80 mb-0.5">{copy.title}</p>
-      <p className="text-xs text-foreground/50 mb-3">{copy.body}</p>
+      <p className="text-sm font-medium text-foreground mb-0.5">{copy.title}</p>
+      <p className="text-xs text-muted mb-3">{copy.body}</p>
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.push("/account#birth-time")}
@@ -159,7 +159,7 @@ export function BirthTimeRepromptBanner() {
         </button>
         <button
           onClick={dismissReprompts}
-          className="text-[10px] text-foreground/30 hover:text-foreground/50 transition-colors"
+          className="text-[10px] text-muted hover:text-foreground transition-colors"
         >
           Stop asking me about this
         </button>

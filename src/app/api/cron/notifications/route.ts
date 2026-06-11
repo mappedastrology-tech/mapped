@@ -115,10 +115,12 @@ function determineNotifications(
 /* ─── Main handler ─── */
 
 export async function GET(request: Request) {
-  // Authenticate — Vercel Cron sends CRON_SECRET as Bearer token
+  // Authenticate — Vercel Cron sends CRON_SECRET as Bearer token.
+  // Fail closed: if CRON_SECRET isn't configured, reject everything
+  // rather than leaving the endpoint open to the public internet.
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

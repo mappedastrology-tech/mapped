@@ -28,12 +28,25 @@ export default function InfoSheet({
       return;
     }
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+    const dialog = sheetRef.current;
+    const focusable = dialog?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable?.[0];
+    const last = focusable?.[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     };
-    window.addEventListener("keydown", onKey);
+    first?.focus();
+    document.addEventListener("keydown", trap);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", trap);
       document.body.style.overflow = "";
     };
   }, [isOpen, close]);
@@ -67,12 +80,14 @@ export default function InfoSheet({
       <div
         ref={sheetRef}
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="info-sheet-title"
         style={{
           width: "100%",
           maxWidth: 480,
           maxHeight: "80vh",
           overflowY: "auto",
-          background: "var(--background, #F3E8D6)",
+          background: "var(--background)",
           borderRadius: 24,
           border: "1px solid rgba(42, 31, 24, 0.12)",
           boxShadow: "0 24px 48px -12px rgba(42, 31, 24, 0.3), 0 8px 16px -8px rgba(42, 31, 24, 0.15)",
@@ -93,6 +108,7 @@ export default function InfoSheet({
                 </span>
               )}
               <h2
+                id="info-sheet-title"
                 className="text-foreground text-[24px] leading-[1.1] tracking-tight"
                 style={{ fontFamily: "var(--font-display)", margin: 0 }}
               >
@@ -103,10 +119,10 @@ export default function InfoSheet({
           <button
             onClick={close}
             aria-label="Close"
-            className="shrink-0 w-8 h-8 rounded-full bg-card/60 border border-foreground/15 flex items-center justify-center hover:bg-card/80 text-foreground/60"
+            className="shrink-0 w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-card/60 border border-foreground/15 flex items-center justify-center hover:bg-card/80 text-secondary"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -115,7 +131,7 @@ export default function InfoSheet({
 
         {/* Body */}
         <div className="px-6 pb-6">
-          <div className="text-foreground/85 text-[15px] leading-relaxed space-y-4">
+          <div className="text-foreground text-[15px] leading-relaxed space-y-4">
             {children}
           </div>
         </div>

@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
+import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 
 /* ═══════════════════════════════════════════
    Types
@@ -83,9 +84,16 @@ function generateConvoId(): string {
   return `convo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Return user-scoped Dolly conversations localStorage key. */
+function getDollyLsKey(uid?: string | null): string {
+  const base = "mapped:dolly-conversations";
+  return uid ? `${base}:${uid}` : base;
+}
+
 export default function DollyTab() {
   const { gate, PaywallModal } = usePaywall();
   const { tier } = useTier();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -121,7 +129,10 @@ export default function DollyTab() {
       let userId: string | null = null;
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) userId = session.user.id;
+        if (session?.user) {
+          userId = session.user.id;
+          setCurrentUserId(userId);
+        }
       } catch { /* continue without auth */ }
 
       if (!userId) {
@@ -177,6 +188,7 @@ export default function DollyTab() {
         // Fetch current transits
         try {
           const today = new Date().toISOString().split("T")[0];
+          const loc = getCachedLocation(userId) ?? (await fetchUserLocation(userId));
           const res = await fetch("/api/transits", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -184,8 +196,8 @@ export default function DollyTab() {
               natalPlanets: chartData.planets || [],
               natalHouses: chartData.houses || [],
               transitDate: today,
-              latitude: chartData.latitude || 30.27,
-              longitude: chartData.longitude || -97.74,
+              latitude: chartData.latitude ?? loc?.lat,
+              longitude: chartData.longitude ?? loc?.lng,
               zodiacSystem: chartData.zodiac_system || "tropical",
             }),
           });
@@ -253,7 +265,7 @@ export default function DollyTab() {
 
     // Always save to localStorage first (guaranteed to work)
     try {
-      const lsKey = "mapped:dolly-conversations";
+      const lsKey = getDollyLsKey(currentUserId);
       const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
       existing[convoId] = { messages: msgs, updated_at: new Date().toISOString(), day: viewingDay || todayKey };
       // Keep last 50 conversations
@@ -293,7 +305,7 @@ export default function DollyTab() {
     } catch (err) {
       console.error("Save conversation error (Supabase):", err);
     }
-  }, [conversationId, viewingDay]);
+  }, [conversationId, viewingDay, currentUserId]);
 
   // Send message
   async function handleSend(text?: string) {
@@ -447,7 +459,7 @@ export default function DollyTab() {
 
       // Merge localStorage conversations that Supabase might not have
       try {
-        const lsData = JSON.parse(localStorage.getItem("mapped:dolly-conversations") || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
+        const lsData = JSON.parse(localStorage.getItem(getDollyLsKey(currentUserId)) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
         for (const [convoKey, val] of Object.entries(lsData)) {
           if (!val?.messages?.length) continue;
           const alreadyInList = convos.some(c => c.id === convoKey);
@@ -502,6 +514,35 @@ export default function DollyTab() {
     setConversationId(convo.id);
     setViewingDay(convo.day);
     setShowHistory(false);
+  }
+
+  // Delete a conversation
+  async function deleteConversation(convo: PastConversation) {
+    // Remove from Supabase
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.from("dolly_conversations").delete().eq("id", convo.id).eq("user_id", session.user.id);
+      }
+    } catch { /* ignore */ }
+
+    // Remove from localStorage
+    try {
+      const lsKey = getDollyLsKey(currentUserId);
+      const lsData = JSON.parse(localStorage.getItem(lsKey) || "{}");
+      delete lsData[convo.id];
+      localStorage.setItem(lsKey, JSON.stringify(lsData));
+    } catch { /* ignore */ }
+
+    // Remove from state
+    setPastConversations((prev) => prev.filter((c) => c.id !== convo.id));
+
+    // If we deleted the active conversation, reset to new chat
+    if (convo.id === conversationId) {
+      setMessages([]);
+      setConversationId(null);
+      setViewingDay(null);
+    }
   }
 
   // Open history drawer
@@ -572,7 +613,7 @@ export default function DollyTab() {
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -597,9 +638,10 @@ export default function DollyTab() {
               handleNewChat();
               setShowHistory(false);
             }}
-            className="w-8 h-8 rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
+            className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
+            aria-label="New conversation"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
             </svg>
@@ -610,17 +652,17 @@ export default function DollyTab() {
         <div className="flex-1 overflow-y-auto">
           {historyLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
             </div>
           ) : pastConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 px-8">
               <div className="w-16 h-16 rounded-full bg-terracotta/8 border border-terracotta/15 flex items-center justify-center mb-4">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeWidth="1" stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
+                <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" strokeWidth="1" stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
                   <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
                 </svg>
               </div>
-              <p className="text-foreground/30 text-sm text-center mb-1">No readings yet</p>
-              <p className="text-foreground/20 text-xs text-center max-w-[240px]">
+              <p className="text-muted text-sm text-center mb-1">No readings yet</p>
+              <p className="text-muted text-xs text-center max-w-[240px]">
                 Start a conversation with Dolly and your past readings will show up here
               </p>
             </div>
@@ -641,65 +683,77 @@ export default function DollyTab() {
                   <div key={convo.id}>
                     {showDateHeader && (
                       <div className="px-5 pt-4 pb-1.5">
-                        <span className="text-foreground/25 text-[10px] uppercase tracking-widest font-medium">
+                        <span className="text-muted text-[10px] uppercase tracking-widest font-medium">
                           {formatConvoDate(convo.day)}
                         </span>
                       </div>
                     )}
-                    <button
-                      onClick={() => loadConversation(convo)}
-                      className={`w-full text-left px-5 py-3.5 flex gap-3 items-start transition-colors active:bg-foreground/5 ${
-                        isActive ? "bg-terracotta/8" : ""
-                      }`}
-                    >
-                      {/* Dolly avatar */}
-                      <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                        isActive
-                          ? "bg-terracotta/20 border border-terracotta/30"
-                          : "bg-surface/60 border border-foreground/15"
-                      }`}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
-                             stroke={isActive ? "var(--terracotta)" : "var(--foreground)"}
-                             strokeLinecap="round" strokeLinejoin="round"
-                             className={isActive ? "opacity-70" : "opacity-25"}>
-                          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                        </svg>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className={`text-sm font-medium truncate ${
-                            isActive ? "text-foreground" : "text-foreground/70"
-                          }`}>
-                            {preview}
-                          </span>
-                          <span className="text-foreground/20 text-[10px] ml-2 flex-shrink-0">
-                            {formatConvoTime(convo)}
-                          </span>
+                    <div className={`flex items-center gap-0 transition-colors ${
+                      isActive ? "bg-terracotta/8" : ""
+                    }`}>
+                      <button
+                        onClick={() => loadConversation(convo)}
+                        className="flex-1 text-left px-5 py-3.5 flex gap-3 items-start active:bg-foreground/5 min-w-0"
+                      >
+                        {/* Dolly avatar */}
+                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                          isActive
+                            ? "bg-terracotta/20 border border-terracotta/30"
+                            : "bg-surface/60 border border-foreground/15"
+                        }`}>
+                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
+                               stroke={isActive ? "var(--terracotta)" : "var(--foreground)"}
+                               strokeLinecap="round" strokeLinejoin="round"
+                               className={isActive ? "opacity-70" : "opacity-25"}>
+                            <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                          </svg>
                         </div>
-                        {lastResponse && (
-                          <p className="text-foreground/30 text-xs leading-relaxed truncate">
-                            {lastResponse}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-foreground/15 text-[10px]">
-                            {msgCount} {msgCount === 1 ? "message" : "messages"}
-                          </span>
-                          {isToday && isActive && (
-                            <span className="text-terracotta/50 text-[9px] uppercase tracking-widest">
-                              active
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className={`text-sm font-medium truncate ${
+                              isActive ? "text-foreground" : "text-secondary"
+                            }`}>
+                              {preview}
                             </span>
+                            <span className="text-muted text-[10px] ml-2 flex-shrink-0">
+                              {formatConvoTime(convo)}
+                            </span>
+                          </div>
+                          {lastResponse && (
+                            <p className="text-muted text-xs leading-relaxed truncate">
+                              {lastResponse}
+                            </p>
                           )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-muted text-[10px]">
+                              {msgCount} {msgCount === 1 ? "message" : "messages"}
+                            </span>
+                            {isToday && isActive && (
+                              <span className="text-terracotta/50 text-[9px] uppercase tracking-widest">
+                                active
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </button>
 
-                      {/* Chevron */}
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-15 flex-shrink-0 mt-2.5">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
+                      {/* Delete button */}
+                      <button
+                        onClick={() => {
+                          if (confirm("Delete this conversation?")) {
+                            deleteConversation(convo);
+                          }
+                        }}
+                        className="px-4 py-3.5 flex-shrink-0 text-foreground/20 active:text-red-400/70 transition-colors self-stretch flex items-center"
+                        aria-label="Delete conversation"
+                      >
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                        </svg>
+                      </button>
+                    </div>
 
                     {/* Divider */}
                     <div className="ml-[4.5rem] border-b border-foreground/15" />
@@ -724,9 +778,10 @@ export default function DollyTab() {
           {/* Back to chats */}
           <button
             onClick={openHistory}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/40 hover:text-foreground/60 transition-colors active:scale-95"
+            aria-label="Back to conversations"
+            className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
@@ -737,7 +792,7 @@ export default function DollyTab() {
             >
               Dolly
             </h1>
-            <p className="text-foreground/30 text-[10px] uppercase tracking-widest">
+            <p className="text-muted text-[10px] uppercase tracking-widest">
               {viewingDay && viewingDay !== new Date().toISOString().split("T")[0]
                 ? formatConvoDate(viewingDay)
                 : chart?.bigThree
@@ -750,7 +805,7 @@ export default function DollyTab() {
         {messages.length > 0 && (
           <button
             onClick={handleNewChat}
-            className="text-foreground/30 text-xs px-3 py-1.5 rounded-lg border border-foreground/15 hover:text-foreground/50 hover:border-foreground/15 transition-colors"
+            className="text-muted text-xs px-3 py-1.5 rounded-lg border border-foreground/15 hover:text-foreground hover:border-foreground/15 transition-colors"
           >
             New chat
           </button>
@@ -763,7 +818,7 @@ export default function DollyTab() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
             <div className="w-14 h-14 rounded-full bg-terracotta/10 border border-terracotta/20 flex items-center justify-center mb-4">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
                    stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round"
                    className="opacity-60">
                 <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
@@ -775,7 +830,7 @@ export default function DollyTab() {
             >
               Ask Dolly anything
             </p>
-            <p className="text-foreground/30 text-xs mb-8 text-center max-w-[260px]">
+            <p className="text-muted text-xs mb-8 text-center max-w-[260px]">
               Your chart, your transits, your relationships — she knows it all
             </p>
 
@@ -784,7 +839,7 @@ export default function DollyTab() {
                 <button
                   key={i}
                   onClick={() => handleSend(prompt)}
-                  className="text-left px-4 py-3 rounded-xl border border-foreground/15 bg-card/40 text-foreground/50 text-sm hover:border-terracotta/20 hover:text-foreground/70 hover:bg-card/50 transition-all active:scale-[0.98]"
+                  className="text-left px-4 py-3 rounded-xl border border-foreground/15 bg-card/40 text-muted text-sm hover:border-terracotta/20 hover:text-foreground hover:bg-card/50 transition-all active:scale-[0.98]"
                 >
                   {prompt}
                 </button>
@@ -810,16 +865,16 @@ export default function DollyTab() {
                 {/* Dolly label */}
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className="w-5 h-5 rounded-full bg-terracotta/10 border border-terracotta/15 flex items-center justify-center">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" strokeWidth="2"
+                    <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" strokeWidth="2"
                          stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round"
                          className="opacity-50">
                       <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
                     </svg>
                   </div>
-                  <span className="text-foreground/25 text-[10px] uppercase tracking-widest">Dolly</span>
+                  <span className="text-muted text-[10px] uppercase tracking-widest">Dolly</span>
                 </div>
                 {/* Message content */}
-                <div className="text-foreground/70 text-sm leading-relaxed whitespace-pre-wrap pl-7">
+                <div className="text-secondary text-sm leading-relaxed whitespace-pre-wrap pl-7">
                   {msg.content}
                   {isStreaming && msg === messages[messages.length - 1] && !msg.content && (
                     <span className="inline-block w-2 h-4 bg-terracotta/40 animate-pulse ml-0.5" />
@@ -845,9 +900,10 @@ export default function DollyTab() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isStreaming ? "Reading the stars..." : "Ask Dolly anything..."}
+            aria-label="Chat message"
             disabled={isStreaming}
             rows={1}
-            className="flex-1 bg-transparent text-foreground text-sm placeholder:text-foreground/25 resize-none outline-none max-h-[120px] py-1.5"
+            className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted resize-none outline-none max-h-[120px] py-1.5"
             style={{ minHeight: "24px" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -858,18 +914,19 @@ export default function DollyTab() {
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
-            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+            className="flex-shrink-0 w-8 h-8 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+            aria-label="Send message"
             style={{ backgroundColor: input.trim() && !isStreaming ? "var(--terracotta)" : "transparent" }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke={input.trim() && !isStreaming ? "#F2E8D5" : "var(--foreground)"}
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 stroke={input.trim() && !isStreaming ? "var(--btn-primary-text)" : "var(--foreground)"}
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M22 2L11 13" />
               <path d="M22 2L15 22L11 13L2 9L22 2Z" />
             </svg>
           </button>
         </div>
-        <p className="text-foreground/15 text-[9px] text-center mt-2">
+        <p className="text-muted text-[9px] text-center mt-2">
           Dolly uses astrology as a lens, not a prediction. You always have agency.
         </p>
       </div>

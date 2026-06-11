@@ -27,7 +27,7 @@ export default function TodaysRitualWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center min-h-[140px]">
-        <div className="w-5 h-5 border-2 border-sage/30 border-t-sage rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-sage/30 border-t-sage rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -41,18 +41,18 @@ export default function TodaysRitualWidget() {
       </p>
       <p className="text-foreground font-medium mb-2">{ritual.title}</p>
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-foreground/50 bg-foreground/8 px-2 py-1 rounded">
+        <span className="text-xs text-muted bg-foreground/8 px-2 py-1 rounded">
           {ritual.duration}
         </span>
-        <span className="text-xs text-foreground/50 bg-foreground/8 px-2 py-1 rounded capitalize">
+        <span className="text-xs text-muted bg-foreground/8 px-2 py-1 rounded capitalize">
           {ritual.mood}
         </span>
       </div>
 
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-foreground/15 text-sm text-foreground/60 space-y-2">
+        <div className="mt-4 pt-4 border-t border-foreground/15 text-sm text-secondary space-y-2">
           {ritual.steps.map((step, i) => (
-            <p key={i} className="text-foreground/60">
+            <p key={i} className="text-secondary">
               <span className="text-terracotta/70 mr-2">{i + 1}.</span>
               {step}
             </p>

@@ -46,3 +46,4 @@ broken_build_cache
 broken_next_temp*
 broken_temp*
 broken_name*
+.next-corrupted/

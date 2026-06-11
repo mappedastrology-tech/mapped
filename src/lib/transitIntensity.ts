@@ -59,12 +59,12 @@ export function getTransitIntensity(ta: TransitForScoring): IntensityResult {
   score = Math.min(100, Math.max(1, score));
 
   let label = "Background hum";
-  let color = "text-foreground/30";
+  let color = "text-muted";
   if (score >= 75) { label = "Life-altering"; color = "text-terracotta"; }
   else if (score >= 55) { label = "Very strong"; color = "text-amber"; }
-  else if (score >= 38) { label = "Significant"; color = "text-foreground/70"; }
-  else if (score >= 20) { label = "Moderate"; color = "text-foreground/50"; }
-  else if (score >= 10) { label = "Subtle"; color = "text-foreground/40"; }
+  else if (score >= 38) { label = "Significant"; color = "text-secondary"; }
+  else if (score >= 20) { label = "Moderate"; color = "text-muted"; }
+  else if (score >= 10) { label = "Subtle"; color = "text-muted"; }
 
   return { score, label, color };
 }

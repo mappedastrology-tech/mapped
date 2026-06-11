@@ -62,7 +62,7 @@ export default function PlanetaryHourWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-4 flex items-center justify-center h-[120px]">
-        <div className="w-4 h-4 border-2 border-amber/30 border-t-amber rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-amber/30 border-t-amber rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function PlanetaryHourWidget() {
         ☿ Planetary Hour
       </p>
       <p className="text-foreground font-medium text-sm mb-1">{hour.planet}</p>
-      <p className="text-foreground/60 text-xs leading-relaxed">{hour.focus}</p>
+      <p className="text-secondary text-xs leading-relaxed">{hour.focus}</p>
     </div>
   );
 }

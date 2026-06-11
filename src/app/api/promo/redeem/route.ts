@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { validatePromoCode, getExpirationDate, describePromo, type PromoCode } from "@/lib/promoCodes";
+import { validatePromoCode, getExpirationDate, describePromo, getHardcodedPromo, type PromoCode } from "@/lib/promoCodes";
 
 export async function POST(request: Request) {
   try {
@@ -52,7 +52,41 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    // Look up code (case-insensitive)
+    // Check hardcoded promo codes first (no database entry needed)
+    const hardcoded = getHardcodedPromo(code);
+    if (hardcoded) {
+      // For hardcoded codes, store the code name in the user's profile metadata
+      // instead of promo_redemptions (which has a FK to promo_codes table)
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("tier")
+        .eq("id", user.id)
+        .single();
+
+      // Check if already redeemed by looking at tier + a metadata column
+      // Simple approach: just check if they already have the tier
+      if (profile?.tier === "mid") {
+        return NextResponse.json({ success: false, error: "You already have Mapped+ access." }, { status: 400 });
+      }
+
+      // Update user's profile tier directly
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ tier: hardcoded.tier_granted })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("[promo/redeem] hardcoded update error:", updateError);
+        return NextResponse.json({ success: false, error: "Failed to redeem code. Try again." }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: describePromo(hardcoded),
+      });
+    }
+
+    // Look up code in database (case-insensitive)
     const { data: promoCode, error: lookupError } = await supabaseAdmin
       .from("promo_codes")
       .select("*")

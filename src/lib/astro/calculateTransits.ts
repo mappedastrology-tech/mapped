@@ -192,8 +192,8 @@ export function calculateTransits(data: TransitInput) {
   const natalPlanets = data.natalPlanets;
   const natalHouses = data.natalHouses || [];
   const transitDate = data.transitDate;
-  const latitude = data.latitude ?? 30.27;
-  const longitude = data.longitude ?? -97.74;
+  // Note: data.latitude/longitude are accepted for API compatibility but transit
+  // positions are location-independent; no coordinate fallback is needed here.
 
   const zodiacSystem = data.zodiacSystem || "tropical";
   const ayanamsaName = data.ayanamsa || "lahiri";

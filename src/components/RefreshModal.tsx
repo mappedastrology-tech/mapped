@@ -9,7 +9,7 @@
  * All colors use CSS custom properties for light/dark theme support.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   REFRESH_TIMES,
   REFRESH_LOCATIONS,
@@ -131,6 +131,30 @@ export default function RefreshModal({ onSelect, onClose }: Props) {
   const finalResults = results.length > 0 ? results : softenedResults?.rituals ?? [];
   const wasSoftened = results.length === 0 && softenedResults;
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [onClose]);
+
   // Shared option button style
   const optionStyle = (isSelected: boolean) => ({
     backgroundColor: isSelected ? "var(--terracotta-bg)" : "var(--background-card)",
@@ -141,7 +165,8 @@ export default function RefreshModal({ onSelect, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm"
          style={{ backgroundColor: "var(--modal-overlay)" }}>
-      <div className="rounded-t-3xl sm:rounded-3xl p-5 pb-8 mx-0 sm:mx-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Refresh ritual selection"
+           className="rounded-t-3xl sm:rounded-3xl p-5 pb-8 mx-0 sm:mx-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
            style={{ backgroundColor: "var(--modal-bg)" }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

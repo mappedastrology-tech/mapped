@@ -129,6 +129,8 @@ export function addEntry(entry: JournalEntry) {
   const entries = getLocalEntries();
   entries.unshift(entry);
   saveLocalEntries(entries);
+  // Fire-and-forget Supabase backup (burn entries never leave the device)
+  pushEntryToSupabase(entry).catch(() => {});
 }
 
 export function updateEntry(id: string, text: string) {
@@ -138,14 +140,161 @@ export function updateEntry(id: string, text: string) {
     entries[idx].text = text;
     entries[idx].content = text;
     entries[idx].updated_at = new Date().toISOString();
-    entries[idx].tags.wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    if (entries[idx].tags) {
+      entries[idx].tags.wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    }
     saveLocalEntries(entries);
+    pushEntryToSupabase(entries[idx]).catch(() => {});
   }
 }
 
 export function deleteEntry(id: string) {
   const entries = getLocalEntries().filter((e) => e.id !== id);
   saveLocalEntries(entries);
+  deleteEntryFromSupabase(id).catch(() => {});
+}
+
+// ─── Dual-write Sync (localStorage primary, Supabase durable backup) ─────────
+
+/** Map a local entry to the journal_entries row shape (keyed by client_id). */
+function entryToRow(entry: JournalEntry, userId: string) {
+  return {
+    user_id: userId,
+    client_id: entry.id,
+    date: entry.date || (entry.created_at || new Date().toISOString()).slice(0, 10),
+    content: entry.text || entry.content || "",
+    prompt: entry.prompt || entry.prompt_text || "",
+    mood: entry.mood || null,
+    celestial_context: entry.celestial_context || null,
+    prompt_id: entry.prompt_id || null,
+    prompt_text: entry.prompt_text || null,
+    is_burn: false, // burn entries are never pushed
+    is_voice: !!entry.is_voice,
+    tags: entry.tags || null,
+    created_at: entry.created_at || new Date().toISOString(),
+    updated_at: entry.updated_at || new Date().toISOString(),
+  };
+}
+
+/**
+ * Push a single entry to Supabase (fire-and-forget).
+ * No-ops when signed out, offline, or for burn-after-writing entries —
+ * those are a privacy promise and never leave the device.
+ */
+export async function pushEntryToSupabase(entry: JournalEntry): Promise<void> {
+  try {
+    if (entry.is_burn) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return; // Not logged in — skip silently
+
+    await supabase
+      .from("journal_entries")
+      .upsert(entryToRow(entry, session.user.id), { onConflict: "user_id,client_id" });
+  } catch {
+    // Network error — local copy is fine, will sync later
+  }
+}
+
+/** Delete the Supabase row matching a local entry id (fire-and-forget). */
+export async function deleteEntryFromSupabase(clientId: string): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    await supabase
+      .from("journal_entries")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("client_id", clientId);
+  } catch {
+    // Offline — nothing to do
+  }
+}
+
+/** Map a journal_entries row back to the local JournalEntry shape. */
+function rowToEntry(r: Record<string, unknown>): JournalEntry {
+  const content = (r.content as string) || "";
+  const createdAt = (r.created_at as string) || new Date().toISOString();
+  const tags = (r.tags as JournalTags | null) || {
+    moonPhase: "unknown",
+    planetaryDay: getPlanetaryDay(new Date(createdAt)),
+    lordOfYear: null,
+    activeTransits: [],
+    wordCount: content.trim().split(/\s+/).filter(Boolean).length,
+    timeOfDay: getTimeOfDay(new Date(createdAt).getHours()),
+  };
+  return {
+    id: r.client_id as string,
+    user_id: r.user_id as string,
+    text: content,
+    content,
+    date: (r.date as string) || createdAt.slice(0, 10),
+    created_at: createdAt,
+    updated_at: (r.updated_at as string) || createdAt,
+    prompt_id: (r.prompt_id as string) || null,
+    prompt_text: (r.prompt_text as string) || null,
+    prompt: (r.prompt as string) || (r.prompt_text as string) || undefined,
+    mood: (r.mood as string) || undefined,
+    celestial_context: (r.celestial_context as JournalEntry["celestial_context"]) || undefined,
+    is_burn: false,
+    is_voice: !!r.is_voice,
+    tags,
+  };
+}
+
+/**
+ * Full sync on login or app startup.
+ * Pulls remote entries, merges with local by client_id (newest updated_at
+ * wins), writes the merged set back to localStorage, and pushes any
+ * local-only entries up. Burn entries never sync. No-ops when signed out.
+ */
+export async function pullJournalEntries(userId: string): Promise<{ pushed: number; pulled: number }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || session.user.id !== userId) return { pushed: 0, pulled: 0 };
+
+    const { data: remoteRows, error } = await supabase
+      .from("journal_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .not("client_id", "is", null);
+    if (error) throw error;
+
+    const local = getLocalEntries();
+    const byId = new Map<string, JournalEntry>(local.map((e) => [e.id, e]));
+    const remoteIds = new Set<string>();
+    let pulled = 0;
+
+    for (const row of (remoteRows || []) as Record<string, unknown>[]) {
+      const remote = rowToEntry(row);
+      remoteIds.add(remote.id);
+      const existing = byId.get(remote.id);
+      if (!existing) {
+        byId.set(remote.id, remote);
+        pulled++;
+      } else if ((remote.updated_at || "") > (existing.updated_at || "")) {
+        byId.set(remote.id, remote); // newest updated_at wins
+        pulled++;
+      }
+    }
+
+    const merged = [...byId.values()].sort((a, b) =>
+      (b.created_at || b.date || "").localeCompare(a.created_at || a.date || "")
+    );
+    saveLocalEntries(merged);
+
+    // Push local-only entries up (never burn entries)
+    const toPush = local.filter((e) => !e.is_burn && !remoteIds.has(e.id));
+    if (toPush.length > 0) {
+      await supabase
+        .from("journal_entries")
+        .upsert(toPush.map((e) => entryToRow(e, userId)), { onConflict: "user_id,client_id" });
+    }
+
+    return { pushed: toPush.length, pulled };
+  } catch {
+    return { pushed: 0, pulled: 0 };
+  }
 }
 
 export function getEntriesThisMonth(): number {
@@ -155,12 +304,12 @@ export function getEntriesThisMonth(): number {
   return entries.filter((e) => new Date(e.created_at) >= monthStart).length;
 }
 
-export function canWriteEntry(tier: "free" | "mid" | "top"): boolean {
+export function canWriteEntry(tier: "free" | "mid"): boolean {
   if (tier !== "free") return true;
   return getEntriesThisMonth() < FREE_MONTHLY_CAP;
 }
 
-export function getRemainingEntries(tier: "free" | "mid" | "top"): number | null {
+export function getRemainingEntries(tier: "free" | "mid"): number | null {
   if (tier !== "free") return null;
   return Math.max(0, FREE_MONTHLY_CAP - getEntriesThisMonth());
 }

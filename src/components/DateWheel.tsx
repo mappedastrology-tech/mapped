@@ -128,7 +128,7 @@ export default function DateWheel({ selectedDate, onChange }: DateWheelProps) {
   const isToday = selectedDate === todayStr;
 
   // Ranges
-  const years = Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i); // ±5 years
+  const years = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - 15 + i); // ±15 years
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const maxDay = daysInMonth(m, y);
   const days = Array.from({ length: maxDay }, (_, i) => i + 1);
@@ -172,7 +172,7 @@ export default function DateWheel({ selectedDate, onChange }: DateWheelProps) {
           {displayLabel}
           <svg
             width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            className={`text-foreground/30 transition-transform duration-200 ${showWheel ? "rotate-180" : ""}`}
+            className={`text-muted transition-transform duration-200 ${showWheel ? "rotate-180" : ""}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
@@ -198,7 +198,7 @@ export default function DateWheel({ selectedDate, onChange }: DateWheelProps) {
                 selectedIndex={monthIdx}
                 onSelect={(i) => buildDate(undefined, i + 1)}
                 renderItem={(val, sel) => (
-                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-foreground/30"}`}>
+                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-muted"}`}>
                     {MONTHS[val - 1]}
                   </span>
                 )}
@@ -212,7 +212,7 @@ export default function DateWheel({ selectedDate, onChange }: DateWheelProps) {
                 selectedIndex={dayIdx}
                 onSelect={(i) => buildDate(undefined, undefined, i + 1)}
                 renderItem={(val, sel) => (
-                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-foreground/30"}`}>
+                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-muted"}`}>
                     {val}
                   </span>
                 )}
@@ -223,10 +223,10 @@ export default function DateWheel({ selectedDate, onChange }: DateWheelProps) {
             <div className="flex-1 max-w-[70px]">
               <WheelColumn
                 items={years}
-                selectedIndex={yearIdx >= 0 ? yearIdx : 5}
+                selectedIndex={yearIdx >= 0 ? yearIdx : 15}
                 onSelect={(i) => buildDate(years[i])}
                 renderItem={(val, sel) => (
-                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-foreground/30"}`}>
+                  <span className={`text-sm font-medium transition-all ${sel ? "text-foreground scale-105" : "text-muted"}`}>
                     {val}
                   </span>
                 )}

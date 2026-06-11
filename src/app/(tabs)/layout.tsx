@@ -14,20 +14,52 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import AppTour from "@/components/AppTour";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
+import { supabase } from "@/lib/supabase";
 
 export default function TabsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [showTour, setShowTour] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const syncRan = useRef(false);
+
+  // Onboarding gate: redirect to /onboarding if the user hasn't completed it
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) {
+        // Not signed in — send to landing page
+        router.replace("/");
+        return;
+      }
+      try {
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        if (!profileErr && profile && profile.onboarding_completed === false) {
+          router.replace("/onboarding");
+          return;
+        }
+      } catch {
+        // Supabase unreachable — let them through rather than blocking
+      }
+      setReady(true);
+    }).catch(() => {
+      // Can't reach Supabase — let them through
+      setReady(true);
+    });
+  }, [router]);
 
   useEffect(() => {
     if (sessionStorage.getItem("showAppTour") === "true") {
@@ -37,6 +69,12 @@ export default function TabsLayout({
     if (!syncRan.current) {
       syncRan.current = true;
       import("@/lib/completionSync").then((m) => m.syncAllData()).catch(() => {});
+      // Pull/merge journal entries + custom rituals (no-ops when signed out)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        import("@/lib/journal").then((m) => m.pullJournalEntries(session.user.id)).catch(() => {});
+        import("@/lib/customRituals").then((m) => m.syncCustomRituals()).catch(() => {});
+      }).catch(() => {});
       // Initialize push notifications if already permitted
       import("@/lib/notifications").then((m) => m.initPushNotifications()).catch(() => {});
     }
@@ -46,15 +84,29 @@ export default function TabsLayout({
     setShowTour(false);
   }, []);
 
+  // Show a loading spinner while checking onboarding status
+  if (!ready) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-dvh bg-background">
+        <div className="w-6 h-6 border-2 border-brass/30 border-t-brass rounded-full animate-spin" role="status" aria-label="Loading" />
+      </div>
+    );
+  }
+
   return (
     <TierProvider>
       <BirthTimeProvider>
-        <TopBar />
-        {/* flex-1 fills height, min-h-0 allows flex child to shrink & scroll */}
-        <div className="flex-1 min-h-0 pb-28">
-          {children}
+        {/* App shell: viewport-height flex column so the body never scrolls.
+            Only the content area scrolls → BottomNav stays put on mobile. */}
+        <div className="flex flex-col h-dvh">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <TopBar />
+            <div className="pb-4">
+              {children}
+            </div>
+          </div>
+          <BottomNav />
         </div>
-        <BottomNav />
         {showTour && <AppTour onComplete={handleTourComplete} />}
       </BirthTimeProvider>
     </TierProvider>

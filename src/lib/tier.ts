@@ -1,17 +1,17 @@
 /**
  * Tier System — Feature gating, paywall logic, and tier definitions.
  *
- * Three tiers:
+ * Two tiers:
  *   - free ($0): generous daily content, 1 deck, 5 Dolly msgs/day, 1 synastry partner
- *   - mid ($11.11/mo): wizard, unlimited Dolly, multiple partners, astrocartography, custom rituals
- *   - top ($22.22/mo): unlimited wizard, ZR timeline, fixed stars, composites, 50% off decks
+ *   - mid ($11.11/mo "Mapped+"): everything — wizard, unlimited Dolly, multiple partners,
+ *     astrocartography, custom rituals, ZR timeline, fixed stars, composites, and more
  *
- * Pricing uses numerology: 11:11 (manifestation), 22:22 (master builder), 5:55 (change/freedom).
+ * Pricing uses numerology: 11:11 (manifestation), 5:55 (change/freedom).
  */
 
 /* ─── Tier definitions ─── */
 
-export type TierLevel = "free" | "mid" | "top";
+export type TierLevel = "free" | "mid";
 
 export interface TierInfo {
   level: TierLevel;
@@ -22,12 +22,10 @@ export interface TierInfo {
 
 export const TIERS: Record<TierLevel, TierInfo> = {
   free: { level: "free", name: "Free", price: 0, annualPrice: 0 },
-  mid: { level: "mid", name: "Mid", price: 11.11, annualPrice: 89 },
-  top: { level: "top", name: "Top", price: 22.22, annualPrice: 179 },
+  mid: { level: "mid", name: "Mapped+", price: 11.11, annualPrice: 89 },
 };
 
 export const DECK_PRICE = 5.55;
-export const DECK_PRICE_TOP = 2.78; // 50% off for top tier
 
 /* ─── Feature definitions ─── */
 
@@ -69,10 +67,10 @@ interface FeatureDef {
   description: string; // plain language, no jargon
 }
 
-const TIER_ORDER: Record<TierLevel, number> = { free: 0, mid: 1, top: 2 };
+const TIER_ORDER: Record<TierLevel, number> = { free: 0, mid: 1 };
 
 export const FEATURES: FeatureDef[] = [
-  // Mid features
+  // Mapped+ features
   { key: "wizard", minTier: "mid", label: "Ritual Wizard", description: "Create personalized rituals guided by your chart and the current sky." },
   { key: "custom_rituals", minTier: "mid", label: "Custom Rituals", description: "Build and save your own rituals to your daily rotation." },
   { key: "full_transits", minTier: "mid", label: "Full Transits", description: "See all current transits ranked by how strongly they hit your chart." },
@@ -87,21 +85,21 @@ export const FEATURES: FeatureDef[] = [
   { key: "profection_detail", minTier: "mid", label: "Profection Detail", description: "A deeper look at your current annual profection year." },
   { key: "bookmarks", minTier: "mid", label: "Bookmarks", description: "Save your favorite reads to come back to." },
   { key: "push_customization", minTier: "mid", label: "Notification Customization", description: "Fine-tune which notifications you receive and when." },
-  // Top features
-  { key: "almuten", minTier: "top", label: "Almuten Figuris", description: "Your chart's soul ruler — a medieval calculation of the most powerful planet." },
-  { key: "zr_timeline", minTier: "top", label: "Full ZR Timeline", description: "See every zodiacal releasing chapter of your life, past and future." },
-  { key: "triplicity_lords", minTier: "top", label: "Triplicity Lords", description: "Three planets that rule different thirds of your life." },
-  { key: "fixed_stars", minTier: "top", label: "Fixed Star Contacts", description: "Ancient stars that touch your personal planets." },
-  { key: "lots_beyond_fortune", minTier: "top", label: "Arabic Lots", description: "Calculated points beyond Part of Fortune — Spirit, Eros, Necessity." },
-  { key: "planetary_hour_precision", minTier: "top", label: "Planetary Hour Precision", description: "Wizard outputs timed to the exact planetary hour." },
-  { key: "pdf_export", minTier: "top", label: "PDF Chart Export", description: "Download your full chart as a formatted PDF." },
-  { key: "composite_charts", minTier: "top", label: "Composite Charts", description: "The merged chart of a relationship — what you create together." },
-  { key: "unlimited_family", minTier: "top", label: "Unlimited Family Map", description: "Add as many family members as you want to your relational map." },
-  { key: "unlimited_wizard", minTier: "top", label: "Unlimited Wizard", description: "No monthly cap on ritual generations." },
-  { key: "voice_memo_wizard", minTier: "top", label: "Voice Memo Input", description: "Speak your intention to the wizard instead of typing." },
-  { key: "multi_day_rituals", minTier: "top", label: "Multi-Day Sequences", description: "Rituals that span multiple days as a connected practice." },
-  { key: "practice_patterns", minTier: "top", label: "Practice Patterns", description: "See trends and insights across your ritual practice over time." },
-  { key: "multiple_moon_practices", minTier: "top", label: "Multiple Moon Practices", description: "Run more than one moon practice simultaneously." },
+  // Mapped+ features (formerly split across mid/top)
+  { key: "almuten", minTier: "mid", label: "Almuten Figuris", description: "Your chart's soul ruler — a medieval calculation of the most powerful planet." },
+  { key: "zr_timeline", minTier: "mid", label: "Full ZR Timeline", description: "See every zodiacal releasing chapter of your life, past and future." },
+  { key: "triplicity_lords", minTier: "mid", label: "Triplicity Lords", description: "Three planets that rule different thirds of your life." },
+  { key: "fixed_stars", minTier: "mid", label: "Fixed Star Contacts", description: "Ancient stars that touch your personal planets." },
+  { key: "lots_beyond_fortune", minTier: "mid", label: "Arabic Lots", description: "Calculated points beyond Part of Fortune — Spirit, Eros, Necessity." },
+  { key: "planetary_hour_precision", minTier: "mid", label: "Planetary Hour Precision", description: "Wizard outputs timed to the exact planetary hour." },
+  { key: "pdf_export", minTier: "mid", label: "PDF Chart Export", description: "Download your full chart as a formatted PDF." },
+  { key: "composite_charts", minTier: "mid", label: "Composite Charts", description: "The merged chart of a relationship — what you create together." },
+  { key: "unlimited_family", minTier: "mid", label: "Unlimited Family Map", description: "Add as many family members as you want to your relational map." },
+  { key: "unlimited_wizard", minTier: "mid", label: "Unlimited Wizard", description: "No monthly cap on ritual generations." },
+  { key: "voice_memo_wizard", minTier: "mid", label: "Voice Memo Input", description: "Speak your intention to the wizard instead of typing." },
+  { key: "multi_day_rituals", minTier: "mid", label: "Multi-Day Sequences", description: "Rituals that span multiple days as a connected practice." },
+  { key: "practice_patterns", minTier: "mid", label: "Practice Patterns", description: "See trends and insights across your ritual practice over time." },
+  { key: "multiple_moon_practices", minTier: "mid", label: "Multiple Moon Practices", description: "Run more than one moon practice simultaneously." },
   { key: "birth_time_rectification", minTier: "mid", label: "Birth Time Rectification", description: "Estimate your birth time from life events and physical traits." },
 ];
 
@@ -143,14 +141,6 @@ export const USAGE_LIMITS = {
     transitsShown: 3,
   },
   mid: {
-    dollyMessagesPerDay: Infinity,
-    pullsPerDay: Infinity,
-    synastryPartners: Infinity,
-    familyMembers: 10,
-    wizardPerMonth: 10,
-    transitsShown: Infinity,
-  },
-  top: {
     dollyMessagesPerDay: Infinity,
     pullsPerDay: Infinity,
     synastryPartners: Infinity,

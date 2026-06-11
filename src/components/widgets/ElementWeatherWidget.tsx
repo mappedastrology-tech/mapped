@@ -48,7 +48,7 @@ export default function ElementWeatherWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-4 flex items-center justify-center h-[120px]">
-        <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -64,7 +64,7 @@ export default function ElementWeatherWidget() {
         <span className="text-2xl">{weather.emoji}</span>
         <div className="flex-1">
           <p className="text-foreground font-medium text-sm capitalize mb-1">{weather.element}</p>
-          <p className="text-foreground/60 text-xs leading-relaxed">{weather.description}</p>
+          <p className="text-secondary text-xs leading-relaxed">{weather.description}</p>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ import { saveChart } from "@/lib/saveChart";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getSectLight, getLordOfTheYear } from "@/lib/rulers";
 import { getChartRuler } from "@/lib/chartRuler";
+import Logo from "@/components/Logo";
 
 const TOTAL_STEPS = 10;
 const LS_KEY = "mapped:onboarding-step";
@@ -174,14 +175,24 @@ export default function OnboardingPage() {
   }, []);
 
   /* ── navigation helpers ── */
+  // Screen 6 (Pick your free deck) is disabled until paid features are built.
+  // Skip it in both directions.
+  const SKIP_SCREENS = new Set([6]);
+
   const goTo = useCallback(
     (next: number, dir: "left" | "right") => {
       if (animating) return;
       if (next < 0 || next >= TOTAL_STEPS) return;
+      // Auto-skip disabled screens
+      let target = next;
+      while (SKIP_SCREENS.has(target) && target >= 0 && target < TOTAL_STEPS) {
+        target += dir === "left" ? 1 : -1;
+      }
+      if (target < 0 || target >= TOTAL_STEPS) return;
       setDirection(dir);
       setAnimating(true);
       setTimeout(() => {
-        setStep(next);
+        setStep(target);
         setAnimating(false);
       }, 280);
     },
@@ -263,12 +274,15 @@ export default function OnboardingPage() {
       sessionStorage.setItem("mapped:chartData", JSON.stringify(result));
 
       let userId: string | null = existingUserId;
+      let isReturningUser = false;
       if (existingUserId) {
         // Already signed in (e.g. via Google)
+        isReturningUser = true;
       } else if (hasAccount) {
         const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
         if (e) throw new Error(e.message.includes("Invalid login") ? "Wrong email or password." : e.message);
         userId = data.user?.id || null;
+        isReturningUser = true;
       } else {
         const { data, error: e } = await supabase.auth.signUp({
           email,
@@ -284,13 +298,15 @@ export default function OnboardingPage() {
               await supabase.auth.signInWithPassword({ email, password });
             if (signInErr) {
               if (signInErr.message.includes("Invalid login")) {
+                setHasAccount(true);
                 throw new Error(
-                  "This email is already registered, but the password doesn't match. Try a different email, or sign in from the link below.",
+                  "Looks like you already have an account! Check the \"I already have an account\" box and enter your password to sign in.",
                 );
               }
               throw new Error(signInErr.message);
             }
             userId = signInData.user?.id || null;
+            isReturningUser = true;
           } else {
             throw new Error(e.message);
           }
@@ -301,6 +317,19 @@ export default function OnboardingPage() {
           sessionStorage.setItem("pendingSave", "true");
           setBirthDataDone(true);
           goNext();
+          return;
+        }
+      }
+
+      // If returning user already completed onboarding, skip straight to the app
+      if (isReturningUser && userId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", userId)
+          .single();
+        if (profile?.onboarding_completed === true) {
+          router.replace("/home");
           return;
         }
       }
@@ -401,16 +430,16 @@ export default function OnboardingPage() {
     }
   }
 
-  /* ── progress dots ── */
-  const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i);
+  /* ── progress dots (skip disabled screens) ── */
+  const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i).filter((i) => !SKIP_SCREENS.has(i));
 
   /* ── shared styles ── */
   const inputClass = `w-full px-4 py-2.5 rounded-xl
                       bg-card/50 border border-foreground/15
-                      text-foreground placeholder:text-foreground/35
+                      text-foreground placeholder:text-muted
                       focus:outline-none focus:border-terracotta focus:ring-2 focus:ring-terracotta/20
                       text-sm`;
-  const labelClass = "text-[10px] uppercase tracking-widest text-foreground/55 font-semibold";
+  const labelClass = "text-[10px] uppercase tracking-widest text-secondary font-semibold";
 
   const slideClass = animating
     ? direction === "left"
@@ -422,15 +451,16 @@ export default function OnboardingPage() {
     `px-3 py-2 rounded-full text-xs font-semibold border transition-all ${
       active
         ? "border-terracotta text-terracotta bg-terracotta/10"
-        : "border-foreground/15 text-foreground/55 bg-card/40"
+        : "border-foreground/15 text-secondary bg-card/40"
     }`;
 
   const ctaBtn = (enabled: boolean) =>
     `w-full py-3.5 rounded-full font-bold text-sm tracking-wide transition-all ${
       enabled
-        ? "bg-terracotta text-cream hover:opacity-90 active:scale-[0.98]"
-        : "bg-foreground/15 text-foreground/40 cursor-not-allowed"
+        ? "bg-terracotta hover:opacity-90 active:scale-[0.98]"
+        : "bg-foreground/15 text-muted cursor-not-allowed"
     }`;
+  const ctaTextColor = { color: "var(--terracotta-text)" }; // dark brown — readable on brass/gold
 
   const ctaShadow = {
     boxShadow: "0 8px 20px -6px rgba(180, 81, 40, 0.4), 0 3px 8px -3px rgba(180, 81, 40, 0.25)",
@@ -485,7 +515,7 @@ export default function OnboardingPage() {
             : step === 0
             ? `var(--cream)`
             : `radial-gradient(ellipse at top, ${PAPER} 0%, ${PAPER_DEEP} 100%)`,
-        color: step === 3 && sectInfo?.sect === "night" ? "#e8e0d4" : INK,
+        color: step === 3 && sectInfo?.sect === "night" ? "#e8e0d4" : step === 0 ? "#3d3328" : INK,
       }}
     >
       {/* Paper grain (hidden on sect reveal) */}
@@ -530,25 +560,26 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Card area ── */}
-        <div className={`flex-1 flex flex-col transition-all duration-280 ease-out ${slideClass}`}>
+        <div className={`flex-1 min-h-0 flex flex-col transition-all duration-280 ease-out ${slideClass}`}>
 
           {/* ══════════ Screen 0: Welcome ══════════ */}
           {step === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <img
-                src="/logo-terracotta-cropped.png"
-                alt="Mapped"
-                className="w-40 mb-8"
-              />
+              <div className="mb-10">
+                <h2 className="text-[52px] leading-none tracking-tight" aria-label="Mapped">
+                  <span style={{ fontFamily: "'Bodoni Moda', serif", fontStyle: "italic", fontWeight: 400 }}>mapp</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, letterSpacing: "-0.02em" }}>ed.</span>
+                </h2>
+              </div>
               <p
-                className="text-foreground/80 text-base leading-relaxed max-w-xs mb-10"
+                className="text-foreground text-base leading-relaxed max-w-xs mb-10"
               >
                 Hi. We&apos;re Mapped. Most astrology apps will tell you your sun sign. We do something different.
               </p>
               <button
                 onClick={goNext}
-                className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
-                style={ctaShadow}
+                className="px-12 py-3.5 rounded-full font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
+                style={{ ...ctaShadow, ...ctaTextColor, backgroundColor: "var(--brass)" }}
               >
                 Begin
               </button>
@@ -564,7 +595,7 @@ export default function OnboardingPage() {
               >
                 Your birth data
               </h1>
-              <p className="text-foreground/55 text-xs mb-4">
+              <p className="text-secondary text-xs mb-4">
                 The more accurate your info, the more accurate your chart.
               </p>
 
@@ -577,6 +608,7 @@ export default function OnboardingPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Taylor"
+                    aria-label="Full name"
                     className={inputClass}
                   />
                 </div>
@@ -588,6 +620,7 @@ export default function OnboardingPage() {
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
+                    aria-label="Birth date"
                     className={inputClass}
                   />
                 </div>
@@ -615,7 +648,7 @@ export default function OnboardingPage() {
                         className={`flex-1 py-2 text-[11px] font-medium transition-colors ${
                           timePrecision === key
                             ? "bg-ink text-cream"
-                            : "bg-foreground/5 text-foreground/40"
+                            : "bg-foreground/5 text-muted"
                         }`}
                       >
                         {label}
@@ -629,6 +662,7 @@ export default function OnboardingPage() {
                       type="time"
                       value={birthTime}
                       onChange={(e) => setBirthTime(e.target.value)}
+                      aria-label="Birth time"
                       className={inputClass}
                     />
                   )}
@@ -665,10 +699,10 @@ export default function OnboardingPage() {
                               : "border-foreground/12 bg-foreground/3"
                           }`}
                         >
-                          <span className={`text-[11px] font-medium block ${timeWindow === key ? "text-terracotta" : "text-foreground/70"}`}>
+                          <span className={`text-[11px] font-medium block ${timeWindow === key ? "text-terracotta" : "text-secondary"}`}>
                             {label}
                           </span>
-                          <span className="text-[10px] text-foreground/40">{desc}</span>
+                          <span className="text-[10px] text-muted">{desc}</span>
                         </button>
                       ))}
                     </div>
@@ -677,7 +711,7 @@ export default function OnboardingPage() {
                   {/* Unknown: day/night checkbox */}
                   {timePrecision === "unknown" && (
                     <div className="rounded-xl border border-foreground/12 bg-foreground/3 p-3">
-                      <p className="text-[11px] text-foreground/55 mb-2">
+                      <p className="text-[11px] text-secondary mb-2">
                         Don&apos;t know your birth time? We&apos;ll calculate everything we can without it — a lot, actually.
                       </p>
                       <button
@@ -696,7 +730,7 @@ export default function OnboardingPage() {
                             </svg>
                           )}
                         </span>
-                        <span className="text-[11px] text-foreground/60">I know if it was day or night</span>
+                        <span className="text-[11px] text-secondary">I know if it was day or night</span>
                       </button>
                       {dayNightKnown && (
                         <div className="flex gap-2 mt-2 ml-6">
@@ -704,7 +738,7 @@ export default function OnboardingPage() {
                             type="button"
                             onClick={() => setIsDaytime(true)}
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
-                              isDaytime === true ? "border-amber bg-amber/10 text-amber" : "border-foreground/15 text-foreground/50"
+                              isDaytime === true ? "border-amber bg-amber/10 text-amber" : "border-foreground/15 text-muted"
                             }`}
                           >
                             ☀️ Daytime
@@ -713,7 +747,7 @@ export default function OnboardingPage() {
                             type="button"
                             onClick={() => setIsDaytime(false)}
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
-                              isDaytime === false ? "border-sage bg-sage/10 text-sage" : "border-foreground/15 text-foreground/50"
+                              isDaytime === false ? "border-sage bg-sage/10 text-sage" : "border-foreground/15 text-muted"
                             }`}
                           >
                             🌙 Nighttime
@@ -750,7 +784,7 @@ export default function OnboardingPage() {
                         className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all border ${
                           zodiacSystem === sys
                             ? "border-terracotta text-terracotta bg-terracotta/10"
-                            : "border-foreground/15 text-foreground/50 bg-card/40"
+                            : "border-foreground/15 text-muted bg-card/40"
                         }`}
                       >
                         {sys === "tropical" ? "Western" : "Vedic"}
@@ -768,7 +802,7 @@ export default function OnboardingPage() {
                           className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${
                             ayanamsa === o.v
                               ? "border-terracotta/60 text-terracotta bg-terracotta/10"
-                              : "border-foreground/15 text-foreground/45 bg-card/40"
+                              : "border-foreground/15 text-muted bg-card/40"
                           }`}
                         >
                           {o.l}
@@ -785,7 +819,7 @@ export default function OnboardingPage() {
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                       <polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
-                    <span className="text-[12px] text-foreground/70">
+                    <span className="text-[12px] text-secondary">
                       Signed in{existingUserName ? ` as ${existingUserName}` : ""}
                     </span>
                   </div>
@@ -799,6 +833,7 @@ export default function OnboardingPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email"
+                        aria-label="Email"
                         className={inputClass}
                       />
                       <input
@@ -806,6 +841,7 @@ export default function OnboardingPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password (6+ characters)"
+                        aria-label="Password"
                         className={inputClass}
                       />
                       <button
@@ -825,7 +861,7 @@ export default function OnboardingPage() {
                             </svg>
                           )}
                         </span>
-                        <span className="text-[11px] text-foreground/55">I already have an account</span>
+                        <span className="text-[11px] text-secondary">I already have an account</span>
                       </button>
                     </div>
                   </>
@@ -839,11 +875,11 @@ export default function OnboardingPage() {
                   onClick={handleBirthSubmit}
                   disabled={!birthValid || !accountValid || isSubmitting}
                   className={ctaBtn(!!birthValid && !!accountValid && !isSubmitting)}
-                  style={birthValid && accountValid && !isSubmitting ? ctaShadow : undefined}
+                  style={birthValid && accountValid && !isSubmitting ? { ...ctaShadow, ...ctaTextColor } : undefined}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                      <span className="w-4 h-4 border-2 rounded-full animate-spin" role="status" aria-label="Loading" style={{ borderColor: "rgba(61,36,21,0.3)", borderTopColor: "#3d2415" }} />
                       Calculating your chart...
                     </span>
                   ) : (
@@ -873,7 +909,7 @@ export default function OnboardingPage() {
               >
                 Tell us about you
               </h1>
-              <p className="text-foreground/55 text-xs mb-4">
+              <p className="text-secondary text-xs mb-4">
                 All optional. Helps us personalize what you see.
               </p>
 
@@ -961,13 +997,13 @@ export default function OnboardingPage() {
                   <button
                     onClick={saveDemographics}
                     className={ctaBtn(true)}
-                    style={ctaShadow}
+                    style={{ ...ctaShadow, ...ctaTextColor }}
                   >
                     Use this to personalize
                   </button>
                   <button
                     onClick={goNext}
-                    className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                    className="text-secondary text-xs font-semibold py-2 hover:text-foreground transition-colors"
                   >
                     Skip — I&apos;ll fill in later
                   </button>
@@ -1034,10 +1070,10 @@ export default function OnboardingPage() {
                             <p className="text-foreground text-lg font-bold mb-1" style={{ fontFamily: "var(--font-display)" }}>
                               {card.planet}
                             </p>
-                            <p className="text-foreground/60 text-xs mb-3">
+                            <p className="text-secondary text-xs mb-3">
                               in {card.sign} &middot; house {card.house}
                             </p>
-                            <p className="text-foreground/75 text-[13px] leading-relaxed">
+                            <p className="text-secondary text-[13px] leading-relaxed">
                               {card.summary}
                             </p>
                           </div>
@@ -1064,18 +1100,20 @@ export default function OnboardingPage() {
                     <button
                       onClick={() => setCardIndex(Math.max(0, cardIndex - 1))}
                       disabled={cardIndex === 0}
-                      className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground/50 disabled:opacity-30"
+                      className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full border border-foreground/20 flex items-center justify-center text-muted disabled:opacity-30"
+                      aria-label="Previous card"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                         <polyline points="15 18 9 12 15 6" />
                       </svg>
                     </button>
                     <button
                       onClick={() => setCardIndex(Math.min(headlineCards.length - 1, cardIndex + 1))}
                       disabled={cardIndex === headlineCards.length - 1}
-                      className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground/50 disabled:opacity-30"
+                      className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full border border-foreground/20 flex items-center justify-center text-muted disabled:opacity-30"
+                      aria-label="Next card"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
                     </button>
@@ -1086,7 +1124,7 @@ export default function OnboardingPage() {
               <button
                 onClick={goNext}
                 className={`mt-6 ${ctaBtn(true)}`}
-                style={ctaShadow}
+                style={{ ...ctaShadow, ...ctaTextColor }}
               >
                 Continue
               </button>
@@ -1103,19 +1141,19 @@ export default function OnboardingPage() {
               >
                 Meet Dolly
               </h1>
-              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-3">
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-3">
                 Dolly is your AI astrology guide. She knows your chart, your transits, and the context you gave us.
               </p>
-              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-3">
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-3">
                 She does not predict the future. She helps you think clearly about what is happening right now and what options you have.
               </p>
-              <p className="text-foreground/55 text-xs leading-relaxed max-w-xs mb-8">
+              <p className="text-secondary text-xs leading-relaxed max-w-xs mb-8">
                 Ask her anything about your chart, your relationships, your timing. She is specific, grounded, and won&apos;t waste your time.
               </p>
               <button
                 onClick={goNext}
                 className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
-                style={ctaShadow}
+                style={{ ...ctaShadow, ...ctaTextColor }}
               >
                 Got it
               </button>
@@ -1131,7 +1169,7 @@ export default function OnboardingPage() {
               >
                 Pick your free deck
               </h1>
-              <p className="text-foreground/55 text-xs mb-6 text-center">
+              <p className="text-secondary text-xs mb-6 text-center">
                 You can buy more anytime, $5.55 each.
               </p>
 
@@ -1147,7 +1185,7 @@ export default function OnboardingPage() {
                 >
                   <div className="text-3xl mb-2">&#x1F0CF;</div>
                   <p className="text-foreground font-bold text-sm mb-1">Classic Tarot</p>
-                  <p className="text-foreground/55 text-[11px]">78 cards</p>
+                  <p className="text-secondary text-[11px]">78 cards</p>
                 </button>
 
                 {/* Mapped Oracle */}
@@ -1161,7 +1199,7 @@ export default function OnboardingPage() {
                 >
                   <div className="text-3xl mb-2">&#x2728;</div>
                   <p className="text-foreground font-bold text-sm mb-1">Mapped Starter Oracle</p>
-                  <p className="text-foreground/55 text-[11px]">22 cards</p>
+                  <p className="text-secondary text-[11px]">22 cards</p>
                 </button>
               </div>
 
@@ -1169,7 +1207,7 @@ export default function OnboardingPage() {
                 onClick={saveDeck}
                 disabled={!deckChoice}
                 className={ctaBtn(!!deckChoice)}
-                style={deckChoice ? ctaShadow : undefined}
+                style={deckChoice ? { ...ctaShadow, ...ctaTextColor } : undefined}
               >
                 Continue
               </button>
@@ -1186,10 +1224,10 @@ export default function OnboardingPage() {
               >
                 Stay in the loop
               </h1>
-              <p className="text-foreground/55 text-sm mb-2 max-w-xs leading-relaxed">
+              <p className="text-secondary text-sm mb-2 max-w-xs leading-relaxed">
                 Get notified for full moons, transits to your chart, and other moments that matter.
               </p>
-              <p className="text-foreground/40 text-xs mb-8 max-w-xs leading-relaxed">
+              <p className="text-muted text-xs mb-8 max-w-xs leading-relaxed">
                 Max a few per week. You can change this anytime in settings.
               </p>
 
@@ -1223,13 +1261,13 @@ export default function OnboardingPage() {
                     goNext();
                   }}
                   className={ctaBtn(true)}
-                  style={ctaShadow}
+                  style={{ ...ctaShadow, ...ctaTextColor }}
                 >
                   Allow notifications
                 </button>
                 <button
                   onClick={goNext}
-                  className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                  className="text-secondary text-xs font-semibold py-2 hover:text-foreground transition-colors"
                 >
                   Not now
                 </button>
@@ -1247,7 +1285,7 @@ export default function OnboardingPage() {
               >
                 Moon practice
               </h1>
-              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-8">
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-8">
                 A moon practice sends you a short check-in at each new and full moon. It takes two minutes and builds self-awareness over time.
               </p>
 
@@ -1255,13 +1293,13 @@ export default function OnboardingPage() {
                 <button
                   onClick={() => saveMoonPractice(true)}
                   className={ctaBtn(true)}
-                  style={ctaShadow}
+                  style={{ ...ctaShadow, ...ctaTextColor }}
                 >
                   Yes, set it up now
                 </button>
                 <button
                   onClick={() => saveMoonPractice(false)}
-                  className="text-foreground/55 text-xs font-semibold py-2 hover:text-foreground transition-colors"
+                  className="text-secondary text-xs font-semibold py-2 hover:text-foreground transition-colors"
                 >
                   Maybe later — I&apos;ll explore first
                 </button>
@@ -1278,7 +1316,7 @@ export default function OnboardingPage() {
               >
                 You&apos;re set up.
               </h1>
-              <p className="text-foreground/70 text-sm leading-relaxed max-w-xs mb-6">
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-6">
                 Here is where everything lives:
               </p>
 
@@ -1296,7 +1334,7 @@ export default function OnboardingPage() {
                     className="rounded-xl border border-foreground/12 bg-card/50 py-3 px-2 text-center"
                   >
                     <p className="text-foreground text-xs font-bold">{item.label}</p>
-                    <p className="text-foreground/45 text-[10px] mt-0.5">{item.desc}</p>
+                    <p className="text-muted text-[10px] mt-0.5">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1304,7 +1342,7 @@ export default function OnboardingPage() {
               <button
                 onClick={finishOnboarding}
                 className="px-12 py-3.5 rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
-                style={ctaShadow}
+                style={{ ...ctaShadow, ...ctaTextColor }}
               >
                 Open my chart
               </button>

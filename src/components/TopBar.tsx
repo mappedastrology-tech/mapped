@@ -6,10 +6,10 @@
  * The menu drawer slides in from the left with: Journal, Store, Account Settings.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
+import Logo from "@/components/Logo";
 
 const MENU_ITEMS = [
   {
@@ -17,7 +17,7 @@ const MENU_ITEMS = [
     href: "/journal",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
         <path d="M8 7h6M8 11h4" />
       </svg>
@@ -25,24 +25,11 @@ const MENU_ITEMS = [
     description: "Daily pulls & reflections",
   },
   {
-    label: "Almanac",
-    href: "/almanac",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-        <path d="M2 12h20" />
-      </svg>
-    ),
-    description: "Sky, moon & garden",
-  },
-  {
     label: "My Practice",
     href: "/practice",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
       </svg>
     ),
@@ -53,7 +40,7 @@ const MENU_ITEMS = [
     href: "/account",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="8" r="4" />
         <path d="M20 21a8 8 0 1 0-16 0" />
       </svg>
@@ -65,6 +52,8 @@ const MENU_ITEMS = [
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   // Close menu on navigation
   useEffect(() => {
@@ -79,6 +68,30 @@ export default function TopBar() {
     }
   }, [menuOpen]);
 
+  // Focus trap for drawer
+  useEffect(() => {
+    if (!menuOpen) return;
+    const dialog = drawerRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { closeMenu(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [menuOpen, closeMenu]);
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm
@@ -87,34 +100,51 @@ export default function TopBar() {
           {/* Hamburger menu button */}
           <button
             onClick={() => setMenuOpen(true)}
-            className="w-9 h-9 rounded-full bg-card/50 border border-foreground/20
+            className="w-9 h-9 min-w-[44px] min-h-[44px] rounded-full bg-card/50 border border-foreground/20
                        flex items-center justify-center
                        hover:bg-card/70 active:scale-95 transition-all"
             aria-label="Open menu"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                  stroke="var(--foreground)" strokeWidth="1.8" strokeLinecap="round"
-                 style={{ opacity: 0.6 }}>
+                 style={{ opacity: 0.6 }} aria-hidden="true">
               <line x1="4" y1="6" x2="20" y2="6" />
               <line x1="4" y1="12" x2="20" y2="12" />
               <line x1="4" y1="18" x2="20" y2="18" />
             </svg>
           </button>
 
-          {/* App logo */}
-          <Link href="/home" className="flex items-center">
-            <Image
-              src="/logo-terracotta-cropped.png"
-              alt="Mapped"
-              width={3789}
-              height={1362}
-              className="h-7 w-auto"
-              priority
-            />
+          {/* App logo — tappable to go home */}
+          <Link href="/home" className="flex items-center px-2 py-1 -mx-2 -my-1 rounded-lg active:scale-95 transition-transform" aria-label="Go to home page">
+            <Logo size="sm" />
           </Link>
 
-          {/* Spacer to balance the hamburger on the left */}
-          <div className="w-9" />
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              const html = document.documentElement;
+              const current = html.getAttribute("data-theme");
+              const next = current === "light" ? "dark" : "light";
+              html.setAttribute("data-theme", next);
+              try { localStorage.setItem("mapped:theme", next); } catch {}
+            }}
+            className="w-9 h-9 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full
+                       active:scale-90 transition-transform"
+            aria-label="Toggle theme"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -130,27 +160,27 @@ export default function TopBar() {
 
           {/* Drawer panel */}
           <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
             className="fixed top-0 left-0 z-50 h-full w-72 bg-background shadow-2xl
                        flex flex-col animate-in slide-in-from-left duration-200"
             style={{ paddingTop: "env(safe-area-inset-top)" }}
           >
             {/* Drawer header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-foreground/10">
-              <Image
-                src="/logo-terracotta-cropped.png"
-                alt="Mapped"
-                width={3789}
-                height={1362}
-                className="h-6 w-auto"
-              />
+              <Link href="/home" onClick={() => setMenuOpen(false)} aria-label="Go to home page">
+                <Logo size="sm" />
+              </Link>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center
+                className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-foreground/5 flex items-center justify-center
                            active:bg-foreground/10 transition-colors"
                 aria-label="Close menu"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                     stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round">
+                     stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -158,7 +188,7 @@ export default function TopBar() {
             </div>
 
             {/* Menu items */}
-            <nav className="flex-1 px-3 py-4">
+            <nav className="flex-1 px-3 py-4" aria-label="Site navigation">
               {MENU_ITEMS.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
@@ -168,13 +198,13 @@ export default function TopBar() {
                     className={`flex items-center gap-3.5 px-3 py-3.5 rounded-xl transition-colors
                                ${isActive
                                  ? "bg-terracotta/10 text-terracotta"
-                                 : "text-foreground/60 hover:bg-foreground/5 active:bg-foreground/8"
+                                 : "text-secondary hover:bg-foreground/5 active:bg-foreground/8"
                                }`}
                   >
                     {item.icon}
                     <div>
                       <p className="text-[14px] font-medium">{item.label}</p>
-                      <p className={`text-[11px] ${isActive ? "text-terracotta/50" : "text-foreground/30"}`}>
+                      <p className={`text-[11px] ${isActive ? "text-terracotta/50" : "text-muted"}`}>
                         {item.description}
                       </p>
                     </div>
@@ -185,7 +215,7 @@ export default function TopBar() {
 
             {/* Footer */}
             <div className="px-5 py-4 border-t border-foreground/8">
-              <p className="text-foreground/20 text-[10px] text-center">Mapped</p>
+              <p className="text-muted text-[10px] text-center">Mapped</p>
             </div>
           </div>
         </>

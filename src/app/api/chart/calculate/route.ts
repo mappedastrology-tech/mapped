@@ -11,12 +11,18 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
-    // Validate required fields
-    if (!data.name || !data.birthDate || !data.birthTime || data.latitude == null || data.longitude == null) {
+    // Validate required fields (birthTime is optional — defaults to noon if unknown)
+    if (!data.name || !data.birthDate || data.latitude == null || data.longitude == null) {
       return NextResponse.json(
-        { error: "Missing required fields: name, birthDate, birthTime, latitude, longitude" },
+        { error: "Missing required fields: name, birthDate, latitude, longitude" },
         { status: 400 }
       );
+    }
+
+    // Default to noon if birth time is unknown
+    if (!data.birthTime) {
+      data.birthTime = "12:00";
+      data.unknownTime = true;
     }
 
     const result = calculateChart(data);

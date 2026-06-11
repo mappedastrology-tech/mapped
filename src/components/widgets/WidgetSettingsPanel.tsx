@@ -97,7 +97,7 @@ export default function WidgetSettingsPanel({ isOpen, onClose, onSave }: Props) 
           </h2>
           <button
             onClick={onClose}
-            className="text-foreground/50 hover:text-foreground/80 transition-colors"
+            className="text-muted hover:text-foreground transition-colors"
           >
             ✕
           </button>
@@ -123,12 +123,12 @@ export default function WidgetSettingsPanel({ isOpen, onClose, onSave }: Props) 
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="text-xs text-foreground/50 mt-1">⋮⋮</span>
+                  <span className="text-xs text-muted mt-1">⋮⋮</span>
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1">
                         <p className="text-foreground text-sm font-medium">{widget.icon} {widget.name}</p>
-                        <p className="text-foreground/50 text-xs">{widget.description}</p>
+                        <p className="text-muted text-xs">{widget.description}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -151,7 +151,7 @@ export default function WidgetSettingsPanel({ isOpen, onClose, onSave }: Props) 
         <div className="border-t border-foreground/18 px-6 py-4 space-y-3">
           <button
             onClick={handleReset}
-            className="w-full px-4 py-2 text-sm text-foreground/60 hover:text-foreground/80 border border-foreground/20 rounded-lg transition-colors"
+            className="w-full px-4 py-2 text-sm text-secondary hover:text-foreground border border-foreground/20 rounded-lg transition-colors"
           >
             Reset to defaults
           </button>

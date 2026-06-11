@@ -1,0 +1,41 @@
+{
+  "sorted_middleware": [
+    "/api/dolly/test/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/dolly/test/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/api/dolly/test/route_client-reference-manifest.js",
+        "server/edge/chunks/_next-internal_server_app_api_dolly_test_route_actions_04emz4q.js",
+        "server/edge/chunks/[root-of-the-server]__11hvupj._.js",
+        "server/edge/chunks/[root-of-the-server]__00b~ypc._.js",
+        "server/edge/chunks/node_modules_@anthropic-ai_sdk_index_mjs_0he-vsb._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0e.uet6.js"
+      ],
+      "name": "app/api/dolly/test/route",
+      "page": "/api/dolly/test/route",
+      "entrypoint": "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_0e.uet6.js",
+      "matchers": [
+        {
+          "regexp": "^/api/dolly/test(?:/)?$",
+          "originalSource": "/api/dolly/test"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "D-aeP52yMFvO5ot-ByXEI",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "3w7N0dt7EcDb2zYZs4yr4FRe5iZwXItb0O9H1PVjM+s=",
+        "__NEXT_PREVIEW_MODE_ID": "bf74fc1e0a56a87719286ff2b3b9cb38",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "cd283e6d580904278607316b67d201f7e9b26d7d267fde65ef38a7149e70bead",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "a635c541f003d2bd48dfd58850816737b0aaf735ec843c8b26c687c4c65cc25e"
+      }
+    }
+  }
+}

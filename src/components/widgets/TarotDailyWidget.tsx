@@ -35,7 +35,7 @@ export default function TarotDailyWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center min-h-[180px]">
-        <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function TarotDailyWidget() {
           <div className="text-center p-4 bg-foreground/5 rounded-lg">
             <p className="text-foreground font-medium text-lg">{card.name}</p>
           </div>
-          <p className="text-foreground/60 text-sm leading-relaxed">{card.meaning}</p>
+          <p className="text-secondary text-sm leading-relaxed">{card.meaning}</p>
           <button
             onClick={() => setRevealed(false)}
             className="text-terracotta hover:text-terracotta-light text-sm transition-colors"

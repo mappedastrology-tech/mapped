@@ -16,7 +16,7 @@ interface GlyphProps {
 
 // ── ZODIAC SIGNS ──────────────────────────────────────────────────────
 
-export function Aries({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Aries({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -26,7 +26,7 @@ export function Aries({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPro
   );
 }
 
-export function Taurus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Taurus({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -36,7 +36,7 @@ export function Taurus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
   );
 }
 
-export function Gemini({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Gemini({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -48,7 +48,7 @@ export function Gemini({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
   );
 }
 
-export function Cancer({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Cancer({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -60,7 +60,7 @@ export function Cancer({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
   );
 }
 
-export function Leo({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Leo({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -71,7 +71,7 @@ export function Leo({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps
   );
 }
 
-export function Virgo({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Virgo({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -82,7 +82,7 @@ export function Virgo({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPro
   );
 }
 
-export function Libra({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Libra({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -93,7 +93,7 @@ export function Libra({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPro
   );
 }
 
-export function Scorpio({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Scorpio({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -104,7 +104,7 @@ export function Scorpio({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphP
   );
 }
 
-export function Sagittarius({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Sagittarius({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -116,7 +116,7 @@ export function Sagittarius({ size = 20, color = "#4A3F35", opacity = 0.75 }: Gl
   );
 }
 
-export function Capricorn({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Capricorn({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -127,7 +127,7 @@ export function Capricorn({ size = 20, color = "#4A3F35", opacity = 0.75 }: Glyp
   );
 }
 
-export function Aquarius({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Aquarius({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -137,7 +137,7 @@ export function Aquarius({ size = 20, color = "#4A3F35", opacity = 0.75 }: Glyph
   );
 }
 
-export function Pisces({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Pisces({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}>
@@ -150,7 +150,7 @@ export function Pisces({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
 
 // ── PLANET SYMBOLS ────────────────────────────────────────────────────
 
-export function Sun({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Sun({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -160,7 +160,7 @@ export function Sun({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps
   );
 }
 
-export function Moon({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Moon({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -169,7 +169,7 @@ export function Moon({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProp
   );
 }
 
-export function Mercury({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Mercury({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2" strokeLinecap="round" opacity={opacity}>
@@ -181,7 +181,7 @@ export function Mercury({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphP
   );
 }
 
-export function Venus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Venus({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -192,7 +192,7 @@ export function Venus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPro
   );
 }
 
-export function Mars({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Mars({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -203,7 +203,7 @@ export function Mars({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProp
   );
 }
 
-export function Jupiter({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Jupiter({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -214,7 +214,7 @@ export function Jupiter({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphP
   );
 }
 
-export function Saturn({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Saturn({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -225,7 +225,7 @@ export function Saturn({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
   );
 }
 
-export function Uranus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Uranus({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -239,7 +239,7 @@ export function Uranus({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphPr
   );
 }
 
-export function Neptune({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Neptune({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>
@@ -253,7 +253,7 @@ export function Neptune({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphP
   );
 }
 
-export function Pluto({ size = 20, color = "#4A3F35", opacity = 0.75 }: GlyphProps) {
+export function Pluto({ size = 20, color = "#c9a961", opacity = 0.75 }: GlyphProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke={color}
          strokeWidth="2.2" strokeLinecap="round" opacity={opacity}>

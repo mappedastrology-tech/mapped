@@ -11,7 +11,7 @@
  *   id (uuid, primary key)
  *   code (text, unique, not null) — the code users enter (case-insensitive)
  *   type (text, not null) — "free_subscription" | "discount_percent" | "extended_trial"
- *   tier_granted (text) — which tier to grant: "mid" or "top"
+ *   tier_granted (text) — which tier to grant: "mid"
  *   discount_percent (int) — for discount type, e.g. 50 = 50% off
  *   duration_days (int, not null) — how long the benefit lasts
  *   max_uses (int) — null = unlimited
@@ -38,7 +38,7 @@
  *   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  *   code text UNIQUE NOT NULL,
  *   type text NOT NULL CHECK (type IN ('free_subscription', 'discount_percent', 'extended_trial')),
- *   tier_granted text CHECK (tier_granted IN ('mid', 'top')),
+ *   tier_granted text CHECK (tier_granted IN ('mid')),
  *   discount_percent int CHECK (discount_percent > 0 AND discount_percent <= 100),
  *   duration_days int NOT NULL CHECK (duration_days > 0),
  *   max_uses int,
@@ -134,11 +134,13 @@ export function validatePromoCode(code: PromoCode): { valid: boolean; reason?: s
 export function describePromo(code: PromoCode): string {
   switch (code.type) {
     case "free_subscription":
-      return `Free ${code.tier_granted === "top" ? "Top" : "Mid"} access for ${code.duration_days} days`;
+      return code.duration_days >= 36500
+        ? `Lifetime Mapped+ access`
+        : `Free Mapped+ access for ${code.duration_days} days`;
     case "discount_percent":
       return `${code.discount_percent}% off for ${code.duration_days} days`;
     case "extended_trial":
-      return `${code.duration_days}-day free trial of ${code.tier_granted === "top" ? "Top" : "Mid"}`;
+      return `${code.duration_days}-day free trial of Mapped+`;
     default:
       return "Promotional offer";
   }
@@ -164,9 +166,7 @@ export function getActivePromoTier(redemptions: PromoRedemption[]): TierLevel | 
 
   if (active.length === 0) return null;
 
-  // Return highest tier among active promos
-  const hasTop = active.some(r => r.tier_granted === "top");
-  if (hasTop) return "top";
+  // Any active tier-granting promo gives "mid" (Mapped+)
   return "mid";
 }
 
@@ -183,4 +183,50 @@ export function getActiveDiscount(redemptions: PromoRedemption[]): { percent: nu
 
   if (!active) return null;
   return { percent: active.discount_percent!, expiresAt: active.expires_at };
+}
+
+/* ─── Hardcoded promo codes ─── */
+
+/**
+ * Built-in promo codes that don't require database entries.
+ * These are checked before the database lookup in the redeem API route.
+ */
+export const HARDCODED_PROMOS: Record<string, PromoCode> = {
+  MAPPEDFORLIFE: {
+    id: "hardcoded-mappedforlife",
+    code: "MAPPEDFORLIFE",
+    type: "free_subscription",
+    tier_granted: "mid",
+    discount_percent: null,
+    duration_days: 36500, // ~100 years = lifetime
+    max_uses: null,
+    current_uses: 0,
+    expires_at: null,
+    active: true,
+    created_at: "2024-01-01T00:00:00Z",
+    note: "Lifetime free Mapped+ access",
+  },
+  MAPPED3FREE: {
+    id: "hardcoded-mapped3free",
+    code: "MAPPED3FREE",
+    type: "free_subscription",
+    tier_granted: "mid",
+    discount_percent: null,
+    duration_days: 90, // 3 months
+    max_uses: null,
+    current_uses: 0,
+    expires_at: null,
+    active: true,
+    created_at: "2024-01-01T00:00:00Z",
+    note: "3 months free Mapped+ access",
+  },
+};
+
+/**
+ * Look up a hardcoded promo code by code string (case-insensitive).
+ * Returns the PromoCode if found, null otherwise.
+ */
+export function getHardcodedPromo(code: string): PromoCode | null {
+  const normalized = code.trim().toUpperCase();
+  return HARDCODED_PROMOS[normalized] || null;
 }

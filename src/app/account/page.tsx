@@ -14,13 +14,19 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/ThemeProvider";
 import { useTier } from "@/components/TierProvider";
 import { PlansPage } from "@/components/Paywall";
-import { TIERS, FEATURES, type TierLevel } from "@/lib/tier";
+import CitySearch from "@/components/CitySearch";
+import {
+  getCachedLocation,
+  fetchUserLocation,
+  saveUserLocation,
+  type UserLocation,
+} from "@/lib/userLocation";
 
 export default function AccountPageWrapper() {
   return (
     <Suspense fallback={
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     }>
       <AccountPage />
@@ -78,12 +84,12 @@ function ConfirmDialog({
         >
           {title}
         </h3>
-        <p className="text-foreground/60 text-sm mb-6 leading-relaxed">{message}</p>
+        <p className="text-secondary text-sm mb-6 leading-relaxed">{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 py-2.5 rounded-full border border-foreground/18 text-foreground/60 text-sm
+            className="flex-1 py-2.5 rounded-full border border-foreground/18 text-secondary text-sm
                        hover:border-foreground/25 transition-all disabled:opacity-50"
           >
             Cancel
@@ -99,7 +105,7 @@ function ConfirmDialog({
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" role="status" aria-label="Loading" />
               </span>
             ) : confirmLabel}
           </button>
@@ -152,7 +158,7 @@ function EditableField({
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs uppercase tracking-widest text-foreground/40">{label}</p>
+        <p className="text-xs uppercase tracking-widest text-muted">{label}</p>
         {!editing && (
           <button
             onClick={() => { setEditing(true); setError(null); setSuccess(false); }}
@@ -170,19 +176,20 @@ function EditableField({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={placeholder}
+            aria-label={label}
             autoFocus
             className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                       text-foreground text-sm placeholder:text-foreground/30
+                       text-foreground text-sm placeholder:text-muted
                        focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
             onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") { setEditing(false); setDraft(value); } }}
           />
           {error && <p className="text-red-400 text-xs">{error}</p>}
-          {helpText && <p className="text-foreground/30 text-[10px]">{helpText}</p>}
+          {helpText && <p className="text-muted text-[10px]">{helpText}</p>}
           <div className="flex gap-2">
             <button
               onClick={() => { setEditing(false); setDraft(value); setError(null); }}
               disabled={saving}
-              className="flex-1 py-2 rounded-xl border border-foreground/15 text-foreground/50 text-xs
+              className="flex-1 py-2 rounded-xl border border-foreground/15 text-muted text-xs
                          hover:border-foreground/20 transition-all disabled:opacity-50"
             >
               Cancel
@@ -199,7 +206,7 @@ function EditableField({
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <p className="text-foreground/80 text-sm">{value || "—"}</p>
+          <p className="text-foreground text-sm">{value || "—"}</p>
           {success && (
             <span className="text-sage text-xs animate-in fade-in duration-200">Saved</span>
           )}
@@ -248,8 +255,8 @@ function RitualToolsSection() {
 
   return (
     <div id="ritual-tools" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-1">Ritual Tools</p>
-      <p className="text-[11px] text-foreground/30 mb-4">
+      <p className="text-xs uppercase tracking-widest text-muted mb-1">Ritual Tools</p>
+      <p className="text-[11px] text-muted mb-4">
         {enabledCount > 0
           ? `${enabledCount} selected — rituals are filtered to match`
           : "Tell us what you have at home so we can suggest rituals that work for you"}
@@ -267,7 +274,7 @@ function RitualToolsSection() {
           >
             <span className="text-[16px] shrink-0">{tool.icon}</span>
             <div className="min-w-0">
-              <p className={`text-[12px] font-medium ${myTools[tool.id] ? "text-foreground" : "text-foreground/50"}`}>
+              <p className={`text-[12px] font-medium ${myTools[tool.id] ? "text-foreground" : "text-muted"}`}>
                 {tool.label}
               </p>
             </div>
@@ -308,13 +315,35 @@ function BirthTimeSettingsSection() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoading(false); return; }
-        const { data } = await supabase
+
+        // First check if profiles has explicit precision
+        const { data: profile } = await supabase
           .from("profiles")
           .select("birth_time_precision, birth_time, birth_time_window")
           .eq("id", user.id)
           .single();
-        if (data) {
-          setPrecision(data.birth_time_precision || "unknown");
+
+        if (profile?.birth_time_precision) {
+          setPrecision(profile.birth_time_precision);
+        } else {
+          // Fall back: check the charts table for a saved birth time
+          const { data: chart } = await supabase
+            .from("charts")
+            .select("birth_time, unknown_time")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (chart) {
+            if (!chart.unknown_time && chart.birth_time) {
+              setPrecision("exact");
+            } else if (chart.unknown_time) {
+              setPrecision("unknown");
+            } else {
+              setPrecision("approximate");
+            }
+          }
         }
       } catch { /* ignore */ }
       setLoading(false);
@@ -334,12 +363,12 @@ function BirthTimeSettingsSection() {
     exact: "text-sage",
     approximate: "text-amber",
     rectified: "text-amber",
-    unknown: "text-foreground/40",
+    unknown: "text-muted",
   };
 
   return (
     <div id="birth-time" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Birth Time</p>
+      <p className="text-xs uppercase tracking-widest text-muted mb-3">Birth Time</p>
       <div className="flex items-center justify-between mb-3">
         <span className={`text-sm font-medium ${badgeColors[precision]}`}>
           {precisionLabels[precision] || "Unknown"}
@@ -360,18 +389,99 @@ function BirthTimeSettingsSection() {
           {precision === "unknown" && (
             <button
               onClick={() => router.push("/rectification")}
-              className="w-full py-2.5 rounded-xl border border-foreground/15 text-foreground/50 text-xs font-medium hover:border-foreground/25 transition-colors"
+              className="w-full py-2.5 rounded-xl border border-foreground/15 text-muted text-xs font-medium hover:border-foreground/25 transition-colors"
             >
               Try rectification
             </button>
           )}
-          <p className="text-[10px] text-foreground/35 leading-relaxed mt-1">
+          <p className="text-[10px] text-muted leading-relaxed mt-1">
             {precision === "unknown"
               ? "Your chart is reduced without a birth time. Most features work, but some (like astrocartography) need the exact minute."
               : "Your Rising sign and houses are best-guess based on the window you provided."}
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Location section ─── */
+
+function LocationSection({ userId }: { userId: string }) {
+  const [location, setLocation] = useState<UserLocation | null>(() => getCachedLocation(userId));
+  const [editing, setEditing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchUserLocation(userId).then((loc) => {
+      if (loc && !cancelled) setLocation(loc);
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  async function handleSelect(result: { display_name: string; lat: string; lon: string }) {
+    setSaving(true);
+    setError(null);
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    const err = await saveUserLocation(userId, { lat, lng, label: result.display_name });
+    setSaving(false);
+    if (err) {
+      setError(err);
+    } else {
+      setLocation({ lat, lng, label: result.display_name, source: "profile" });
+      setEditing(false);
+      setSearch("");
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    }
+  }
+
+  return (
+    <div id="location" className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs uppercase tracking-widest text-muted">Location</p>
+        {!editing && (
+          <button
+            onClick={() => { setEditing(true); setError(null); setSuccess(false); setSearch(""); }}
+            className="text-xs text-terracotta/70 hover:text-terracotta transition-colors"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="flex flex-col gap-2 mt-2">
+          <CitySearch value={search} onChange={setSearch} onSelect={handleSelect} />
+          {saving && <p className="text-muted text-xs">Saving...</p>}
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+          <button
+            onClick={() => { setEditing(false); setSearch(""); setError(null); }}
+            disabled={saving}
+            className="py-2 rounded-xl border border-foreground/15 text-muted text-xs
+                       hover:border-foreground/20 transition-all disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-foreground text-sm">{location ? location.label : "Not set"}</p>
+          {location?.source === "birth" && (
+            <span className="text-muted text-xs italic">(from your birth chart — tap Edit to change)</span>
+          )}
+          {success && (
+            <span className="text-sage text-xs animate-in fade-in duration-200">Saved</span>
+          )}
+        </div>
+      )}
+
+      <p className="text-muted text-[10px] mt-2">Used for sunrise, almanac and garden timing.</p>
     </div>
   );
 }
@@ -401,8 +511,8 @@ function AlmanacPrefsSection() {
 
   return (
     <div id="almanac-prefs" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-1">Almanac</p>
-      <p className="text-[11px] text-foreground/30 mb-4">
+      <p className="text-xs uppercase tracking-widest text-muted mb-1">Almanac</p>
+      <p className="text-[11px] text-muted mb-4">
         Choose what extra sections appear in your daily almanac
       </p>
       <div className="flex flex-col gap-2">
@@ -418,10 +528,10 @@ function AlmanacPrefsSection() {
           >
             <span className="text-[18px] shrink-0">{opt.icon}</span>
             <div className="flex-1 min-w-0">
-              <p className={`text-[13px] font-medium ${prefs[opt.id] ? "text-foreground" : "text-foreground/50"}`}>
+              <p className={`text-[13px] font-medium ${prefs[opt.id] ? "text-foreground" : "text-muted"}`}>
                 {opt.label}
               </p>
-              <p className="text-[10px] text-foreground/30">{opt.desc}</p>
+              <p className="text-[10px] text-muted">{opt.desc}</p>
             </div>
             <div
               className="w-7 h-4 rounded-full flex items-center px-0.5 shrink-0 transition-all"
@@ -581,10 +691,10 @@ function NotificationSettingsSection() {
         <div>
           <p className="text-foreground text-[15px] font-semibold">Notifications</p>
           {permissionState === "denied" && (
-            <p className="text-foreground/40 text-[11px] mt-0.5">Blocked in browser settings</p>
+            <p className="text-muted text-[11px] mt-0.5">Blocked in browser settings</p>
           )}
           {permissionState === "unsupported" && (
-            <p className="text-foreground/40 text-[11px] mt-0.5">Add to home screen to enable</p>
+            <p className="text-muted text-[11px] mt-0.5">Add to home screen to enable</p>
           )}
         </div>
         {permissionState !== "unsupported" && (
@@ -607,8 +717,8 @@ function NotificationSettingsSection() {
               }`}
             >
               <div className="flex-1 mr-4">
-                <p className="text-foreground/80 text-[14px] font-medium">{cat.label}</p>
-                <p className="text-foreground/35 text-[12px] mt-0.5">{cat.desc}</p>
+                <p className="text-foreground text-[14px] font-medium">{cat.label}</p>
+                <p className="text-muted text-[12px] mt-0.5">{cat.desc}</p>
               </div>
               <ToggleSwitch
                 checked={!!prefs[cat.key]}
@@ -627,68 +737,139 @@ function NotificationSettingsSection() {
 function SubscriptionSection() {
   const { tier, refreshTier } = useTier();
   const [showPlans, setShowPlans] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
 
-  const tierInfo = TIERS[tier];
-  const tierFeatures = FEATURES.filter(f => {
-    const order: Record<TierLevel, number> = { free: 0, mid: 1, top: 2 };
-    return order[f.minTier] <= order[tier];
-  });
+  const isPaid = tier === "mid";
 
   // Show a few highlighted features for the current tier
   const highlights = tier === "free"
-    ? ["Full natal chart", "Daily transit & moon phase", "One ritual per day", "Dolly (5 msgs/day)"]
-    : tier === "mid"
-    ? ["Ritual Wizard", "Full transits", "Unlimited Dolly", "Astrocartography"]
-    : ["Unlimited Wizard", "ZR timeline", "Fixed stars", "Composite charts"];
+    ? ["Basic birth chart", "Daily horoscope", "1 card pull/day", "Dolly (5 msgs/day)"]
+    : ["Unlimited Dolly", "Unlimited card pulls", "All map connections", "Astrocartography"];
+
+  async function handleManageSubscription() {
+    setLoadingPortal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("Portal error:", err);
+    }
+    setLoadingPortal(false);
+  }
+
+  async function handleUpgrade() {
+    setLoadingCheckout(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+    }
+    setLoadingCheckout(false);
+  }
 
   return (
     <>
       <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-        <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Your Plan</p>
+        <p className="text-xs uppercase tracking-widest text-muted mb-3">Your Plan</p>
 
         {/* Current tier badge */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${
-              tier === "free" ? "bg-foreground/30" : tier === "mid" ? "bg-sage" : "bg-terracotta"
+              isPaid ? "bg-sage" : "bg-foreground/30"
             }`} />
             <span className="text-foreground text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-              {tierInfo.name}
+              {isPaid ? "Mapped+" : "Free"}
             </span>
           </div>
-          <span className="text-foreground/50 text-sm">
-            {tierInfo.price === 0 ? "Free" : `$${tierInfo.price}/mo`}
+          <span className="text-muted text-sm">
+            {isPaid ? "$11.11/mo" : "Free"}
           </span>
         </div>
 
         {/* Feature highlights */}
         <div className="space-y-1.5 mb-4">
           {highlights.map((h, i) => (
-            <div key={i} className="flex items-center gap-2 text-foreground/60 text-xs">
-              <span className="text-sage">✓</span>
+            <div key={i} className="flex items-center gap-2 text-secondary text-xs">
+              <span className="text-sage">&#10003;</span>
               <span>{h}</span>
             </div>
           ))}
         </div>
 
-        {/* Upgrade / See plans CTA */}
-        {tier !== "top" ? (
+        {/* Upgrade or Manage */}
+        {isPaid ? (
           <button
-            onClick={() => setShowPlans(true)}
-            className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all"
+            onClick={handleManageSubscription}
+            disabled={loadingPortal}
+            className="w-full py-3 rounded-full border border-foreground/18 text-secondary text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            {tier === "free" ? "See plans" : "Upgrade to Top"}
+            {loadingPortal ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" role="status" aria-label="Loading" />
+                Opening...
+              </span>
+            ) : (
+              "Manage Subscription"
+            )}
           </button>
         ) : (
-          <p className="text-center text-sage/70 text-xs font-medium py-2">
-            You have access to everything ✦
-          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleUpgrade}
+              disabled={loadingCheckout}
+              className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {loadingCheckout ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
+                  Connecting...
+                </span>
+              ) : (
+                "Upgrade to Mapped+ — $11.11/mo"
+              )}
+            </button>
+            <button
+              onClick={() => setShowPlans(true)}
+              className="w-full py-2 text-muted text-xs hover:text-secondary transition-colors"
+            >
+              Compare plans
+            </button>
+          </div>
         )}
 
         {/* Manage billing note */}
-        {tier !== "free" && (
-          <p className="text-center text-foreground/30 text-[10px] mt-2">
-            Cancel or change plan anytime in your app store subscriptions.
+        {isPaid && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            Cancel or change plan anytime through the billing portal.
           </p>
         )}
       </div>
@@ -698,18 +879,6 @@ function SubscriptionSection() {
         <PlansPage
           currentTier={tier}
           onClose={() => setShowPlans(false)}
-          onSelectTier={async (selectedTier) => {
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (!session?.user) return;
-              await supabase
-                .from("profiles")
-                .update({ tier: selectedTier })
-                .eq("id", session.user.id);
-              await refreshTier();
-            } catch { /* ignore */ }
-            setShowPlans(false);
-          }}
         />
       )}
     </>
@@ -766,14 +935,15 @@ function PromoCodeSection() {
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Promo Code</p>
+      <p className="text-xs uppercase tracking-widest text-muted mb-3">Promo Code</p>
       <div className="flex gap-2">
         <input
           type="text"
           value={code}
           onChange={(e) => { setCode(e.target.value.toUpperCase()); setStatus("idle"); setMessage(""); }}
           placeholder="Enter code"
-          className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm placeholder:text-foreground/30 focus:outline-none focus:border-sage/50 tracking-wider font-mono"
+          aria-label="Promo code"
+          className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm placeholder:text-muted focus:outline-none focus:border-sage/50 tracking-wider font-mono"
           onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
           disabled={status === "loading"}
         />
@@ -801,11 +971,11 @@ function ThemeSection() {
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Appearance</p>
+      <p className="text-xs uppercase tracking-widest text-muted mb-3">Appearance</p>
       <div className="flex gap-2">
         {([
-          { value: "light" as const, label: "Light", desc: "Warm Altar", icon: "☀️" },
-          { value: "dark" as const, label: "Dark", desc: "Spell Book", icon: "🌙" },
+          { value: "light" as const, label: "Day", desc: "Cream canvas", icon: "☀️" },
+          { value: "dark" as const, label: "Night", desc: "Midnight canvas", icon: "🌙" },
         ]).map((opt) => (
           <button
             key={opt.value}
@@ -813,7 +983,7 @@ function ThemeSection() {
             className={`flex-1 flex flex-col items-center gap-1.5 py-4 rounded-xl text-sm font-medium transition-all border ${
               theme === opt.value
                 ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                : "bg-background border-foreground/18 text-foreground/50 hover:border-foreground/20"
+                : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
             }`}
           >
             <span className="text-lg">{opt.icon}</span>
@@ -822,9 +992,223 @@ function ThemeSection() {
           </button>
         ))}
       </div>
-      <p className="text-foreground/30 text-[10px] mt-2">
+      <p className="text-muted text-[10px] mt-2">
         Changes how the entire app looks. Defaults to your device setting.
       </p>
+    </div>
+  );
+}
+
+/* ─── Report a Bug section ─── */
+
+function ReportBugSection({ userEmail }: { userEmail: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<"bug" | "suggestion" | "other">("bug");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [page, setPage] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      // Auto-detect current page from referrer
+      try {
+        const path = window.location.pathname;
+        setPage(path);
+      } catch { /* ignore */ }
+    }
+  }, [open]);
+
+  async function handleSubmit() {
+    if (!description.trim()) return;
+    setSending(true);
+
+    try {
+      // Collect device info automatically
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        screen: `${window.screen.width}x${window.screen.height}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        platform: navigator.platform,
+        language: navigator.language,
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+      };
+
+      // Build the email body
+      const subject = `[Mapped ${category}] ${description.slice(0, 60)}`;
+      const body = [
+        `Category: ${category}`,
+        `Page: ${page || "unknown"}`,
+        `From: ${userEmail || "anonymous"}`,
+        "",
+        "Description:",
+        description,
+        "",
+        "--- Device Info ---",
+        `Browser: ${deviceInfo.userAgent}`,
+        `Screen: ${deviceInfo.screen}`,
+        `Viewport: ${deviceInfo.viewport}`,
+        `Platform: ${deviceInfo.platform}`,
+        `Time: ${deviceInfo.timestamp}`,
+        `URL: ${deviceInfo.url}`,
+      ].join("\n");
+
+      // Open mailto link as fallback (works everywhere)
+      const mailtoUrl = `mailto:contacttaylorsometimes@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(mailtoUrl, "_blank");
+
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        setOpen(false);
+        setDescription("");
+        setCategory("bug");
+      }, 2500);
+    } catch {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(`Bug Report:\n${description}\n\nPage: ${page}`);
+        setSent(true);
+        setTimeout(() => { setSent(false); setOpen(false); setDescription(""); }, 2500);
+      } catch { /* ignore */ }
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-3 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-lg">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-terracotta">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </span>
+          <span className="text-foreground text-sm" style={{ fontFamily: "var(--font-display)" }}>
+            Report a Bug
+          </span>
+        </div>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className="text-muted transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="rounded-2xl bg-surface border border-foreground/10 p-5 mt-2 space-y-4">
+          {sent ? (
+            <div className="text-center py-6">
+              <div className="text-3xl mb-2">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brass, #b8a068)" strokeWidth="2" className="mx-auto">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+              <p className="text-foreground text-sm font-medium">Thank you!</p>
+              <p className="text-muted text-xs mt-1">Your feedback helps us improve Mapped.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-muted text-xs leading-relaxed">
+                Found something off? We want to hear about it. Your device info will be included automatically.
+              </p>
+
+              {/* Category pills */}
+              <div className="flex gap-2">
+                {(["bug", "suggestion", "other"] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      category === c
+                        ? "bg-terracotta/20 text-terracotta border border-terracotta/30"
+                        : "bg-surface border border-foreground/10 text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {c === "bug" ? "Bug" : c === "suggestion" ? "Idea" : "Other"}
+                  </button>
+                ))}
+              </div>
+
+              {/* What happened */}
+              <div>
+                <label className="block text-xs text-muted mb-1.5">
+                  {category === "bug" ? "What happened?" : category === "suggestion" ? "What would you like to see?" : "Tell us more"}
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={category === "bug"
+                    ? "e.g. When I tap on my chart, the page goes blank..."
+                    : category === "suggestion"
+                    ? "e.g. It would be cool if the almanac showed weather..."
+                    : "Anything on your mind..."
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/12
+                             text-foreground text-sm placeholder:text-muted/60
+                             focus:outline-none focus:border-terracotta/40 focus:ring-1 focus:ring-terracotta/20
+                             resize-none"
+                  aria-label="Bug description"
+                />
+              </div>
+
+              {/* Where it happened */}
+              <div>
+                <label className="block text-xs text-muted mb-1.5">Which page? (optional)</label>
+                <select
+                  value={page}
+                  onChange={(e) => setPage(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/12
+                             text-foreground text-sm
+                             focus:outline-none focus:border-terracotta/40"
+                  aria-label="Page where bug occurred"
+                >
+                  <option value="">Not sure</option>
+                  <option value="/home">Home</option>
+                  <option value="/almanac">Almanac</option>
+                  <option value="/chart">Chart / You</option>
+                  <option value="/practice">Practice / Rituals</option>
+                  <option value="/maps">Maps</option>
+                  <option value="/dolly">Dolly</option>
+                  <option value="/onboarding">Onboarding</option>
+                  <option value="/account">Account</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Submit */}
+              <button
+                onClick={handleSubmit}
+                disabled={!description.trim() || sending}
+                className="w-full py-3 rounded-full text-sm font-medium transition-all
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: description.trim() ? "var(--brass, #b8a068)" : "var(--surface)",
+                  color: description.trim() ? "#1a1a1a" : "var(--muted)",
+                }}
+              >
+                {sending ? "Opening email..." : "Send Report"}
+              </button>
+
+              <p className="text-muted/50 text-[10px] text-center">
+                Opens your email app with the report pre-filled.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -840,18 +1224,18 @@ function SourcesSection() {
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between"
       >
-        <p className="text-xs uppercase tracking-widest text-foreground/40">About Our Sources</p>
+        <p className="text-xs uppercase tracking-widest text-muted">About Our Sources</p>
         <svg
           width="14" height="14" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-          className={`text-foreground/30 transition-transform ${expanded ? "rotate-180" : ""}`}
+          className={`text-muted transition-transform ${expanded ? "rotate-180" : ""}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {expanded && (
-        <div className="mt-4 space-y-3 text-[12px] leading-[1.7] text-foreground/55">
+        <div className="mt-4 space-y-3 text-[12px] leading-[1.7] text-secondary">
           <p>
             Mapped synthesizes practices from many traditions: Hellenistic astrology (2nd century CE onward),
             Western magical practice, Hermetic Qabalah, traditional Western herbalism, color symbolism,
@@ -866,17 +1250,17 @@ function SourcesSection() {
             We are not the keepers of any closed tradition. We are a Western synthesis. If you want to go
             deeper into any specific tradition, we encourage you to seek out teachers from within those traditions.
           </p>
-          <div className="pt-2 border-t border-foreground/8 space-y-2 text-[11px] text-foreground/40">
+          <div className="pt-2 border-t border-foreground/8 space-y-2 text-[11px] text-muted">
             <p>
-              <strong className="text-foreground/50">Chakras:</strong> The chakra framework Mapped uses is a Western
+              <strong className="text-muted">Chakras:</strong> The chakra framework Mapped uses is a Western
               synthesis of practices originating in Hindu and Buddhist tantric tradition.
             </p>
             <p>
-              <strong className="text-foreground/50">Sage:</strong> White sage is sacred to Indigenous communities in
+              <strong className="text-muted">Sage:</strong> White sage is sacred to Indigenous communities in
               California (especially Chumash and Cahuilla peoples). Mapped recommends garden sage by default.
             </p>
             <p>
-              <strong className="text-foreground/50">Crystals:</strong> Crystals are mined globally, often in conditions
+              <strong className="text-muted">Crystals:</strong> Crystals are mined globally, often in conditions
               that are environmentally or ethically concerning. Buy from sellers you trust.
             </p>
           </div>
@@ -1208,6 +1592,25 @@ function AccountPage() {
   async function handleSignOut() {
     try { await supabase.auth.signOut(); } catch { /* clear local state anyway */ }
     sessionStorage.clear();
+    // Clean up personal data from localStorage to prevent leaking to next user on this device
+    const personalPrefixes = [
+      "mapped_connections", "mapped:city", "mapped:tarot-history",
+      "mapped:dolly-conversations", "mapped:dolly-usage", "mapped:pull-usage",
+      "mapped:wizard-history", "mapped:completions", "mapped:journal_shown_prompts",
+      "mapped:birth_time_reprompt", "mapped:vibe-recent",
+    ];
+    const personalPatterns = ["horoscope-v", "mapped:tarot-revealed-", "mapped:oracle-revealed-", "mapped_timeline"];
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (personalPrefixes.includes(key) || personalPatterns.some(p => key.startsWith(p)) || key.match(/[a-f0-9]{8}-[a-f0-9]{4}/)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch { /* localStorage not available — ignore */ }
     setEmail(null);
     setUserName(null);
     setUserId(null);
@@ -1215,14 +1618,14 @@ function AccountPage() {
   }
 
   const inputClass = `w-full px-4 py-3.5 rounded-xl bg-surface border border-foreground/18
-                      text-foreground placeholder:text-foreground/30
+                      text-foreground placeholder:text-muted
                       focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25
                       text-base`;
 
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -1231,7 +1634,7 @@ function AccountPage() {
     <main className="flex-1 flex flex-col px-6 py-8 max-w-lg mx-auto w-full">
       <button
         onClick={() => router.back()}
-        className="text-foreground/40 text-sm mb-8 self-start hover:text-foreground/60 transition-colors"
+        className="text-muted text-sm mb-8 self-start hover:text-foreground transition-colors"
       >
         &larr; back
       </button>
@@ -1246,7 +1649,7 @@ function AccountPage() {
       {connectionError && (
         <div className="rounded-2xl bg-terracotta/10 border border-terracotta/25 p-4 mb-5">
           <p className="text-terracotta text-sm font-medium mb-1">Can&apos;t reach the server</p>
-          <p className="text-foreground/60 text-xs leading-relaxed">
+          <p className="text-secondary text-xs leading-relaxed">
             Your account features need an internet connection. Check your Wi-Fi and try refreshing.
           </p>
         </div>
@@ -1292,7 +1695,7 @@ function AccountPage() {
           {/* ─── Change password ─── */}
           <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs uppercase tracking-widest text-foreground/40">Password</p>
+              <p className="text-xs uppercase tracking-widest text-muted">Password</p>
               {!showChangePassword && (
                 <button
                   onClick={() => setShowChangePassword(true)}
@@ -1310,9 +1713,10 @@ function AccountPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password (6+ characters)"
+                  aria-label="New password"
                   autoFocus
                   className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                             text-foreground text-sm placeholder:text-foreground/30
+                             text-foreground text-sm placeholder:text-muted
                              focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
                 />
                 <input
@@ -1320,8 +1724,9 @@ function AccountPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
+                  aria-label="Confirm new password"
                   className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                             text-foreground text-sm placeholder:text-foreground/30
+                             text-foreground text-sm placeholder:text-muted
                              focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
                   onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
                 />
@@ -1335,7 +1740,7 @@ function AccountPage() {
                   <button
                     onClick={() => { setShowChangePassword(false); setNewPassword(""); setConfirmPassword(""); setPasswordError(""); }}
                     disabled={changingPassword}
-                    className="flex-1 py-2 rounded-xl border border-foreground/15 text-foreground/50 text-xs
+                    className="flex-1 py-2 rounded-xl border border-foreground/15 text-muted text-xs
                                hover:border-foreground/20 transition-all disabled:opacity-50"
                   >
                     Cancel
@@ -1351,13 +1756,13 @@ function AccountPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-foreground/80 text-sm">••••••••</p>
+              <p className="text-foreground text-sm">••••••••</p>
             )}
           </div>
 
           {/* ─── Zodiac System Preference ─── */}
           <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-            <p className="text-xs uppercase tracking-widest text-foreground/40 mb-3">Zodiac System</p>
+            <p className="text-xs uppercase tracking-widest text-muted mb-3">Zodiac System</p>
             <div className="flex gap-2 mb-3">
               <button
                 onClick={() => {
@@ -1367,7 +1772,7 @@ function AccountPage() {
                 className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border
                   ${zodiacSystem === "tropical"
                     ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                    : "bg-background border-foreground/18 text-foreground/50 hover:border-foreground/20"
+                    : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
                   }`}
               >
                 Western
@@ -1381,7 +1786,7 @@ function AccountPage() {
                 className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border
                   ${zodiacSystem === "sidereal"
                     ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                    : "bg-background border-foreground/18 text-foreground/50 hover:border-foreground/20"
+                    : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
                   }`}
               >
                 Vedic
@@ -1391,7 +1796,7 @@ function AccountPage() {
 
             {zodiacSystem === "sidereal" && (
               <div className="flex flex-col gap-2 animate-in fade-in duration-200">
-                <p className="text-xs text-foreground/40">Ayanamsa</p>
+                <p className="text-xs text-muted">Ayanamsa</p>
                 <div className="flex gap-2">
                   {([
                     { value: "lahiri" as const, label: "Lahiri" },
@@ -1407,14 +1812,14 @@ function AccountPage() {
                       className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all border
                         ${ayanamsa === opt.value
                           ? "bg-amber/15 border-amber/40 text-amber"
-                          : "bg-background border-foreground/18 text-foreground/40 hover:border-foreground/20"
+                          : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
                         }`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-foreground/30">
+                <p className="text-[10px] text-muted">
                   Most Vedic astrologers use Lahiri. Choose based on your tradition.
                 </p>
               </div>
@@ -1423,7 +1828,7 @@ function AccountPage() {
             {savingPrefs && (
               <p className="text-[10px] text-amber/50 mt-2">Saving...</p>
             )}
-            <p className="text-foreground/30 text-[10px] mt-2">
+            <p className="text-muted text-[10px] mt-2">
               Changing this will affect how new charts are calculated. Existing charts keep their original system.
             </p>
           </div>
@@ -1433,6 +1838,9 @@ function AccountPage() {
 
           {/* ─── Ritual Tools ─── */}
           <RitualToolsSection />
+
+          {/* ─── Location ─── */}
+          {userId && <LocationSection userId={userId} />}
 
           {/* ─── Almanac Preferences ─── */}
           <AlmanacPrefsSection />
@@ -1446,11 +1854,14 @@ function AccountPage() {
           {/* ─── About Our Sources ─── */}
           <SourcesSection />
 
+          {/* ─── Report a Bug ─── */}
+          <ReportBugSection userEmail={email} />
+
           {/* ─── Sign out ─── */}
           <button
             onClick={handleSignOut}
-            className="mt-4 py-3 rounded-full border border-foreground/18 text-foreground/50
-                       text-sm hover:border-foreground/20 hover:text-foreground/70 transition-all"
+            className="mt-4 py-3 rounded-full border border-foreground/18 text-muted
+                       text-sm hover:border-foreground/20 hover:text-foreground transition-all"
           >
             Sign out
           </button>
@@ -1497,7 +1908,7 @@ function AccountPage() {
               >
                 Reset your password
               </h3>
-              <p className="text-foreground/40 text-sm mb-5">
+              <p className="text-muted text-sm mb-5">
                 Enter your email and we&apos;ll send you a link to reset your password.
               </p>
 
@@ -1510,9 +1921,9 @@ function AccountPage() {
                       <polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
                   </div>
-                  <p className="text-foreground/80 text-sm font-medium mb-1">Check your email</p>
-                  <p className="text-foreground/40 text-xs mb-4">
-                    We sent a reset link to <span className="text-foreground/60">{resetEmail}</span>.
+                  <p className="text-foreground text-sm font-medium mb-1">Check your email</p>
+                  <p className="text-muted text-xs mb-4">
+                    We sent a reset link to <span className="text-secondary">{resetEmail}</span>.
                     Click the link in the email to set a new password.
                   </p>
                   <button
@@ -1529,6 +1940,7 @@ function AccountPage() {
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="Email address"
+                    aria-label="Email address"
                     required
                     autoFocus
                     className={inputClass}
@@ -1543,7 +1955,7 @@ function AccountPage() {
                   >
                     {resetSending ? (
                       <span className="flex items-center justify-center gap-2">
-                        <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                        <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
                         Sending...
                       </span>
                     ) : "Send reset link"}
@@ -1552,7 +1964,7 @@ function AccountPage() {
               )}
 
               {!resetSent && (
-                <p className="text-center text-foreground/40 text-xs mt-4">
+                <p className="text-center text-muted text-xs mt-4">
                   <button
                     onClick={() => { setShowForgotPassword(false); setResetError(""); }}
                     className="text-terracotta hover:text-terracotta-light transition-colors"
@@ -1571,7 +1983,7 @@ function AccountPage() {
               >
                 {mode === "signup" ? "Create an account" : "Welcome back"}
               </h3>
-              <p className="text-foreground/40 text-sm mb-5">
+              <p className="text-muted text-sm mb-5">
                 {mode === "signup"
                   ? "Save your chart so it's always here when you come back."
                   : "Sign in to load your saved chart."}
@@ -1592,7 +2004,7 @@ function AccountPage() {
                 <button
                   onClick={() => handleSocialLogin("google")}
                   className="w-full flex items-center justify-center gap-3 py-3 rounded-xl
-                             bg-card border border-foreground/15 text-foreground/80 text-sm font-medium
+                             bg-card border border-foreground/15 text-foreground text-sm font-medium
                              hover:bg-elevated active:scale-[0.98] transition-all duration-200"
                 >
                   <GoogleIcon />
@@ -1603,7 +2015,7 @@ function AccountPage() {
               {/* ─── Divider ─── */}
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-foreground/10" />
-                <span className="text-foreground/30 text-xs">or</span>
+                <span className="text-muted text-xs">or</span>
                 <div className="flex-1 h-px bg-foreground/10" />
               </div>
 
@@ -1615,6 +2027,7 @@ function AccountPage() {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="Your name"
+                    aria-label="Your name"
                     className={inputClass}
                   />
                 )}
@@ -1624,6 +2037,7 @@ function AccountPage() {
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="Email"
+                  aria-label="Email"
                   required
                   className={inputClass}
                 />
@@ -1633,6 +2047,7 @@ function AccountPage() {
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                   placeholder="Password (6+ characters)"
+                  aria-label="Password"
                   required
                   minLength={6}
                   className={inputClass}
@@ -1661,7 +2076,7 @@ function AccountPage() {
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
                       {mode === "signup" ? "Creating account..." : "Signing in..."}
                     </span>
                   ) : mode === "signup" ? (
@@ -1672,7 +2087,7 @@ function AccountPage() {
                 </button>
               </form>
 
-              <p className="text-center text-foreground/40 text-xs mt-4">
+              <p className="text-center text-muted text-xs mt-4">
                 {mode === "signup" ? (
                   <>
                     Already have an account?{" "}

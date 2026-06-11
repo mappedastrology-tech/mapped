@@ -38,6 +38,7 @@ import {
   getCustomRituals,
   deleteCustomRitual,
   toggleRitualRotation,
+  updateCustomRitual,
   type CustomRitual,
 } from "@/lib/customRituals";
 import Link from "next/link";
@@ -100,6 +101,11 @@ function PracticePageInner() {
     refreshCustomRituals();
   }, [refreshCustomRituals]);
 
+  const handleUpdateRitual = useCallback((id: string, updates: Partial<Pick<CustomRitual, "title" | "notes">>) => {
+    updateCustomRitual(id, updates);
+    refreshCustomRituals();
+  }, [refreshCustomRituals]);
+
   // ─── Derived stats (must be ABOVE all early returns to satisfy Rules of Hooks) ──
 
   const totalRituals = completions.length;
@@ -140,13 +146,13 @@ function PracticePageInner() {
 
   if (completions.length === 0) {
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-28">
+      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-6">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl text-foreground" style={{ fontFamily: "var(--font-display)" }}>
             My Practice
           </h1>
         </div>
-        <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
+        <p className="text-muted text-sm mb-6">Your cycles, your pace.</p>
 
         {/* Moon ritual from MoonEventScreen */}
         {showMoonRitual && moonRitual && (
@@ -174,16 +180,17 @@ function PracticePageInner() {
             onToggleExpand={setExpandedRitual}
             onDelete={handleDeleteRitual}
             onToggleRotation={handleToggleRotation}
+            onUpdate={handleUpdateRitual}
           />
         )}
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center px-8">
             <div className="w-10 h-10 relative mx-auto mb-4"><Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" /></div>
-            <p className="text-foreground/50 text-[14px] leading-relaxed mb-2">
+            <p className="text-muted text-[14px] leading-relaxed mb-2">
               Nothing here yet.
             </p>
-            <p className="text-foreground/30 text-[12px] leading-relaxed mb-6">
+            <p className="text-muted text-[12px] leading-relaxed mb-6">
               Complete your first ritual and your practice will start taking shape here —
               cycles, patterns, all of it. No rush.
             </p>
@@ -200,7 +207,7 @@ function PracticePageInner() {
   }
 
   return (
-    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-28">
+    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-6">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
@@ -208,7 +215,7 @@ function PracticePageInner() {
           My Practice
         </h1>
       </div>
-      <p className="text-foreground/40 text-sm mb-6">Your cycles, your pace.</p>
+      <p className="text-muted text-sm mb-6">Your cycles, your pace.</p>
 
       {/* ═══ MOON RITUAL (shown when navigated from MoonEventScreen) ═══ */}
       {showMoonRitual && moonRitual && (
@@ -236,6 +243,7 @@ function PracticePageInner() {
           onToggleExpand={setExpandedRitual}
           onDelete={handleDeleteRitual}
           onToggleRotation={handleToggleRotation}
+          onUpdate={handleUpdateRitual}
         />
       )}
 
@@ -244,10 +252,10 @@ function PracticePageInner() {
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 relative shrink-0"><Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} fill className="object-contain" /></div>
           <div>
-            <h2 className="text-foreground/80 text-[15px] font-medium">
+            <h2 className="text-foreground text-[15px] font-medium">
               {energy.moonPhase.label}
             </h2>
-            <p className="text-foreground/40 text-[11px]">
+            <p className="text-muted text-[11px]">
               {recentCompletions.length} ritual{recentCompletions.length !== 1 ? "s" : ""} this lunar cycle
             </p>
           </div>
@@ -256,7 +264,7 @@ function PracticePageInner() {
 
       {/* ═══ SEASONAL CYCLES ═══ */}
       <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-        <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+        <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
           Seasonal Cycles
         </h3>
         <div className="grid grid-cols-4 gap-2">
@@ -274,15 +282,15 @@ function PracticePageInner() {
               }`}
             >
               <span className="text-[18px]">{s.icon}</span>
-              <span className="text-foreground/50 text-[10px] font-medium">{s.season}</span>
+              <span className="text-muted text-[10px] font-medium">{s.season}</span>
               {s.current ? (
                 <span className="text-terracotta text-[8px] font-bold uppercase">Now</span>
               ) : s.engaged ? (
                 <span className="text-sage text-[8px] font-bold">✓</span>
               ) : s.rested ? (
-                <span className="text-foreground/30 text-[8px]">Rested</span>
+                <span className="text-muted text-[8px]">Rested</span>
               ) : (
-                <span className="text-foreground/15 text-[8px]">—</span>
+                <span className="text-muted text-[8px]">—</span>
               )}
             </div>
           ))}
@@ -294,7 +302,7 @@ function PracticePageInner() {
               const current = seasonalCycles.find((s) => s.current);
               if (current) markCycleAsRest(current.season, current.year);
             }}
-            className="mt-3 text-foreground/25 text-[10px] hover:text-foreground/40 transition-colors"
+            className="mt-3 text-muted text-[10px] hover:text-foreground transition-colors"
           >
             Mark this season as intentional rest
           </button>
@@ -304,10 +312,10 @@ function PracticePageInner() {
       {/* ═══ ZODIAC SEASONS WHEEL ═══ */}
       <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold">
+          <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold">
             Zodiac Seasons
           </h3>
-          <span className="text-foreground/25 text-[10px]">
+          <span className="text-muted text-[10px]">
             {engagedZodiacCount} of 12
           </span>
         </div>
@@ -323,7 +331,7 @@ function PracticePageInner() {
                 {z.glyph}
               </span>
               <span className={`text-[8px] font-medium ${
-                z.engaged ? "text-foreground/55" : "text-foreground/20"
+                z.engaged ? "text-secondary" : "text-muted"
               }`}>
                 {z.sign.slice(0, 3)}
               </span>
@@ -334,15 +342,15 @@ function PracticePageInner() {
 
       {/* ═══ TRANSITS WITNESSED ═══ */}
       <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-        <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+        <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
           Transits Witnessed
         </h3>
         <div className="space-y-2">
           {transits.map((t) => (
             <div key={t.label} className="flex items-center gap-3">
               <span className="text-[16px] w-6 text-center">{t.icon}</span>
-              <span className="text-foreground/55 text-[12px] font-medium flex-1">{t.label}</span>
-              <span className="text-foreground/35 text-[12px] tabular-nums">{t.count}</span>
+              <span className="text-secondary text-[12px] font-medium flex-1">{t.label}</span>
+              <span className="text-muted text-[12px] tabular-nums">{t.count}</span>
             </div>
           ))}
         </div>
@@ -353,34 +361,34 @@ function PracticePageInner() {
 
       {/* ═══ YOUR PATTERNS ═══ */}
       <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-        <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+        <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
           Your Patterns
         </h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-foreground/40 text-[11px]">Total rituals</span>
-            <span className="text-foreground/65 text-[13px] font-medium tabular-nums">{totalRituals}</span>
+            <span className="text-muted text-[11px]">Total rituals</span>
+            <span className="text-secondary text-[13px] font-medium tabular-nums">{totalRituals}</span>
           </div>
           {mostUsedRitual && (
             <div className="flex items-center justify-between">
-              <span className="text-foreground/40 text-[11px]">Most-used ritual</span>
-              <span className="text-foreground/65 text-[12px] font-medium truncate ml-4 max-w-[160px] text-right">{mostUsedRitual}</span>
+              <span className="text-muted text-[11px]">Most-used ritual</span>
+              <span className="text-secondary text-[12px] font-medium truncate ml-4 max-w-[160px] text-right">{mostUsedRitual}</span>
             </div>
           )}
           {mostUsedMood && (
             <div className="flex items-center justify-between">
-              <span className="text-foreground/40 text-[11px]">Most-felt word</span>
-              <span className="text-foreground/65 text-[13px] font-medium">{mostUsedMood}</span>
+              <span className="text-muted text-[11px]">Most-felt word</span>
+              <span className="text-secondary text-[13px] font-medium">{mostUsedMood}</span>
             </div>
           )}
           <div className="pt-2 border-t border-foreground/6">
             <div className="flex items-center gap-2">
-              <span className="text-foreground/25 text-[10px] uppercase tracking-wider font-semibold">
+              <span className="text-muted text-[10px] uppercase tracking-wider font-semibold">
                 Practitioner type
               </span>
             </div>
-            <p className="text-foreground/60 text-[13px] font-medium mt-1">{practitionerType.label}</p>
-            <p className="text-foreground/35 text-[10px] mt-0.5">{practitionerType.description}</p>
+            <p className="text-secondary text-[13px] font-medium mt-1">{practitionerType.label}</p>
+            <p className="text-muted text-[10px] mt-0.5">{practitionerType.description}</p>
           </div>
         </div>
       </div>
@@ -388,7 +396,7 @@ function PracticePageInner() {
       {/* ═══ REPORTS ═══ */}
       {(weeklyReport || monthlyReport) && (
         <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-          <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+          <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
             Reports
           </h3>
           <div className="flex gap-2">
@@ -398,7 +406,7 @@ function PracticePageInner() {
                 className={`flex-1 py-3 rounded-xl border text-[12px] font-medium transition-all ${
                   showReport === "weekly"
                     ? "bg-terracotta/5 border-terracotta/20 text-terracotta"
-                    : "bg-card/40 border-foreground/8 text-foreground/40"
+                    : "bg-card/40 border-foreground/8 text-muted"
                 }`}
               >
                 This week
@@ -410,7 +418,7 @@ function PracticePageInner() {
                 className={`flex-1 py-3 rounded-xl border text-[12px] font-medium transition-all ${
                   showReport === "monthly"
                     ? "bg-terracotta/5 border-terracotta/20 text-terracotta"
-                    : "bg-card/40 border-foreground/8 text-foreground/40"
+                    : "bg-card/40 border-foreground/8 text-muted"
                 }`}
               >
                 This month
@@ -421,19 +429,19 @@ function PracticePageInner() {
           {/* Weekly report detail */}
           {showReport === "weekly" && weeklyReport && (
             <div className="mt-3 pt-3 border-t border-foreground/8 space-y-2">
-              <p className="text-foreground/30 text-[10px]">{weeklyReport.dateRange}</p>
+              <p className="text-muted text-[10px]">{weeklyReport.dateRange}</p>
               <div className="flex items-center justify-between">
-                <span className="text-foreground/40 text-[11px]">Rituals</span>
-                <span className="text-foreground/60 text-[12px] font-medium">{weeklyReport.totalRituals}</span>
+                <span className="text-muted text-[11px]">Rituals</span>
+                <span className="text-secondary text-[12px] font-medium">{weeklyReport.totalRituals}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-foreground/40 text-[11px]">Most-felt word</span>
-                <span className="text-foreground/60 text-[12px] font-medium">{weeklyReport.mostFeltWord}</span>
+                <span className="text-muted text-[11px]">Most-felt word</span>
+                <span className="text-secondary text-[12px] font-medium">{weeklyReport.mostFeltWord}</span>
               </div>
               {weeklyReport.bestFitRitual && (
                 <div className="flex items-center justify-between">
-                  <span className="text-foreground/40 text-[11px]">Best fit</span>
-                  <span className="text-foreground/60 text-[12px] font-medium truncate ml-4 max-w-[160px] text-right">{weeklyReport.bestFitRitual}</span>
+                  <span className="text-muted text-[11px]">Best fit</span>
+                  <span className="text-secondary text-[12px] font-medium truncate ml-4 max-w-[160px] text-right">{weeklyReport.bestFitRitual}</span>
                 </div>
               )}
             </div>
@@ -442,16 +450,16 @@ function PracticePageInner() {
           {/* Monthly report detail */}
           {showReport === "monthly" && monthlyReport && (
             <div className="mt-3 pt-3 border-t border-foreground/8 space-y-2">
-              <p className="text-foreground/30 text-[10px]">{monthlyReport.month}</p>
+              <p className="text-muted text-[10px]">{monthlyReport.month}</p>
               <div className="flex items-center justify-between">
-                <span className="text-foreground/40 text-[11px]">Rituals</span>
-                <span className="text-foreground/60 text-[12px] font-medium">{monthlyReport.totalRituals}</span>
+                <span className="text-muted text-[11px]">Rituals</span>
+                <span className="text-secondary text-[12px] font-medium">{monthlyReport.totalRituals}</span>
               </div>
               {monthlyReport.topRituals.length > 0 && (
                 <div>
-                  <span className="text-foreground/40 text-[11px]">Top rituals</span>
+                  <span className="text-muted text-[11px]">Top rituals</span>
                   {monthlyReport.topRituals.map((r) => (
-                    <p key={r.title} className="text-foreground/55 text-[11px] ml-2 mt-0.5">
+                    <p key={r.title} className="text-secondary text-[11px] ml-2 mt-0.5">
                       {r.title} ({r.count}×)
                     </p>
                   ))}
@@ -462,14 +470,14 @@ function PracticePageInner() {
                   {monthlyReport.moodWordCloud.slice(0, 6).map((w) => (
                     <span
                       key={w.word}
-                      className="px-2 py-1 rounded-lg bg-foreground/5 text-foreground/45 text-[10px]"
+                      className="px-2 py-1 rounded-lg bg-foreground/5 text-muted text-[10px]"
                     >
                       {w.word} ({w.count})
                     </span>
                   ))}
                 </div>
               )}
-              <p className="text-foreground/40 text-[11px] italic pt-1">
+              <p className="text-muted text-[11px] italic pt-1">
                 {monthlyReport.observation}
               </p>
             </div>
@@ -479,7 +487,7 @@ function PracticePageInner() {
 
       {/* Quiet footer */}
       <div className="text-center py-4">
-        <p className="text-foreground/20 text-[10px]">
+        <p className="text-muted text-[10px]">
           A cycle is something you can return to, not something you can break.
         </p>
       </div>
@@ -499,16 +507,16 @@ function WizardEntryButton({ onClick }: { onClick: () => void }) {
       style={{ background: "linear-gradient(135deg, var(--terracotta-alpha-5, rgba(194,108,67,0.05)), var(--terracotta-alpha-10, rgba(194,108,67,0.1)))" }}
     >
       <div className="w-11 h-11 rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center flex-shrink-0">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
              stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
           <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
         </svg>
       </div>
       <div className="text-left flex-1">
         <p className="text-foreground text-[14px] font-medium">+ Create a custom ritual</p>
-        <p className="text-foreground/35 text-[11px] mt-0.5">Built from your chart, the moon, and what you&apos;re working on.</p>
+        <p className="text-muted text-[11px] mt-0.5">Built from your chart, the moon, and what you&apos;re working on.</p>
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-20 flex-shrink-0">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-20 flex-shrink-0">
         <polyline points="9 18 15 12 9 6" />
       </svg>
     </button>
@@ -525,16 +533,23 @@ function CustomRitualsSection({
   onToggleExpand,
   onDelete,
   onToggleRotation,
+  onUpdate,
 }: {
   rituals: CustomRitual[];
   expandedId: string | null;
   onToggleExpand: (id: string | null) => void;
   onDelete: (id: string) => void;
   onToggleRotation: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<Pick<CustomRitual, "title" | "notes">>) => void;
 }) {
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+
   return (
     <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-      <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+      <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
         Custom Rituals
       </h3>
       <div className="space-y-2">
@@ -546,15 +561,15 @@ function CustomRitualsSection({
                 onClick={() => onToggleExpand(isExpanded ? null : r.id)}
                 className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-foreground/3"
               >
-                <span className="text-foreground/25 text-[14px]">✶</span>
+                <span className="text-muted text-[14px]">✶</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-foreground/70 text-[13px] font-medium truncate">{r.title}</p>
-                  <p className="text-foreground/30 text-[10px] mt-0.5">
+                  <p className="text-secondary text-[13px] font-medium truncate">{r.title}</p>
+                  <p className="text-muted text-[10px] mt-0.5">
                     {r.duration}{r.materials ? ` · ${r.materials}` : ""}
                     {r.inRotation && <span className="ml-2 text-sage">● in rotation</span>}
                   </p>
                 </div>
-                <svg
+                <svg aria-hidden="true"
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)"
                   strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
                   className={`opacity-20 flex-shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -565,37 +580,145 @@ function CustomRitualsSection({
 
               {isExpanded && (
                 <div className="px-4 pb-4 border-t border-foreground/6">
+                  {/* Editable title */}
+                  <div className="mt-3 mb-3">
+                    {editingTitleId === r.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const trimmed = editTitle.trim();
+                              if (trimmed && trimmed !== r.title) onUpdate(r.id, { title: trimmed });
+                              setEditingTitleId(null);
+                            }
+                            if (e.key === "Escape") setEditingTitleId(null);
+                          }}
+                          autoFocus
+                          className="flex-1 bg-foreground/5 border border-foreground/15 rounded-lg px-2.5 py-1.5 text-secondary text-[13px] font-medium outline-none focus:border-terracotta/40"
+                          aria-label="Rename ritual"
+                        />
+                        <button
+                          onClick={() => {
+                            const trimmed = editTitle.trim();
+                            if (trimmed && trimmed !== r.title) onUpdate(r.id, { title: trimmed });
+                            setEditingTitleId(null);
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-terracotta border border-terracotta/20 hover:bg-terracotta/5"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingTitleId(null)}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] text-muted"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditTitle(r.title); setEditingTitleId(r.id); }}
+                        className="text-muted text-[10px] hover:text-foreground transition-colors"
+                        title="Rename this ritual"
+                      >
+                        Rename
+                      </button>
+                    )}
+                  </div>
+
                   {r.whyThisForYou && (
-                    <p className="text-foreground/40 text-[12px] italic leading-relaxed mt-3 mb-3">{r.whyThisForYou}</p>
+                    <p className="text-muted text-[12px] italic leading-relaxed mb-3">{r.whyThisForYou}</p>
                   )}
                   <div className="space-y-2 mb-3">
                     {r.steps.map((step, i) => (
                       <div key={i} className="flex gap-2">
                         <span className="text-terracotta/40 text-[12px] font-medium w-4 flex-shrink-0 text-right">{i + 1}.</span>
-                        <p className="text-foreground/55 text-[12px] leading-relaxed">{step}</p>
+                        <p className="text-secondary text-[12px] leading-relaxed">{step}</p>
                       </div>
                     ))}
                   </div>
                   {r.affirmation && (
-                    <p className="text-foreground/50 text-[12px] italic mb-3">&ldquo;{r.affirmation}&rdquo;</p>
+                    <p className="text-muted text-[12px] italic mb-3">&ldquo;{r.affirmation}&rdquo;</p>
                   )}
                   {r.astroFootnote && (
-                    <p className="text-foreground/25 text-[10px] italic leading-relaxed mb-3">{r.astroFootnote}</p>
+                    <p className="text-muted text-[10px] italic leading-relaxed mb-3">{r.astroFootnote}</p>
                   )}
+
+                  {/* Notes section */}
+                  <div className="mb-3 pt-2 border-t border-foreground/6">
+                    {editingNotesId === r.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={editNotes}
+                          onChange={(e) => setEditNotes(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") setEditingNotesId(null);
+                          }}
+                          autoFocus
+                          rows={3}
+                          placeholder="How did it go? Anything to remember next time?"
+                          className="w-full bg-foreground/5 border border-foreground/15 rounded-lg px-3 py-2 text-secondary text-[12px] leading-relaxed outline-none focus:border-terracotta/40 resize-none"
+                          aria-label="Ritual notes"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              onUpdate(r.id, { notes: editNotes.trim() });
+                              setEditingNotesId(null);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-terracotta border border-terracotta/20 hover:bg-terracotta/5"
+                          >
+                            Save notes
+                          </button>
+                          <button
+                            onClick={() => setEditingNotesId(null)}
+                            className="px-2.5 py-1.5 rounded-lg text-[10px] text-muted"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {r.notes ? (
+                          <div>
+                            <p className="text-muted text-[10px] uppercase tracking-[0.1em] mb-1">Notes</p>
+                            <p className="text-secondary text-[12px] leading-relaxed mb-2">{r.notes}</p>
+                            <button
+                              onClick={() => { setEditNotes(r.notes || ""); setEditingNotesId(r.id); }}
+                              className="text-muted text-[10px] hover:text-foreground transition-colors"
+                            >
+                              Edit notes
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setEditNotes(""); setEditingNotesId(r.id); }}
+                            className="text-muted text-[10px] hover:text-foreground transition-colors"
+                          >
+                            + Add notes
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-2 pt-2 border-t border-foreground/6">
                     <button
                       onClick={() => onToggleRotation(r.id)}
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-medium border transition-colors ${
                         r.inRotation
                           ? "border-sage/30 text-sage bg-sage/5"
-                          : "border-foreground/10 text-foreground/35 hover:text-foreground/50"
+                          : "border-foreground/10 text-muted hover:text-foreground"
                       }`}
                     >
                       {r.inRotation ? "✓ In rotation" : "Add to rotation"}
                     </button>
                     <button
                       onClick={() => onDelete(r.id)}
-                      className="px-3 py-1.5 rounded-lg text-[10px] text-foreground/20 border border-foreground/8 hover:text-red-400 hover:border-red-400/30 transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-[10px] text-muted border border-foreground/8 hover:text-red-400 hover:border-red-400/30 transition-colors"
                     >
                       Delete
                     </button>
@@ -615,11 +738,11 @@ function CustomRitualsSection({
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CATEGORY_META: Record<string, { label: string; color: string; emoji: string }> = {
-  heavy: { label: "Heavy", color: "#c44", emoji: "◯" },
-  hard: { label: "Hard", color: "#5588cc", emoji: "◯" },
-  neutral: { label: "Neutral", color: "#999", emoji: "◯" },
-  soft_positive: { label: "Soft", color: "#cc88aa", emoji: "◯" },
-  bright_positive: { label: "Bright", color: "#ccaa44", emoji: "◯" },
+  heavy: { label: "Heavy", color: "#5a1f1a", emoji: "◯" },
+  hard: { label: "Hard", color: "#1a2548", emoji: "◯" },
+  neutral: { label: "Neutral", color: "#8a7d6b", emoji: "◯" },
+  soft_positive: { label: "Soft", color: "#6a3a60", emoji: "◯" },
+  bright_positive: { label: "Bright", color: "#c9a961", emoji: "◯" },
 };
 
 function MoodInsights({ completions }: { completions: CompletionRecord[] }) {
@@ -710,7 +833,7 @@ function MoodInsights({ completions }: { completions: CompletionRecord[] }) {
 
   return (
     <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-      <h3 className="text-foreground/30 text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+      <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
         Mood Landscape
       </h3>
 
@@ -720,14 +843,14 @@ function MoodInsights({ completions }: { completions: CompletionRecord[] }) {
           const meta = CATEGORY_META[cat] || { label: cat, color: "#888", emoji: "◯" };
           return (
             <div key={cat} className="flex items-center gap-2.5">
-              <span className="text-foreground/40 text-[10px] w-12 text-right">{meta.label}</span>
+              <span className="text-muted text-[10px] w-12 text-right">{meta.label}</span>
               <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ backgroundColor: "var(--background-elevated)" }}>
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.max(pct, 4)}%`, backgroundColor: meta.color, opacity: 0.6 }}
                 />
               </div>
-              <span className="text-foreground/30 text-[10px] w-8 tabular-nums">{pct}%</span>
+              <span className="text-muted text-[10px] w-8 tabular-nums">{pct}%</span>
             </div>
           );
         })}
@@ -750,7 +873,7 @@ function MoodInsights({ completions }: { completions: CompletionRecord[] }) {
       {insights.length > 0 && (
         <div className="pt-3 border-t border-foreground/6 space-y-2">
           {insights.map((insight, i) => (
-            <p key={i} className="text-foreground/45 text-[11px] leading-relaxed italic">
+            <p key={i} className="text-muted text-[11px] leading-relaxed italic">
               ✦ {insight}
             </p>
           ))}
@@ -806,16 +929,16 @@ function MoonRitualCard({
           >
             {ritual.title}
           </h3>
-          <p className="text-foreground/40 text-[12px] leading-relaxed mt-1">
+          <p className="text-muted text-[12px] leading-relaxed mt-1">
             {ritual.description}
           </p>
         </div>
         <button
           onClick={onDismiss}
-          className="text-foreground/20 hover:text-foreground/40 transition-colors p-1 -mr-1 -mt-1"
+          className="text-muted hover:text-foreground transition-colors p-1 -mr-1 -mt-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label="Close"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -844,14 +967,14 @@ function MoonRitualCard({
                 }}
               >
                 {done && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8F0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8F0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
               </div>
               <p
                 className={`text-[13px] leading-relaxed transition-all ${
-                  done ? "text-foreground/30 line-through" : "text-foreground/65"
+                  done ? "text-muted line-through" : "text-secondary"
                 }`}
               >
                 {step}
@@ -867,8 +990,8 @@ function MoonRitualCard({
           className="px-5 py-4 border-t text-center"
           style={{ borderColor: isFull ? "rgba(196,106,69,0.15)" : "rgba(90,74,138,0.15)" }}
         >
-          <p className="text-foreground/50 text-[13px] font-medium mb-1">Ritual complete</p>
-          <p className="text-foreground/30 text-[11px]">
+          <p className="text-muted text-[13px] font-medium mb-1">Ritual complete</p>
+          <p className="text-muted text-[11px]">
             {isFull ? "You honored the fullness of this moon." : "Your intentions are planted."}
           </p>
         </div>

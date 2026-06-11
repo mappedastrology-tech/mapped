@@ -89,7 +89,7 @@ export default function Interpretations({ name, bigThree, onLoaded }: Interpreta
       >
         Your Big 3
       </h2>
-      <p className="text-foreground/40 text-sm -mt-2 mb-2">
+      <p className="text-muted text-sm -mt-2 mb-2">
         The three placements that shape your core self.
       </p>
 
@@ -128,7 +128,7 @@ export default function Interpretations({ name, bigThree, onLoaded }: Interpreta
             ) : error ? (
               <p className="text-terracotta/70 text-sm">{error}</p>
             ) : interpretations ? (
-              <p className="text-foreground/70 text-sm leading-relaxed">
+              <p className="text-secondary text-sm leading-relaxed">
                 {interpretations[key]}
               </p>
             ) : null}

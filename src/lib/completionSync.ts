@@ -19,7 +19,12 @@ import { type CompletionRecord, getAllCompletions } from "./feedback";
 const COMPLETIONS_TABLE = "ritual_completions";
 const TAROT_TABLE = "tarot_readings";
 const COMPLETIONS_KEY = "mapped:completions";
-const TAROT_KEY = "mapped:tarot-history";
+const TAROT_KEY_BASE = "mapped:tarot-history";
+
+/** Return the user-scoped tarot history localStorage key. */
+export function getTarotHistoryKey(userId?: string | null): string {
+  return userId ? `${TAROT_KEY_BASE}:${userId}` : TAROT_KEY_BASE;
+}
 
 /**
  * Push a single completion to Supabase (fire-and-forget).
@@ -170,9 +175,10 @@ export async function syncTarotReadings(): Promise<{ pushed: number; pulled: num
     if (!session?.user) return { pushed: 0, pulled: 0 };
 
     const userId = session.user.id;
+    const scopedKey = getTarotHistoryKey(userId);
     let localReadings: SavedReading[] = [];
     try {
-      localReadings = JSON.parse(localStorage.getItem(TAROT_KEY) || "[]");
+      localReadings = JSON.parse(localStorage.getItem(scopedKey) || "[]");
     } catch {}
     const localIds = new Set(localReadings.map((r) => r.id));
 
@@ -216,7 +222,7 @@ export async function syncTarotReadings(): Promise<{ pushed: number; pulled: num
       // Keep last 50
       const trimmed = merged.slice(0, 50);
       try {
-        localStorage.setItem(TAROT_KEY, JSON.stringify(trimmed));
+        localStorage.setItem(scopedKey, JSON.stringify(trimmed));
       } catch {}
     }
 

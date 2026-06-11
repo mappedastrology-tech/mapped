@@ -8,7 +8,7 @@
  * Supports email/password + Google + Apple social login.
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface AuthModalProps {
@@ -125,13 +125,36 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
     }
   }
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, []);
+
   const inputClass = `w-full px-4 py-3 rounded-xl bg-surface border border-foreground/18
-                      text-foreground placeholder:text-foreground/30
+                      text-foreground placeholder:text-muted
                       focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25
                       text-sm`;
 
   return (
-    <div className="rounded-2xl bg-surface border border-foreground/15 p-6">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Sign in" className="rounded-2xl bg-surface border border-foreground/15 p-6">
       {/* Header */}
       <h3
         className="text-xl text-foreground mb-1"
@@ -139,7 +162,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
       >
         {mode === "signup" ? "Save your chart" : "Welcome back"}
       </h3>
-      <p className="text-foreground/40 text-sm mb-5">
+      <p className="text-muted text-sm mb-5">
         {mode === "signup"
           ? "Create an account so your chart is always here."
           : "Sign in to see your saved charts."}
@@ -157,7 +180,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
         <button
           onClick={() => handleSocialLogin("google")}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-                     bg-card border border-foreground/15 text-foreground/80 text-xs font-medium
+                     bg-card border border-foreground/15 text-foreground text-xs font-medium
                      hover:bg-elevated active:scale-[0.98] transition-all duration-200"
         >
           <GoogleIcon />
@@ -168,7 +191,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
       {/* Divider */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-foreground/10" />
-        <span className="text-foreground/30 text-[11px]">or</span>
+        <span className="text-muted text-[11px]">or</span>
         <div className="flex-1 h-px bg-foreground/10" />
       </div>
 
@@ -180,6 +203,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
+            aria-label="Your name"
             className={inputClass}
           />
         )}
@@ -189,6 +213,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
+          aria-label="Email"
           required
           className={inputClass}
         />
@@ -198,6 +223,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password (6+ characters)"
+          aria-label="Password"
           required
           minLength={6}
           className={inputClass}
@@ -218,7 +244,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
               {mode === "signup" ? "Creating account..." : "Signing in..."}
             </span>
           ) : mode === "signup" ? (
@@ -230,7 +256,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
       </form>
 
       {/* Toggle between sign up and sign in */}
-      <p className="text-center text-foreground/40 text-xs mt-4">
+      <p className="text-center text-muted text-xs mt-4">
         {mode === "signup" ? (
           <>
             Already have an account?{" "}

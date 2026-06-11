@@ -18,11 +18,12 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    // Authenticate
+    // Authenticate. Fail closed: if CRON_SECRET isn't configured,
+    // reject everything rather than leaving the endpoint open.
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

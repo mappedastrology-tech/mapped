@@ -14,7 +14,7 @@ export default function NewChartWrapper() {
   return (
     <Suspense fallback={
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     }>
       <NewChart />
@@ -209,7 +209,7 @@ function NewChart() {
 
   // Shared input class
   const inputClass = `w-full px-4 py-3.5 rounded-xl bg-surface border border-foreground/18
-                      text-foreground placeholder:text-foreground/30
+                      text-foreground placeholder:text-muted
                       focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25
                       text-base`;
 
@@ -219,7 +219,7 @@ function NewChart() {
       <div className="flex items-center justify-between mb-8">
         <button
           onClick={() => router.back()}
-          className="text-foreground/40 text-sm hover:text-foreground/60 transition-colors"
+          className="text-muted text-sm hover:text-foreground transition-colors"
         >
           &larr; back
         </button>
@@ -238,14 +238,14 @@ function NewChart() {
       >
         {isEdit ? "Edit your chart" : "Your birth data"}
       </h1>
-      <p className="text-foreground/50 text-sm mb-8">
+      <p className="text-muted text-sm mb-8">
         {isEdit ? "Update your details and we'll recalculate." : "The more accurate your data, the more accurate your chart."}
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {/* Full name */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs uppercase tracking-widest text-foreground/50">
+          <label className="text-xs uppercase tracking-widest text-muted">
             Full name
           </label>
           <input
@@ -253,26 +253,28 @@ function NewChart() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Taylor"
+            aria-label="Full name"
             className={inputClass}
           />
         </div>
 
         {/* Birth date */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs uppercase tracking-widest text-foreground/50">
+          <label className="text-xs uppercase tracking-widest text-muted">
             Birth date
           </label>
           <input
             type="date"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
+            aria-label="Birth date"
             className={`${inputClass} [color-scheme:dark]`}
           />
         </div>
 
         {/* Birth time */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs uppercase tracking-widest text-foreground/50">
+          <label className="text-xs uppercase tracking-widest text-muted">
             Birth time
           </label>
           <input
@@ -280,6 +282,7 @@ function NewChart() {
             value={birthTime}
             onChange={(e) => setBirthTime(e.target.value)}
             disabled={unknownTime}
+            aria-label="Birth time"
             className={`${inputClass} [color-scheme:dark]
                        ${unknownTime ? "opacity-40 cursor-not-allowed" : ""}`}
           />
@@ -303,7 +306,7 @@ function NewChart() {
                 </svg>
               )}
             </span>
-            <span className="text-sm text-foreground/50 group-hover:text-foreground/70 transition-colors">
+            <span className="text-sm text-muted group-hover:text-foreground transition-colors">
               I don&apos;t know my exact birth time
             </span>
           </button>
@@ -318,7 +321,7 @@ function NewChart() {
 
         {/* Birth city */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs uppercase tracking-widest text-foreground/50">
+          <label className="text-xs uppercase tracking-widest text-muted">
             Birth city
           </label>
           <CitySearch
@@ -340,7 +343,7 @@ function NewChart() {
 
         {/* Zodiac system selector */}
         <div className="flex flex-col gap-3">
-          <label className="text-xs uppercase tracking-widest text-foreground/50">
+          <label className="text-xs uppercase tracking-widest text-muted">
             Zodiac system
           </label>
           <div className="flex gap-2">
@@ -350,7 +353,7 @@ function NewChart() {
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all border
                 ${zodiacSystem === "tropical"
                   ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                  : "bg-surface border-foreground/18 text-foreground/50 hover:border-foreground/20"
+                  : "bg-surface border-foreground/18 text-muted hover:border-foreground/20"
                 }`}
             >
               Western
@@ -362,7 +365,7 @@ function NewChart() {
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all border
                 ${zodiacSystem === "sidereal"
                   ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                  : "bg-surface border-foreground/18 text-foreground/50 hover:border-foreground/20"
+                  : "bg-surface border-foreground/18 text-muted hover:border-foreground/20"
                 }`}
             >
               Vedic
@@ -373,7 +376,7 @@ function NewChart() {
           {/* Ayanamsa selector — only shown for sidereal */}
           {zodiacSystem === "sidereal" && (
             <div className="flex flex-col gap-2 animate-in fade-in duration-200">
-              <label className="text-xs text-foreground/40">Ayanamsa</label>
+              <label className="text-xs text-muted">Ayanamsa</label>
               <div className="flex gap-2">
                 {([
                   { value: "lahiri", label: "Lahiri" },
@@ -387,14 +390,14 @@ function NewChart() {
                     className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all border
                       ${ayanamsa === opt.value
                         ? "bg-amber/15 border-amber/40 text-amber"
-                        : "bg-surface border-foreground/18 text-foreground/40 hover:border-foreground/20"
+                        : "bg-surface border-foreground/18 text-muted hover:border-foreground/20"
                       }`}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-foreground/30">
+              <p className="text-[10px] text-muted">
                 Most Vedic astrologers use Lahiri. Choose based on your tradition.
               </p>
             </div>
@@ -424,7 +427,7 @@ function NewChart() {
                 </svg>
               )}
             </span>
-            <span className="text-sm text-foreground/70 group-hover:text-foreground/90 transition-colors">
+            <span className="text-sm text-secondary group-hover:text-foreground transition-colors">
               Save my chart so I don&apos;t have to enter this again
             </span>
           </button>
@@ -437,6 +440,7 @@ function NewChart() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
+                aria-label="Email"
                 className={inputClass}
               />
               <input
@@ -444,6 +448,7 @@ function NewChart() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password (6+ characters)"
+                aria-label="Password"
                 minLength={6}
                 className={inputClass}
               />
@@ -467,7 +472,7 @@ function NewChart() {
                     </svg>
                   )}
                 </span>
-                <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors">
+                <span className="text-xs text-muted group-hover:text-foreground transition-colors">
                   I already have an account
                 </span>
               </button>
@@ -487,12 +492,12 @@ function NewChart() {
           className={`w-full py-4 rounded-full font-semibold text-base tracking-wide transition-all duration-200
                      ${isValid && !isSubmitting
                        ? "bg-terracotta text-cream hover:bg-terracotta-light active:scale-[0.98]"
-                       : "bg-foreground/10 text-foreground/30 cursor-not-allowed"
+                       : "bg-foreground/10 text-muted cursor-not-allowed"
                      }`}
         >
           {isSubmitting ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
               {wantsSave ? "Calculating & saving..." : "Calculating..."}
             </span>
           ) : wantsSave ? (

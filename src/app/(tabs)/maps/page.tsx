@@ -29,6 +29,8 @@ import { getTransitIntensity } from "@/lib/transitIntensity";
 import ShareCard from "@/components/ShareCard";
 import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
+import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
+import { DEFAULT_COORDS } from "@/lib/celestialMechanics";
 
 /* ═══════════════════════════════════════════
    Error Boundary — catches rendering crashes
@@ -52,9 +54,8 @@ class DetailErrorBoundary extends React.Component<
     if (this.state.error) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
-          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart.</p>
-          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{this.state.error.message}</p>
-          <pre className="text-foreground/20 text-[8px] leading-tight mb-4 max-w-sm overflow-auto max-h-48 text-left whitespace-pre-wrap break-all bg-foreground/5 p-2 rounded">{this.state.stack}</pre>
+          <p className="text-secondary text-sm mb-2">Something went wrong loading this chart.</p>
+          <p className="text-muted text-xs mb-4 max-w-sm break-words">Try going back and reopening. If it keeps happening, report it in Account settings.</p>
           <button
             onClick={() => { this.setState({ error: null, stack: "" }); this.props.onReset(); }}
             className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
@@ -326,19 +327,19 @@ function estimateThemeScore(theme: { title: string; score?: number }): number {
 
 /* Returns a label, color, and description for a synastry theme score (0-100). */
 function getThemeIntensity(score: number): { label: string; color: string; desc: string } {
-  if (score >= 80) return { label: "Defining", color: "#C97B6B", desc: "A core theme in the relationship — tight aspects with strong planetary weight. This shapes how you experience each other." };
-  if (score >= 65) return { label: "Strong", color: "#D4956B", desc: "A major theme — prominent aspects that meaningfully influence the dynamic between you." };
-  if (score >= 50) return { label: "Present", color: "#C9B97B", desc: "A real part of the relationship, but not the loudest. You'll notice it in certain situations more than others." };
-  if (score >= 35) return { label: "Subtle", color: "#8B9B7A", desc: "A faint thread — the connection exists but with wider orbs or softer aspects. It's there, just not front and center." };
-  return { label: "Background", color: "#7A8B8B", desc: "A very loose connection — wide orbs or minor aspect types. More of an undertone than something you'd consciously feel." };
+  if (score >= 80) return { label: "Defining", color: "#c9a961", desc: "A core theme in the relationship — tight aspects with strong planetary weight. This shapes how you experience each other." };
+  if (score >= 65) return { label: "Strong", color: "#d4b878", desc: "A major theme — prominent aspects that meaningfully influence the dynamic between you." };
+  if (score >= 50) return { label: "Present", color: "#a88a40", desc: "A real part of the relationship, but not the loudest. You'll notice it in certain situations more than others." };
+  if (score >= 35) return { label: "Subtle", color: "#5a7a3a", desc: "A faint thread — the connection exists but with wider orbs or softer aspects. It's there, just not front and center." };
+  return { label: "Background", color: "#8a7d6b", desc: "A very loose connection — wide orbs or minor aspect types. More of an undertone than something you'd consciously feel." };
 }
 
 const TIER_EXPLANATIONS = [
-  { label: "Defining", range: "80-100", color: "#C97B6B", desc: "Core theme — tight aspects, strong planets" },
-  { label: "Strong", range: "65-79", color: "#D4956B", desc: "Major influence on the dynamic" },
-  { label: "Present", range: "50-64", color: "#C9B97B", desc: "Noticeable in certain situations" },
-  { label: "Subtle", range: "35-49", color: "#8B9B7A", desc: "Faint thread — wider orbs, softer aspects" },
-  { label: "Background", range: "10-34", color: "#7A8B8B", desc: "Undertone — very loose connection" },
+  { label: "Defining", range: "80-100", color: "#c9a961", desc: "Core theme — tight aspects, strong planets" },
+  { label: "Strong", range: "65-79", color: "#d4b878", desc: "Major influence on the dynamic" },
+  { label: "Present", range: "50-64", color: "#a88a40", desc: "Noticeable in certain situations" },
+  { label: "Subtle", range: "35-49", color: "#5a7a3a", desc: "Faint thread — wider orbs, softer aspects" },
+  { label: "Background", range: "10-34", color: "#8a7d6b", desc: "Undertone — very loose connection" },
 ];
 
 /* Transit intensity scoring imported from @/lib/transitIntensity */
@@ -1200,14 +1201,22 @@ const RELATIONSHIP_OPTIONS: { value: string; label: string; category: string }[]
   { value: "friend", label: "Friend", category: "friend" },
 ];
 
-const CATEGORY_META: Record<string, { label: string; icon: string; color: string; bgColor: string; borderColor: string }> = {
-  family: { label: "Family", icon: "\u2302", color: "text-sage", bgColor: "bg-sage/15", borderColor: "border-sage/30" },
+const CATEGORY_META: Record<string, { label: string; icon: string; color: string; bgColor: string; borderColor: string; subtitle?: string }> = {
+  circle:  { label: "Your Home", icon: "\u2665", color: "text-terracotta", bgColor: "bg-terracotta/15", borderColor: "border-terracotta/30", subtitle: "Partner & children" },
+  origin:  { label: "Origin Family", icon: "\u2302", color: "text-sage", bgColor: "bg-sage/15", borderColor: "border-sage/30", subtitle: "Where you come from" },
+  friend:  { label: "Friends", icon: "\u2606", color: "text-amber", bgColor: "bg-amber/15", borderColor: "border-amber/30" },
+  city:    { label: "City", icon: "\u2609", color: "text-ink", bgColor: "bg-ink/15", borderColor: "border-ink/30" },
+  // Legacy keys kept for any straggling references
+  family:  { label: "Family", icon: "\u2302", color: "text-sage", bgColor: "bg-sage/15", borderColor: "border-sage/30" },
   partner: { label: "Partner", icon: "\u2665", color: "text-terracotta", bgColor: "bg-terracotta/15", borderColor: "border-terracotta/30" },
-  friend: { label: "Friends", icon: "\u2606", color: "text-amber", bgColor: "bg-amber/15", borderColor: "border-amber/30" },
-  city: { label: "City", icon: "\u2609", color: "text-ink", bgColor: "bg-ink/15", borderColor: "border-ink/30" },
 };
 
-const CATEGORY_ORDER = ["family", "partner", "friend", "city"];
+const CATEGORY_ORDER = ["circle", "origin", "friend", "city"];
+
+// Relationships that belong to "Your Circle" (the family you're building)
+const CIRCLE_RELATIONSHIPS = ["partner", "child", "godchild"];
+// Everything else in family category is "Origin Family" (where you come from)
+const ORIGIN_RELATIONSHIPS = ["mother", "father", "sister", "brother", "grandmother", "grandfather", "aunt", "uncle", "niece", "nephew"];
 
 const PLANET_SYMBOLS: Record<string, string> = {
   Sun: "\u2609", Moon: "\u263D", Mercury: "\u263F", Venus: "\u2640",
@@ -1318,18 +1327,22 @@ function getLocationSynopsis(lat: number, lng: number, lines: AstroLine[]): { pl
   return nearby.sort((a, b) => a.dist - b.dist);
 }
 
-/** Timeline localStorage key */
-const TIMELINE_LS_KEY = "mapped_timeline";
+/** Timeline localStorage key — scoped per user */
+const TIMELINE_LS_KEY_BASE = "mapped_timeline";
 
-function loadTimeline(): TimelineEntry[] {
+function getTimelineKey(uid?: string | null): string {
+  return uid ? `${TIMELINE_LS_KEY_BASE}:${uid}` : TIMELINE_LS_KEY_BASE;
+}
+
+function loadTimeline(uid?: string | null): TimelineEntry[] {
   try {
-    const raw = localStorage.getItem(TIMELINE_LS_KEY);
+    const raw = localStorage.getItem(getTimelineKey(uid));
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
-function saveTimeline(entries: TimelineEntry[]) {
-  try { localStorage.setItem(TIMELINE_LS_KEY, JSON.stringify(entries)); } catch { /* ignore */ }
+function saveTimeline(entries: TimelineEntry[], uid?: string | null) {
+  try { localStorage.setItem(getTimelineKey(uid), JSON.stringify(entries)); } catch { /* ignore */ }
 }
 
 /* ═══════════════════════════════════════════
@@ -2189,6 +2202,24 @@ export default function MapsTab() {
   const [astroParans, setAstroParans] = useState<Paran[]>([]);
   const [expandedParan, setExpandedParan] = useState<string | null>(null);
 
+  // Reset to main view when Maps tab is tapped in bottom nav
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "/maps") {
+        setSelectedId(null);
+        setExpandedCategory(null);
+        setShowAddForm(false);
+        setShowAstroMap(false);
+        setShowCityPicker(false);
+        setShowSelfView(false);
+        setFamilyAnalysis(null);
+      }
+    };
+    window.addEventListener("nav:tab-tap", handler);
+    return () => window.removeEventListener("nav:tab-tap", handler);
+  }, []);
+
   // Map zoom/pan state + hovered line tooltip
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
@@ -2255,13 +2286,7 @@ export default function MapsTab() {
   const [synastryLoading, setSynastryLoading] = useState(false);
 
   // Family analysis — persisted in localStorage
-  const [familyAnalysis, setFamilyAnalysis] = useState<FamilyAnalysis | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = localStorage.getItem("mapped:family-analysis");
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
+  const [familyAnalysis, setFamilyAnalysis] = useState<FamilyAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
   // Aspect accordion
@@ -2404,9 +2429,14 @@ export default function MapsTab() {
               }
             });
             setConnections(recalculated);
+          } else {
+            // Signed-in user has no connections yet — start empty, don't load someone else's localStorage
+            setConnections([]);
           }
-          else setConnections(loadLocalConnections());
-        } catch { setConnections(loadLocalConnections()); }
+        } catch {
+          // Supabase error for signed-in user — start empty
+          setConnections([]);
+        }
       } else {
         setConnections(loadLocalConnections());
       }
@@ -2416,20 +2446,22 @@ export default function MapsTab() {
     load();
   }, []);
 
-  // Load saved city + timeline on mount
+  // Load saved city + timeline on mount (scoped per user)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mapped:city");
-      if (saved) {
-        const data = JSON.parse(saved);
-        setCityName(data.name);
-        if (data.date) setCityDate(data.date);
-        setCityLat(data.lat);
-        setCityLng(data.lng);
-      }
-    } catch { /* ignore */ }
-    setTimelineEntries(loadTimeline());
-  }, []);
+    if (userId) {
+      try {
+        const saved = localStorage.getItem(`mapped:city:${userId}`);
+        if (saved) {
+          const data = JSON.parse(saved);
+          setCityName(data.name);
+          if (data.date) setCityDate(data.date);
+          setCityLat(data.lat);
+          setCityLng(data.lng);
+        }
+      } catch { /* ignore */ }
+    }
+    setTimelineEntries(loadTimeline(userId));
+  }, [userId]);
 
   // Load astrocartography when user opens the view
   useEffect(() => {
@@ -2496,10 +2528,22 @@ export default function MapsTab() {
   // ─── Grouped connections ───
   const grouped = useMemo(() => {
     const groups: Record<string, Connection[]> = {};
-    for (const cat of ["partner", "family", "friend"]) {
-      const items = connections.filter((c) => c.category === cat);
-      if (items.length > 0) groups[cat] = items;
-    }
+    // Split family into circle (partner + children) and origin (parents, siblings, etc.)
+    const circleItems = connections.filter((c) =>
+      c.category === "partner" || (c.category === "family" && CIRCLE_RELATIONSHIPS.includes(c.relationship))
+    );
+    const originItems = connections.filter((c) =>
+      c.category === "family" && ORIGIN_RELATIONSHIPS.includes(c.relationship)
+    );
+    const friendItems = connections.filter((c) => c.category === "friend");
+    if (circleItems.length > 0) groups["circle"] = circleItems;
+    if (originItems.length > 0) groups["origin"] = originItems;
+    if (friendItems.length > 0) groups["friend"] = friendItems;
+    // Keep legacy keys for code that still references them
+    const partnerItems = connections.filter((c) => c.category === "partner");
+    if (partnerItems.length > 0) groups["partner"] = partnerItems;
+    const familyItems = connections.filter((c) => c.category === "family");
+    if (familyItems.length > 0) groups["family"] = familyItems;
     return groups;
   }, [connections]);
 
@@ -2611,7 +2655,7 @@ export default function MapsTab() {
         : connections;
       const updated = [...base, newConn];
       setConnections(updated);
-      saveLocalConnections(updated);
+      if (!userId) saveLocalConnections(updated);
 
       setFormName(""); setFormRelationship(""); setFormBirthDate("");
       setFormBirthTime(""); setFormUnknownTime(false); setFormCity("");
@@ -2630,7 +2674,7 @@ export default function MapsTab() {
     }
     const updated = connections.filter(c => c.id !== connId);
     setConnections(updated);
-    saveLocalConnections(updated);
+    if (!userId) saveLocalConnections(updated);
     setSelectedId(null);
     setOpenAspect(null);
     setPersonTab("synastry");
@@ -2774,7 +2818,7 @@ export default function MapsTab() {
 
       const updated = connections.map(c => c.id === editingConnectionId ? updatedConn : c);
       setConnections(updated);
-      saveLocalConnections(updated);
+      if (!userId) saveLocalConnections(updated);
 
       setFormName(""); setFormRelationship(""); setFormBirthDate("");
       setFormBirthTime(""); setFormUnknownTime(false); setFormCity("");
@@ -2816,10 +2860,16 @@ export default function MapsTab() {
         }
         const updated = connections.map((c) => c.id === conn.id ? { ...c, synastry: synData } : c);
         setConnections(updated);
-        saveLocalConnections(updated);
+        if (!userId) saveLocalConnections(updated);
       }
     } catch { /* silently fail */ }
     finally { setSynastryLoading(false); }
+  }
+
+  // ─── Resolve the user's current location (cache-first) for coordinate fallbacks ───
+  async function resolveUserLoc() {
+    if (!userId) return null;
+    return getCachedLocation(userId) ?? (await fetchUserLocation(userId));
   }
 
   // ─── Fetch transits for a person ───
@@ -2828,6 +2878,7 @@ export default function MapsTab() {
     setTransitLoading(true);
     const useDate = date || transitDate;
     try {
+      const loc = await resolveUserLoc();
       const res = await fetch("/api/transits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2835,8 +2886,8 @@ export default function MapsTab() {
           natalPlanets: conn.planets,
           natalHouses: conn.houses || [],
           transitDate: useDate,
-          latitude: conn.latitude || 30.27,
-          longitude: conn.longitude || -97.74,
+          latitude: conn.latitude ?? loc?.lat,
+          longitude: conn.longitude ?? loc?.lng,
           zodiacSystem: userChart?.zodiacSystem || "tropical",
           ...(userChart?.zodiacSystem === "sidereal" ? { ayanamsa: userChart?.ayanamsa || "lahiri" } : {}),
         }),
@@ -2860,6 +2911,7 @@ export default function MapsTab() {
       const sunPlanet = conn.planets.find((p: any) => p.name === "Sun");
       if (!sunPlanet) { setSolarReturnLoading(false); return; }
 
+      const loc = await resolveUserLoc();
       const res = await fetch("/api/chart/solar-return", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2867,8 +2919,9 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: conn.birth_date,
           birthTime: conn.birth_time || "12:00",
-          latitude: conn.latitude || 30.27,
-          longitude: conn.longitude || -97.74,
+          // last resort — user has no location set
+          latitude: conn.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
+          longitude: conn.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
           year: targetYear,
           name: conn.name,
           cityName: conn.city_name || "",
@@ -2932,13 +2985,14 @@ export default function MapsTab() {
     setOverlapTransitLoading(true);
 
     const today = new Date().toISOString().split("T")[0];
+    const loc = await resolveUserLoc();
 
     // Build both requests
     // Get YOUR planet data: try userChart → sessionStorage → Supabase direct query
     let selfPlanets: unknown[] | null = userChart?.planets && userChart.planets.length > 0 ? userChart.planets : null;
     let selfHouses: unknown[] = userChart?.houses || [];
-    let selfLat = userChart?.latitude || 30.27;
-    let selfLng = userChart?.longitude || -97.74;
+    let selfLat: number | undefined = userChart?.latitude ?? loc?.lat;
+    let selfLng: number | undefined = userChart?.longitude ?? loc?.lng;
 
     if (!selfPlanets) {
       try {
@@ -3016,8 +3070,8 @@ export default function MapsTab() {
             natalPlanets: conn.planets,
             natalHouses: conn.houses || [],
             transitDate: today,
-            latitude: conn.latitude || 30.27,
-            longitude: conn.longitude || -97.74,
+            latitude: conn.latitude ?? loc?.lat,
+            longitude: conn.longitude ?? loc?.lng,
             zodiacSystem: userChart?.zodiacSystem || "tropical",
             ...(userChart?.zodiacSystem === "sidereal" ? { ayanamsa: userChart?.ayanamsa || "lahiri" } : {}),
           }),
@@ -3043,6 +3097,7 @@ export default function MapsTab() {
     setSelfTransitLoading(true);
     const useDate = date || selfTransitDate;
     try {
+      const loc = await resolveUserLoc();
       const res = await fetch("/api/transits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3050,8 +3105,8 @@ export default function MapsTab() {
           natalPlanets: userChart.planets,
           natalHouses: userChart.houses || [],
           transitDate: useDate,
-          latitude: userChart.latitude || 30.27,
-          longitude: userChart.longitude || -97.74,
+          latitude: userChart.latitude ?? loc?.lat,
+          longitude: userChart.longitude ?? loc?.lng,
           zodiacSystem: userChart.zodiacSystem || "tropical",
           ...(userChart.zodiacSystem === "sidereal" ? { ayanamsa: userChart.ayanamsa || "lahiri" } : {}),
         }),
@@ -3074,6 +3129,7 @@ export default function MapsTab() {
       const sunPlanet = userChart.planets.find((p: any) => p.name === "Sun");
       if (!sunPlanet) { setSelfSolarLoading(false); return; }
 
+      const loc = await resolveUserLoc();
       const res = await fetch("/api/chart/solar-return", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3081,8 +3137,9 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: userChart.birthDate,
           birthTime: userChart.birthTime || "12:00",
-          latitude: userChart.latitude || 30.27,
-          longitude: userChart.longitude || -97.74,
+          // last resort — user has no location set
+          latitude: userChart.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
+          longitude: userChart.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
           year: targetYear,
           name: "You",
           zodiacSystem: userChart.zodiacSystem || "tropical",
@@ -3109,13 +3166,13 @@ export default function MapsTab() {
       const analysis = generateFamilyAnalysis(userChart, connections);
       setFamilyAnalysis(analysis);
       setAnalysisLoading(false);
-      try { localStorage.setItem("mapped:family-analysis", JSON.stringify(analysis)); } catch {}
+      // Don't persist family analysis to localStorage — it's regenerated on demand
     }, 500);
   }
 
   // ─── Helpers ───
   const inputClass = `w-full px-4 py-3 rounded-xl bg-surface border border-foreground/18
-    text-foreground placeholder:text-foreground/30 text-sm
+    text-foreground placeholder:text-muted text-sm
     focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25`;
 
   function openAddForm(category: string) {
@@ -3149,7 +3206,11 @@ export default function MapsTab() {
   }
 
   const filteredRelationships = addCategory
-    ? RELATIONSHIP_OPTIONS.filter((r) => r.category === addCategory)
+    ? addCategory === "circle"
+      ? RELATIONSHIP_OPTIONS.filter((r) => CIRCLE_RELATIONSHIPS.includes(r.value))
+      : addCategory === "origin"
+        ? RELATIONSHIP_OPTIONS.filter((r) => ORIGIN_RELATIONSHIPS.includes(r.value))
+        : RELATIONSHIP_OPTIONS.filter((r) => r.category === addCategory)
     : RELATIONSHIP_OPTIONS;
 
   /* ═══════════════════════════════════════════
@@ -3159,7 +3220,7 @@ export default function MapsTab() {
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -3436,9 +3497,9 @@ export default function MapsTab() {
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
           onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); }}
-          className="flex items-center gap-2 text-foreground/40 text-sm mb-4 active:text-foreground/60"
+          className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           Back to map
@@ -3449,7 +3510,7 @@ export default function MapsTab() {
             You
           </h1>
           {userChart?.bigThree && (
-            <p className="text-foreground/40 text-sm">
+            <p className="text-muted text-sm">
               {SIGN_FULL[userChart.bigThree.sun] || userChart.bigThree.sun} Sun · {SIGN_FULL[userChart.bigThree.moon] || userChart.bigThree.moon} Moon
               {userChart.bigThree.rising && ` · ${SIGN_FULL[userChart.bigThree.rising] || userChart.bigThree.rising} Rising`}
             </p>
@@ -3463,7 +3524,7 @@ export default function MapsTab() {
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               selfTab === "transits"
                 ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                : "text-foreground/40 border border-transparent"
+                : "text-muted border border-transparent"
             }`}
           >
             My Transits
@@ -3476,7 +3537,7 @@ export default function MapsTab() {
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               selfTab === "solar"
                 ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                : "text-foreground/40 border border-transparent"
+                : "text-muted border border-transparent"
             }`}
           >
             Solar Return
@@ -3486,7 +3547,7 @@ export default function MapsTab() {
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               selfTab === "synastry"
                 ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                : "text-foreground/40 border border-transparent"
+                : "text-muted border border-transparent"
             }`}
           >
             Between Us
@@ -3507,30 +3568,30 @@ export default function MapsTab() {
 
             {selfTransitLoading && (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-foreground/40 text-sm">Calculating your transits...</p>
+                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-sm">Calculating your transits...</p>
               </div>
             )}
 
             {selfTransitData && !selfTransitLoading && (
               <>
                 <div className="text-center mb-4">
-                  <p className="text-foreground/30 text-xs">
+                  <p className="text-muted text-xs">
                     What the sky is activating in your chart
                   </p>
                 </div>
 
                 {/* Current planet positions */}
                 <div className="rounded-xl border border-foreground/15 bg-card/45 px-4 py-4 mb-6">
-                  <p className="text-foreground/40 text-[10px] uppercase tracking-widest mb-3">Where the planets are right now</p>
+                  <p className="text-muted text-[10px] uppercase tracking-widest mb-3">Where the planets are right now</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {selfTransitData.transitPlanets.filter(p => p.name !== "Moon").map(tp => (
                       <div key={tp.name} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-foreground/40 text-sm w-5 text-center" style={{ fontFamily: "var(--font-heading)" }}>
+                          <span className="text-muted text-sm w-5 text-center" style={{ fontFamily: "var(--font-heading)" }}>
                             {PLANET_SYMBOLS[tp.name] || ""}
                           </span>
-                          <span className="text-foreground/60 text-xs">{tp.name}</span>
+                          <span className="text-secondary text-xs">{tp.name}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className={`text-xs font-medium ${elementColor(tp.sign)}`}>
@@ -3553,7 +3614,7 @@ export default function MapsTab() {
                       className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
                         !transitFilterLoY
                           ? "bg-terracotta/15 text-terracotta border-terracotta/20"
-                          : "text-foreground/40 border-foreground/10"
+                          : "text-muted border-foreground/10"
                       }`}
                     >
                       All transits
@@ -3562,19 +3623,19 @@ export default function MapsTab() {
                       onClick={() => setTransitFilterLoY(true)}
                       className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
                         transitFilterLoY
-                          ? "bg-[#6b8a9e]/15 text-[#6b8a9e] border-[#6b8a9e]/20"
-                          : "text-foreground/40 border-foreground/10"
+                          ? "bg-lavender/15 text-lavender border-lavender/20"
+                          : "text-muted border-foreground/10"
                       }`}
                     >
                       Year ruler only
                     </button>
-                    <span className="text-foreground/25 text-[10px] ml-auto">
+                    <span className="text-muted text-[10px] ml-auto">
                       {mapsLoY.lordPlanet} year
                     </span>
                   </div>
                 )}
 
-                {/* Major + minor transits */}
+                {/* Major + minor transits — sorted purely by intensity */}
                 {(() => {
                   const majorPlanets = ["Pluto", "Neptune", "Uranus", "Saturn", "Jupiter"];
                   const loyPlanet = mapsLoY?.lordPlanet || "";
@@ -3585,20 +3646,16 @@ export default function MapsTab() {
                     aspects = aspects.filter(a => isLordOfYearTransit(a.transitPlanet, a.natalPlanet, loyPlanet));
                   }
 
-                  // Sort: LoY transits float to top within each tier
-                  const loySort = (a: TransitAspect, b: TransitAspect) => {
-                    const aIsLoY = loyPlanet ? (a.transitPlanet === loyPlanet || a.natalPlanet === loyPlanet ? 1 : 0) : 0;
-                    const bIsLoY = loyPlanet ? (b.transitPlanet === loyPlanet || b.natalPlanet === loyPlanet ? 1 : 0) : 0;
-                    if (bIsLoY !== aIsLoY) return bIsLoY - aIsLoY;
-                    return getTransitIntensity(b).score - getTransitIntensity(a).score;
-                  };
+                  // Sort purely by intensity — most impactful first
+                  const intensitySort = (a: TransitAspect, b: TransitAspect) =>
+                    getTransitIntensity(b).score - getTransitIntensity(a).score;
 
                   const major = aspects
                     .filter(a => majorPlanets.includes(a.transitPlanet))
-                    .sort(loySort);
+                    .sort(intensitySort);
                   const minor = aspects
                     .filter(a => !majorPlanets.includes(a.transitPlanet))
-                    .sort(loySort);
+                    .sort(intensitySort);
 
                   return (
                     <>
@@ -3607,7 +3664,7 @@ export default function MapsTab() {
                           <h2 className="text-foreground text-base font-medium mb-1" style={{ fontFamily: "var(--font-display)" }}>
                             Major transits
                           </h2>
-                          <p className="text-foreground/30 text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
+                          <p className="text-muted text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
                           <div className="flex flex-col gap-3">
                             {major.map((ta, i) => {
                               const uid = `self-maj-${i}`;
@@ -3629,7 +3686,7 @@ export default function MapsTab() {
                                       <p className="text-foreground text-sm font-medium">
                                         {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
                                       </p>
-                                      <div className="flex items-center gap-2 text-xs text-foreground/30">
+                                      <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
                                           {tpInfo?.keyword || "Active"}
                                         </span>
@@ -3643,14 +3700,14 @@ export default function MapsTab() {
                                         )}
                                       </div>
                                       {ta.startDate && ta.endDate && (
-                                        <p className="text-foreground/30 text-[10px] mt-0.5">
+                                        <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-foreground/20"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
-                                      <div className="flex items-center gap-1.5 text-[10px] text-foreground/20 mt-0.5">
+                                      <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
                                         <span>{intensity.score}/100</span>
                                         <span>&middot;</span>
                                         <span>{ta.orb}&deg; orb</span>
@@ -3664,7 +3721,7 @@ export default function MapsTab() {
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                                       {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
-                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1.5 py-0.5 rounded">
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
                                       )}
@@ -3681,8 +3738,8 @@ export default function MapsTab() {
                                         />
                                       </div>
                                     </div>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                      className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                      className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                   </button>
@@ -3695,37 +3752,37 @@ export default function MapsTab() {
                                               <span className="text-ink text-xs font-medium">
                                                 {ordinal(ta.transitHouse)} House
                                               </span>
-                                              <span className="text-foreground/20 text-[10px]">
+                                              <span className="text-muted text-[10px]">
                                                 {HOUSE_THEMES[ta.transitHouse]?.area}
                                               </span>
                                             </>
                                           )}
                                         </div>
-                                        <span className="text-foreground/15 text-[10px]">{ta.orb}&deg; orb</span>
+                                        <span className="text-muted text-[10px]">{ta.orb}&deg; orb</span>
                                       </div>
                                       {ta.startDate && ta.endDate && (
                                         <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-foreground/30 text-[10px] uppercase tracking-widest">Active</span>
-                                          <span className="text-foreground/50 text-xs">{fmtDateRange(ta.startDate, ta.endDate)}</span>
+                                          <span className="text-muted text-[10px] uppercase tracking-widest">Active</span>
+                                          <span className="text-muted text-xs">{fmtDateRange(ta.startDate, ta.endDate)}</span>
                                           {ta.exactDate && (
                                             <>
-                                              <span className="text-foreground/15 text-[10px]">&middot;</span>
-                                              <span className="text-foreground/40 text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-[10px]">&middot;</span>
+                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
                                       )}
-                                      <p className="text-foreground/60 text-xs leading-relaxed mb-3">
+                                      <p className="text-secondary text-xs leading-relaxed mb-3">
                                         {getTransitDescription(ta)}
                                       </p>
                                       {manifests.length > 0 && (
                                         <div>
-                                          <p className="text-foreground/30 text-[10px] uppercase tracking-widest mb-1.5">Ways this might show up</p>
+                                          <p className="text-muted text-[10px] uppercase tracking-widest mb-1.5">Ways this might show up</p>
                                           <div className="flex flex-col gap-1.5">
                                             {manifests.map((m, mi) => (
                                               <div key={mi} className="flex items-start gap-2">
-                                                <span className="text-foreground/20 text-xs mt-0.5">&bull;</span>
-                                                <span className="text-foreground/50 text-xs leading-relaxed">{m}</span>
+                                                <span className="text-muted text-xs mt-0.5">&bull;</span>
+                                                <span className="text-muted text-xs leading-relaxed">{m}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -3745,7 +3802,7 @@ export default function MapsTab() {
                           <h2 className="text-foreground text-base font-medium mb-1" style={{ fontFamily: "var(--font-display)" }}>
                             Current activations
                           </h2>
-                          <p className="text-foreground/30 text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
+                          <p className="text-muted text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
                           <div className="flex flex-col gap-2">
                             {minor.slice(0, 15).map((ta, i) => {
                               const uid = `self-min-${i}`;
@@ -3767,11 +3824,11 @@ export default function MapsTab() {
                                       <p className="text-foreground text-sm font-medium">
                                         {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
                                       </p>
-                                      <div className="flex items-center gap-2 text-xs text-foreground/30">
+                                      <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
                                         {ta.transitRetrograde && <span className="text-terracotta/50">Rx</span>}
                                       </div>
-                                      <div className="flex items-center gap-1.5 text-[10px] text-foreground/20 mt-0.5">
+                                      <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
                                         <span>{intensity.score}/100</span>
                                         <span>&middot;</span>
                                         <span>{ta.orb}&deg; orb</span>
@@ -3785,7 +3842,7 @@ export default function MapsTab() {
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                                       {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
-                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1 py-0.5 rounded">
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1 py-0.5 rounded">
                                           LoY
                                         </span>
                                       )}
@@ -3802,24 +3859,24 @@ export default function MapsTab() {
                                         />
                                       </div>
                                     </div>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                      className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                      className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                   </button>
                                   {isOpen && (
                                     <div className="px-4 pb-3 border-t border-foreground/15">
-                                      <p className="text-foreground/60 text-xs leading-relaxed pt-2">
+                                      <p className="text-secondary text-xs leading-relaxed pt-2">
                                         {getTransitDescription(ta)}
                                       </p>
                                       {manifests.length > 0 && (
                                         <div className="mt-2">
-                                          <p className="text-foreground/30 text-[10px] uppercase tracking-widest mb-1">Ways this might show up</p>
+                                          <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Ways this might show up</p>
                                           <div className="flex flex-col gap-1">
                                             {manifests.map((m, mi) => (
                                               <div key={mi} className="flex items-start gap-2">
-                                                <span className="text-foreground/20 text-xs mt-0.5">&bull;</span>
-                                                <span className="text-foreground/50 text-xs leading-relaxed">{m}</span>
+                                                <span className="text-muted text-xs mt-0.5">&bull;</span>
+                                                <span className="text-muted text-xs leading-relaxed">{m}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -3836,8 +3893,8 @@ export default function MapsTab() {
 
                       {major.length === 0 && minor.length === 0 && (
                         <div className="text-center py-8">
-                          <p className="text-foreground/40 text-sm">No significant transits to your chart right now.</p>
-                          <p className="text-foreground/25 text-xs mt-1">This is a relatively quiet period astrologically.</p>
+                          <p className="text-muted text-sm">No significant transits to your chart right now.</p>
+                          <p className="text-muted text-xs mt-1">This is a relatively quiet period astrologically.</p>
                         </div>
                       )}
                     </>
@@ -3845,7 +3902,7 @@ export default function MapsTab() {
                 })()}
 
                 <div className="rounded-xl border border-foreground/15 bg-card/40 px-4 py-3">
-                  <p className="text-foreground/25 text-xs leading-relaxed">
+                  <p className="text-muted text-xs leading-relaxed">
                     Transits show where the planets are activating your birth chart. Major transits (Jupiter through Pluto) shape long-term themes, while inner planet transits (Sun through Mars) set the daily tone.
                   </p>
                 </div>
@@ -3854,10 +3911,10 @@ export default function MapsTab() {
 
             {!selfTransitData && !selfTransitLoading && (
               <div className="text-center py-12">
-                <p className="text-foreground/40 text-sm mb-3">Couldn&rsquo;t load transit data.</p>
+                <p className="text-muted text-sm mb-3">Couldn&rsquo;t load transit data.</p>
                 <button
                   onClick={() => fetchSelfTransits()}
-                  className="px-4 py-2 rounded-xl border border-foreground/18 text-foreground/40 text-xs hover:text-foreground/60 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-foreground/18 text-muted text-xs hover:text-foreground transition-colors"
                 >
                   Try again
                 </button>
@@ -3871,8 +3928,8 @@ export default function MapsTab() {
           <>
             {selfSolarLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" />
-                <p className="text-foreground/30 text-xs">Calculating your solar return...</p>
+                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-xs">Calculating your solar return...</p>
               </div>
             ) : selfSolarReturn ? (
               (() => {
@@ -3883,26 +3940,26 @@ export default function MapsTab() {
                     <div className="flex items-center justify-center gap-3 mb-5">
                       <button
                         onClick={() => { const y = selfSolarYear - 1; setSelfSolarYear(y); fetchSelfSolarReturn(y); }}
-                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-foreground/40 hover:text-foreground/60 transition-colors active:scale-95"
+                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
                       </button>
                       <div className="text-center">
                         <span className="text-foreground text-lg font-medium" style={{ fontFamily: "var(--font-display)" }}>{selfSolarYear}</span>
-                        <p className="text-foreground/25 text-[10px] uppercase tracking-widest">solar return</p>
+                        <p className="text-muted text-[10px] uppercase tracking-widest">solar return</p>
                       </div>
                       <button
                         onClick={() => { const y = selfSolarYear + 1; setSelfSolarYear(y); fetchSelfSolarReturn(y); }}
-                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-foreground/40 hover:text-foreground/60 transition-colors active:scale-95"
+                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                       </button>
                     </div>
 
                     {/* Return date */}
                     <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="12" cy="12" r="5" />
                           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                         </svg>
@@ -3927,7 +3984,7 @@ export default function MapsTab() {
                       ].map((item) => (
                         <div key={item.label} className="flex-1 text-center py-2.5 rounded-xl border border-foreground/15 bg-card/40">
                           <p className="text-foreground text-sm font-medium">{item.sign}</p>
-                          <p className="text-foreground/25 text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
+                          <p className="text-muted text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
                         </div>
                       ))}
                     </div>
@@ -3958,14 +4015,14 @@ export default function MapsTab() {
                     </div>
 
                     {/* ── Year Ahead Themes ── */}
-                    <h3 className="text-foreground/60 text-[10px] uppercase tracking-widest mb-3">Your Year Ahead</h3>
+                    <h3 className="text-secondary text-[10px] uppercase tracking-widest mb-3">Your Year Ahead</h3>
                     <div className="space-y-3 mb-6">
                       {yearSummary.themes.map((theme, i) => (
                         <div key={i} className="rounded-xl border border-foreground/15 bg-surface/25 px-4 py-3.5">
                           <p className="text-foreground text-sm font-medium mb-1.5" style={{ fontFamily: "var(--font-display)" }}>
                             {theme.heading}
                           </p>
-                          <p className="text-foreground/45 text-xs leading-relaxed">
+                          <p className="text-muted text-xs leading-relaxed">
                             {theme.body}
                           </p>
                         </div>
@@ -3974,9 +4031,9 @@ export default function MapsTab() {
 
                     {/* Collapsible: Placements */}
                     <details className="group mb-4">
-                      <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                         <span>All placements</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
                       </summary>
                       <div className="space-y-1.5 mt-2">
                         {(selfSolarReturn.planets || []).map((planet: any) => (
@@ -3986,9 +4043,9 @@ export default function MapsTab() {
                               {planet.retrograde && <span className="text-red-400/50 text-[9px] font-medium">Rx</span>}
                             </div>
                             <div className="text-right">
-                              <span className="text-foreground/60 text-sm">{planet.sign}</span>
-                              <span className="text-foreground/25 text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
-                              {planet.house && <span className="text-foreground/20 text-[10px] ml-1.5">H{planet.house}</span>}
+                              <span className="text-secondary text-sm">{planet.sign}</span>
+                              <span className="text-muted text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
+                              {planet.house && <span className="text-muted text-[10px] ml-1.5">H{planet.house}</span>}
                             </div>
                           </div>
                         ))}
@@ -3997,15 +4054,15 @@ export default function MapsTab() {
 
                     {/* Collapsible: Houses */}
                     <details className="group mb-4">
-                      <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                         <span>House cusps</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
                       </summary>
                       <div className="grid grid-cols-3 gap-1.5 mt-2">
                         {(selfSolarReturn.houses || []).map((house: any) => (
                           <div key={house.number} className="text-center py-2 rounded-lg border border-foreground/15 bg-card/30">
-                            <p className="text-foreground/20 text-[9px] uppercase tracking-widest">House {house.number}</p>
-                            <p className="text-foreground/50 text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
+                            <p className="text-muted text-[9px] uppercase tracking-widest">House {house.number}</p>
+                            <p className="text-muted text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
                           </div>
                         ))}
                       </div>
@@ -4014,9 +4071,9 @@ export default function MapsTab() {
                     {/* Collapsible: Aspects */}
                     {selfSolarReturn.aspects && selfSolarReturn.aspects.length > 0 && (
                       <details className="group mb-4">
-                        <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                        <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                           <span>Aspects</span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
+                          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180"><polyline points="6 9 12 15 18 9" /></svg>
                         </summary>
                         <div className="space-y-1 mt-2">
                           {(selfSolarReturn.aspects as any[]).slice(0, 15).map((asp: any, i: number) => {
@@ -4024,8 +4081,8 @@ export default function MapsTab() {
                             const sym = aspectSymbols[asp.aspect?.toLowerCase()] || asp.aspect;
                             return (
                               <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg border border-foreground/15 bg-card/30">
-                                <span className="text-foreground/50 text-xs">{asp.p1Name} {sym} {asp.p2Name}</span>
-                                <span className="text-foreground/20 text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
+                                <span className="text-muted text-xs">{asp.p1Name} {sym} {asp.p2Name}</span>
+                                <span className="text-muted text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
                               </div>
                             );
                           })}
@@ -4043,7 +4100,7 @@ export default function MapsTab() {
                 >
                   Calculate My Solar Return
                 </button>
-                <p className="text-foreground/25 text-xs mt-3 text-center max-w-[260px]">
+                <p className="text-muted text-xs mt-3 text-center max-w-[260px]">
                   See your year-ahead themes based on when the Sun returns to your natal degree
                 </p>
               </div>
@@ -4055,7 +4112,7 @@ export default function MapsTab() {
         {selfTab === "synastry" && (
           <>
             <div className="text-center mb-4">
-              <p className="text-foreground/40 text-sm">
+              <p className="text-muted text-sm">
                 What the sky is doing to your relationship right now
               </p>
             </div>
@@ -4064,6 +4121,7 @@ export default function MapsTab() {
             <div className="mb-6">
               <select
                 value={overlapPersonId || ""}
+                aria-label="Select a person for comparison"
                 onChange={(e) => {
                   const id = e.target.value;
                   if (!id) { setOverlapPersonId(null); setOverlapTransitData(null); return; }
@@ -4086,8 +4144,8 @@ export default function MapsTab() {
             {/* Loading */}
             {(selfTransitLoading || overlapTransitLoading) && overlapPersonId && (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-foreground/40 text-sm">Reading the sky between you...</p>
+                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-sm">Reading the sky between you...</p>
               </div>
             )}
 
@@ -4097,8 +4155,8 @@ export default function MapsTab() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-card/45 flex items-center justify-center">
                   <span className="text-2xl" style={{ fontFamily: "var(--font-heading)" }}>{"\u263D"}</span>
                 </div>
-                <p className="text-foreground/40 text-sm mb-1">Choose someone from your map</p>
-                <p className="text-foreground/30 text-xs">
+                <p className="text-muted text-sm mb-1">Choose someone from your map</p>
+                <p className="text-muted text-xs">
                   See how today&rsquo;s transits are shaping what&rsquo;s happening between you
                 </p>
               </div>
@@ -4107,16 +4165,16 @@ export default function MapsTab() {
             {/* Failed to load */}
             {overlapPersonId && !selfTransitLoading && !overlapTransitLoading && (!selfTransitData || !overlapTransitData) && (
               <div className="text-center py-12">
-                <p className="text-foreground/40 text-sm mb-2">Couldn&rsquo;t load transit data.</p>
+                <p className="text-muted text-sm mb-2">Couldn&rsquo;t load transit data.</p>
                 {overlapError && (
-                  <p className="text-foreground/20 text-xs mb-3 font-mono">{overlapError}</p>
+                  <p className="text-muted text-xs mb-3 font-mono">{overlapError}</p>
                 )}
                 <button
                   onClick={() => {
                     const conn = connections.find(c => c.id === overlapPersonId);
                     if (conn) fetchBothTransits(conn);
                   }}
-                  className="px-4 py-2 rounded-xl border border-foreground/18 text-foreground/40 text-xs hover:text-foreground/60 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-foreground/18 text-muted text-xs hover:text-foreground transition-colors"
                 >
                   Try again
                 </button>
@@ -4131,18 +4189,18 @@ export default function MapsTab() {
                     <div className="w-12 h-12 rounded-full bg-terracotta/12 border border-terracotta/30 flex items-center justify-center mb-1">
                       <span className="text-terracotta text-lg" style={{ fontFamily: "var(--font-heading)" }}>{"\u2609"}</span>
                     </div>
-                    <span className="text-foreground/40 text-[10px]">You</span>
+                    <span className="text-muted text-[10px]">You</span>
                   </div>
                   <div className="flex-1 max-w-[100px] h-px bg-gradient-to-r from-terracotta/30 via-foreground/10 to-terracotta/30 relative">
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-background px-1.5">
-                      <span className="text-foreground/20 text-[9px] uppercase tracking-wider">now</span>
+                      <span className="text-muted text-[9px] uppercase tracking-wider">now</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-center">
                     <div className="w-12 h-12 rounded-full bg-sage/12 border border-sage/30 flex items-center justify-center mb-1">
                       <span className="text-sage text-sm font-medium">{personName[0]}</span>
                     </div>
-                    <span className="text-foreground/40 text-[10px]">{personName}</span>
+                    <span className="text-muted text-[10px]">{personName}</span>
                   </div>
                 </div>
 
@@ -4158,10 +4216,10 @@ export default function MapsTab() {
                             {card.headline}
                           </h3>
                         </div>
-                        <p className="text-foreground/60 text-sm leading-relaxed mb-4">{card.body}</p>
+                        <p className="text-secondary text-sm leading-relaxed mb-4">{card.body}</p>
                         <div className="rounded-lg bg-foreground/[0.03] border border-foreground/15 px-4 py-3">
-                          <p className="text-foreground/30 text-[10px] uppercase tracking-widest mb-1.5">What to do</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{card.advice}</p>
+                          <p className="text-muted text-[10px] uppercase tracking-widest mb-1.5">What to do</p>
+                          <p className="text-secondary text-sm leading-relaxed">{card.advice}</p>
                         </div>
                       </div>
                     );
@@ -4213,9 +4271,9 @@ export default function MapsTab() {
       // Show error fallback instead of crashing the page
       return (
         <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
-          <p className="text-foreground/60 text-sm mb-2">Something went wrong loading this chart (setup).</p>
-          <p className="text-foreground/30 text-xs mb-4 max-w-sm break-words">{errMsg}</p>
-          <pre className="text-foreground/20 text-[8px] leading-tight mb-4 max-w-sm overflow-auto max-h-48 text-left whitespace-pre-wrap break-all bg-foreground/5 p-2 rounded">{errStack}</pre>
+          <p className="text-secondary text-sm mb-2">Something went wrong loading this chart (setup).</p>
+          <p className="text-muted text-xs mb-4 max-w-sm break-words">{errMsg}</p>
+          <pre className="text-muted text-[8px] leading-tight mb-4 max-w-sm overflow-auto max-h-48 text-left whitespace-pre-wrap break-all bg-foreground/5 p-2 rounded">{errStack}</pre>
           <button
             onClick={() => { setSelectedId(null); setPersonTab("synastry"); }}
             className="px-5 py-2 rounded-full bg-terracotta text-cream text-sm font-medium"
@@ -4234,23 +4292,23 @@ export default function MapsTab() {
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
           onClick={() => { setSelectedId(null); setOpenAspect(null); setPersonTab("synastry"); setOpenPlacement(null); setShowDetailedAspects(false); }}
-          className="flex items-center gap-2 text-foreground/40 text-sm mb-4 active:text-foreground/60"
+          className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           Back to map
         </button>
 
         <div className="text-center mb-4">
-          <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">
+          <p className="text-muted text-xs uppercase tracking-widest mb-2">
             {selected.relationship}
           </p>
           <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
             {selected.name}
           </h1>
           {bt && (
-            <p className="text-foreground/40 text-sm">
+            <p className="text-muted text-sm">
               {SIGN_FULL[bt.sun]} Sun · {SIGN_FULL[bt.moon]} Moon
               {bt.rising && ` · ${SIGN_FULL[bt.rising]} Rising`}
             </p>
@@ -4258,7 +4316,7 @@ export default function MapsTab() {
           <div className="flex items-center justify-center gap-4 mt-2">
             <button
               onClick={() => openEditForm(selected)}
-              className="text-foreground/30 text-xs underline underline-offset-2 hover:text-foreground/50 transition-colors"
+              className="text-muted text-xs underline underline-offset-2 hover:text-foreground transition-colors"
             >
               edit info
             </button>
@@ -4269,7 +4327,7 @@ export default function MapsTab() {
                   setShowDetailedAspects(false);
                   openAddForm("partner");
                 }}
-                className="text-foreground/30 text-xs underline underline-offset-2 hover:text-foreground/50 transition-colors"
+                className="text-muted text-xs underline underline-offset-2 hover:text-foreground transition-colors"
               >
                 change partner
               </button>
@@ -4280,7 +4338,7 @@ export default function MapsTab() {
                   handleRemoveConnection(selected.id);
                 }
               }}
-              className="text-foreground/20 text-xs underline underline-offset-2 hover:text-red-400/60 transition-colors"
+              className="text-muted text-xs underline underline-offset-2 hover:text-red-400/60 transition-colors"
             >
               remove
             </button>
@@ -4294,7 +4352,7 @@ export default function MapsTab() {
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 personTab === "synastry"
                   ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                  : "text-foreground/40 border border-transparent"
+                  : "text-muted border border-transparent"
               }`}
             >
               {isPartner ? "Compat" : "Synastry"}
@@ -4304,7 +4362,7 @@ export default function MapsTab() {
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 personTab === "chart"
                   ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                  : "text-foreground/40 border border-transparent"
+                  : "text-muted border border-transparent"
               }`}
             >
               Chart
@@ -4321,7 +4379,7 @@ export default function MapsTab() {
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 personTab === "composite"
                   ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                  : "text-foreground/40 border border-transparent"
+                  : "text-muted border border-transparent"
               }`}
             >
               Comp.
@@ -4338,7 +4396,7 @@ export default function MapsTab() {
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 personTab === "transits"
                   ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                  : "text-foreground/40 border border-transparent"
+                  : "text-muted border border-transparent"
               }`}
             >
               Transits
@@ -4355,7 +4413,7 @@ export default function MapsTab() {
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 personTab === "solar"
                   ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
-                  : "text-foreground/40 border border-transparent"
+                  : "text-muted border border-transparent"
               }`}
             >
               Solar
@@ -4385,7 +4443,7 @@ export default function MapsTab() {
                     <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                       <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="4" className="text-foreground/5" />
                       <circle cx="50" cy="50" r="42" fill="none"
-                        stroke={compat.score >= 70 ? "#7a8c6e" : compat.score >= 50 ? "#c49a4c" : "#c45d3e"}
+                        stroke={compat.score >= 70 ? "#5a7a3a" : compat.score >= 50 ? "#c9a961" : "#5a1f1a"}
                         strokeWidth="4" strokeLinecap="round"
                         strokeDasharray={`${(compat.score / 100) * 264} 264`}
                       />
@@ -4394,15 +4452,15 @@ export default function MapsTab() {
                       <span className="text-3xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                         {compat.score}
                       </span>
-                      <span className="text-foreground/30 text-[10px] uppercase tracking-wider">/ 100</span>
+                      <span className="text-muted text-[10px] uppercase tracking-wider">/ 100</span>
                     </div>
                   </div>
                   <span className="text-sm font-medium" style={{
-                    color: compat.score >= 70 ? "#7a8c6e" : compat.score >= 50 ? "#c49a4c" : "#c45d3e"
+                    color: compat.score >= 70 ? "#5a7a3a" : compat.score >= 50 ? "#c9a961" : "#5a1f1a"
                   }}>
                     {compat.label}
                   </span>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-foreground/30">
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted">
                     <span className="text-sage">{syn.harmony} harmonious</span>
                     <span>&middot;</span>
                     <span className="text-terracotta">{syn.tension} challenging</span>
@@ -4446,7 +4504,7 @@ export default function MapsTab() {
 
                 {/* Relationship Summary */}
                 <div className="rounded-2xl border border-foreground/15 bg-surface/60 px-5 py-5 mb-4">
-                  <p className="text-foreground/70 text-sm leading-relaxed">
+                  <p className="text-secondary text-sm leading-relaxed">
                     {compat.summary}
                   </p>
                 </div>
@@ -4472,8 +4530,8 @@ export default function MapsTab() {
                               className="w-full flex items-start gap-3 px-4 py-3 text-left"
                             >
                               <span className="text-sage text-sm mt-0.5 flex-shrink-0">&#10003;</span>
-                              <span className="text-foreground/70 text-sm leading-relaxed flex-1">{s}</span>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              <span className="text-secondary text-sm leading-relaxed flex-1">{s}</span>
+                              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                                 className={`text-sage/40 transition-transform duration-200 flex-shrink-0 mt-1 ${isOpen ? "rotate-180" : ""}`}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                               </svg>
@@ -4484,15 +4542,15 @@ export default function MapsTab() {
                                   {relatedAspects.map((ra, ri) => (
                                     <div key={ri} className="text-xs">
                                       <div className="flex items-center gap-1.5 mb-0.5">
-                                        <span className={ASPECT_COLORS[ra.aspect] || "text-foreground/40"}>
+                                        <span className={ASPECT_COLORS[ra.aspect] || "text-muted"}>
                                           {ASPECT_SYMBOLS[ra.aspect] || ""}
                                         </span>
-                                        <span className="text-foreground/50">
+                                        <span className="text-muted">
                                           Your {ra.p1Name} {ra.aspect} their {ra.p2Name}
                                         </span>
-                                        <span className="text-foreground/15 ml-auto">{ra.orb}&deg;</span>
+                                        <span className="text-muted ml-auto">{ra.orb}&deg;</span>
                                       </div>
-                                      <p className="text-foreground/40 leading-relaxed">{getAspectDescription(ra)}</p>
+                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra)}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -4526,8 +4584,8 @@ export default function MapsTab() {
                               className="w-full flex items-start gap-3 px-4 py-3 text-left"
                             >
                               <span className="text-terracotta text-sm mt-0.5 flex-shrink-0">&#9651;</span>
-                              <span className="text-foreground/70 text-sm leading-relaxed flex-1">{c}</span>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              <span className="text-secondary text-sm leading-relaxed flex-1">{c}</span>
+                              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                                 className={`text-terracotta/40 transition-transform duration-200 flex-shrink-0 mt-1 ${isOpen ? "rotate-180" : ""}`}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                               </svg>
@@ -4538,15 +4596,15 @@ export default function MapsTab() {
                                   {relatedAspects.map((ra, ri) => (
                                     <div key={ri} className="text-xs">
                                       <div className="flex items-center gap-1.5 mb-0.5">
-                                        <span className={ASPECT_COLORS[ra.aspect] || "text-foreground/40"}>
+                                        <span className={ASPECT_COLORS[ra.aspect] || "text-muted"}>
                                           {ASPECT_SYMBOLS[ra.aspect] || ""}
                                         </span>
-                                        <span className="text-foreground/50">
+                                        <span className="text-muted">
                                           Your {ra.p1Name} {ra.aspect} their {ra.p2Name}
                                         </span>
-                                        <span className="text-foreground/15 ml-auto">{ra.orb}&deg;</span>
+                                        <span className="text-muted ml-auto">{ra.orb}&deg;</span>
                                       </div>
-                                      <p className="text-foreground/40 leading-relaxed">{getAspectDescription(ra)}</p>
+                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra)}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -4572,7 +4630,7 @@ export default function MapsTab() {
                       {syn.themes.map((theme, i) => {
                         const themeScore = estimateThemeScore(theme);
                         const intensity = getThemeIntensity(themeScore);
-                        const ringColor = themeScore >= 70 ? "#7a8c6e" : themeScore >= 50 ? "#c49a4c" : "#c45d3e";
+                        const ringColor = themeScore >= 70 ? "#5a7a3a" : themeScore >= 50 ? "#c9a961" : "#5a1f1a";
                         return (
                           <div key={i} className="rounded-xl border border-foreground/15 bg-surface/60 px-4 py-4">
                             <div className="flex items-start gap-4">
@@ -4598,7 +4656,7 @@ export default function MapsTab() {
                                   </p>
                                   <InfoTip term={intensity.label} explanation={intensity.desc} />
                                 </div>
-                                <p className="text-foreground/60 text-sm leading-relaxed">{theme.summary}</p>
+                                <p className="text-secondary text-sm leading-relaxed">{theme.summary}</p>
                               </div>
                             </div>
                           </div>
@@ -4629,22 +4687,22 @@ export default function MapsTab() {
                             <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-foreground text-sm font-medium">
-                                {a.p1Name} <span className="text-foreground/25">{a.aspect}</span> {a.p2Name}
+                                {a.p1Name} <span className="text-muted">{a.aspect}</span> {a.p2Name}
                               </p>
-                              <p className="text-foreground/30 text-xs">
+                              <p className="text-muted text-xs">
                                 {nature?.nature === "harmonious" ? "Harmonious" : nature?.nature === "challenging" ? "Challenging" : "Powerful"}
                                 {a.fated && " · Fated"}
-                                <span className="ml-1 text-foreground/15">{a.orb}&deg; orb</span>
+                                <span className="ml-1 text-muted">{a.orb}&deg; orb</span>
                               </p>
                             </div>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                              className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                           {isOpen && (
                             <div className="px-4 pb-3 border-t border-foreground/15">
-                              <p className="text-foreground/60 text-xs leading-relaxed pt-2">
+                              <p className="text-secondary text-xs leading-relaxed pt-2">
                                 {getAspectDescription(a)}
                               </p>
                             </div>
@@ -4692,7 +4750,7 @@ export default function MapsTab() {
                         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="4" className="text-foreground/5" />
                           <circle cx="50" cy="50" r="42" fill="none"
-                            stroke={compat.score >= 70 ? "#7a8c6e" : compat.score >= 50 ? "#c49a4c" : "#c45d3e"}
+                            stroke={compat.score >= 70 ? "#5a7a3a" : compat.score >= 50 ? "#c9a961" : "#5a1f1a"}
                             strokeWidth="4" strokeLinecap="round"
                             strokeDasharray={`${(compat.score / 100) * 264} 264`}
                           />
@@ -4701,15 +4759,15 @@ export default function MapsTab() {
                           <span className="text-3xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                             {compat.score}
                           </span>
-                          <span className="text-foreground/30 text-[10px] uppercase tracking-wider">/ 100</span>
+                          <span className="text-muted text-[10px] uppercase tracking-wider">/ 100</span>
                         </div>
                       </div>
                       <span className="text-sm font-medium" style={{
-                        color: compat.score >= 70 ? "#7a8c6e" : compat.score >= 50 ? "#c49a4c" : "#c45d3e"
+                        color: compat.score >= 70 ? "#5a7a3a" : compat.score >= 50 ? "#c9a961" : "#5a1f1a"
                       }}>
                         {compat.label}
                       </span>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-foreground/30">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted">
                         <span className="text-sage">{syn.harmony} harmonious</span>
                         <span>&middot;</span>
                         <span className="text-terracotta">{syn.tension} challenging</span>
@@ -4724,7 +4782,7 @@ export default function MapsTab() {
 
                     {/* Summary */}
                     <div className="rounded-xl border border-foreground/15 bg-surface/60 px-5 py-5 mb-4">
-                      <p className="text-foreground/60 text-sm leading-relaxed">{sanitizePlatonicText(compat.summary)}</p>
+                      <p className="text-secondary text-sm leading-relaxed">{sanitizePlatonicText(compat.summary)}</p>
                     </div>
                   </>
                 )}
@@ -4741,7 +4799,7 @@ export default function MapsTab() {
                       {filteredThemes.map((theme, i) => {
                         const themeScore = estimateThemeScore(theme);
                         const intensity = getThemeIntensity(themeScore);
-                        const ringColor = themeScore >= 70 ? "#7a8c6e" : themeScore >= 50 ? "#c49a4c" : "#c45d3e";
+                        const ringColor = themeScore >= 70 ? "#5a7a3a" : themeScore >= 50 ? "#c9a961" : "#5a1f1a";
                         return (
                           <div key={i} className="rounded-xl border border-foreground/15 bg-surface/60 px-4 py-4">
                             <div className="flex items-start gap-4">
@@ -4767,7 +4825,7 @@ export default function MapsTab() {
                                   </p>
                                   <InfoTip term={intensity.label} explanation={intensity.desc} />
                                 </div>
-                                <p className="text-foreground/70 text-sm leading-relaxed">{sanitizePlatonicText(theme.summary)}</p>
+                                <p className="text-secondary text-sm leading-relaxed">{sanitizePlatonicText(theme.summary)}</p>
                               </div>
                             </div>
                           </div>
@@ -4789,16 +4847,16 @@ export default function MapsTab() {
                       {syn.fatedContacts.map((fc, i) => (
                         <div key={i} className="rounded-xl border border-amber/10 bg-amber/5 px-4 py-3">
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`text-xs ${ASPECT_COLORS[fc.aspect] || "text-foreground/50"}`}>
+                            <span className={`text-xs ${ASPECT_COLORS[fc.aspect] || "text-muted"}`}>
                               {ASPECT_SYMBOLS[fc.aspect] || ""}
                             </span>
-                            <span className="text-foreground/70 text-xs">
+                            <span className="text-secondary text-xs">
                               Your {fc.p1Name} {fc.aspect} their {fc.p2Name}
                             </span>
-                            <span className="text-foreground/20 text-[10px] ml-auto">{fc.orb}&deg;</span>
+                            <span className="text-muted text-[10px] ml-auto">{fc.orb}&deg;</span>
                           </div>
                           {fc.fatedReason && (
-                            <p className="text-foreground/60 text-sm leading-relaxed">{sanitizePlatonicText(fc.fatedReason)}</p>
+                            <p className="text-secondary text-sm leading-relaxed">{sanitizePlatonicText(fc.fatedReason)}</p>
                           )}
                         </div>
                       ))}
@@ -4835,22 +4893,22 @@ export default function MapsTab() {
                             <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-foreground text-sm font-medium">
-                                {a.p1Name} <span className="text-foreground/25">{a.aspect}</span> {a.p2Name}
+                                {a.p1Name} <span className="text-muted">{a.aspect}</span> {a.p2Name}
                               </p>
-                              <p className="text-foreground/30 text-xs">
+                              <p className="text-muted text-xs">
                                 {nature?.nature === "harmonious" ? "Harmonious" : nature?.nature === "challenging" ? "Challenging" : "Powerful"}
                                 {a.fated && " · Fated"}
-                                <span className="ml-1 text-foreground/15">{a.orb}&deg; orb</span>
+                                <span className="ml-1 text-muted">{a.orb}&deg; orb</span>
                               </p>
                             </div>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                              className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                           {isOpen && (
                             <div className="px-4 pb-3 border-t border-foreground/15">
-                              <p className="text-foreground/60 text-xs leading-relaxed pt-2">
+                              <p className="text-secondary text-xs leading-relaxed pt-2">
                                 {sanitizePlatonicText(getAspectDescription(a))}
                               </p>
                             </div>
@@ -4887,8 +4945,8 @@ export default function MapsTab() {
                         key={label}
                         className={`px-4 py-2 rounded-full border text-sm font-medium ${elementBg(sign)}`}
                       >
-                        <span className="text-foreground/50">{label}</span>
-                        <span className="text-foreground/20 mx-1.5">&middot;</span>
+                        <span className="text-muted">{label}</span>
+                        <span className="text-muted mx-1.5">&middot;</span>
                         <span className={elementColor(sign)}>{SIGN_NAMES[sign] || SIGN_FULL[sign] || sign}</span>
                       </div>
                     ))}
@@ -4918,10 +4976,10 @@ export default function MapsTab() {
                 </div>
 
                 <div className="rounded-xl border border-foreground/15 bg-card/40 px-4 py-3 mb-6">
-                  <div className="flex items-center gap-4 text-xs text-foreground/40">
+                  <div className="flex items-center gap-4 text-xs text-muted">
                     {selected.birth_date && <span>{selected.birth_date}</span>}
                     {selected.birth_time && !selected.unknown_time && <span>{selected.birth_time}</span>}
-                    {selected.unknown_time && <span className="text-foreground/25">Time unknown</span>}
+                    {selected.unknown_time && <span className="text-muted">Time unknown</span>}
                     {selected.city_name && <span>{selected.city_name}</span>}
                   </div>
                 </div>
@@ -4962,11 +5020,11 @@ export default function MapsTab() {
                       <div className="rounded-xl border bg-card/50 border-foreground/15 flex items-center justify-between py-3 px-4">
                         <div className="flex items-center gap-3">
                           <span className={`text-lg ${risingColor}`} style={{ fontFamily: "var(--font-heading)" }}>AC</span>
-                          <span className="text-foreground/80 text-sm font-medium">Rising</span>
+                          <span className="text-foreground text-sm font-medium">Rising</span>
                         </div>
                         <span className={`text-sm font-medium ${risingColor}`}>
                           {risingSign}
-                          <span className="text-foreground/30 text-xs ml-2">
+                          <span className="text-muted text-xs ml-2">
                             {ascPt ? `${ascPt.position.toFixed(0)}°` : ""} · 1st House
                           </span>
                         </span>
@@ -5019,21 +5077,21 @@ export default function MapsTab() {
                               <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-foreground text-sm font-medium">
-                                  {a.p1Name} <span className="text-foreground/25">{a.aspect}</span> {a.p2Name}
+                                  {a.p1Name} <span className="text-muted">{a.aspect}</span> {a.p2Name}
                                 </p>
-                                <p className="text-foreground/30 text-xs">
+                                <p className="text-muted text-xs">
                                   {nature?.nature === "harmonious" ? "Harmonious" : nature?.nature === "challenging" ? "Challenging" : "Powerful"}
-                                  <span className="ml-1 text-foreground/15">{a.orbit}&deg; orb</span>
+                                  <span className="ml-1 text-muted">{a.orbit}&deg; orb</span>
                                 </p>
                               </div>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                               </svg>
                             </button>
                             {isOpen && (
                               <div className="px-4 pb-3 border-t border-foreground/15">
-                                <p className="text-foreground/60 text-xs leading-relaxed pt-2">
+                                <p className="text-secondary text-xs leading-relaxed pt-2">
                                   {selected.name}&rsquo;s {PLANET_THEMES[a.p1Name] || a.p1Name} {nature?.keyword || "connects with"} their own {PLANET_THEMES[a.p2Name] || a.p2Name}. This is a core part of who they are.
                                 </p>
                               </div>
@@ -5063,15 +5121,15 @@ export default function MapsTab() {
             {/* Loading */}
             {transitLoading && (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-foreground/40 text-sm">Calculating transits...</p>
+                <div className="w-8 h-8 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mx-auto mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-sm">Calculating transits...</p>
               </div>
             )}
 
             {/* No planets data */}
             {!selected.planets && (
               <div className="text-center py-12">
-                <p className="text-foreground/40 text-sm">Birth chart data needed to calculate transits.</p>
+                <p className="text-muted text-sm">Birth chart data needed to calculate transits.</p>
               </div>
             )}
 
@@ -5079,22 +5137,22 @@ export default function MapsTab() {
             {transitData && transitPersonId === selected.id && !transitLoading && (
               <>
                 <div className="text-center mb-4">
-                  <p className="text-foreground/30 text-xs">
+                  <p className="text-muted text-xs">
                     What the sky is activating in {firstName}&rsquo;s chart
                   </p>
                 </div>
 
                 {/* Current planet positions */}
                 <div className="rounded-xl border border-foreground/15 bg-card/45 px-4 py-4 mb-6">
-                  <p className="text-foreground/40 text-[10px] uppercase tracking-widest mb-3">Where the planets are right now</p>
+                  <p className="text-muted text-[10px] uppercase tracking-widest mb-3">Where the planets are right now</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {transitData.transitPlanets.filter(p => p.name !== "Moon").map(tp => (
                       <div key={tp.name} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-foreground/40 text-sm w-5 text-center" style={{ fontFamily: "var(--font-heading)" }}>
+                          <span className="text-muted text-sm w-5 text-center" style={{ fontFamily: "var(--font-heading)" }}>
                             {PLANET_SYMBOLS[tp.name] || ""}
                           </span>
-                          <span className="text-foreground/60 text-xs">{tp.name}</span>
+                          <span className="text-secondary text-xs">{tp.name}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className={`text-xs font-medium ${elementColor(tp.sign)}`}>
@@ -5126,7 +5184,7 @@ export default function MapsTab() {
                           <h2 className="text-foreground text-base font-medium mb-1" style={{ fontFamily: "var(--font-display)" }}>
                             Major transits
                           </h2>
-                          <p className="text-foreground/30 text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
+                          <p className="text-muted text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
                           <div className="flex flex-col gap-3">
                             {major.map((ta, i) => {
                               const uid = `tr-maj-${i}`;
@@ -5148,7 +5206,7 @@ export default function MapsTab() {
                                       <p className="text-foreground text-sm font-medium">
                                         {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {ta.natalPlanet}
                                       </p>
-                                      <div className="flex items-center gap-2 text-xs text-foreground/30">
+                                      <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
                                           {tpInfo?.keyword || "Active"}
                                         </span>
@@ -5162,14 +5220,14 @@ export default function MapsTab() {
                                         )}
                                       </div>
                                       {ta.startDate && ta.endDate && (
-                                        <p className="text-foreground/30 text-[10px] mt-0.5">
+                                        <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-foreground/20"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
-                                      <div className="flex items-center gap-1.5 text-[10px] text-foreground/20 mt-0.5">
+                                      <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
                                         <span>{intensity.score}/100</span>
                                         <span>&middot;</span>
                                         <span>{ta.orb}&deg; orb</span>
@@ -5184,7 +5242,7 @@ export default function MapsTab() {
                                     {/* Intensity badge */}
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                                       {mapsLoY?.lordPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, mapsLoY.lordPlanet) && (
-                                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#6b8a9e] bg-[#6b8a9e]/10 px-1.5 py-0.5 rounded">
+                                        <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
                                       )}
@@ -5201,8 +5259,8 @@ export default function MapsTab() {
                                         />
                                       </div>
                                     </div>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                      className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                      className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                   </button>
@@ -5216,40 +5274,40 @@ export default function MapsTab() {
                                               <span className="text-ink text-xs font-medium">
                                                 {ordinal(ta.transitHouse)} House
                                               </span>
-                                              <span className="text-foreground/20 text-[10px]">
+                                              <span className="text-muted text-[10px]">
                                                 {HOUSE_THEMES[ta.transitHouse]?.area}
                                               </span>
                                             </>
                                           )}
                                         </div>
-                                        <span className="text-foreground/15 text-[10px]">{ta.orb}&deg; orb</span>
+                                        <span className="text-muted text-[10px]">{ta.orb}&deg; orb</span>
                                       </div>
                                       {/* Date window */}
                                       {ta.startDate && ta.endDate && (
                                         <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-foreground/30 text-[10px] uppercase tracking-widest">Active</span>
-                                          <span className="text-foreground/50 text-xs">{fmtDateRange(ta.startDate, ta.endDate)}</span>
+                                          <span className="text-muted text-[10px] uppercase tracking-widest">Active</span>
+                                          <span className="text-muted text-xs">{fmtDateRange(ta.startDate, ta.endDate)}</span>
                                           {ta.exactDate && (
                                             <>
-                                              <span className="text-foreground/15 text-[10px]">&middot;</span>
-                                              <span className="text-foreground/40 text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-[10px]">&middot;</span>
+                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
                                       )}
                                       {/* Description */}
-                                      <p className="text-foreground/60 text-xs leading-relaxed mb-3">
+                                      <p className="text-secondary text-xs leading-relaxed mb-3">
                                         {getTransitDescription(ta)}
                                       </p>
                                       {/* Manifestations */}
                                       {manifests.length > 0 && (
                                         <div>
-                                          <p className="text-foreground/30 text-[10px] uppercase tracking-widest mb-1.5">Ways this might show up</p>
+                                          <p className="text-muted text-[10px] uppercase tracking-widest mb-1.5">Ways this might show up</p>
                                           <div className="flex flex-col gap-1.5">
                                             {manifests.map((m, mi) => (
                                               <div key={mi} className="flex items-start gap-2">
-                                                <span className="text-foreground/20 text-xs mt-0.5">&bull;</span>
-                                                <span className="text-foreground/50 text-xs leading-relaxed">{m}</span>
+                                                <span className="text-muted text-xs mt-0.5">&bull;</span>
+                                                <span className="text-muted text-xs leading-relaxed">{m}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -5269,7 +5327,7 @@ export default function MapsTab() {
                           <h2 className="text-foreground text-base font-medium mb-1" style={{ fontFamily: "var(--font-display)" }}>
                             Current activations
                           </h2>
-                          <p className="text-foreground/30 text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
+                          <p className="text-muted text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
                           <div className="flex flex-col gap-2">
                             {minor.slice(0, 15).map((ta, i) => {
                               const uid = `tr-min-${i}`;
@@ -5291,19 +5349,19 @@ export default function MapsTab() {
                                       <p className="text-foreground text-sm font-medium">
                                         {ta.transitPlanet} {ta.aspect} {ta.natalPlanet}
                                       </p>
-                                      <div className="flex items-center gap-2 text-xs text-foreground/30">
+                                      <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
                                         {ta.transitRetrograde && <span className="text-terracotta/50">Rx</span>}
                                       </div>
                                       {ta.startDate && ta.endDate && (
-                                        <p className="text-foreground/30 text-[10px] mt-0.5">
+                                        <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-foreground/20"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
-                                      <div className="flex items-center gap-1.5 text-[10px] text-foreground/20 mt-0.5">
+                                      <div className="flex items-center gap-1.5 text-[10px] text-muted mt-0.5">
                                         <span>{intensity.score}/100</span>
                                         <span>&middot;</span>
                                         <span>{ta.orb}&deg; orb</span>
@@ -5330,8 +5388,8 @@ export default function MapsTab() {
                                         />
                                       </div>
                                     </div>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                      className={`text-foreground/25 transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                      className={`text-muted transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                   </button>
@@ -5344,33 +5402,33 @@ export default function MapsTab() {
                                               <span className="text-ink text-xs font-medium">
                                                 {ordinal(ta.transitHouse)} House
                                               </span>
-                                              <span className="text-foreground/20 text-[10px]">
+                                              <span className="text-muted text-[10px]">
                                                 {HOUSE_THEMES[ta.transitHouse]?.area}
                                               </span>
                                             </>
                                           )}
                                         </div>
-                                        <span className="text-foreground/15 text-[10px]">{ta.orb}&deg; orb</span>
+                                        <span className="text-muted text-[10px]">{ta.orb}&deg; orb</span>
                                       </div>
                                       {ta.startDate && ta.endDate && (
                                         <div className="flex items-center gap-2 mt-1 mb-1">
-                                          <span className="text-foreground/50 text-[10px]">
+                                          <span className="text-muted text-[10px]">
                                             {fmtDateRange(ta.startDate, ta.endDate)}
-                                            {ta.exactDate && <span className="text-foreground/30"> · exact {fmtTransitDate(ta.exactDate)}</span>}
+                                            {ta.exactDate && <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>}
                                           </span>
                                         </div>
                                       )}
-                                      <p className="text-foreground/60 text-xs leading-relaxed pt-1">
+                                      <p className="text-secondary text-xs leading-relaxed pt-1">
                                         {getTransitDescription(ta)}
                                       </p>
                                       {manifests.length > 0 && (
                                         <div className="mt-2">
-                                          <p className="text-foreground/30 text-[10px] uppercase tracking-widest mb-1">Ways this might show up</p>
+                                          <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Ways this might show up</p>
                                           <div className="flex flex-col gap-1">
                                             {manifests.map((m, mi) => (
                                               <div key={mi} className="flex items-start gap-2">
-                                                <span className="text-foreground/20 text-xs mt-0.5">&bull;</span>
-                                                <span className="text-foreground/50 text-xs leading-relaxed">{m}</span>
+                                                <span className="text-muted text-xs mt-0.5">&bull;</span>
+                                                <span className="text-muted text-xs leading-relaxed">{m}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -5387,8 +5445,8 @@ export default function MapsTab() {
 
                       {major.length === 0 && minor.length === 0 && (
                         <div className="text-center py-8">
-                          <p className="text-foreground/40 text-sm">No significant transits to their chart right now.</p>
-                          <p className="text-foreground/25 text-xs mt-1">This is a relatively quiet period astrologically.</p>
+                          <p className="text-muted text-sm">No significant transits to their chart right now.</p>
+                          <p className="text-muted text-xs mt-1">This is a relatively quiet period astrologically.</p>
                         </div>
                       )}
                     </>
@@ -5396,7 +5454,7 @@ export default function MapsTab() {
                 })()}
 
                 <div className="rounded-xl border border-foreground/15 bg-card/40 px-4 py-3">
-                  <p className="text-foreground/25 text-xs leading-relaxed">
+                  <p className="text-muted text-xs leading-relaxed">
                     Transits show where today&rsquo;s planets are activating {firstName}&rsquo;s birth chart. Major transits (Jupiter through Pluto) shape long-term themes, while inner planet transits (Sun through Mars) set the daily tone. The house tells you which life area is being activated.
                   </p>
                 </div>
@@ -5410,13 +5468,13 @@ export default function MapsTab() {
           <>
             {compositeLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" />
-                <p className="text-foreground/30 text-xs">Calculating your composite chart...</p>
+                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-xs">Calculating your composite chart...</p>
               </div>
             ) : !selected.planets || !userChart?.planets ? (
               <div className="text-center py-12">
-                <p className="text-foreground/40 text-sm">Both charts need full birth data</p>
-                <p className="text-foreground/25 text-xs mt-1">Add complete birth details to see the composite chart.</p>
+                <p className="text-muted text-sm">Both charts need full birth data</p>
+                <p className="text-muted text-xs mt-1">Add complete birth details to see the composite chart.</p>
               </div>
             ) : compositeData && compositePersonId === selected.id ? (
               (() => {
@@ -5426,13 +5484,13 @@ export default function MapsTab() {
                     {/* Header */}
                     <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="9" cy="9" r="7" />
                           <circle cx="15" cy="15" r="7" />
                         </svg>
                         <span className="text-gold/80 text-xs font-medium">{relSummary.title}</span>
                       </div>
-                      <p className="text-foreground/30 text-xs leading-relaxed">
+                      <p className="text-muted text-xs leading-relaxed">
                         The composite chart is the midpoint of both your charts — it represents the relationship itself as its own entity.
                       </p>
                     </div>
@@ -5446,8 +5504,8 @@ export default function MapsTab() {
                       ].map((item) => (
                         <div key={item.label} className="flex-1 text-center py-2.5 rounded-xl border border-foreground/15 bg-card/40">
                           <p className="text-foreground text-sm font-medium">{item.sign || "—"}</p>
-                          <p className="text-foreground/25 text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
-                          <p className="text-foreground/15 text-[9px]">{item.sub}</p>
+                          <p className="text-muted text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
+                          <p className="text-muted text-[9px]">{item.sub}</p>
                         </div>
                       ))}
                     </div>
@@ -5488,14 +5546,14 @@ export default function MapsTab() {
                           >
                             {theme.heading}
                           </h3>
-                          <p className="text-foreground/45 text-xs leading-relaxed">{theme.body}</p>
+                          <p className="text-muted text-xs leading-relaxed">{theme.body}</p>
                         </div>
                       ))}
                     </div>
 
                     {/* ── Raw Data (collapsed) ── */}
                     <details className="mb-4">
-                      <summary className="text-foreground/50 text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground/70 transition-colors py-2">
+                      <summary className="text-muted text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground transition-colors py-2">
                         Composite Placements
                       </summary>
                       <div className="space-y-1.5 mt-3">
@@ -5506,10 +5564,10 @@ export default function MapsTab() {
                           >
                             <span className="text-foreground text-sm">{planet.name}</span>
                             <div className="text-right">
-                              <span className="text-foreground/60 text-sm">{planet.sign}</span>
-                              <span className="text-foreground/25 text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
+                              <span className="text-secondary text-sm">{planet.sign}</span>
+                              <span className="text-muted text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
                               {planet.house && (
-                                <span className="text-foreground/20 text-[10px] ml-1.5">H{planet.house}</span>
+                                <span className="text-muted text-[10px] ml-1.5">H{planet.house}</span>
                               )}
                             </div>
                           </div>
@@ -5518,9 +5576,9 @@ export default function MapsTab() {
                           <div key={sp.name} className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-foreground/15 bg-card/35">
                             <span className="text-foreground text-sm">{sp.name}</span>
                             <div className="text-right">
-                              <span className="text-foreground/60 text-sm">{sp.sign}</span>
-                              <span className="text-foreground/25 text-[10px] ml-1.5">{sp.position?.toFixed(1)}&deg;</span>
-                              {sp.house && <span className="text-foreground/20 text-[10px] ml-1.5">H{sp.house}</span>}
+                              <span className="text-secondary text-sm">{sp.sign}</span>
+                              <span className="text-muted text-[10px] ml-1.5">{sp.position?.toFixed(1)}&deg;</span>
+                              {sp.house && <span className="text-muted text-[10px] ml-1.5">H{sp.house}</span>}
                             </div>
                           </div>
                         ))}
@@ -5528,14 +5586,14 @@ export default function MapsTab() {
                     </details>
 
                     <details className="mb-4">
-                      <summary className="text-foreground/50 text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground/70 transition-colors py-2">
+                      <summary className="text-muted text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground transition-colors py-2">
                         House Cusps
                       </summary>
                       <div className="grid grid-cols-3 gap-1.5 mt-3">
                         {(compositeData.houses || []).map((house: any) => (
                           <div key={house.number} className="text-center py-2 rounded-lg border border-foreground/15 bg-card/30">
-                            <p className="text-foreground/20 text-[9px] uppercase tracking-widest">House {house.number}</p>
-                            <p className="text-foreground/50 text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
+                            <p className="text-muted text-[9px] uppercase tracking-widest">House {house.number}</p>
+                            <p className="text-muted text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
                           </div>
                         ))}
                       </div>
@@ -5543,7 +5601,7 @@ export default function MapsTab() {
 
                     {compositeData.aspects && compositeData.aspects.length > 0 && (
                       <details className="mb-4">
-                        <summary className="text-foreground/50 text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground/70 transition-colors py-2">
+                        <summary className="text-muted text-[10px] uppercase tracking-widest cursor-pointer hover:text-foreground transition-colors py-2">
                           Composite Aspects
                         </summary>
                         <div className="space-y-1 mt-3">
@@ -5559,10 +5617,10 @@ export default function MapsTab() {
                               <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border bg-card/30 ${
                                 isHard ? "border-red-400/10" : isSoft ? "border-green-400/10" : "border-foreground/15"
                               }`}>
-                                <span className="text-foreground/50 text-xs">
+                                <span className="text-muted text-xs">
                                   {asp.p1Name} {sym} {asp.p2Name}
                                 </span>
-                                <span className="text-foreground/20 text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
+                                <span className="text-muted text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
                               </div>
                             );
                           })}
@@ -5581,7 +5639,7 @@ export default function MapsTab() {
                 >
                   Calculate Composite Chart
                 </button>
-                <p className="text-foreground/25 text-xs mt-3 text-center max-w-[260px]">
+                <p className="text-muted text-xs mt-3 text-center max-w-[260px]">
                   See the chart that represents your relationship with {firstName} as its own entity
                 </p>
               </div>
@@ -5594,13 +5652,13 @@ export default function MapsTab() {
           <>
             {solarReturnLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" />
-                <p className="text-foreground/30 text-xs">Calculating solar return...</p>
+                <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin mb-3" role="status" aria-label="Loading" />
+                <p className="text-muted text-xs">Calculating solar return...</p>
               </div>
             ) : !selected.planets ? (
               <div className="text-center py-12">
-                <p className="text-foreground/40 text-sm">No birth data available</p>
-                <p className="text-foreground/25 text-xs mt-1">Add full birth details to see their solar return chart.</p>
+                <p className="text-muted text-sm">No birth data available</p>
+                <p className="text-muted text-xs mt-1">Add full birth details to see their solar return chart.</p>
               </div>
             ) : solarReturnData && solarReturnPersonId === selected.id ? (
               (() => {
@@ -5611,26 +5669,26 @@ export default function MapsTab() {
                     <div className="flex items-center justify-center gap-3 mb-5">
                       <button
                         onClick={() => { const y = solarReturnYear - 1; setSolarReturnYear(y); fetchSolarReturn(selected, y); }}
-                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-foreground/40 hover:text-foreground/60 transition-colors active:scale-95"
+                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
                       </button>
                       <div className="text-center">
                         <span className="text-foreground text-lg font-medium" style={{ fontFamily: "var(--font-display)" }}>{solarReturnYear}</span>
-                        <p className="text-foreground/25 text-[10px] uppercase tracking-widest">solar return</p>
+                        <p className="text-muted text-[10px] uppercase tracking-widest">solar return</p>
                       </div>
                       <button
                         onClick={() => { const y = solarReturnYear + 1; setSolarReturnYear(y); fetchSolarReturn(selected, y); }}
-                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-foreground/40 hover:text-foreground/60 transition-colors active:scale-95"
+                        className="w-8 h-8 rounded-lg border border-foreground/18 flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                       </button>
                     </div>
 
                     {/* Return date */}
                     <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="12" cy="12" r="5" />
                           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                         </svg>
@@ -5655,7 +5713,7 @@ export default function MapsTab() {
                       ].map((item) => (
                         <div key={item.label} className="flex-1 text-center py-2.5 rounded-xl border border-foreground/15 bg-card/40">
                           <p className="text-foreground text-sm font-medium">{item.sign}</p>
-                          <p className="text-foreground/25 text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
+                          <p className="text-muted text-[10px] uppercase tracking-widest mt-0.5">{item.label}</p>
                         </div>
                       ))}
                     </div>
@@ -5686,14 +5744,14 @@ export default function MapsTab() {
                     </div>
 
                     {/* ── Year Ahead Themes (the main content) ── */}
-                    <h3 className="text-foreground/60 text-[10px] uppercase tracking-widest mb-3">{firstName}&rsquo;s Year Ahead</h3>
+                    <h3 className="text-secondary text-[10px] uppercase tracking-widest mb-3">{firstName}&rsquo;s Year Ahead</h3>
                     <div className="space-y-3 mb-6">
                       {yearSummary.themes.map((theme, i) => (
                         <div key={i} className="rounded-xl border border-foreground/15 bg-surface/25 px-4 py-3.5">
                           <p className="text-foreground text-sm font-medium mb-1.5" style={{ fontFamily: "var(--font-display)" }}>
                             {theme.heading}
                           </p>
-                          <p className="text-foreground/45 text-xs leading-relaxed">
+                          <p className="text-muted text-xs leading-relaxed">
                             {theme.body}
                           </p>
                         </div>
@@ -5702,9 +5760,9 @@ export default function MapsTab() {
 
                     {/* ── Collapsible: Placements detail ── */}
                     <details className="group mb-4">
-                      <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                         <span>All placements</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
                       </summary>
@@ -5716,9 +5774,9 @@ export default function MapsTab() {
                               {planet.retrograde && <span className="text-red-400/50 text-[9px] font-medium">Rx</span>}
                             </div>
                             <div className="text-right">
-                              <span className="text-foreground/60 text-sm">{planet.sign}</span>
-                              <span className="text-foreground/25 text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
-                              {planet.house && <span className="text-foreground/20 text-[10px] ml-1.5">H{planet.house}</span>}
+                              <span className="text-secondary text-sm">{planet.sign}</span>
+                              <span className="text-muted text-[10px] ml-1.5">{planet.position?.toFixed(1)}&deg;</span>
+                              {planet.house && <span className="text-muted text-[10px] ml-1.5">H{planet.house}</span>}
                             </div>
                           </div>
                         ))}
@@ -5727,17 +5785,17 @@ export default function MapsTab() {
 
                     {/* ── Collapsible: Houses ── */}
                     <details className="group mb-4">
-                      <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                         <span>House cusps</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
                       </summary>
                       <div className="grid grid-cols-3 gap-1.5 mt-2">
                         {(solarReturnData.houses || []).map((house: any) => (
                           <div key={house.number} className="text-center py-2 rounded-lg border border-foreground/15 bg-card/30">
-                            <p className="text-foreground/20 text-[9px] uppercase tracking-widest">House {house.number}</p>
-                            <p className="text-foreground/50 text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
+                            <p className="text-muted text-[9px] uppercase tracking-widest">House {house.number}</p>
+                            <p className="text-muted text-xs mt-0.5">{house.sign} {house.position?.toFixed(0)}&deg;</p>
                           </div>
                         ))}
                       </div>
@@ -5746,9 +5804,9 @@ export default function MapsTab() {
                     {/* ── Collapsible: Aspects ── */}
                     {solarReturnData.aspects && solarReturnData.aspects.length > 0 && (
                       <details className="group mb-4">
-                        <summary className="flex items-center justify-between cursor-pointer py-2 text-foreground/40 text-[10px] uppercase tracking-widest hover:text-foreground/60 transition-colors">
+                        <summary className="flex items-center justify-between cursor-pointer py-2 text-muted text-[10px] uppercase tracking-widest hover:text-foreground transition-colors">
                           <span>Aspects</span>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
+                          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-open:rotate-180">
                             <polyline points="6 9 12 15 18 9" />
                           </svg>
                         </summary>
@@ -5758,8 +5816,8 @@ export default function MapsTab() {
                             const sym = aspectSymbols[asp.aspect?.toLowerCase()] || asp.aspect;
                             return (
                               <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg border border-foreground/15 bg-card/30">
-                                <span className="text-foreground/50 text-xs">{asp.p1Name} {sym} {asp.p2Name}</span>
-                                <span className="text-foreground/20 text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
+                                <span className="text-muted text-xs">{asp.p1Name} {sym} {asp.p2Name}</span>
+                                <span className="text-muted text-[10px]">{asp.orbit?.toFixed(1)}&deg;</span>
                               </div>
                             );
                           })}
@@ -5777,7 +5835,7 @@ export default function MapsTab() {
                 >
                   Calculate Solar Return
                 </button>
-                <p className="text-foreground/25 text-xs mt-3 text-center max-w-[260px]">
+                <p className="text-muted text-xs mt-3 text-center max-w-[260px]">
                   See {firstName}&rsquo;s year-ahead themes based on when the Sun returns to their natal degree
                 </p>
               </div>
@@ -5796,31 +5854,33 @@ export default function MapsTab() {
                 <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                   {editingConnectionId ? "Edit info" : "Add a person"}
                 </h3>
-                <button onClick={() => { setShowAddForm(false); setEditingConnectionId(null); }} className="text-foreground/30 hover:text-foreground/60 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <button onClick={() => { setShowAddForm(false); setEditingConnectionId(null); }} aria-label="Close" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-muted hover:text-foreground transition-colors">
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <div className="flex flex-col gap-3 px-5 pb-24 overflow-y-auto">
+              <div className="flex flex-col gap-3 px-5 pb-6 overflow-y-auto">
                 <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Their name" className={inputClass} />
+                  placeholder="Their name" aria-label="Their name" className={inputClass} />
                 <select value={formRelationship} onChange={(e) => setFormRelationship(e.target.value)}
-                  className={`${inputClass} ${!formRelationship ? "text-foreground/30" : ""}`}>
+                  aria-label="Relationship type"
+                  className={`${inputClass} ${!formRelationship ? "text-muted" : ""}`}>
                   <option value="" disabled>Relationship</option>
                   {filteredRelationships.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
                 <input type="date" value={formBirthDate} onChange={(e) => setFormBirthDate(e.target.value)}
-                  className={inputClass} />
+                  aria-label="Their birth date" className={inputClass} />
                 {!formUnknownTime && (
                   <input type="time" value={formBirthTime} onChange={(e) => setFormBirthTime(e.target.value)}
-                    className={inputClass} />
+                    aria-label="Their birth time" className={inputClass} />
                 )}
-                <label className="flex items-center gap-2 text-foreground/40 text-xs">
+                <label className="flex items-center gap-2 text-muted text-xs">
                   <input type="checkbox" checked={formUnknownTime}
                     onChange={(e) => setFormUnknownTime(e.target.checked)}
+                    aria-label="Birth time unknown"
                     className="rounded border-foreground/20" />
                   Birth time unknown
                 </label>
@@ -5855,9 +5915,9 @@ export default function MapsTab() {
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
           onClick={() => setFamilyAnalysis(null)}
-          className="flex items-center gap-2 text-foreground/40 text-sm mb-6 active:text-foreground/60"
+          className="flex items-center gap-2 text-muted text-sm mb-6 active:text-secondary"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           Back to map
@@ -5867,7 +5927,7 @@ export default function MapsTab() {
           <h1 className="text-2xl text-foreground mb-2" style={{ fontFamily: "var(--font-display)" }}>
             Family Analysis
           </h1>
-          <p className="text-foreground/40 text-sm">
+          <p className="text-muted text-sm">
             How your family&rsquo;s charts shaped who you are.
           </p>
         </div>
@@ -5880,15 +5940,15 @@ export default function MapsTab() {
               <h2 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                 {parent.name}
               </h2>
-              <span className="text-foreground/25 text-xs">{parent.role}</span>
+              <span className="text-muted text-xs">{parent.role}</span>
             </div>
-            <p className="text-foreground/30 text-xs mb-4">{parent.bigThree}</p>
+            <p className="text-muted text-xs mb-4">{parent.bigThree}</p>
 
             {/* Their shadows */}
             {parent.shadows.length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <p className="text-foreground/40 text-xs uppercase tracking-widest">Their patterns</p>
+                  <p className="text-muted text-xs uppercase tracking-widest">Their patterns</p>
                   <InfoTip
                     term="Shadow Patterns"
                     explanation="These are your parent's hardwired tendencies — their conflict style, fears, and emotional coping. You absorbed these growing up whether you wanted to or not."
@@ -5899,9 +5959,9 @@ export default function MapsTab() {
                     <div key={si} className="rounded-lg border border-terracotta/10 bg-terracotta/5 px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-terracotta text-sm font-medium">{s.label}</span>
-                        <span className="text-foreground/20 text-[10px]">{s.planet}</span>
+                        <span className="text-muted text-[10px]">{s.planet}</span>
                       </div>
-                      <p className="text-foreground/60 text-xs leading-relaxed">{s.description}</p>
+                      <p className="text-secondary text-xs leading-relaxed">{s.description}</p>
                     </div>
                   ))}
                 </div>
@@ -5911,15 +5971,15 @@ export default function MapsTab() {
             {/* What they gave you */}
             {parent.gifts.length > 0 && (
               <div className="mb-4">
-                <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">What they gave you</p>
+                <p className="text-muted text-xs uppercase tracking-widest mb-2">What they gave you</p>
                 <div className="flex flex-col gap-2">
                   {parent.gifts.map((g, gi) => (
                     <div key={gi} className="rounded-lg border border-sage/10 bg-sage/5 px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sage text-sm font-medium">{g.label}</span>
-                        <span className="text-foreground/20 text-[10px]">{g.planet}</span>
+                        <span className="text-muted text-[10px]">{g.planet}</span>
                       </div>
-                      <p className="text-foreground/60 text-xs leading-relaxed">{g.description}</p>
+                      <p className="text-secondary text-xs leading-relaxed">{g.description}</p>
                     </div>
                   ))}
                 </div>
@@ -5929,15 +5989,15 @@ export default function MapsTab() {
             {/* Friction with you */}
             {parent.frictionWithYou.length > 0 && (
               <div className="mb-4">
-                <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">Where you clash</p>
+                <p className="text-muted text-xs uppercase tracking-widest mb-2">Where you clash</p>
                 <div className="flex flex-col gap-2">
                   {parent.frictionWithYou.map((f, fi) => (
                     <div key={fi} className="rounded-lg border border-terracotta/10 bg-terracotta/5 px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-terracotta/80 text-sm font-medium">{f.label}</span>
-                        <span className="text-foreground/20 text-[10px]">{f.source}</span>
+                        <span className="text-muted text-[10px]">{f.source}</span>
                       </div>
-                      <p className="text-foreground/60 text-xs leading-relaxed">{f.description}</p>
+                      <p className="text-secondary text-xs leading-relaxed">{f.description}</p>
                     </div>
                   ))}
                 </div>
@@ -5947,15 +6007,15 @@ export default function MapsTab() {
             {/* Harmony with you */}
             {parent.harmonyWithYou.length > 0 && (
               <div className="mb-4">
-                <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">Where you connect</p>
+                <p className="text-muted text-xs uppercase tracking-widest mb-2">Where you connect</p>
                 <div className="flex flex-col gap-2">
                   {parent.harmonyWithYou.map((h, hi) => (
                     <div key={hi} className="rounded-lg border border-sage/10 bg-sage/5 px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sage/80 text-sm font-medium">{h.label}</span>
-                        <span className="text-foreground/20 text-[10px]">{h.source}</span>
+                        <span className="text-muted text-[10px]">{h.source}</span>
                       </div>
-                      <p className="text-foreground/60 text-xs leading-relaxed">{h.description}</p>
+                      <p className="text-secondary text-xs leading-relaxed">{h.description}</p>
                     </div>
                   ))}
                 </div>
@@ -5979,8 +6039,8 @@ export default function MapsTab() {
               {familyAnalysis.siblingNotes.map((sn, si) => (
                 <div key={si} className="rounded-xl border border-foreground/15 bg-card/45 px-4 py-4">
                   <p className="text-foreground text-sm font-medium mb-1">{sn.trait}</p>
-                  <p className="text-foreground/25 text-xs mb-2">{sn.source}</p>
-                  <p className="text-foreground/60 text-sm leading-relaxed">{sn.description}</p>
+                  <p className="text-muted text-xs mb-2">{sn.source}</p>
+                  <p className="text-secondary text-sm leading-relaxed">{sn.description}</p>
                 </div>
               ))}
             </div>
@@ -5989,7 +6049,7 @@ export default function MapsTab() {
 
         {familyAnalysis.parentProfiles.length === 0 && familyAnalysis.siblingNotes.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-foreground/30 text-sm">
+            <p className="text-muted text-sm">
               Add your parents and siblings to unlock family analysis.
             </p>
           </div>
@@ -6004,12 +6064,14 @@ export default function MapsTab() {
   function handleCitySubmit() {
     if (!cityLat || !cityLng) return;
 
-    // Save to localStorage
-    try {
-      localStorage.setItem("mapped:city", JSON.stringify({
-        name: cityName, date: cityDate, lat: cityLat, lng: cityLng,
-      }));
-    } catch { /* ignore */ }
+    // Save to localStorage (scoped per user)
+    if (userId) {
+      try {
+        localStorage.setItem(`mapped:city:${userId}`, JSON.stringify({
+          name: cityName, date: cityDate, lat: cityLat, lng: cityLng,
+        }));
+      } catch { /* ignore */ }
+    }
 
     setShowCityPicker(false);
 
@@ -6031,10 +6093,10 @@ export default function MapsTab() {
   const mapCx = mapW / 2;
   const centerY = 80;
   const catPositions: Record<string, { x: number; y: number }> = {
-    family:  { x: 75,  y: centerY + 120 },  // bottom-left
-    partner: { x: mapW - 75, y: centerY - 20 },  // top-right
-    friend:  { x: mapW - 80, y: centerY + 140 },  // bottom-right
-    city:    { x: 80,  y: centerY - 10 },   // top-left
+    circle:  { x: mapW - 75, y: centerY + 20 },   // right, near you (partner & kids)
+    origin:  { x: 75,  y: centerY + 120 },         // bottom-left (where you come from)
+    friend:  { x: mapW - 80, y: centerY + 140 },   // bottom-right
+    city:    { x: 80,  y: centerY - 10 },           // top-left
   };
 
   // Fan members outward from category node, AWAY from center but clamped in-bounds
@@ -6063,10 +6125,10 @@ export default function MapsTab() {
   }
 
   const categoryColorHex: Record<string, string> = {
-    family: "#7a8c6e",
-    partner: "#c45d3e",
-    friend: "#c49a4c",
-    city: "#6b8a9e",
+    circle: "#5a1f1a",
+    origin: "#2d4029",
+    friend: "#c9a961",
+    city: "#1a2548",
   };
 
   // Dynamic map height
@@ -6083,8 +6145,8 @@ export default function MapsTab() {
     return (
       <div className="flex flex-col h-full bg-background">
         <div className="flex items-center gap-3 px-5 pt-5 pb-3">
-          <button onClick={() => setShowBirthTimePlaceholder(false)} className="text-foreground/50 hover:text-foreground transition-colors">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          <button onClick={() => setShowBirthTimePlaceholder(false)} aria-label="Go back" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-muted hover:text-foreground transition-colors">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           <h2 className="text-base font-semibold text-foreground">Astrocartography</h2>
         </div>
@@ -6129,9 +6191,9 @@ export default function MapsTab() {
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
           onClick={() => { setShowAstroMap(false); setAstroLines(null); setAstroNearby(null); setAstroParans([]); setAdvancedMode(false); }}
-          className="flex items-center gap-2 text-foreground/40 text-sm mb-6 active:text-foreground/60"
+          className="flex items-center gap-2 text-muted text-sm mb-6 active:text-secondary"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           Back to map
@@ -6141,7 +6203,7 @@ export default function MapsTab() {
           <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
             Your Map
           </h1>
-          <p className="text-foreground/40 text-sm">
+          <p className="text-muted text-sm">
             {advancedMode ? "All your planetary lines, crossings, and details" : "Where your planetary energy lands on Earth"}
           </p>
           {cityName && (
@@ -6151,7 +6213,7 @@ export default function MapsTab() {
               </span>
               <button
                 onClick={() => setShowCityPicker(true)}
-                className="text-foreground/30 text-xs underline underline-offset-2 hover:text-foreground/50 transition-colors"
+                className="text-muted text-xs underline underline-offset-2 hover:text-foreground transition-colors"
               >
                 change
               </button>
@@ -6175,7 +6237,7 @@ export default function MapsTab() {
               className={`text-xs px-3 py-1 rounded-full transition-all ${
                 !advancedMode
                   ? "bg-foreground/10 text-foreground font-medium"
-                  : "bg-foreground/3 text-foreground/30"
+                  : "bg-foreground/3 text-muted"
               }`}
             >
               Life Areas
@@ -6185,7 +6247,7 @@ export default function MapsTab() {
               className={`text-xs px-3 py-1 rounded-full transition-all ${
                 advancedMode
                   ? "bg-foreground/10 text-foreground font-medium"
-                  : "bg-foreground/3 text-foreground/30"
+                  : "bg-foreground/3 text-muted"
               }`}
             >
               Full Chart
@@ -6196,16 +6258,16 @@ export default function MapsTab() {
         {/* ─── No birth data ─── */}
         {!astroLoading && !astroLines && !astroError && !userChart.birthDate && (
           <div className="text-center py-12">
-            <p className="text-foreground/40 text-sm mb-2">Birth date and time needed</p>
-            <p className="text-foreground/25 text-xs">Astrocartography requires your exact birth data. Try recalculating your chart first.</p>
+            <p className="text-muted text-sm mb-2">Birth date and time needed</p>
+            <p className="text-muted text-xs">Astrocartography requires your exact birth data. Try recalculating your chart first.</p>
           </div>
         )}
 
         {/* ─── Server-side calculation unavailable ─── */}
         {!astroLoading && astroError && (
           <div className="text-center py-12 px-4">
-            <p className="text-foreground/50 text-base mb-2" style={{ fontFamily: "var(--font-display)" }}>Something went wrong</p>
-            <p className="text-foreground/35 text-sm leading-relaxed">
+            <p className="text-muted text-base mb-2" style={{ fontFamily: "var(--font-display)" }}>Something went wrong</p>
+            <p className="text-muted text-sm leading-relaxed">
               We couldn&apos;t load your astrocartography map right now. Please check your birth details and try again.
               If the problem continues, try signing out and back in.
             </p>
@@ -6215,9 +6277,9 @@ export default function MapsTab() {
         {/* ─── Loading ─── */}
         {astroLoading && (
           <div className="text-center py-12">
-            <div className="w-8 h-8 border-2 border-ink/30 border-t-ink rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-foreground/40 text-sm">Calculating planetary lines...</p>
-            <p className="text-foreground/25 text-xs mt-1">This takes a moment</p>
+            <div className="w-8 h-8 border-2 border-ink/30 border-t-ink rounded-full animate-spin mx-auto mb-3" role="status" aria-label="Loading" />
+            <p className="text-muted text-sm">Calculating planetary lines...</p>
+            <p className="text-muted text-xs mt-1">This takes a moment</p>
           </div>
         )}
 
@@ -6279,7 +6341,7 @@ export default function MapsTab() {
                       return nz;
                     });
                   }}
-                  className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 flex items-center justify-center text-foreground/60 text-sm font-bold active:bg-card/90 hover:bg-card/80 transition-colors"
+                  className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary text-sm font-bold active:bg-card/90 hover:bg-card/80 transition-colors"
                   aria-label="Zoom in"
                 >
                   +
@@ -6293,7 +6355,7 @@ export default function MapsTab() {
                       return nz;
                     });
                   }}
-                  className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 flex items-center justify-center text-foreground/60 text-sm font-bold active:bg-card/90 hover:bg-card/80 transition-colors"
+                  className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 min-w-[44px] min-h-[44px] flex items-center justify-center text-secondary text-sm font-bold active:bg-card/90 hover:bg-card/80 transition-colors"
                   aria-label="Zoom out"
                 >
                   −
@@ -6301,7 +6363,7 @@ export default function MapsTab() {
                 {mapZoom > 1 && (
                   <button
                     onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}
-                    className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 flex items-center justify-center text-foreground/40 text-xs active:bg-card/90 hover:bg-card/80 transition-colors"
+                    className="bg-card/70 backdrop-blur-sm rounded-full w-7 h-7 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted text-xs active:bg-card/90 hover:bg-card/80 transition-colors"
                     aria-label="Reset zoom"
                   >
                     ×
@@ -6313,18 +6375,18 @@ export default function MapsTab() {
                 className="w-full"
                 style={{ minHeight: 220, cursor: advancedMode && mapZoom > 1 ? "grab" : "default", pointerEvents: "none" }}
               >
-                <rect width={svgW} height={svgH} fill="#EAD8BC" />
+                <rect width={svgW} height={svgH} fill="#f0e6d2" />
                 {[-120, -60, 0, 60, 120].map(lng => (
                   <line key={`g-lng-${lng}`} x1={projX(lng)} y1={0} x2={projX(lng)} y2={svgH} stroke="#2A1F18" strokeWidth="0.5" strokeOpacity={0.15} />
                 ))}
                 {[-60, -30, 0, 30, 60].map(lat => (
                   <line key={`g-lat-${lat}`} x1={0} y1={projY(lat)} x2={svgW} y2={projY(lat)} stroke="#2A1F18" strokeWidth="0.5" strokeOpacity={0.15} />
                 ))}
-                <line x1={0} y1={projY(0)} x2={svgW} y2={projY(0)} stroke="#B45128" strokeWidth="0.8" strokeOpacity={0.4} />
+                <line x1={0} y1={projY(0)} x2={svgW} y2={projY(0)} stroke="#5a1f1a" strokeWidth="0.8" strokeOpacity={0.4} />
 
                 {/* Country outlines — Natural Earth 110m */}
                 {WORLD_COUNTRY_PATHS.map((d, i) => (
-                  <path key={`c-${i}`} d={d} fill="#97563E" fillOpacity={0.25} stroke="#2A1F18" strokeWidth="0.3" strokeOpacity={0.3} />
+                  <path key={`c-${i}`} d={d} fill="#4a2540" fillOpacity={0.25} stroke="#2A1F18" strokeWidth="0.3" strokeOpacity={0.3} />
                 ))}
 
                 {/* ── Country labels (always visible) ── */}
@@ -6425,7 +6487,7 @@ export default function MapsTab() {
                   return (
                     <g key={`line-${li}`}>
                       {/* Visible line */}
-                      <path d={pathD} fill="none" stroke={isHovered ? "#fff" : isRelevant ? line.color : "#97563E"}
+                      <path d={pathD} fill="none" stroke={isHovered ? "#fff" : isRelevant ? line.color : "#4a2540"}
                         strokeWidth={isHovered ? "3" : isRelevant ? (advancedMode ? "1.5" : "2.2") : "0.8"}
                         strokeOpacity={isHovered ? 1 : isRelevant ? (advancedMode ? 0.7 : 0.85) : 0.15}
                         strokeDasharray={line.style === "dashed" ? "4 3" : undefined} />
@@ -6466,7 +6528,7 @@ export default function MapsTab() {
                 {/* Timeline location markers */}
                 {timelineEntries.map((entry) => (
                   <g key={entry.id}>
-                    <circle cx={projX(entry.lng)} cy={projY(entry.lat)} r="2.5" fill="#7a8c6e" stroke="#F3E8D6" strokeWidth="0.6" />
+                    <circle cx={projX(entry.lng)} cy={projY(entry.lat)} r="2.5" fill="#5a7a3a" stroke="#f0e6d2" strokeWidth="0.6" />
                     <text x={projX(entry.lng)} y={projY(entry.lat) - 5} textAnchor="middle" fill="#2A1F18" fontSize="4" fontWeight="600">
                       {String(entry.cityName || "").split(",")[0]}
                     </text>
@@ -6476,8 +6538,8 @@ export default function MapsTab() {
                 {/* Birth location */}
                 {userChart.latitude && userChart.longitude && (
                   <g>
-                    <circle cx={projX(userChart.longitude)} cy={projY(userChart.latitude)} r="3" fill="#B45128" stroke="#F3E8D6" strokeWidth="0.8" />
-                    <text x={projX(userChart.longitude)} y={projY(userChart.latitude) - 6} textAnchor="middle" fill="#B45128" fontSize="4" fontWeight="700">Born</text>
+                    <circle cx={projX(userChart.longitude)} cy={projY(userChart.latitude)} r="3" fill="#5a1f1a" stroke="#f0e6d2" strokeWidth="0.8" />
+                    <text x={projX(userChart.longitude)} y={projY(userChart.latitude) - 6} textAnchor="middle" fill="#5a1f1a" fontSize="4" fontWeight="700">Born</text>
                   </g>
                 )}
               </svg>
@@ -6510,7 +6572,7 @@ export default function MapsTab() {
               })()}
             </div>
             {advancedMode && mapZoom <= 1 && (
-              <p className="text-foreground/15 text-[9px] text-center mb-2">Scroll to zoom · drag to pan · hover lines for details</p>
+              <p className="text-muted text-[9px] text-center mb-2">Scroll to zoom · drag to pan · hover lines for details</p>
             )}
 
             {/* Legend (advanced mode only) */}
@@ -6521,7 +6583,7 @@ export default function MapsTab() {
                   return (
                     <div key={planet} className="flex items-center gap-1.5 text-xs">
                       <div className="w-3 h-0.5 rounded-full" style={{ backgroundColor: line?.color || "#888" }} />
-                      <span className="text-foreground/50">{planet}</span>
+                      <span className="text-muted">{planet}</span>
                     </div>
                   );
                 })}
@@ -6529,11 +6591,11 @@ export default function MapsTab() {
             )}
             {advancedMode && (
               <div className="flex items-center gap-1.5 text-xs mb-4 px-1">
-                <span className="text-foreground/25">solid = Rising/Midheaven</span>
-                <span className="text-foreground/20">|</span>
-                <span className="text-foreground/25">dashed = Setting/Nadir</span>
-                <span className="text-foreground/20">·</span>
-                <span className="text-foreground/25">hover any line for details</span>
+                <span className="text-muted">solid = Rising/Midheaven</span>
+                <span className="text-muted">|</span>
+                <span className="text-muted">dashed = Setting/Nadir</span>
+                <span className="text-muted">·</span>
+                <span className="text-muted">hover any line for details</span>
               </div>
             )}
 
@@ -6543,14 +6605,14 @@ export default function MapsTab() {
                 <h2 className="text-foreground text-base font-medium mb-2" style={{ fontFamily: "var(--font-display)" }}>
                   Lines Near {cityName ? cityName.split(",")[0] : "You"}
                 </h2>
-                <p className="text-foreground/35 text-xs mb-4">
+                <p className="text-muted text-xs mb-4">
                   Planetary lines within ~500 miles{cityName ? ` of ${cityName.split(",")[0]}` : ""}. The closer the line, the stronger you feel its energy in your daily life.
                 </p>
                 <div className="flex flex-col gap-3">
                   {astroNearby.map((nl) => {
                     const isOpen = openAspect === `astro-${nl.planet}-${nl.angle}`;
                     const strengthLabel = nl.distance < 2 ? "Very Strong" : nl.distance < 4 ? "Strong" : nl.distance < 6 ? "Moderate" : "Subtle";
-                    const strengthColor = nl.distance < 2 ? "text-sage" : nl.distance < 4 ? "text-sage/70" : nl.distance < 6 ? "text-amber" : "text-foreground/30";
+                    const strengthColor = nl.distance < 2 ? "text-sage" : nl.distance < 4 ? "text-sage/70" : nl.distance < 6 ? "text-amber" : "text-muted";
                     const angleLabel = nl.angle === "ASC" ? "Rising Line" : nl.angle === "DSC" ? "Setting Line" : nl.angle === "MC" ? "Midheaven Line" : "Nadir Line";
                     const angleExplain = nl.angle === "ASC" ? "Shapes your identity, appearance, and how people perceive you"
                       : nl.angle === "DSC" ? "Influences your relationships, partnerships, and who you attract"
@@ -6567,37 +6629,37 @@ export default function MapsTab() {
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: nl.color, opacity: 0.8 }} />
                             <span className="text-foreground text-sm font-medium">{nl.planet}</span>
-                            <span className="text-foreground/30 text-xs">{angleLabel}</span>
+                            <span className="text-muted text-xs">{angleLabel}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`text-xs font-medium ${strengthColor}`}>{strengthLabel}</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                              className={`text-foreground/20 transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </div>
                         </div>
                         <p className="text-ink text-xs font-medium mb-0.5">{nl.keyword}</p>
-                        <p className="text-foreground/35 text-xs">{nl.distance < 1 ? "Less than 1" : nl.distance}&deg; from this line</p>
+                        <p className="text-muted text-xs">{nl.distance < 1 ? "Less than 1" : nl.distance}&deg; from this line</p>
 
                         {isOpen && (
                           <div className="mt-3 pt-3 border-t border-foreground/15 space-y-3">
                             {/* Angle explanation */}
                             <div className="rounded-lg bg-foreground/3 px-3 py-2">
-                              <p className="text-foreground/30 text-[10px] uppercase tracking-wider mb-1">{nl.angle} Line</p>
-                              <p className="text-foreground/50 text-xs leading-relaxed">{angleExplain}</p>
+                              <p className="text-muted text-[10px] uppercase tracking-wider mb-1">{nl.angle} Line</p>
+                              <p className="text-muted text-xs leading-relaxed">{angleExplain}</p>
                             </div>
                             {/* Planet-specific meaning for this angle */}
                             {nl.meaning && (
                               <div>
-                                <p className="text-foreground/30 text-[10px] uppercase tracking-wider mb-1">What this means for you</p>
-                                <p className="text-foreground/60 text-sm leading-relaxed">{nl.meaning}</p>
+                                <p className="text-muted text-[10px] uppercase tracking-wider mb-1">What this means for you</p>
+                                <p className="text-secondary text-sm leading-relaxed">{nl.meaning}</p>
                               </div>
                             )}
                             {/* Strength interpretation */}
                             <div>
-                              <p className="text-foreground/30 text-[10px] uppercase tracking-wider mb-1">Strength</p>
-                              <p className="text-foreground/50 text-xs leading-relaxed">
+                              <p className="text-muted text-[10px] uppercase tracking-wider mb-1">Strength</p>
+                              <p className="text-muted text-xs leading-relaxed">
                                 {nl.distance < 2
                                   ? `At ${nl.distance < 1 ? "less than 1" : nl.distance}° away, this is one of your most powerful lines in this area. You likely feel ${nl.planet}'s energy constantly — it colors your entire experience of living here.`
                                   : nl.distance < 4
@@ -6615,7 +6677,7 @@ export default function MapsTab() {
                 </div>
                 {/* Geographic proximity note */}
                 <div className="mt-3 rounded-lg bg-foreground/3 px-3 py-2">
-                  <p className="text-foreground/25 text-xs leading-relaxed">
+                  <p className="text-muted text-xs leading-relaxed">
                     Astrocartography lines run across hundreds of miles, so nearby cities (within the same state or region) will often share the same lines. This is normal — it means the entire area carries similar planetary energy for you.
                   </p>
                 </div>
@@ -6624,8 +6686,8 @@ export default function MapsTab() {
 
             {advancedMode && astroNearby && astroNearby.length === 0 && (
               <div className="rounded-xl border border-foreground/15 bg-card/45 px-4 py-4 mb-8 text-center">
-                <p className="text-foreground/40 text-sm">No major planetary lines pass near your location.</p>
-                <p className="text-foreground/25 text-xs mt-1">Your strongest planetary energy is elsewhere on the globe.</p>
+                <p className="text-muted text-sm">No major planetary lines pass near your location.</p>
+                <p className="text-muted text-xs mt-1">Your strongest planetary energy is elsewhere on the globe.</p>
               </div>
             )}
 
@@ -6635,10 +6697,10 @@ export default function MapsTab() {
                 <h2 className="text-foreground text-base font-medium mb-1" style={{ fontFamily: "var(--font-display)" }}>
                   Crossings
                 </h2>
-                <p className="text-foreground/35 text-xs mb-1.5">
+                <p className="text-muted text-xs mb-1.5">
                   Each line on your map represents one planet at one angle. A crossing is where two of those lines meet — meaning two different planetary energies overlap at the same place on Earth.
                 </p>
-                <p className="text-foreground/35 text-xs mb-3">
+                <p className="text-muted text-xs mb-3">
                   That overlap creates a blend. If your Venus line crosses your Jupiter line somewhere, that spot carries both love and expansion energy — which tends to be stronger together than either one alone.
                 </p>
                 <div className="flex flex-col gap-1.5">
@@ -6660,22 +6722,22 @@ export default function MapsTab() {
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1 shrink-0">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color1 }} />
-                            <span className="text-foreground/15 text-[10px]">+</span>
+                            <span className="text-muted text-[10px]">+</span>
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color2 }} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <span className="text-foreground text-[13px] font-medium block truncate">
                               {p.planet1} + {p.planet2}
                             </span>
-                            <span className="text-foreground/30 text-[10px] block truncate">
+                            <span className="text-muted text-[10px] block truncate">
                               {PLANET_PLAIN[p.planet1] || ""} meets {PLANET_PLAIN[p.planet2] || ""}
                             </span>
                           </div>
-                          <span className="text-foreground/25 text-[10px] shrink-0">
+                          <span className="text-muted text-[10px] shrink-0">
                             {Math.abs(p.lat).toFixed(0)}°{p.lat >= 0 ? "N" : "S"}, {Math.abs(p.lng).toFixed(0)}°{p.lng >= 0 ? "E" : "W"}
                           </span>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                            className={`text-foreground/15 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                            className={`text-muted transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                           </svg>
                         </div>
@@ -6683,22 +6745,22 @@ export default function MapsTab() {
                           <div className="mt-2.5 pt-2.5 border-t border-foreground/6 space-y-2">
                             {/* What's crossing */}
                             <div className="flex flex-wrap gap-1.5">
-                              <span className="text-[10px] bg-foreground/4 text-foreground/40 px-2 py-0.5 rounded-full">{p.planet1} {angleName1}</span>
-                              <span className="text-[10px] bg-foreground/4 text-foreground/40 px-2 py-0.5 rounded-full">{p.planet2} {angleName2}</span>
+                              <span className="text-[10px] bg-foreground/4 text-muted px-2 py-0.5 rounded-full">{p.planet1} {angleName1}</span>
+                              <span className="text-[10px] bg-foreground/4 text-muted px-2 py-0.5 rounded-full">{p.planet2} {angleName2}</span>
                             </div>
                             {/* Plain-English meaning */}
-                            <p className="text-foreground/55 text-xs leading-relaxed">
+                            <p className="text-secondary text-xs leading-relaxed">
                               {getCrossingDescription(p.planet1, p.planet2)}
                             </p>
                             {/* Life area relevance */}
                             {allAreas.length > 0 && (
-                              <p className="text-foreground/25 text-[10px]">
+                              <p className="text-muted text-[10px]">
                                 Relevant for: {allAreas.join(", ")}
                               </p>
                             )}
                             {/* How crossings work */}
                             <div className="rounded bg-foreground/3 px-2.5 py-2">
-                              <p className="text-foreground/25 text-[10px] leading-relaxed">
+                              <p className="text-muted text-[10px] leading-relaxed">
                                 This crossing is where your {p.planet1} {angleName1.toLowerCase()} line meets your {p.planet2} {angleName2.toLowerCase()} line within about 75 miles. The closer the crossing, the more tightly the two energies blend. Think of it as both planets &ldquo;speaking&rdquo; at the same time in the same place.
                               </p>
                             </div>
@@ -6723,7 +6785,7 @@ export default function MapsTab() {
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap transition-all ${
                       selectedLifeArea === area.id
                         ? "bg-foreground/10 text-foreground font-medium"
-                        : "bg-foreground/3 text-foreground/35 active:bg-foreground/8"
+                        : "bg-foreground/3 text-muted active:bg-foreground/8"
                     }`}
                   >
                     <span className="text-xs">{area.icon}</span>
@@ -6734,11 +6796,12 @@ export default function MapsTab() {
 
               {/* Question + country filter row */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-foreground/40 text-xs italic">{activeArea.question}</p>
+                <p className="text-muted text-xs italic">{activeArea.question}</p>
                 <select
                   value={countryFilter || ""}
+                  aria-label="Filter by country"
                   onChange={(e) => { setCountryFilter(e.target.value || null); setExpandedCity(null); }}
-                  className="text-[10px] text-foreground/40 bg-transparent border border-foreground/10 rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
+                  className="text-[10px] text-muted bg-transparent border border-foreground/10 rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
                 >
                   <option value="">All countries</option>
                   {COUNTRY_LIST.map(c => (
@@ -6750,7 +6813,7 @@ export default function MapsTab() {
               {/* City cards for selected area */}
               {topForArea.length === 0 && (
                 <div className="rounded-lg border border-foreground/8 bg-card/30 px-3 py-4 text-center">
-                  <p className="text-foreground/30 text-xs">No strong {activeArea.label.toLowerCase()} locations{countryFilter ? ` in ${countryFilter}` : ""}.</p>
+                  <p className="text-muted text-xs">No strong {activeArea.label.toLowerCase()} locations{countryFilter ? ` in ${countryFilter}` : ""}.</p>
                 </div>
               )}
 
@@ -6776,17 +6839,17 @@ export default function MapsTab() {
                     >
                       {/* Collapsed row: tight single-line */}
                       <div className="flex items-center gap-2">
-                        <span className="text-foreground/15 text-[10px] w-3 shrink-0 text-right">{i + 1}</span>
+                        <span className="text-muted text-[10px] w-3 shrink-0 text-right">{i + 1}</span>
                         <span className="text-foreground text-[13px] font-medium flex-1 truncate">{s.city.name}</span>
                         <span className={`text-[9px] font-medium px-1.5 py-px rounded-full shrink-0 ${
                           s.closestDist < 2 ? "bg-sage/15 text-sage" :
                           s.closestDist < 5 ? "bg-amber/12 text-amber" :
-                          "bg-foreground/4 text-foreground/25"
+                          "bg-foreground/4 text-muted"
                         }`}>
                           {s.closestDist < 2 ? "Very strong" : s.closestDist < 5 ? "Strong" : "Moderate"}
                         </span>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                          className={`text-foreground/15 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`}>
+                        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                          className={`text-muted transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
@@ -6794,13 +6857,13 @@ export default function MapsTab() {
                       {/* Expanded detail */}
                       {isExpanded && topLine && (
                         <div className="mt-2.5 pt-2.5 border-t border-foreground/6 space-y-2.5">
-                          <p className="text-foreground/60 text-xs leading-relaxed">
+                          <p className="text-secondary text-xs leading-relaxed">
                             {copy.description(s.city.name, topLine)}
                           </p>
 
                           <div className="rounded bg-foreground/3 px-2.5 py-2">
-                            <p className="text-foreground/20 text-[9px] uppercase tracking-widest mb-1">Why this works</p>
-                            <p className="text-foreground/45 text-[11px] leading-relaxed">
+                            <p className="text-muted text-[9px] uppercase tracking-widest mb-1">Why this works</p>
+                            <p className="text-muted text-[11px] leading-relaxed">
                               {copy.reasoning(s.city.name, areaLines.length > 0 ? areaLines : [topLine])}
                             </p>
                           </div>
@@ -6808,7 +6871,7 @@ export default function MapsTab() {
                           {areaLines.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {areaLines.slice(0, 4).map((nl, j) => (
-                                <span key={j} className="text-[9px] text-foreground/35 bg-foreground/4 px-1.5 py-px rounded-full">
+                                <span key={j} className="text-[9px] text-muted bg-foreground/4 px-1.5 py-px rounded-full">
                                   {nl.planet} {nl.angle} · {nl.dist < 1 ? "<1" : Math.round(nl.dist)}°
                                 </span>
                               ))}
@@ -6816,7 +6879,7 @@ export default function MapsTab() {
                           )}
 
                           <div className="border-l-[1.5px] border-foreground/8 pl-2.5">
-                            <p className="text-foreground/25 text-[11px] leading-relaxed italic">
+                            <p className="text-muted text-[11px] leading-relaxed italic">
                               {copy.caveat}
                             </p>
                           </div>
@@ -6834,7 +6897,7 @@ export default function MapsTab() {
               <h2 className="text-foreground text-base font-medium mb-2" style={{ fontFamily: "var(--font-display)" }}>
                 Your Life Timeline
               </h2>
-              <p className="text-foreground/35 text-xs mb-4">
+              <p className="text-muted text-xs mb-4">
                 Add places you&rsquo;ve lived to see how your planetary lines shaped each chapter.
               </p>
 
@@ -6861,15 +6924,15 @@ export default function MapsTab() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-foreground text-sm font-medium truncate">{entry.cityName}</p>
-                              <p className="text-foreground/40 text-xs">{startYear} &ndash; {endLabel}</p>
+                              <p className="text-muted text-xs">{startYear} &ndash; {endLabel}</p>
                             </div>
                             {synopsis.length > 0 && (
-                              <span className="text-foreground/25 text-xs flex-shrink-0">
+                              <span className="text-muted text-xs flex-shrink-0">
                                 {synopsis.length} line{synopsis.length !== 1 ? "s" : ""}
                               </span>
                             )}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                              className={`text-foreground/25 transition-transform flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}>
+                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                              className={`text-muted transition-transform flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
@@ -6877,7 +6940,7 @@ export default function MapsTab() {
                           {isExpanded && (
                             <div className="px-4 pb-4 border-t border-foreground/15">
                               {synopsis.length === 0 ? (
-                                <p className="text-foreground/30 text-xs pt-3">
+                                <p className="text-muted text-xs pt-3">
                                   No major planetary lines pass near this location. The astrological influence here was subtle — shaped more by transits and your overall chart than by geographic placement.
                                 </p>
                               ) : (
@@ -6886,12 +6949,12 @@ export default function MapsTab() {
                                     <div key={i}>
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-ink text-xs font-medium">{s.planet} {s.angle}</span>
-                                        <span className="text-foreground/20 text-[10px]">
+                                        <span className="text-muted text-[10px]">
                                           {s.dist < 3 ? "strong effect" : s.dist < 8 ? "moderate effect" : "subtle effect"}
                                         </span>
                                       </div>
                                       <p className="text-foreground text-xs font-medium mb-0.5">{s.theme}</p>
-                                      <p className="text-foreground/50 text-xs leading-relaxed">{s.synopsis}</p>
+                                      <p className="text-muted text-xs leading-relaxed">{s.synopsis}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -6900,32 +6963,33 @@ export default function MapsTab() {
                               {/* Edit dates / Delete */}
                               {editingTimelineId === entry.id ? (
                                 <div className="mt-3 pt-3 border-t border-foreground/15" onClick={(e) => e.stopPropagation()}>
-                                  <p className="text-foreground/40 text-xs mb-2 font-medium">Edit dates</p>
+                                  <p className="text-muted text-xs mb-2 font-medium">Edit dates</p>
                                   <div className="grid grid-cols-2 gap-2 mb-2">
                                     <div>
-                                      <label className="text-foreground/30 text-[10px] mb-0.5 block">From</label>
+                                      <label className="text-muted text-[10px] mb-0.5 block">From</label>
                                       <input
                                         type="date"
                                         value={editStart}
                                         onChange={(e) => setEditStart(e.target.value)}
+                                        aria-label="Start date"
                                         className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-foreground/30 text-[10px] mb-0.5 block">To</label>
+                                      <label className="text-muted text-[10px] mb-0.5 block">To</label>
                                       {/* Segmented toggle: Date vs Present */}
                                       <div className="flex rounded-lg overflow-hidden border border-foreground/18 mb-1">
                                         <button
                                           type="button"
                                           onClick={() => setEditPresent(false)}
-                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${!editPresent ? "bg-ink text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${!editPresent ? "bg-ink text-cream" : "bg-foreground/5 text-muted"}`}
                                         >
                                           Date
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => { setEditPresent(true); setEditEnd(""); }}
-                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${editPresent ? "bg-sage text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                                          className={`flex-1 py-1.5 text-[10px] font-medium transition-colors ${editPresent ? "bg-sage text-cream" : "bg-foreground/5 text-muted"}`}
                                         >
                                           Still here
                                         </button>
@@ -6935,6 +6999,7 @@ export default function MapsTab() {
                                           type="date"
                                           value={editEnd}
                                           onChange={(e) => setEditEnd(e.target.value)}
+                                          aria-label="End date"
                                           className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                         />
                                       )}
@@ -6950,7 +7015,7 @@ export default function MapsTab() {
                                             : t
                                         );
                                         setTimelineEntries(updated);
-                                        saveTimeline(updated);
+                                        saveTimeline(updated, userId);
                                         setEditingTimelineId(null);
                                       }}
                                       disabled={!editStart}
@@ -6960,7 +7025,7 @@ export default function MapsTab() {
                                     </button>
                                     <button
                                       onClick={() => setEditingTimelineId(null)}
-                                      className="px-3 py-1.5 rounded-full border border-foreground/18 text-foreground/40 text-xs"
+                                      className="px-3 py-1.5 rounded-full border border-foreground/18 text-muted text-xs"
                                     >
                                       Cancel
                                     </button>
@@ -6986,7 +7051,7 @@ export default function MapsTab() {
                                       e.stopPropagation();
                                       const updated = timelineEntries.filter(t => t.id !== entry.id);
                                       setTimelineEntries(updated);
-                                      saveTimeline(updated);
+                                      saveTimeline(updated, userId);
                                       setExpandedTimeline(null);
                                       setEditingTimelineId(null);
                                     }}
@@ -7012,7 +7077,7 @@ export default function MapsTab() {
                   </p>
 
                   <div className="mb-3">
-                    <label className="text-foreground/40 text-xs mb-1 block">City</label>
+                    <label className="text-muted text-xs mb-1 block">City</label>
                     <CitySearch
                       value={tlCity}
                       onChange={(v: string) => setTlCity(v)}
@@ -7026,29 +7091,30 @@ export default function MapsTab() {
 
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <label className="text-foreground/40 text-xs mb-1 block">From</label>
+                      <label className="text-muted text-xs mb-1 block">From</label>
                       <input
                         type="date"
                         value={tlStart}
                         onChange={(e) => setTlStart(e.target.value)}
+                        aria-label="Residence start date"
                         className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-foreground/40 text-xs mb-1 block">To</label>
+                      <label className="text-muted text-xs mb-1 block">To</label>
                       {/* Segmented toggle: Date vs Present */}
                       <div className="flex rounded-lg overflow-hidden border border-foreground/18 mb-1">
                         <button
                           type="button"
                           onClick={() => setTlPresent(false)}
-                          className={`flex-1 py-2 text-xs font-medium transition-colors ${!tlPresent ? "bg-ink text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                          className={`flex-1 py-2 text-xs font-medium transition-colors ${!tlPresent ? "bg-ink text-cream" : "bg-foreground/5 text-muted"}`}
                         >
                           Date
                         </button>
                         <button
                           type="button"
                           onClick={() => { setTlPresent(true); setTlEnd(""); }}
-                          className={`flex-1 py-2 text-xs font-medium transition-colors ${tlPresent ? "bg-sage text-cream" : "bg-foreground/5 text-foreground/40"}`}
+                          className={`flex-1 py-2 text-xs font-medium transition-colors ${tlPresent ? "bg-sage text-cream" : "bg-foreground/5 text-muted"}`}
                         >
                           I still live here
                         </button>
@@ -7058,6 +7124,7 @@ export default function MapsTab() {
                           type="date"
                           value={tlEnd}
                           onChange={(e) => setTlEnd(e.target.value)}
+                          aria-label="Residence end date"
                           className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                         />
                       )}
@@ -7091,7 +7158,7 @@ export default function MapsTab() {
                         };
                         const updated = [...timelineEntries, newEntry];
                         setTimelineEntries(updated);
-                        saveTimeline(updated);
+                        saveTimeline(updated, userId);
                         setShowTimelineForm(false);
                         setTlCity(""); setTlLat(null); setTlLng(null);
                         setTlStart(""); setTlEnd(""); setTlPresent(false);
@@ -7108,7 +7175,7 @@ export default function MapsTab() {
                         setTlCity(""); setTlLat(null); setTlLng(null);
                         setTlStart(""); setTlEnd(""); setTlPresent(false);
                       }}
-                      className="px-4 py-2.5 rounded-full border border-foreground/18 text-foreground/40 text-sm"
+                      className="px-4 py-2.5 rounded-full border border-foreground/18 text-muted text-sm"
                     >
                       Cancel
                     </button>
@@ -7117,7 +7184,7 @@ export default function MapsTab() {
               ) : (
                 <button
                   onClick={() => setShowTimelineForm(true)}
-                  className="w-full rounded-xl border border-dashed border-foreground/15 py-3 text-foreground/40 text-sm hover:border-ink/30 hover:text-ink transition-colors"
+                  className="w-full rounded-xl border border-dashed border-foreground/15 py-3 text-muted text-sm hover:border-ink/30 hover:text-ink transition-colors"
                 >
                   + Add a place you&rsquo;ve lived
                 </button>
@@ -7126,7 +7193,7 @@ export default function MapsTab() {
 
             {/* ─── Explainer ─── */}
             <div className="rounded-xl border border-foreground/15 bg-card/40 px-4 py-3 mb-6">
-              <p className="text-foreground/30 text-xs leading-relaxed">
+              <p className="text-muted text-xs leading-relaxed">
                 Astrocartography maps where your planets were rising (ASC), setting (DSC), at their highest point (MC), or lowest point (IC) at your birth. Lines show where each planet&rsquo;s energy is strongest. Cities are ranked by how close your planetary lines pass — the closer a line, the stronger its influence on your life there. Your life timeline shows how each place activated different planetary energies during the time you lived there.
               </p>
             </div>
@@ -7142,13 +7209,13 @@ export default function MapsTab() {
                 <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                   Change your city
                 </h3>
-                <button onClick={() => setShowCityPicker(false)} className="text-foreground/30 hover:text-foreground/60 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <button onClick={() => setShowCityPicker(false)} aria-label="Close" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-muted hover:text-foreground transition-colors">
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <p className="text-foreground/40 text-xs mb-4">
+              <p className="text-muted text-xs mb-4">
                 Search for a city to see which planetary lines are nearby.
               </p>
               <div className="flex flex-col gap-3">
@@ -7181,7 +7248,7 @@ export default function MapsTab() {
         <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
           Your Map
         </h1>
-        <p className="text-foreground/40 text-sm">
+        <p className="text-muted text-sm">
           Tap a circle to explore.
         </p>
         {userChart?.zodiacSystem === "sidereal" && (
@@ -7194,16 +7261,16 @@ export default function MapsTab() {
       {!userChart && connections.length === 0 && (
         <div className="text-center px-8 py-8 mb-4">
           <p className="text-3xl mb-3 opacity-40">✦</p>
-          <p className="text-foreground/50 text-[14px] mb-2">Start with your chart</p>
-          <p className="text-foreground/30 text-[12px] leading-relaxed">
+          <p className="text-muted text-[14px] mb-2">Start with your chart</p>
+          <p className="text-muted text-[12px] leading-relaxed">
             Calculate your birth chart first, then come back to map the people in your life.
           </p>
         </div>
       )}
       {userChart && connections.length === 0 && (
         <div className="text-center px-8 py-6 mb-4">
-          <p className="text-foreground/30 text-[12px] leading-relaxed">
-            Tap the + button on any circle to add someone — family, friends, partners, or places you&apos;ve lived.
+          <p className="text-muted text-[12px] leading-relaxed">
+            Tap any circle on the map to add someone — your partner and children go in Your Circle, parents and siblings in Origin Family.
           </p>
         </div>
       )}
@@ -7252,14 +7319,14 @@ export default function MapsTab() {
 
           {/* YOU — center node */}
           <g className="cursor-pointer" onClick={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}>
-            <circle cx={mapCx} cy={centerY} r="28" fill="#c45d3e" fillOpacity="0.12" stroke="#c45d3e" strokeOpacity="0.3" strokeWidth="1.5" />
+            <circle cx={mapCx} cy={centerY} r="28" fill="#5a1f1a" fillOpacity="0.12" stroke="#5a1f1a" strokeOpacity="0.3" strokeWidth="1.5" />
             <text x={mapCx} y={centerY + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="#c45d3e" fontSize="18" fontFamily="serif">{"\u2609"}</text>
+              fill="#5a1f1a" fontSize="18" fontFamily="serif">{"\u2609"}</text>
             <text x={mapCx} y={centerY + 42} textAnchor="middle"
-              fill="#e8dcc8" fontSize="10" fontWeight="500">You</text>
+              fill="var(--foreground-muted)" fontSize="10" fontWeight="500">You</text>
             {userChart && (
               <text x={mapCx} y={centerY + 54} textAnchor="middle"
-                fill="#d4c5a9" fillOpacity="0.4" fontSize="8">
+                fill="var(--foreground-faint)" fontSize="8">
                 {SIGN_FULL[userChart.bigThree.sun]}
               </text>
             )}
@@ -7301,40 +7368,38 @@ export default function MapsTab() {
                   }
                   return;
                 }
-                // Partner: if one exists, go directly to their detail view
-                if (cat === "partner" && items.length > 0) {
-                  setSelectedId(items[0].id); setShowSelfView(false);
-                  return;
-                }
+                // Always expand the panel for circle/home \u2014 no shortcut
                 setExpandedCategory(isExpanded ? null : cat);
               }}>
                 {/* Node circle */}
                 <circle cx={pos.x} cy={pos.y} r="22"
-                  fill={color} fillOpacity={isExpanded || (isCity && cityName) || (cat === "partner" && items.length > 0) ? "0.2" : "0.1"}
-                  stroke={color} strokeOpacity={isExpanded || (isCity && cityName) || (cat === "partner" && items.length > 0) ? "0.5" : "0.25"} strokeWidth="1.5" />
+                  fill={color} fillOpacity={isExpanded || (isCity && cityName) || items.length > 0 ? "0.2" : "0.1"}
+                  stroke={color} strokeOpacity={isExpanded || (isCity && cityName) || items.length > 0 ? "0.5" : "0.25"} strokeWidth="1.5" />
                 <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle"
                   fill={color} fontSize="14">{meta.icon}</text>
                 {/* Label */}
                 <text x={pos.x} y={pos.y + 34} textAnchor="middle"
-                  fill="#e8dcc8" fillOpacity="0.7" fontSize="9" fontWeight="500">
-                  {isCity && cityName ? cityName.split(",")[0]
-                    : cat === "partner" && items.length > 0 ? (items[0].name.length > 10 ? items[0].name.slice(0, 9) + "\u2026" : items[0].name)
-                    : meta.label}
+                  fill="var(--foreground-muted)" fontSize="9" fontWeight="500">
+                  {isCity && cityName ? cityName.split(",")[0] : meta.label}
                 </text>
-                <text x={pos.x} y={pos.y + 45} textAnchor="middle"
-                  fill="#d4c5a9" fillOpacity="0.3" fontSize="7.5">
+                {meta.subtitle && (
+                  <text x={pos.x} y={pos.y + 45} textAnchor="middle"
+                    fill="var(--foreground-faint)" fontSize="7">
+                    {meta.subtitle}
+                  </text>
+                )}
+                <text x={pos.x} y={pos.y + (meta.subtitle ? 56 : 45)} textAnchor="middle"
+                  fill="var(--foreground-faint)" fontSize="7.5">
                   {isCity
                     ? (cityName ? "tap for lines" : "tap to explore")
-                    : cat === "partner" && items.length > 0 ? "tap to view"
                     : items.length === 0 ? "tap to add" : `${items.length}`}
                 </text>
               </g>
             );
           })}
 
-          {/* Member nodes (skip partner — partner shows directly on category node) */}
+          {/* Member nodes */}
           {CATEGORY_ORDER.map((cat) => {
-            if (cat === "partner") return null; // Partner node IS the member
             const items = grouped[cat] || [];
             const memberPos = getMemberPositions(cat, items.length);
             const color = categoryColorHex[cat];
@@ -7352,7 +7417,7 @@ export default function MapsTab() {
                     {conn.name.charAt(0).toUpperCase()}
                   </text>
                   <text x={mp.x} y={mp.y + 26} textAnchor="middle"
-                    fill="#d4c5a9" fillOpacity="0.5" fontSize="7">
+                    fill="var(--foreground-faint)" fontSize="7">
                     {conn.name.length > 8 ? conn.name.slice(0, 7) + "\u2026" : conn.name}
                   </text>
                 </g>
@@ -7378,8 +7443,8 @@ export default function MapsTab() {
                   <p className="text-foreground text-sm font-medium">{meta.label}</p>
                 </div>
                 <button onClick={() => setExpandedCategory(null)}
-                  className="text-foreground/30 hover:text-foreground/50">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  aria-label="Close category" className="text-muted hover:text-foreground">
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -7429,8 +7494,8 @@ export default function MapsTab() {
                           {conn.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-foreground/80 text-sm font-medium truncate">{conn.name}</p>
-                          <p className="text-foreground/30 text-xs">
+                          <p className="text-foreground text-sm font-medium truncate">{conn.name}</p>
+                          <p className="text-muted text-xs">
                             {conn.relationship}
                             {conn.big_three && <span> · {SIGN_FULL[conn.big_three.sun]}</span>}
                           </p>
@@ -7442,8 +7507,8 @@ export default function MapsTab() {
                             <span className="text-terracotta">{conn.synastry.tension}</span>
                           </div>
                         )}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          strokeWidth="2" className="text-foreground/15 flex-shrink-0">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          strokeWidth="2" className="text-muted flex-shrink-0">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -7452,30 +7517,17 @@ export default function MapsTab() {
                 </div>
               )}
 
-              {/* Add / Change button */}
+              {/* Add button */}
               <div className="px-4 py-3">
-                {/* Partner: limit to 1. Show "Change" if one exists */}
-                {cat === "partner" && items.length > 0 ? (
-                  <button
-                    onClick={() => openAddForm(cat)}
-                    className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed ${meta.borderColor} ${meta.color} text-xs font-semibold tracking-wide hover:bg-foreground/[0.02] active:scale-[0.99] transition-all`}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                    Change partner
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => openAddForm(cat)}
-                    className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed ${meta.borderColor} ${meta.color} text-xs font-semibold tracking-wide hover:bg-foreground/[0.02] active:scale-[0.99] transition-all`}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                    Add {cat === "partner" ? "partner" : cat === "family" ? "family member" : "friend"}
-                  </button>
-                )}
+                <button
+                  onClick={() => openAddForm(cat)}
+                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed ${meta.borderColor} ${meta.color} text-xs font-semibold tracking-wide hover:bg-foreground/[0.02] active:scale-[0.99] transition-all`}
+                >
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+                  </svg>
+                  Add {cat === "circle" ? "to your home" : cat === "origin" ? "family member" : "friend"}
+                </button>
 
                 {/* Family analysis */}
                 {cat === "family" && items.length >= 2 && userChart && (
@@ -7486,7 +7538,7 @@ export default function MapsTab() {
                   >
                     {analysisLoading ? (
                       <>
-                        <span className="w-3 h-3 border-2 border-sage/30 border-t-sage rounded-full animate-spin" />
+                        <span className="w-3 h-3 border-2 border-sage/30 border-t-sage rounded-full animate-spin" role="status" aria-label="Loading" />
                         Analyzing...
                       </>
                     ) : (
@@ -7509,19 +7561,19 @@ export default function MapsTab() {
               <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                 {editingConnectionId ? "Edit info" : "Add a person"}
               </h3>
-              <button onClick={() => { setShowAddForm(false); setEditingConnectionId(null); }} className="text-foreground/30 hover:text-foreground/60 transition-colors">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <button onClick={() => { setShowAddForm(false); setEditingConnectionId(null); }} aria-label="Close form" className="text-muted hover:text-foreground transition-colors">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="flex flex-col gap-3 px-5 pb-24 overflow-y-auto">
+            <div className="flex flex-col gap-3 px-5 pb-6 overflow-y-auto">
               <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
-                placeholder="Their name" className={inputClass} />
+                placeholder="Their name" aria-label="Their name" className={inputClass} />
 
               <select value={formRelationship} onChange={(e) => setFormRelationship(e.target.value)}
-                className={`${inputClass} ${!formRelationship ? "text-foreground/30" : ""}`}>
+                aria-label="Relationship type" className={`${inputClass} ${!formRelationship ? "text-muted" : ""}`}>
                 <option value="" disabled>Relationship</option>
                 {filteredRelationships.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -7529,16 +7581,16 @@ export default function MapsTab() {
               </select>
 
               <input type="date" value={formBirthDate} onChange={(e) => setFormBirthDate(e.target.value)}
-                className={inputClass} />
+                aria-label="Their birth date" className={inputClass} />
 
               {!formUnknownTime && (
                 <input type="time" value={formBirthTime} onChange={(e) => setFormBirthTime(e.target.value)}
-                  className={inputClass} />
+                  aria-label="Their birth time" className={inputClass} />
               )}
-              <label className="flex items-center gap-2 text-foreground/40 text-xs">
+              <label className="flex items-center gap-2 text-muted text-xs">
                 <input type="checkbox" checked={formUnknownTime}
                   onChange={(e) => setFormUnknownTime(e.target.checked)}
-                  className="rounded border-foreground/20" />
+                  aria-label="Birth time unknown" className="rounded border-foreground/20" />
                 Birth time unknown
               </label>
 
@@ -7574,13 +7626,13 @@ export default function MapsTab() {
               <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                 Set your city
               </h3>
-              <button onClick={() => setShowCityPicker(false)} className="text-foreground/30 hover:text-foreground/60 transition-colors">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <button onClick={() => setShowCityPicker(false)} aria-label="Close city picker" className="text-muted hover:text-foreground transition-colors">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <p className="text-foreground/40 text-xs mb-4">
+            <p className="text-muted text-xs mb-4">
               Enter the city you live in to see which planetary lines are nearby and how they shape your experience there.
             </p>
 

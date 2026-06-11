@@ -10,16 +10,18 @@
  * - Next full moon / new moon cards, tappable to open lore
  * - Widget grid below
  *
- * All celestial elements open an InfoSheet with detailed meaning.
+ * All celestial elements expand inline with detailed meaning.
  */
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { BirthTimeRepromptBanner } from "@/components/BirthTimeCue";
 import { getPullUsageToday, incrementPullUsage } from "@/lib/tier";
+import { getLocalEntries } from "@/lib/journal";
+import { getTarotHistoryKey } from "@/lib/completionSync";
 
 // ─── Almanac tip category preferences ──────────────────────────────────────
 const ALMANAC_PREFS_KEY = "mapped:almanac-prefs";
@@ -84,10 +86,9 @@ import { generateShareCard } from "@/lib/shareCard";
 import { getDailyQuote } from "@/lib/dailyQuote";
 import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
-import { STITCHED_ANIMAL_ORACLE } from "@/lib/stitchedAnimalOracle";
+import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
-import InfoSheet from "@/components/InfoSheet";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
 import { getTodaysMoonEvent } from "@/lib/celestialCalendar";
@@ -122,52 +123,139 @@ type HorizonEvent = {
   element?: string;
 };
 
-type SheetKind =
-  | { kind: "moon-phase" }
-  | { kind: "season" }
-  | { kind: "planetary-day" }
-  | { kind: "element" }
-  | { kind: "nakshatra" }
-  | { kind: "next-full-moon" }
-  | { kind: "next-new-moon" }
-  | { kind: "horizon-event"; event: HorizonEvent };
 
 export default function HomeTab() {
   const router = useRouter();
   const { gate, PaywallModal } = usePaywall();
   const { tier } = useTier();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [hasChart, setHasChart] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [sheet, setSheet] = useState<SheetKind | null>(null);
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
+  const toggleFolder = (id: string) => setOpenFolder(prev => prev === id ? null : id);
   const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
   const [horoscopeStatus, setHoroscopeStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [horoscopeError, setHoroscopeError] = useState<string>("");
   const [journalPrompt, setJournalPrompt] = useState<string | null>(null);
   const [journalPromptContext, setJournalPromptContext] = useState<string>("");
-  const [journalPromptLoading, setJournalPromptLoading] = useState(false);
+  // journalPromptLoading removed — prompt now generates on journal page
   const [shareLoading, setShareLoading] = useState(false);
+  const [showMoonBanner, setShowMoonBanner] = useState<boolean | null>(null);
   const [showMoonEvent, setShowMoonEvent] = useState(false);
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [tarotFlipping, setTarotFlipping] = useState(false);
   const [oracleFlipping, setOracleFlipping] = useState(false);
+  const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
+  const [showDeckPicker, setShowDeckPicker] = useState(false);
+
+  // Save pull state
+  const [savingPull, setSavingPull] = useState<"tarot" | "oracle" | null>(null);
+  const [pullNotes, setPullNotes] = useState("");
+  const [pullSaved, setPullSaved] = useState<"tarot" | "oracle" | null>(null);
+  const [generatingNotes, setGeneratingNotes] = useState(false);
+
+  // Journal today check
+  const [todayHasEntry, setTodayHasEntry] = useState(false);
+
+  // Store chart + transits for Dolly note generation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chartRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transitsRef = useRef<any>(null);
+
 
   // Card pull state — remember reveals for today (use local date, not UTC)
-  const [tarotRevealed, setTarotRevealed] = useState(() => {
+  // Initialise as false (matching SSR) then hydrate from localStorage in useEffect
+  // to avoid Next.js hydration mismatch that causes blank renders.
+  const [tarotRevealed, setTarotRevealed] = useState(false);
+  const [oracleRevealed, setOracleRevealed] = useState(false);
+  const [cardStateHydrated, setCardStateHydrated] = useState(false);
+
+  useEffect(() => {
     try {
       const d = new Date();
-      const key = `mapped:tarot-revealed-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      return localStorage.getItem(key) === "1";
-    } catch { return false; }
-  });
-  const [oracleRevealed, setOracleRevealed] = useState(() => {
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      if (localStorage.getItem(`mapped:tarot-revealed-${dateKey}`) === "1") {
+        setTarotRevealed(true);
+      }
+      if (localStorage.getItem(`mapped:oracle-revealed-${dateKey}`) === "1") {
+        setOracleRevealed(true);
+      }
+      // Load preferred oracle deck
+      const savedDeck = localStorage.getItem(ORACLE_DECK_KEY);
+      if (savedDeck && ORACLE_DECKS.some(d2 => d2.id === savedDeck)) {
+        setOracleDeckId(savedDeck);
+      }
+    } catch { /* SSR or localStorage unavailable */ }
+    setCardStateHydrated(true);
+  }, []);
+
+  // Save a daily pull with optional notes
+  const saveDailyPull = useCallback((type: "tarot" | "oracle", notes: string) => {
     try {
       const d = new Date();
-      const key = `mapped:oracle-revealed-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      return localStorage.getItem(key) === "1";
-    } catch { return false; }
-  });
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const histKey = getTarotHistoryKey(currentUserId);
+      const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
+      // Don't duplicate if already saved today for this type
+      const spreadName = type === "tarot" ? "Daily Pull" : "Daily Oracle Pull";
+      const alreadySaved = existing.some((r: { date?: string; spreadName?: string }) =>
+        r.spreadName === spreadName && r.date?.startsWith(dateKey)
+      );
+      if (alreadySaved) return;
+
+      const reading: Record<string, unknown> = {
+        id: `daily-${type}-${dateKey}`,
+        date: d.toISOString(),
+        deck: type === "tarot" ? "rider-waite" : "stitched-animal-oracle",
+        spreadName,
+        notes: notes.trim() || undefined,
+      };
+      // We need card data — access it from the DOM-level vars (dailyTarot / dailyOracle are in scope at call site)
+      // So we pass cards in from the call site instead
+      const updated = [reading, ...existing].slice(0, 50);
+      localStorage.setItem(histKey, JSON.stringify(updated));
+    } catch { /* ignore */ }
+  }, [currentUserId]);
+
+  // Generate notes from Dolly via API
+  const generateDollyNotes = useCallback(async (cardName: string, keywords: string, meaning: string) => {
+    setGeneratingNotes(true);
+    try {
+      const res = await fetch("/api/dolly/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardName,
+          keywords,
+          meaning,
+          chart: chartRef.current || undefined,
+          transits: transitsRef.current || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const text = await res.text();
+      // The API streams — parse the full text
+      const lines = text.split("\n").filter(l => l.startsWith("data: "));
+      let full = "";
+      for (const line of lines) {
+        const payload = line.slice(6);
+        if (payload === "[DONE]") break;
+        try {
+          const parsed = JSON.parse(payload);
+          full += parsed.choices?.[0]?.delta?.content || parsed.content || parsed.text || "";
+        } catch {
+          full += payload;
+        }
+      }
+      setPullNotes(full.trim() || "Dolly couldn't generate notes right now. Try writing your own!");
+    } catch {
+      setPullNotes("Dolly couldn't generate notes right now. Try writing your own!");
+    }
+    setGeneratingNotes(false);
+  }, []);
 
   // Today's celestial snapshot (memoized per render — cheap)
   const today = useMemo(() => new Date(), []);
@@ -187,6 +275,21 @@ export default function HomeTab() {
   }, [today]);
   const nextMoons = useMemo(() => getNextMoonEvents(today), [today]);
   const todaysMoonEvent = useMemo(() => getTodaysMoonEvent(today), [today]);
+
+  // Auto-show moon event banner on new/full moon days (once per day)
+  useEffect(() => {
+    if (!todaysMoonEvent) { setShowMoonBanner(false); return; }
+    const dismissKey = `mapped:moon-banner-dismissed-${todayLocal}`;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(dismissKey) === "1"; } catch {}
+    setShowMoonBanner(!dismissed);
+  }, [todaysMoonEvent, todayLocal]);
+
+  // When user closes moon banner, mark it dismissed for today
+  const handleCloseMoonBanner = useCallback(() => {
+    setShowMoonBanner(false);
+    try { localStorage.setItem(`mapped:moon-banner-dismissed-${todayLocal}`, "1"); } catch {}
+  }, [todayLocal]);
 
   // Deterministic daily seed — same value all day, changes at midnight
   const dailySeed = useMemo(() => {
@@ -220,12 +323,14 @@ export default function HomeTab() {
     return ALL_CARDS[idx];
   }, [dailySeed]);
 
-  // Daily oracle card (deterministic per day, different offset)
+  // Daily oracle card (deterministic per day, uses selected deck)
   const dailyOracle = useMemo(() => {
-    const oracleCards = STITCHED_ANIMAL_ORACLE.cards;
-    const idx = (dailySeed * 7 + 13) % oracleCards.length;
-    return oracleCards[idx];
-  }, [dailySeed]);
+    const card = getDailyOracleCard(oracleDeckId, dailySeed);
+    if (card) return card;
+    // Fallback to first deck
+    return getDailyOracleCard(DEFAULT_ORACLE_DECK, dailySeed)!;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailySeed, oracleDeckId]);
 
   // Upcoming celestial events (next 30 days, skip raw moon events since we show those separately)
   const upcomingEvents = useMemo(() => {
@@ -279,6 +384,7 @@ export default function HomeTab() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          setCurrentUserId(session.user.id);
           // Prefer the account name (set during sign-up) over the chart subject name
           const accountName = session.user.user_metadata?.name || null;
 
@@ -315,6 +421,17 @@ export default function HomeTab() {
     }
 
     loadUser();
+
+    // Check if today's journal entry exists
+    try {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      const localEntries = getLocalEntries();
+      const hasToday = localEntries.some((e) => {
+        const d = e.created_at || e.date;
+        return d && new Date(d).toLocaleDateString("en-CA") === todayStr;
+      });
+      setTodayHasEntry(hasToday);
+    } catch {}
   }, [router]);
 
   // Fetch daily horoscope — simple state machine: idle → loading → done/error
@@ -322,7 +439,7 @@ export default function HomeTab() {
     if (!hasChart || horoscopeStatus !== "idle") return;
 
     // Check localStorage cache — horoscope persists for the whole day
-    const todayKey = `horoscope-v3-${todayLocal}`;
+    const todayKey = currentUserId ? `horoscope-v4-${currentUserId}-${todayLocal}` : `horoscope-v4-${todayLocal}`;
     try {
       const cached = localStorage.getItem(todayKey);
       if (cached) {
@@ -336,7 +453,7 @@ export default function HomeTab() {
       // Clean up old days
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith("horoscope-v3-") && k !== todayKey) {
+        if (k && k.startsWith("horoscope-v4-") && k !== todayKey && (!currentUserId || k.includes(currentUserId))) {
           localStorage.removeItem(k);
         }
       }
@@ -364,7 +481,7 @@ export default function HomeTab() {
           .single();
 
         if (chartErr || !chartData?.big_three) {
-          setHoroscopeError("Chart query: " + (chartErr?.message || "no big_three found"));
+          setHoroscopeError("Couldn't load your chart data. Try refreshing.");
           setHoroscopeStatus("error");
           return;
         }
@@ -396,6 +513,27 @@ export default function HomeTab() {
             if (transitRes.ok) transits = await transitRes.json();
           }
         } catch { /* transits are a bonus */ }
+
+        // Store for Dolly note generation
+        chartRef.current = {
+          bigThree: chartData.big_three,
+          planets: chartData.planets || [],
+          houses: chartData.houses || [],
+          specialPoints: chartData.special_points || [],
+        };
+        transitsRef.current = transits || null;
+
+        // Persist chart + transits so journal prompts can use them
+        try {
+          sessionStorage.setItem("mapped:chartData", JSON.stringify({
+            bigThree: chartData.big_three,
+            planets: chartData.planets || [],
+            lordOfYear: chartData.lord_of_year || undefined,
+          }));
+          if (transits?.transitAspects) {
+            sessionStorage.setItem("mapped:transits", JSON.stringify(transits.transitAspects));
+          }
+        } catch { /* storage full or unavailable */ }
 
         const res = await fetch("/api/horoscope", {
           method: "POST",
@@ -455,10 +593,12 @@ export default function HomeTab() {
     return null;
   }, [upcomingEvents]);
 
+  const currentMoonSign = useMemo(() => getCurrentMoonSign(today), [today]);
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -466,53 +606,14 @@ export default function HomeTab() {
   // First name only — greeting feels more personal
   const firstName = userName?.split(" ")[0] ?? null;
 
-  // If no chart exists yet, prompt them to create one
+  // If no chart exists yet, redirect to onboarding — never show a half-state home page
   if (!hasChart) {
+    if (!isLoading) {
+      router.replace("/onboarding");
+    }
     return (
-      <main className="w-full max-w-lg mx-auto px-5 py-6 pb-24">
-        <header className="mb-6">
-          <p className="text-terracotta/80 text-[10px] uppercase tracking-[0.25em] font-semibold mb-2">
-            {dateStr}
-          </p>
-          <h1
-            className="text-[32px] text-foreground leading-tight tracking-tight"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Welcome to mapped
-          </h1>
-        </header>
-
-        <div className="pt-4">
-          <FolderCard tabLabel="Start here" color="terracotta">
-            <p
-              className="text-[22px] leading-tight mb-2"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Calculate your chart
-            </p>
-            <p className="text-cream/80 text-sm leading-relaxed mb-5">
-              Unlock personalized insights, transits, and daily guidance tailored to your birth chart.
-            </p>
-            <button
-              onClick={() => router.push("/chart/new")}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full
-                         bg-ink text-paper text-xs font-semibold tracking-wide uppercase
-                         hover:bg-ink/90 active:scale-[0.98] transition-all"
-            >
-              Get started →
-            </button>
-          </FolderCard>
-        </div>
-
-        {/* Daily quote for visitors without a chart */}
-        <div className="mt-10 rounded-2xl bg-card/45 border border-foreground/10 px-5 py-5">
-          <p className="text-foreground/80 text-[15px] leading-[1.7] italic">
-            &ldquo;{dailyQuote.text}&rdquo;
-          </p>
-          <p className="text-foreground/30 text-[9px] uppercase tracking-[0.15em] mt-3">
-            {dailyQuote.reason}
-          </p>
-        </div>
+      <main className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="w-6 h-6 border-2 border-brass/30 border-t-brass rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -520,690 +621,668 @@ export default function HomeTab() {
   return (
     <>
       <style>{`@keyframes cardFlip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }`}</style>
-      <main className="w-full max-w-lg mx-auto px-5 py-6 pb-28">
-        {/* ─── Birth time re-prompt banner (shows on days 3/7/14/30) ─── */}
+      <main className="w-full max-w-lg mx-auto px-5 pt-2 pb-32">
+
+        {/* ─── Birth time re-prompt banner ─── */}
         <BirthTimeRepromptBanner />
 
-        {/* ─── Greeting header with moon ─── */}
-        <header className="flex items-start justify-between gap-4 mb-8">
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-[10px] uppercase tracking-[0.25em] font-semibold mb-3"
-              style={{ color: "var(--terracotta)", opacity: 0.8 }}
-            >
-              {dateStr}
-            </p>
-            <h1
-              className="text-[38px] leading-[1.05] tracking-tight font-bold"
-              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-            >
-              {greeting}{firstName ? "," : ""}
-              {firstName && (
-                <>
-                  <br />
-                  <span style={{ color: "var(--terracotta)" }}>{firstName}</span>
-                </>
-              )}
-            </h1>
-          </div>
-
-          {/* Moon phase badge — on full/new moon days, opens the event takeover */}
+        {/* ─── Moon + Greeting hero block ─── */}
+        <div className="flex flex-col items-center mb-8">
+          {/* Moon */}
           <button
             type="button"
-            onClick={() => todaysMoonEvent ? setShowMoonEvent(true) : setSheet({ kind: "moon-phase" })}
-            className="shrink-0 rounded-2xl border p-3 text-center active:scale-95 transition-all"
-            style={{
-              borderColor: todaysMoonEvent ? "var(--terracotta)" : "var(--border-card)",
-              backgroundColor: todaysMoonEvent ? "rgba(196,106,69,0.08)" : "var(--background-card)",
-            }}
+            onClick={() => todaysMoonEvent ? setShowMoonEvent(true) : toggleFolder("moon-phase")}
+
+            className="active:scale-95 transition-transform -mb-4"
           >
-            <MoonPhaseIcon phase={moon.label} size={80} className="mb-1" />
-            <p
-              className="text-[8px] uppercase tracking-[0.2em] font-bold mb-0.5"
-              style={{ color: todaysMoonEvent ? "var(--terracotta)" : "var(--foreground)", opacity: todaysMoonEvent ? 0.7 : 0.45 }}
-            >
-              {todaysMoonEvent ? (todaysMoonEvent.kind === "full" ? "✦ Full Moon ✦" : "✦ New Moon ✦") : "Today’s moon"}
-            </p>
-            <p
-              className="text-[11px] uppercase tracking-[0.15em] font-bold"
-              style={{ color: todaysMoonEvent ? "var(--terracotta)" : "var(--foreground)", opacity: 0.7 }}
-            >
-              {todaysMoonEvent?.moonName || moon.label}
-            </p>
+            <MoonPhaseIcon phase={moon.label} size={280} />
           </button>
-        </header>
 
-        {/* ─── Moon event banner (full/new moon days only) ─── */}
-        {todaysMoonEvent && (
-          <button
-            type="button"
-            onClick={() => setShowMoonEvent(true)}
-            className="w-full mb-6 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-all"
-            style={{
-              background: "#0a0a1a",
-              border: "1px solid rgba(196,106,69,0.25)",
-              position: "relative",
-            }}
+          {/* Greeting — overlaps moon slightly for cohesion */}
+          <h2
+            className="text-[32px] leading-[1.1] tracking-[0.14em] uppercase"
+            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)", fontWeight: 400 }}
           >
-            {/* Night sky background */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/night-sky.png"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-              style={{ opacity: 0.7 }}
-            />
-            <div className="absolute inset-0 rounded-2xl" style={{ background: "linear-gradient(90deg, rgba(5,5,15,0.4) 0%, rgba(5,5,15,0.2) 100%)" }} />
-            <div className="flex items-center gap-4 px-5 py-4 relative z-10">
-              <div className="shrink-0">
-                <MoonPhaseIcon phase={todaysMoonEvent.kind === "full" ? "Full Moon" : "New Moon"} size={48} />
+            {greeting}.
+          </h2>
+          {firstName && (
+            <p
+              className="text-[54px] leading-[1.0] -mt-1"
+              style={{ fontFamily: "var(--font-script)", color: "var(--foreground)", fontWeight: 400 }}
+            >
+              {firstName}
+            </p>
+          )}
+          <p
+            className="text-[12px] tracking-[0.08em] mt-2"
+            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)", opacity: 0.55 }}
+          >
+            {moon.label.toLowerCase()} · moon in {currentMoonSign.full.toLowerCase()}
+          </p>
+        </div>
+
+        {/* ─── Moon phase inline expansion ─── */}
+        {openFolder === "moon-phase" && (() => {
+          const a = moon.almanac;
+          return (
+            <div className="rounded-2xl px-5 py-5 mb-6 space-y-4" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>
+                    {moon.illumination}% illuminated · {planetaryDay.planet}&apos;s day
+                  </p>
+                  <p className="text-[20px] font-medium mt-1" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>
+                    {moon.emoji} {moon.label}
+                  </p>
+                </div>
+                <button type="button" onClick={() => toggleFolder("moon-phase")} className="w-8 h-8 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} aria-label="Close">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white/90 text-[15px] font-semibold" style={{ fontFamily: "Georgia, serif" }}>
-                  Tonight: {todaysMoonEvent.moonName || (todaysMoonEvent.kind === "full" ? "Full Moon" : "New Moon")}
-                </p>
-                <p className="text-white/45 text-[11px] mt-0.5">
-                  {todaysMoonEvent.zodiacSign} · Tap to explore rituals &amp; lore
-                </p>
+
+              <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+
+              <p className="text-[13px] italic leading-relaxed" style={{ color: "var(--foreground-on-card-muted)" }}>{moon.energy}</p>
+
+              {/* Best for / Avoid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(106,140,106,0.12)", border: "1px solid rgba(106,140,106,0.25)" }}>
+                  <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5" style={{ color: "var(--sage)" }}>Good for</p>
+                  {a.bestFor.map((item: string, i: number) => (
+                    <p key={i} className="text-[13px] leading-snug" style={{ color: "var(--foreground-on-card)" }}>+ {item}</p>
+                  ))}
+                </div>
+                <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid var(--border-card)" }}>
+                  <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5" style={{ color: "var(--foreground-on-card-muted)" }}>Avoid</p>
+                  {a.avoid.map((item: string, i: number) => (
+                    <p key={i} className="text-[13px] leading-snug" style={{ color: "var(--foreground-on-card)" }}>- {item}</p>
+                  ))}
+                </div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+
+              {/* Folk wisdom */}
+              <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid var(--border-card)" }}>
+                <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2" style={{ color: "var(--foreground-on-card-muted)" }}>Folk wisdom</p>
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{a.folkWisdom}</p>
+                <p className="text-[12px] leading-relaxed italic mt-2" style={{ color: "var(--foreground-on-card-muted)" }}>{a.weatherLore}</p>
+              </div>
             </div>
-          </button>
-        )}
+          );
+        })()}
 
-        {/* ─── Today's Transit card ─── */}
-        <div
-          className="rounded-2xl overflow-hidden mb-6"
-          style={{
-            backgroundColor: "var(--background-card)",
-            border: "1px solid var(--border-card)",
-            boxShadow: "var(--card-shadow)",
-          }}
-        >
-          <div className="px-6 pt-6 pb-5">
-            {/* Tag */}
-            <span
-              className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full mb-4"
+        {/* ─── New/Full Moon banner ─── */}
+        {showMoonBanner && todaysMoonEvent && (() => {
+          const lore = todaysMoonEvent.lore;
+          const isNew = todaysMoonEvent.kind === "new";
+          const title = isNew
+            ? `New Moon in ${todaysMoonEvent.zodiacSign}`
+            : (todaysMoonEvent.moonName || `Full Moon in ${todaysMoonEvent.zodiacSign}`);
+          return (
+            <div
+              className="relative rounded-2xl px-5 py-5 mb-8 overflow-hidden"
               style={{
-                backgroundColor: "var(--terracotta)",
-                color: "var(--cream, #FFF8F0)",
+                background: isNew
+                  ? "linear-gradient(135deg, #1a1528 0%, #0e0a14 100%)"
+                  : "linear-gradient(135deg, #2a1f0e 0%, #1a1528 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              Today&apos;s transit ✦
-            </span>
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={handleCloseMoonBanner}
+                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+                aria-label="Dismiss moon banner"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
 
-            {/* Headline + sidebar row */}
-            <div className="flex items-start gap-5">
-              {/* Left: headline + body */}
-              <div className="flex-1 min-w-0">
-                {horoscope && horoscopeStatus === "done" ? (
-                  <h2
-                    className="text-[28px] leading-[1.1] tracking-tight mb-4"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-                  >
-                    {horoscope.headline}
-                  </h2>
-                ) : horoscopeStatus === "loading" ? (
-                  <div className="flex items-center gap-2 mb-4 py-3">
-                    <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
-                    <p className="text-foreground/50 text-[12px] uppercase tracking-[0.15em] font-semibold">
-                      Reading your chart...
-                    </p>
-                  </div>
-                ) : horoscopeStatus === "error" ? (
-                  <p className="text-foreground/50 text-[15px] leading-relaxed mb-4">
-                    Horoscope unavailable right now
-                  </p>
-                ) : (
-                  <h2
-                    className="text-[28px] leading-[1.1] tracking-tight mb-4"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-                  >
-                    Your day
-                  </h2>
-                )}
-
-                {horoscope && horoscopeStatus === "done" && (
-                  <p
-                    className="text-[14px] leading-[1.7]"
-                    style={{ color: "var(--foreground)", opacity: 0.75 }}
-                  >
-                    {horoscope.horoscope}
-                  </p>
-                )}
-              </div>
-
-              {/* Right sidebar: celestial context */}
-              <div className="shrink-0 w-[110px] space-y-4 pt-1">
+              {/* Emoji + title */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[28px]">{lore?.emoji || (isNew ? "🌑" : "🌕")}</span>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: "var(--terracotta)" }}>
-                    Moon in
+                  <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
+                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                    Tonight
                   </p>
-                  <p className="text-[13px] uppercase tracking-[0.12em] font-bold mt-0.5" style={{ color: "var(--foreground)" }}>
-                    {moonSignLabel}
-                  </p>
-                </div>
-                <div
-                  className="w-6 border-t-2"
-                  style={{ borderColor: "var(--terracotta)" }}
-                />
-                <div>
-                  <p className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: "var(--terracotta)" }}>
-                    Venus in
-                  </p>
-                  <p className="text-[13px] uppercase tracking-[0.12em] font-bold mt-0.5" style={{ color: "var(--foreground)" }}>
-                    {venusSign}
+                  <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
+                    {title}
                   </p>
                 </div>
               </div>
+
+              {/* Energy / meaning */}
+              {lore?.energy && (
+                <p className="text-[13px] leading-[1.6] mb-4"
+                   style={{ color: "rgba(240,230,210,0.75)", fontFamily: "var(--font-body)" }}>
+                  {lore.energy}
+                </p>
+              )}
+
+              {/* Learn more button */}
+              <button
+                type="button"
+                onClick={() => setShowMoonEvent(true)}
+                className="text-[12px] tracking-[0.06em] px-4 py-2 rounded-full active:scale-95 transition-transform"
+                style={{
+                  background: "rgba(196,106,69,0.2)",
+                  color: "#c46a45",
+                  border: "1px solid rgba(196,106,69,0.25)",
+                  fontFamily: "var(--font-display)",
+                }}
+                aria-label="View full moon event details"
+              >
+                Explore this moon →
+              </button>
             </div>
-          </div>
+          );
+        })()}
 
-          {/* Vibes / Avoid */}
-          {horoscope && horoscopeStatus === "done" && (
+        {/* ─── Reading card ─── */}
+        <div
+          className="rounded-2xl px-6 py-7 mb-8"
+          style={{ backgroundColor: "var(--plum)" }}
+        >
+          <p
+            className="text-[9px] tracking-[0.25em] uppercase font-medium mb-4"
+            style={{ color: "#c9a961" }}
+          >
+            Today&apos;s transits
+          </p>
+
+          {horoscope && horoscopeStatus === "done" ? (
             <>
-              <div className="mx-6">
-                <div className="border-t" style={{ borderColor: "var(--border-card)" }} />
-              </div>
-              <div className="px-6 py-5">
-                <div className="flex gap-6">
-                  {/* Vibes */}
-                  <div className="flex-1">
-                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2.5" style={{ color: "var(--terracotta)" }}>
-                      Vibes
-                    </p>
-                    <div className="space-y-1.5">
-                      {horoscope.vibes.map((v, i) => (
-                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground)", opacity: 0.75 }}>
-                          <span style={{ color: "var(--terracotta)", marginRight: 6 }}>+</span> {v}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Divider */}
-                  <div className="w-px self-stretch" style={{ backgroundColor: "var(--border-card)" }} />
-                  {/* Avoid */}
-                  <div className="flex-1">
-                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-2.5" style={{ color: "var(--foreground)", opacity: 0.4 }}>
-                      Avoid
-                    </p>
-                    <div className="space-y-1.5">
-                      {horoscope.avoid.map((a, i) => (
-                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground)", opacity: 0.55 }}>
-                          <span style={{ opacity: 0.4, marginRight: 6 }}>–</span> {a}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action buttons row */}
-              <div className="px-6 pb-6">
-                <div className="flex gap-2.5">
-                  {/* Journal — outlined */}
-                  <button
-                    onClick={async () => {
-                      if (journalPrompt) {
-                        router.push(`/journal?prompt=${encodeURIComponent(journalPrompt)}&context=${encodeURIComponent(journalPromptContext)}`);
-                        return;
-                      }
-                      setJournalPromptLoading(true);
-                      try {
-                        const res = await fetch("/api/journal/prompt", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            horoscope: horoscope.horoscope,
-                            celestial: {
-                              moonPhase: moon.label,
-                              zodiacSeason: season.sign,
-                              planetaryDay: planetaryDay.day,
-                              nakshatra: nakshatra.name,
-                              nakshatraQuality: nakshatra.quality,
-                            },
-                            userName: firstName || undefined,
-                          }),
-                        });
-                        const data = await res.json();
-                        const p = data.prompt || "What's alive in you right now?";
-                        const c = data.context || "";
-                        setJournalPrompt(p);
-                        setJournalPromptContext(c);
-                        router.push(`/journal?prompt=${encodeURIComponent(p)}&context=${encodeURIComponent(c)}`);
-                      } catch {
-                        router.push("/journal");
-                      }
-                      setJournalPromptLoading(false);
-                    }}
-                    className="flex-1 rounded-full py-3 flex items-center justify-center gap-2
-                               active:scale-[0.97] transition-all"
-                    style={{
-                      border: "1.5px solid var(--border-card)",
-                      color: "var(--foreground)",
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-                      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-                    </svg>
-                    <span className="text-[11px] uppercase tracking-[0.15em] font-bold" style={{ opacity: 0.7 }}>
-                      {journalPromptLoading ? "..." : "Journal"}
-                    </span>
-                  </button>
-
-                  {/* Go Deeper — filled terracotta */}
-                  <button
-                    onClick={() => {
-                      const dollyContext = `Here's my horoscope for today: "${horoscope.horoscope}" — Vibes: ${horoscope.vibes.join(", ")}. Help me go deeper into what this means for me today.`;
-                      sessionStorage.setItem("dolly-context", dollyContext);
-                      router.push("/dolly");
-                    }}
-                    className="flex-1 rounded-full py-3 flex items-center justify-center gap-2
-                               active:scale-[0.97] transition-all"
-                    style={{
-                      backgroundColor: "var(--terracotta)",
-                      color: "var(--cream, #FFF8F0)",
-                    }}
-                  >
-                    <span className="text-[11px]">✦</span>
-                    <span className="text-[11px] uppercase tracking-[0.15em] font-bold">
-                      Go deeper
-                    </span>
-                  </button>
-
-                  {/* Share — outlined */}
-                  <button
-                    disabled={shareLoading}
-                    onClick={async () => {
-                      setShareLoading(true);
-                      try {
-                        const blob = await generateShareCard({
-                          headline: horoscope.headline,
-                          horoscope: horoscope.horoscope,
-                          vibes: horoscope.vibes,
-                          avoid: horoscope.avoid,
-                          moonPhase: moon.label,
-                          moonEmoji: moon.emoji,
-                          zodiacSeason: season.sign,
-                          date: dateStr,
-                          userName: firstName || undefined,
-                        });
-                        const file = new File([blob], "mapped-horoscope.png", { type: "image/png" });
-                        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                          await navigator.share({
-                            files: [file],
-                            title: "My daily horoscope — mapped",
-                            text: horoscope.headline,
-                          });
-                        } else {
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = "mapped-horoscope.png";
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }
-                      } catch { /* user cancelled share or error */ }
-                      setShareLoading(false);
-                    }}
-                    className="flex-1 rounded-full py-3 flex items-center justify-center gap-2
-                               active:scale-[0.97] transition-all disabled:opacity-50"
-                    style={{
-                      border: "1.5px solid var(--border-card)",
-                      color: "var(--foreground)",
-                    }}
-                  >
-                    {shareLoading ? (
-                      <div className="w-3 h-3 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                           strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-                        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                        <polyline points="16 6 12 2 8 6" />
-                        <line x1="12" y1="2" x2="12" y2="15" />
-                      </svg>
-                    )}
-                    <span className="text-[11px] uppercase tracking-[0.15em] font-bold" style={{ opacity: 0.7 }}>
-                      Share
-                    </span>
-                  </button>
-                </div>
-              </div>
+              <h3
+                className="text-[20px] leading-[1.3] tracking-[0.04em] mb-4"
+                style={{ fontFamily: "var(--font-heading)", fontWeight: 500, color: "#f0e6d2" }}
+              >
+                {horoscope.headline}
+              </h3>
+              <p
+                className="text-[14px] leading-[1.7] mb-5"
+                style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.85, textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}
+              >
+                {horoscope.horoscope}
+              </p>
+              <div className="w-12 mx-auto mb-5" style={{ height: 1, backgroundColor: "#c9a961", opacity: 0.4 }} />
+              <p
+                className="text-[11px] italic text-center"
+                style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.6 }}
+              >
+                {season.sign} season · {capitalize(season.element)} element
+              </p>
             </>
+          ) : horoscopeStatus === "loading" ? (
+            <div className="flex items-center justify-center gap-3 py-6">
+              <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "#f0e6d2", borderTopColor: "#c9a961", opacity: 0.6 }} role="status" aria-label="Loading" />
+              <p className="text-[12px] uppercase tracking-[0.15em]" style={{ color: "#f0e6d2", opacity: 0.6 }}>
+                Reading your chart...
+              </p>
+            </div>
+          ) : horoscopeStatus === "error" ? (
+            <p className="text-[14px] leading-relaxed" style={{ color: "#f0e6d2", opacity: 0.7 }}>
+              Horoscope unavailable right now.
+            </p>
+          ) : (
+            <p className="text-[14px] leading-relaxed" style={{ color: "#f0e6d2", opacity: 0.7 }}>
+              Your reading is on its way.
+            </p>
           )}
         </div>
 
-
-        {/* ─── Daily phrase ─── */}
-        <div className="mb-6 rounded-2xl px-5 py-5" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
-          <p className="text-[15px] leading-[1.7] italic" style={{ color: "var(--foreground)", opacity: 0.8, fontFamily: "var(--font-body)" }}>
-            &ldquo;{dailyQuote.text}&rdquo;
-          </p>
-          <p className="text-[9px] uppercase tracking-[0.15em] mt-3" style={{ color: "var(--foreground)", opacity: 0.25 }}>
-            {dailyQuote.reason}
-          </p>
-        </div>
-
-        {/* ─── Next Up banner ─── */}
-        {nextUpEvent && (
-          <button
-            type="button"
-            onClick={() => setSheet({ kind: "horizon-event", event: nextUpEvent })}
-            className="w-full rounded-2xl overflow-hidden mb-6 text-left active:scale-[0.99] transition-all"
-            style={{
-              backgroundColor: "var(--background-card)",
-              border: "1px solid var(--border-card)",
-              boxShadow: "var(--card-shadow)",
-            }}
-          >
-            <div className="flex items-center px-5 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--terracotta)" }}>
-                  Next up
-                </p>
-                <p
-                  className="text-[18px] leading-tight tracking-tight"
-                  style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-                >
-                  {nextUpEvent.name}
-                </p>
-                <p className="text-[11px] uppercase tracking-[0.12em] font-semibold mt-1" style={{ color: "var(--terracotta)", opacity: 0.7 }}>
-                  {nextUpEvent.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {nextUpEvent.daysUntil > 0 && ` · ${nextUpEvent.daysUntil === 1 ? "tomorrow" : `in ${nextUpEvent.daysUntil} days`}`}
-                </p>
+        {/* ─── Do / Don't blocks ─── */}
+        {horoscope && horoscopeStatus === "done" && (
+          <div className="grid grid-cols-2 gap-3 mb-8">
+            {/* Lean in */}
+            <div className="rounded-2xl px-4 py-5" style={{ backgroundColor: "#2d4029" }}>
+              <p
+                className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3"
+                style={{ color: "#c9a961" }}
+              >
+                Lean in
+              </p>
+              <div className="space-y-2">
+                {horoscope.vibes.map((v, i) => (
+                  <p key={i} className="text-[12px] leading-snug" style={{ color: "#f0e6d2" }}>
+                    <span style={{ color: "#c9a961", marginRight: 6 }}>+</span>{v}
+                  </p>
+                ))}
               </div>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                   className="shrink-0 ml-3" style={{ color: "var(--terracotta)", opacity: 0.5 }}>
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
             </div>
-          </button>
+            {/* Avoid */}
+            <div className="rounded-2xl px-4 py-5" style={{ backgroundColor: "#5a1f1a" }}>
+              <p
+                className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3"
+                style={{ color: "#c9a961" }}
+              >
+                Avoid
+              </p>
+              <div className="space-y-2">
+                {horoscope.avoid.map((a, i) => (
+                  <p key={i} className="text-[12px] leading-snug" style={{ color: "#f0e6d2" }}>
+                    <span style={{ color: "#c9a961", marginRight: 6 }}>&ndash;</span>{a}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* ─── Card pulls: Tarot · Oracle ─── */}
-        <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
+        {/* ─── Primary CTA ─── */}
+        <button
+          onClick={() => {
+            if (todayHasEntry) {
+              router.push("/journal");
+              return;
+            }
+            // Navigate immediately — never block on an API call
+            if (journalPrompt) {
+              router.push(`/journal?prompt=${encodeURIComponent(journalPrompt)}&context=${encodeURIComponent(journalPromptContext)}`);
+            } else if (horoscope?.horoscope) {
+              // Pass celestial context so journal page can generate prompt in background
+              const ctx = encodeURIComponent(JSON.stringify({
+                horoscope: horoscope.horoscope,
+                celestial: { moonPhase: moon.label, zodiacSeason: season.sign, planetaryDay: planetaryDay.day, nakshatra: nakshatra.name, nakshatraQuality: nakshatra.quality },
+                userName: firstName || undefined,
+              }));
+              router.push(`/journal?generatePrompt=${ctx}`);
+            } else {
+              router.push("/journal");
+            }
+          }}
+          className="w-full rounded-full py-3.5 mb-4 flex items-center justify-center gap-2
+                     active:scale-[0.97] transition-all"
+          style={{ backgroundColor: todayHasEntry ? "#2d4a3e" : "#c9a961", color: todayHasEntry ? "#a8c4b0" : "#1a1815" }}
+        >
+          {todayHasEntry ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span className="text-[11px] tracking-[0.18em] uppercase font-medium">
+                Today&apos;s check-in complete
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[14px]" style={{ fontFamily: "var(--font-script)" }}>
+                Begin
+              </span>
+              <span className="text-[11px] tracking-[0.18em] uppercase font-medium">
+                today&apos;s check-in
+              </span>
+              <span className="text-[14px] ml-1">&rarr;</span>
+            </>
+          )}
+        </button>
+
+        {/* ─── Secondary action ─── */}
+        <div className="mb-12">
+          <button
+            onClick={() => {
+              if (horoscope) {
+                const dollyContext = `Here's my horoscope for today: "${horoscope.horoscope}" — Vibes: ${horoscope.vibes.join(", ")}. Help me go deeper into what this means for me today.`;
+                sessionStorage.setItem("dolly-context", dollyContext);
+              }
+              router.push("/dolly");
+            }}
+            className="w-full rounded-full py-2.5 text-center active:scale-[0.97] transition-all"
+            style={{ border: "0.5px solid var(--foreground)", color: "var(--foreground)", opacity: 0.6 }}
+          >
+            <span className="text-[11px] tracking-[0.15em] uppercase font-medium">Go deeper</span>
+          </button>
+        </div>
+
+        {/* ─── Daily quote ─── */}
+        <div className="mb-12 px-1">
+          <p
+            className="text-[15px] leading-[1.7] italic text-foreground/80 text-center"
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+          >
+            &ldquo;{dailyQuote.text}&rdquo;
+          </p>
+          <p
+            className="text-[9px] uppercase tracking-[0.15em] mt-2.5 text-center"
+            style={{ color: "var(--terracotta)", opacity: 0.45 }}
+          >
+            ✦ {dailyQuote.reason}
+          </p>
+        </div>
+
+        {/* ─── Today's Pulls ─── */}
+        <p
+          className="text-[9px] tracking-[0.25em] uppercase font-medium mb-4"
+          style={{ color: "var(--brass)" }}
+        >
           Today&apos;s pulls
         </p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          {/* Tarot card — always stays in its column */}
-          <div className={`rounded-xl bg-card/50 border p-2 transition-all ${expandedCard === "tarot" ? "border-terracotta/30" : "border-foreground/12"}`}>
-            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Tarot */}
+          <div className={`rounded-2xl p-3 transition-all ${expandedCard === "tarot" ? "ring-1 ring-[#c9a961]/30" : ""}`} style={{ backgroundColor: "var(--plum)", opacity: 0.95 }}>
+            <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-2" style={{ color: "#c9a961" }}>
               Tarot
             </p>
-            {!tarotRevealed && !tarotFlipping ? (
-              <button
-                onClick={() => {
-                  // Gate: free tier only gets 1 pull/day (first is free)
-                  if (tier === "free" && getPullUsageToday() >= 1) {
-                    if (gate("unlimited_pulls")) return;
-                  }
-                  incrementPullUsage();
-                  setTarotFlipping(true);
-                  setTimeout(() => {
-                    setTarotRevealed(true);
-                    setTarotFlipping(false);
-                    try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
-                    // Save to tarot-history for persistence
-                    try {
-                      const histKey = "mapped:tarot-history";
-                      const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
-                      // Don't duplicate if already saved today
-                      const alreadySaved = existing.some((r: { date?: string; spreadName?: string }) =>
-                        r.spreadName === "Daily Pull" && r.date?.startsWith(todayLocal)
-                      );
-                      if (!alreadySaved) {
-                        const reading = {
-                          id: `daily-${todayLocal}`,
-                          date: new Date().toISOString(),
-                          deck: "rider-waite",
-                          spreadName: "Daily Pull",
-                          cards: [{
-                            name: dailyTarot.name,
-                            keywords: dailyTarot.uprightKeywords,
-                            reversed: false,
-                          }],
-                        };
-                        const updated = [reading, ...existing].slice(0, 50);
-                        localStorage.setItem(histKey, JSON.stringify(updated));
+            {(() => {
+              const tarotImgSrc = tarotRevealed
+                ? (getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE)
+                : CARD_BACK_IMAGE;
+              return (
+                <button
+                  onClick={() => {
+                    if (!tarotRevealed && !tarotFlipping) {
+                      if (tier === "free" && getPullUsageToday() >= 1) {
+                        if (gate("unlimited_pulls")) return;
                       }
-                    } catch { /* ignore */ }
-                  }, 800);
-                }}
-                className="w-full rounded-xl overflow-hidden border border-terracotta/25 hover:border-terracotta/50 transition-all active:scale-[0.97]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={CARD_BACK_IMAGE} alt="Card back" className="w-full rounded-xl" draggable={false} />
-                <p className="text-foreground/50 text-[10px] text-center py-1.5">Tap to pull</p>
-              </button>
-            ) : tarotFlipping ? (
-              <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
-                <div className="w-full h-full transition-transform duration-400"
-                  style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
-                  <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
-                    style={{ backfaceVisibility: "hidden" }}>
-                    <Image src={CARD_BACK_IMAGE} alt="Card back" fill className="object-cover" draggable={false} />
+                      incrementPullUsage();
+                      setTarotFlipping(true);
+                      setTimeout(() => {
+                        setTarotRevealed(true);
+                        setTarotFlipping(false);
+                        try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
+                      }, 800);
+                    } else if (tarotRevealed) {
+                      setExpandedCard(expandedCard === "tarot" ? null : "tarot");
+                    }
+                  }}
+                  className="w-full"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                >
+                  <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 10, overflow: "hidden" }}>
+                    <Image
+                      src={tarotImgSrc}
+                      alt={tarotRevealed ? dailyTarot.name : "Card back"}
+                      fill
+                      className="object-cover"
+                      draggable={false}
+                    />
                   </div>
-                  <div className="absolute inset-0 rounded-xl border border-terracotta/25 overflow-hidden"
-                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    {getCardImagePath(dailyTarot.id) ? (
-                      <Image src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} fill className="object-contain" draggable={false} />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-terracotta/15 to-amber/10">
-                        <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setExpandedCard(expandedCard === "tarot" ? null : "tarot")}
-                className="w-full active:scale-[0.98] transition-transform"
-              >
-                {getCardImagePath(dailyTarot.id) ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={getCardImagePath(dailyTarot.id)!} alt={dailyTarot.name} className="w-full rounded-xl border border-terracotta/25" draggable={false} />
-                ) : (
-                  <div className="w-full rounded-xl p-6 bg-gradient-to-br from-terracotta/15 to-amber/10 border border-terracotta/25">
-                    <p className="text-foreground text-sm font-medium text-center" style={{ fontFamily: "var(--font-display)" }}>{dailyTarot.name}</p>
-                  </div>
-                )}
-                <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                  {dailyTarot.name}
-                </p>
-                <p className="text-foreground/40 text-[9px] text-center">
-                  {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
-                </p>
-              </button>
-            )}
+                  <p className="text-center mt-2" style={{
+                    color: "#f0e6d2",
+                    fontSize: tarotRevealed ? 12 : 10,
+                    fontFamily: tarotRevealed ? "var(--font-heading)" : "var(--font-heading)",
+                    fontWeight: tarotRevealed ? 500 : 400,
+                    opacity: tarotRevealed ? 1 : 0.6,
+                  }}>
+                    {tarotRevealed ? dailyTarot.name : "Tap to pull"}
+                  </p>
+                  {tarotRevealed && (
+                    <p className="text-center mt-0.5" style={{ color: "#f0e6d2", opacity: 0.5, fontSize: 9 }}>
+                      {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
+                    </p>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
-          {/* Oracle card — always stays in its column */}
-          <div className={`rounded-xl bg-card/50 border p-2 transition-all ${expandedCard === "oracle" ? "border-terracotta/30" : "border-foreground/12"}`}>
-            <p className="text-terracotta/65 text-[9px] uppercase tracking-[0.2em] font-bold mb-2">
-              Oracle
-            </p>
-            {!oracleRevealed && !oracleFlipping ? (
+          {/* Oracle */}
+          <div className={`rounded-2xl p-3 transition-all ${expandedCard === "oracle" ? "ring-1 ring-[#c9a961]/30" : ""}`} style={{ backgroundColor: "var(--plum)", opacity: 0.95 }}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[9px] tracking-[0.25em] uppercase font-medium" style={{ color: "#c9a961" }}>
+                Oracle
+              </p>
               <button
-                onClick={() => {
-                  // Gate: free tier only gets 1 pull/day (first is free)
-                  if (tier === "free" && getPullUsageToday() >= 1) {
-                    if (gate("unlimited_pulls")) return;
-                  }
-                  incrementPullUsage();
-                  setOracleFlipping(true);
-                  setTimeout(() => {
-                    setOracleRevealed(true);
-                    setOracleFlipping(false);
-                    try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
-                    // Save to tarot-history for persistence
-                    try {
-                      const histKey = "mapped:tarot-history";
-                      const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
-                      const alreadySaved = existing.some((r: { date?: string; spreadName?: string }) =>
-                        r.spreadName === "Daily Oracle Pull" && r.date?.startsWith(todayLocal)
-                      );
-                      if (!alreadySaved) {
-                        const reading = {
-                          id: `daily-oracle-${todayLocal}`,
-                          date: new Date().toISOString(),
-                          deck: "stitched-animal-oracle",
-                          spreadName: "Daily Oracle Pull",
-                          cards: [{
-                            name: dailyOracle.animal,
-                            keywords: [dailyOracle.keyword],
-                            reversed: false,
-                          }],
-                        };
-                        const updated = [reading, ...existing].slice(0, 50);
-                        localStorage.setItem(histKey, JSON.stringify(updated));
-                      }
-                    } catch { /* ignore */ }
-                  }, 800);
-                }}
-                className="w-full rounded-xl overflow-hidden border border-sage/25 hover:border-sage/50 transition-all active:scale-[0.97]"
+                onClick={(e) => { e.stopPropagation(); setShowDeckPicker(!showDeckPicker); }}
+                className="text-[9px] px-2 py-0.5 rounded-full transition-all"
+                style={{ color: "var(--foreground-muted)", border: "1px solid rgba(240,230,210,0.2)" }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/oracle/stitched-animal/back of deck.png" alt="Card back" className="w-full rounded-xl" draggable={false} />
-                <p className="text-foreground/50 text-[10px] text-center py-1.5">Tap to pull</p>
+                {ORACLE_DECKS.find(d => d.id === oracleDeckId)?.name || "Switch Deck"}
               </button>
-            ) : oracleFlipping ? (
-              <div className="w-full rounded-xl overflow-hidden relative" style={{ perspective: "600px", aspectRatio: "2/3" }}>
-                <div className="w-full h-full transition-transform duration-400"
-                  style={{ transformStyle: "preserve-3d", animation: "cardFlip 0.8s ease-in-out forwards" }}>
-                  <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
-                    style={{ backfaceVisibility: "hidden" }}>
-                    <Image src="/oracle/stitched-animal/back of deck.png" alt="Card back" fill className="object-cover" draggable={false} />
-                  </div>
-                  <div className="absolute inset-0 rounded-xl border border-sage/25 overflow-hidden"
-                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    <Image src={dailyOracle.image} alt={dailyOracle.animal} fill className="object-contain" draggable={false} />
-                  </div>
-                </div>
+            </div>
+            {showDeckPicker && (
+              <div className="mb-2 rounded-lg overflow-hidden" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(240,230,210,0.15)" }}>
+                {ORACLE_DECKS.map(deck => (
+                  <button
+                    key={deck.id}
+                    onClick={() => {
+                      setOracleDeckId(deck.id);
+                      setShowDeckPicker(false);
+                      setOracleRevealed(false);
+                      try { localStorage.setItem(ORACLE_DECK_KEY, deck.id); } catch {}
+                    }}
+                    className="w-full text-left px-3 py-2 text-[11px] transition-colors"
+                    style={{
+                      color: oracleDeckId === deck.id ? "#c9a961" : "rgba(240,230,210,0.7)",
+                      background: oracleDeckId === deck.id ? "rgba(201,169,97,0.08)" : "transparent",
+                    }}
+                  >
+                    {deck.name} <span style={{ opacity: 0.5 }}>({deck.cardCount} cards)</span>
+                  </button>
+                ))}
               </div>
-            ) : (
-              <button
-                onClick={() => setExpandedCard(expandedCard === "oracle" ? null : "oracle")}
-                className="w-full active:scale-[0.98] transition-transform"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={dailyOracle.image} alt={dailyOracle.animal} className="w-full rounded-xl border border-sage/25" draggable={false} />
-                <p className="text-foreground text-[12px] font-medium mt-1.5 text-center" style={{ fontFamily: "var(--font-display)" }}>
-                  {dailyOracle.animal}
-                </p>
-                <p className="text-foreground/40 text-[9px] text-center">
-                  {dailyOracle.keyword}
-                </p>
-              </button>
             )}
+            {(() => {
+              const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
+              const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.png";
+              const oracleImgSrc = oracleRevealed ? dailyOracle.image : ORACLE_BACK;
+              return (
+                <button
+                  onClick={() => {
+                    if (!oracleRevealed && !oracleFlipping) {
+                      if (tier === "free" && getPullUsageToday() >= 1) {
+                        if (gate("unlimited_pulls")) return;
+                      }
+                      incrementPullUsage();
+                      setOracleFlipping(true);
+                      setTimeout(() => {
+                        setOracleRevealed(true);
+                        setOracleFlipping(false);
+                        try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
+                      }, 800);
+                    } else if (oracleRevealed) {
+                      setExpandedCard(expandedCard === "oracle" ? null : "oracle");
+                    }
+                  }}
+                  className="w-full"
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                >
+                  <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 10, overflow: "hidden" }}>
+                    <Image
+                      src={oracleImgSrc}
+                      alt={oracleRevealed ? dailyOracle.animal : "Card back"}
+                      fill
+                      className="object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                  <p className="text-center mt-2" style={{
+                    color: "#f0e6d2",
+                    fontSize: oracleRevealed ? 12 : 10,
+                    fontFamily: "var(--font-heading)",
+                    fontWeight: oracleRevealed ? 500 : 400,
+                    opacity: oracleRevealed ? 1 : 0.6,
+                  }}>
+                    {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
+                  </p>
+                  {oracleRevealed && (
+                    <p className="text-center mt-0.5" style={{ color: "#f0e6d2", opacity: 0.5, fontSize: 9 }}>
+                      {dailyOracle.keyword}
+                    </p>
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </div>
 
-        {/* ─── Expanded reading panel — below the grid ─── */}
+        {/* Expanded tarot reading */}
         {expandedCard === "tarot" && tarotRevealed && (
-          <div className="mb-7 rounded-2xl bg-card/50 border border-foreground/12 p-4 space-y-3">
+          <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
             <div className="flex items-center justify-between">
-              <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyTarot.name}
               </p>
-              <button onClick={() => setExpandedCard(null)} className="text-foreground/25 text-[10px]">collapse</button>
+              <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
             </div>
             {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
-              <div className="flex items-center gap-1.5 text-[9px] text-foreground/30">
+              <div className="flex items-center gap-1.5 text-[9px] opacity-50">
                 {dailyTarot.element && <span>{dailyTarot.element}</span>}
                 {dailyTarot.zodiac && <><span>·</span><span>{dailyTarot.zodiac}</span></>}
                 {dailyTarot.planet && <><span>·</span><span>{dailyTarot.planet}</span></>}
               </div>
             )}
-            <p className="text-foreground/60 text-[12px] leading-relaxed">
-              {dailyTarot.uprightMeaning}
-            </p>
-            <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
-              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">If reversed</p>
-              <p className="text-foreground/50 text-[11px] leading-relaxed">{dailyTarot.reversedMeaning}</p>
+            <p className="text-[13px] leading-[1.65] opacity-85">{dailyTarot.uprightMeaning}</p>
+            <div className="rounded-xl px-3.5 py-3" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
+              <p className="text-[9px] uppercase tracking-widest mb-1 opacity-50">If reversed</p>
+              <p className="text-[11px] leading-relaxed opacity-70">{dailyTarot.reversedMeaning}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-1">
               <button
                 onClick={() => {
                   const cardContext = `Tarot: ${dailyTarot.name} — ${dailyTarot.uprightKeywords.slice(0, 3).join(", ")}. ${dailyTarot.uprightMeaning}`;
                   router.push(`/journal?tab=pull&card=tarot&cardName=${encodeURIComponent(dailyTarot.name)}&cardMeaning=${encodeURIComponent(cardContext)}`);
                 }}
-                className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
-                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
               >
-                <span className="text-[12px]">&#x270D;&#xFE0F;</span>
-                <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
+                <span className="text-[11px] font-medium">Journal this</span>
               </button>
               <button
                 onClick={() => {
-                  const dollyContext = `I pulled the ${dailyTarot.name} today (tarot). Keywords: ${dailyTarot.uprightKeywords.join(", ")}. Upright meaning: "${dailyTarot.uprightMeaning}" — Help me understand what this card means for me today and how it connects to what's going on in my life.`;
+                  const dollyContext = `I pulled the ${dailyTarot.name} today (tarot). Keywords: ${dailyTarot.uprightKeywords.join(", ")}. Upright meaning: "${dailyTarot.uprightMeaning}" — Help me understand what this card means for me today.`;
                   sessionStorage.setItem("dolly-context", dollyContext);
                   router.push("/dolly");
                 }}
-                className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ border: "0.5px solid #f0e6d2", opacity: 0.6 }}
               >
-                <span className="text-[12px]">&#x2728;</span>
-                <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
+                <span className="text-[11px] font-medium" style={{ color: "#f0e6d2" }}>Go deeper</span>
               </button>
             </div>
+
+            {/* Save pull */}
+            {pullSaved === "tarot" ? (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-full" style={{ backgroundColor: "rgba(90,122,58,0.2)", border: "0.5px solid rgba(90,122,58,0.4)" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a7a3a" strokeWidth="2" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                <span className="text-[11px] font-medium" style={{ color: "#5a7a3a" }}>Saved</span>
+              </div>
+            ) : savingPull === "tarot" ? (
+              <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: "rgba(0,0,0,0.25)" }}>
+                <p className="text-[10px] uppercase tracking-widest opacity-50">Add notes (optional)</p>
+                <textarea
+                  value={pullNotes}
+                  onChange={(e) => setPullNotes(e.target.value)}
+                  placeholder="What does this card mean to you today?"
+                  className="w-full rounded-lg p-2.5 text-[12px] leading-relaxed resize-none focus:outline-none"
+                  style={{ backgroundColor: "rgba(0,0,0,0.3)", color: "#f0e6d2", border: "0.5px solid rgba(240,230,210,0.15)", minHeight: 60 }}
+                  rows={3}
+                  aria-label="Pull notes"
+                />
+                <button
+                  onClick={() => {
+                    if (!generatingNotes) {
+                      generateDollyNotes(dailyTarot.name, dailyTarot.uprightKeywords.slice(0, 3).join(", "), dailyTarot.uprightMeaning);
+                    }
+                  }}
+                  disabled={generatingNotes}
+                  className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                  style={{ border: "0.5px solid rgba(240,230,210,0.2)" }}
+                >
+                  {generatingNotes ? (
+                    <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" /></svg>
+                  )}
+                  <span className="text-[11px] font-medium" style={{ color: "#f0e6d2", opacity: 0.6 }}>
+                    {generatingNotes ? "Generating..." : "Generate notes with Dolly"}
+                  </span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setSavingPull(null); setPullNotes(""); }}
+                    className="flex-1 rounded-full py-2 text-[11px] font-medium active:scale-[0.97] transition-all"
+                    style={{ border: "0.5px solid rgba(240,230,210,0.2)", color: "#f0e6d2", opacity: 0.5 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      try {
+                        const histKey = getTarotHistoryKey(currentUserId);
+                        const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
+                        const reading = {
+                          id: `daily-tarot-${todayLocal}`,
+                          date: new Date().toISOString(),
+                          deck: "rider-waite",
+                          spreadName: "Daily Pull",
+                          cards: [{ name: dailyTarot.name, keywords: dailyTarot.uprightKeywords, reversed: false }],
+                          notes: pullNotes.trim() || undefined,
+                        };
+                        const updated = [reading, ...existing].slice(0, 50);
+                        localStorage.setItem(histKey, JSON.stringify(updated));
+                      } catch {}
+                      setPullSaved("tarot");
+                      setSavingPull(null);
+                      setPullNotes("");
+                    }}
+                    className="flex-1 rounded-full py-2 text-[11px] font-medium active:scale-[0.97] transition-all"
+                    style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setSavingPull("tarot"); setPullNotes(""); }}
+                className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ border: "0.5px solid #c9a961", opacity: 0.7 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c9a961" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+                </svg>
+                <span className="text-[11px] font-medium" style={{ color: "#c9a961" }}>Save this pull</span>
+              </button>
+            )}
+
             <button
               onClick={async () => {
-                const shareText = `Today I pulled ${dailyTarot.name} from the tarot.\n\n${dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}\n\n"${dailyTarot.uprightMeaning}"\n\n— Mapped Astrology`;
-                if (navigator.share) {
-                  try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
-                } else {
-                  await navigator.clipboard.writeText(shareText);
-                  setCopiedShare("tarot");
-                  setTimeout(() => setCopiedShare(null), 2000);
-                }
+                const shareText = `Today I pulled ${dailyTarot.name} from the tarot.\n\n${dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}\n\n— Mapped Astrology`;
+                const { shareReadingAsImage } = await import("@/lib/shareCard");
+                setCopiedShare("tarot");
+                await shareReadingAsImage(
+                  { spreadName: "Daily Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyTarot.name, keywords: dailyTarot.uprightKeywords.slice(0, 4) }] },
+                  shareText
+                );
+                setTimeout(() => setCopiedShare(null), 2000);
               }}
-              className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                         flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              style={{ border: "0.5px solid #f0e6d2", opacity: 0.4 }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
-                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-              <span className="text-foreground/50 text-[11px] font-semibold">
-                {copiedShare === "tarot" ? "Copied!" : "Share this pull"}
+              <span className="text-[11px] font-medium" style={{ color: "#f0e6d2" }}>
+                {copiedShare === "tarot" ? "Shared!" : "Share this pull"}
               </span>
             </button>
           </div>
         )}
 
+        {/* Expanded oracle reading */}
         {expandedCard === "oracle" && oracleRevealed && (
-          <div className="mb-7 rounded-2xl bg-card/50 border border-foreground/12 p-4 space-y-3">
+          <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
             <div className="flex items-center justify-between">
-              <p className="text-foreground text-[14px] font-medium" style={{ fontFamily: "var(--font-display)" }}>
+              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyOracle.animal}
               </p>
-              <button onClick={() => setExpandedCard(null)} className="text-foreground/25 text-[10px]">collapse</button>
+              <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
             </div>
-            <p className="text-foreground/60 text-[12px] leading-relaxed">
-              {dailyOracle.meaning}
-            </p>
-            <div className="rounded-lg bg-foreground/3 px-3 py-2.5">
-              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">Reflection</p>
-              <p className="text-foreground/50 text-[11px] leading-relaxed">
-                What part of your life is asking for {dailyOracle.keyword.toLowerCase()} right now? Sit with the {dailyOracle.animal.toLowerCase()}&apos;s energy and notice what comes up.
+            <p className="text-[13px] leading-[1.65] opacity-85">{dailyOracle.meaning}</p>
+            <div className="rounded-xl px-3.5 py-3" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
+              <p className="text-[9px] uppercase tracking-widest mb-1 opacity-50">Reflection</p>
+              <p className="text-[11px] leading-relaxed opacity-70">
+                What part of your life is asking for {dailyOracle.keyword.toLowerCase()} right now? Sit with the {dailyOracle.animal.toLowerCase()}&apos;s energy.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-1">
               <button
                 onClick={() => {
                   const cardContext = `Oracle: ${dailyOracle.animal} — ${dailyOracle.keyword}. ${dailyOracle.meaning}`;
                   router.push(`/journal?tab=pull&card=oracle&cardName=${encodeURIComponent(dailyOracle.animal)}&cardMeaning=${encodeURIComponent(cardContext)}`);
                 }}
-                className="flex-1 rounded-lg bg-terracotta/8 border border-terracotta/20 px-3 py-2
-                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
               >
-                <span className="text-[12px]">&#x270D;&#xFE0F;</span>
-                <span className="text-terracotta/70 text-[11px] font-semibold">Journal this</span>
+                <span className="text-[11px] font-medium">Journal this</span>
               </button>
               <button
                 onClick={() => {
@@ -1211,177 +1290,391 @@ export default function HomeTab() {
                   sessionStorage.setItem("dolly-context", dollyContext);
                   router.push("/dolly");
                 }}
-                className="flex-1 rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                           flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ border: "0.5px solid #f0e6d2", opacity: 0.6 }}
               >
-                <span className="text-[12px]">&#x2728;</span>
-                <span className="text-foreground/50 text-[11px] font-semibold">Go deeper</span>
+                <span className="text-[11px] font-medium" style={{ color: "#f0e6d2" }}>Go deeper</span>
               </button>
             </div>
+            {/* Save pull */}
+            {pullSaved === "oracle" ? (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-full" style={{ backgroundColor: "rgba(90,122,58,0.2)", border: "0.5px solid rgba(90,122,58,0.4)" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a7a3a" strokeWidth="2" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                <span className="text-[11px] font-medium" style={{ color: "#5a7a3a" }}>Saved</span>
+              </div>
+            ) : savingPull === "oracle" ? (
+              <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: "rgba(0,0,0,0.25)" }}>
+                <p className="text-[10px] uppercase tracking-widest opacity-50">Add notes (optional)</p>
+                <textarea
+                  value={pullNotes}
+                  onChange={(e) => setPullNotes(e.target.value)}
+                  placeholder="What does this animal's energy mean to you today?"
+                  className="w-full rounded-lg p-2.5 text-[12px] leading-relaxed resize-none focus:outline-none"
+                  style={{ backgroundColor: "rgba(0,0,0,0.3)", color: "#f0e6d2", border: "0.5px solid rgba(240,230,210,0.15)", minHeight: 60 }}
+                  rows={3}
+                  aria-label="Pull notes"
+                />
+                <button
+                  onClick={() => {
+                    if (!generatingNotes) {
+                      generateDollyNotes(dailyOracle.animal, dailyOracle.keyword, dailyOracle.meaning);
+                    }
+                  }}
+                  disabled={generatingNotes}
+                  className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                  style={{ border: "0.5px solid rgba(240,230,210,0.2)" }}
+                >
+                  {generatingNotes ? (
+                    <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" /></svg>
+                  )}
+                  <span className="text-[11px] font-medium" style={{ color: "#f0e6d2", opacity: 0.6 }}>
+                    {generatingNotes ? "Generating..." : "Generate notes with Dolly"}
+                  </span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setSavingPull(null); setPullNotes(""); }}
+                    className="flex-1 rounded-full py-2 text-[11px] font-medium active:scale-[0.97] transition-all"
+                    style={{ border: "0.5px solid rgba(240,230,210,0.2)", color: "#f0e6d2", opacity: 0.5 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      try {
+                        const histKey = getTarotHistoryKey(currentUserId);
+                        const existing = JSON.parse(localStorage.getItem(histKey) || "[]");
+                        const reading = {
+                          id: `daily-oracle-${todayLocal}`,
+                          date: new Date().toISOString(),
+                          deck: "animal-oracle",
+                          spreadName: "Daily Oracle Pull",
+                          cards: [{ name: dailyOracle.animal, keywords: [dailyOracle.keyword], reversed: false }],
+                          notes: pullNotes.trim() || undefined,
+                        };
+                        const updated = [reading, ...existing].slice(0, 50);
+                        localStorage.setItem(histKey, JSON.stringify(updated));
+                      } catch {}
+                      setPullSaved("oracle");
+                      setSavingPull(null);
+                      setPullNotes("");
+                    }}
+                    className="flex-1 rounded-full py-2 text-[11px] font-medium active:scale-[0.97] transition-all"
+                    style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setSavingPull("oracle"); setPullNotes(""); }}
+                className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+                style={{ border: "0.5px solid #c9a961", opacity: 0.7 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c9a961" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+                </svg>
+                <span className="text-[11px] font-medium" style={{ color: "#c9a961" }}>Save this pull</span>
+              </button>
+            )}
+
             <button
               onClick={async () => {
-                const shareText = `Today I pulled the ${dailyOracle.animal} oracle card.\n\n${dailyOracle.keyword}\n\n"${dailyOracle.meaning}"\n\n— Mapped Astrology`;
-                if (navigator.share) {
-                  try { await navigator.share({ text: shareText }); } catch { /* user cancelled */ }
-                } else {
-                  await navigator.clipboard.writeText(shareText);
-                  setCopiedShare("oracle");
-                  setTimeout(() => setCopiedShare(null), 2000);
-                }
+                const shareText = `Today I pulled the ${dailyOracle.animal} oracle card.\n\n${dailyOracle.keyword}\n\n— Mapped Astrology`;
+                const { shareReadingAsImage } = await import("@/lib/shareCard");
+                setCopiedShare("oracle");
+                await shareReadingAsImage(
+                  { spreadName: "Daily Oracle Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyOracle.animal, keywords: [dailyOracle.keyword] }] },
+                  shareText
+                );
+                setTimeout(() => setCopiedShare(null), 2000);
               }}
-              className="w-full rounded-lg bg-foreground/3 border border-foreground/10 px-3 py-2
-                         flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              className="w-full rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
+              style={{ border: "0.5px solid #f0e6d2", opacity: 0.4 }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/40">
-                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-              <span className="text-foreground/50 text-[11px] font-semibold">
-                {copiedShare === "oracle" ? "Copied!" : "Share this pull"}
+              <span className="text-[11px] font-medium" style={{ color: "#f0e6d2" }}>
+                {copiedShare === "oracle" ? "Shared!" : "Share this pull"}
               </span>
             </button>
           </div>
         )}
 
-        {!expandedCard && <div className="mb-4" />}
+        {!expandedCard && <div className="mb-8" />}
 
-        {/* ─── On the horizon — moons + celestial calendar ─── */}
-        <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
-          On the horizon
-        </p>
-        <div className="mb-7 rounded-2xl overflow-hidden border border-foreground/10">
-          {/* Moon events row */}
-          {(nextMoons.nextFull || nextMoons.nextNew) && (
-            <div className="flex">
-              {[
-                nextMoons.nextFull
-                  ? {
-                      event: nextMoons.nextFull,
-                      emoji:
-                        (nextMoons.nextFull.moonName &&
-                          MOON_LORE[nextMoons.nextFull.moonName]?.emoji) ??
-                        "🌕",
-                      sheetKind: "next-full-moon" as const,
-                    }
-                  : null,
-                nextMoons.nextNew
-                  ? {
-                      event: nextMoons.nextNew,
-                      emoji: "🌑",
-                      sheetKind: "next-new-moon" as const,
-                    }
-                  : null,
-              ]
-                .filter(Boolean)
-                .sort((a, b) => a!.event.daysUntil - b!.event.daysUntil)
-                .map((item, idx, arr) => (
-                  <button
-                    key={item!.event.kind}
-                    type="button"
-                    onClick={() => item!.event.daysUntil === 0 ? setShowMoonEvent(true) : setSheet({ kind: item!.sheetKind })}
-                    className={`flex-1 px-4 py-3.5 text-left active:scale-[0.98] transition-all
-                               ${idx === 0 ? "bg-card/60" : "bg-card/40"}
-                               ${idx < arr.length - 1 ? "border-r border-foreground/8" : ""}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[24px] leading-none shrink-0">{item!.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-foreground text-[13px] leading-tight truncate font-medium"
-                          style={{ fontFamily: "var(--font-display)" }}
-                        >
-                          {item!.event.label}
-                        </p>
-                        <p className="text-foreground/45 text-[10px] mt-0.5 tabular-nums">
-                          {formatMoonDate(item!.event.date)} · {daysPhrase(item!.event.daysUntil)}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-            </div>
-          )}
-
-          {/* Upcoming events timeline */}
-          {upcomingEvents.length > 0 && (
-            <div className={`bg-card/35 px-4 py-3 ${(nextMoons.nextFull || nextMoons.nextNew) ? "border-t border-foreground/8" : ""}`}>
-              {upcomingEvents.map((event, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setSheet({ kind: "horizon-event", event })}
-                  className={`flex items-center gap-3 py-2 w-full text-left active:scale-[0.98] transition-all ${idx < upcomingEvents.length - 1 ? "border-b border-foreground/5" : ""}`}
-                >
-                  <div className="w-9 text-center shrink-0">
-                    <p className="text-foreground/30 text-[8px] uppercase tracking-wider leading-none">
-                      {event.date.toLocaleDateString("en-US", { month: "short" })}
-                    </p>
-                    <p className="text-foreground/70 text-[16px] font-semibold leading-tight tabular-nums">
-                      {event.date.getDate()}
-                    </p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground/75 text-[12px] font-medium truncate">{event.name}</p>
-                    <p className="text-foreground/35 text-[9px] capitalize">{event.tradition}</p>
-                  </div>
-                  <span className="text-foreground/30 text-[10px] tabular-nums whitespace-nowrap shrink-0 flex items-center gap-1">
-                    {event.daysUntil <= 1
-                      ? event.daysUntil === 0 ? "today" : "tomorrow"
-                      : `${event.daysUntil}d`}
-                    <span className="text-foreground/20 text-[10px]">›</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ─── Today's energy (tappable tiles) ─── */}
-        <p className="text-foreground/50 text-[10px] uppercase tracking-[0.25em] font-semibold mb-3">
+        {/* ─── Today's Energy ─── */}
+        <p
+          className="text-[9px] tracking-[0.25em] uppercase font-medium mb-4"
+          style={{ color: "var(--brass)" }}
+        >
           Today&apos;s energy
         </p>
-        <div className="flex flex-col gap-3 mb-6">
-          <MetricTile
-            label={`${planetaryDay.day} = ${planetaryDay.planet}'s day`}
-            value={planetaryDay.energy}
-            hint={shortHint(planetaryDay.focus)}
-            glyph={PLANET_GLYPH[planetaryDay.planet] ?? "✦"}
-            accent="amber"
-            onClick={() => setSheet({ kind: "planetary-day" })}
-          />
-          <MetricTile
-            label={`${season.sign} season · ${capitalize(season.element)} element`}
-            value={ELEMENT_LORE[season.element].keyword}
-            hint={shortHint(ELEMENT_LORE[season.element].practice)}
-            glyph={elementGlyph(season.element)}
-            accent="sage"
-            onClick={() => setSheet({ kind: "element" })}
-          />
-          <MetricTile
-            label={`Lunar mansion · ${nakshatra.quality}`}
-            value={nakshatra.name}
-            hint={shortHint(nakshatra.brief)}
-            glyph="✦"
-            accent="cream"
-            onClick={() => setSheet({ kind: "nakshatra" })}
-          />
+        <div className="flex flex-col gap-3 mb-12">
+          {/* Planetary Day */}
+          <div className="rounded-2xl overflow-hidden transition-all" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+            <button
+              type="button"
+              onClick={() => toggleFolder("planetary-day")}
+              className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#c9a961" }}>
+                <span className="text-[16px]">{PLANET_GLYPH[planetaryDay.planet] ?? "✦"}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Planetary Day</p>
+                <p className="text-[16px] font-medium" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{planetaryDay.planet}&apos;s Day</p>
+                <p className="text-[12px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.8 }}>{planetaryDay.energy}</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-30 transition-transform" style={{ transform: openFolder === "planetary-day" ? "rotate(90deg)" : "none" }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+            {openFolder === "planetary-day" && (() => {
+              const ctx = PLANETARY_DAY_CONTEXT[planetaryDay.day];
+              return (
+                <div className="px-4 pb-4 space-y-3">
+                  <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                  <p className="text-[12px] italic" style={{ color: "var(--foreground-on-card-muted)" }}>{ctx.vedicName}</p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{ctx.planetMeaning}</p>
+                  <div className="rounded-xl p-3" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                    <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--foreground-on-card-muted)" }}>Today&apos;s focus</p>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{planetaryDay.focus}</p>
+                    <p className="text-[11px] mt-2" style={{ color: "var(--foreground-on-card-muted)" }}>Body area: {ctx.bodyPart}</p>
+                  </div>
+                  <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(201, 169, 97, 0.1)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
+                    <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--brass)" }}>Today&apos;s color · {planetaryDay.color}</p>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{ctx.colorMeaning}</p>
+                    <p className="text-[12px] italic mt-1" style={{ color: "var(--foreground-on-card-muted)" }}>{ctx.howToUseColor}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(45, 64, 41, 0.15)" }}>
+                      <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-1" style={{ color: "var(--sage)" }}>Good for</p>
+                      {ctx.doToday.map((item, i) => (
+                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground-on-card)" }}>+ {item}</p>
+                      ))}
+                    </div>
+                    <div className="rounded-xl p-2.5" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                      <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-1" style={{ color: "var(--foreground-on-card-muted)" }}>Avoid</p>
+                      {ctx.avoidToday.map((item, i) => (
+                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground-on-card-muted)" }}>- {item}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Moon Sign */}
+          <div className="rounded-2xl overflow-hidden transition-all" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+            <button
+              type="button"
+              onClick={() => toggleFolder("moon-sign")}
+              className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--plum)" }}>
+                <span className="text-[16px]">☽</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Moon Sign</p>
+                <p className="text-[16px] font-medium" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{currentMoonSign.full}</p>
+                <p className="text-[12px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.8 }}>{moon.illumination}% illuminated · {currentMoonSign.degree}&deg;</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-30 transition-transform" style={{ transform: openFolder === "moon-sign" ? "rotate(90deg)" : "none" }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+            {openFolder === "moon-sign" && (() => {
+              const a = moon.almanac;
+              return (
+                <div className="px-4 pb-4 space-y-3">
+                  <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                  <p className="text-[12px] italic" style={{ color: "var(--foreground-on-card-muted)" }}>{moon.energy}</p>
+                  <div className="rounded-xl p-3" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                    <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--foreground-on-card-muted)" }}>Folk wisdom</p>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{a.folkWisdom}</p>
+                    <p className="text-[12px] italic mt-1" style={{ color: "var(--foreground-on-card-muted)" }}>{a.weatherLore}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(45, 64, 41, 0.15)" }}>
+                      <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-1" style={{ color: "var(--sage)" }}>Good for</p>
+                      {a.bestFor.map((item, i) => (
+                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground-on-card)" }}>+ {item}</p>
+                      ))}
+                    </div>
+                    <div className="rounded-xl p-2.5" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                      <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-1" style={{ color: "var(--foreground-on-card-muted)" }}>Avoid</p>
+                      {a.avoid.map((item, i) => (
+                        <p key={i} className="text-[12px] leading-snug" style={{ color: "var(--foreground-on-card-muted)" }}>- {item}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Nakshatra */}
+          <div className="rounded-2xl overflow-hidden transition-all" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+            <button
+              type="button"
+              onClick={() => toggleFolder("nakshatra")}
+              className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#2d4029" }}>
+                <span className="text-[16px]" style={{ color: "#f0e6d2" }}>✦</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Nakshatra</p>
+                <p className="text-[16px] font-medium" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{nakshatra.name}</p>
+                <p className="text-[12px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.8 }}>{nakshatra.quality}</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-30 transition-transform" style={{ transform: openFolder === "nakshatra" ? "rotate(90deg)" : "none" }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+            {openFolder === "nakshatra" && (
+              <div className="px-4 pb-4 space-y-3">
+                <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                <p className="text-[12px] italic" style={{ color: "var(--foreground-on-card-muted)" }}>{nakshatra.quality} energy · {capitalize(nakshatra.element)} element</p>
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{nakshatra.brief}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl p-2.5" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                    <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5" style={{ color: "var(--foreground-on-card-muted)" }}>Ruling deity</p>
+                    <p className="text-[13px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>{nakshatra.deity}</p>
+                  </div>
+                  <div className="rounded-xl p-2.5" style={{ backgroundColor: "var(--background-card-hover)" }}>
+                    <p className="text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5" style={{ color: "var(--foreground-on-card-muted)" }}>Quality</p>
+                    <p className="text-[13px] font-semibold capitalize" style={{ color: "var(--foreground-on-card)" }}>{nakshatra.quality}</p>
+                  </div>
+                </div>
+                <p className="text-[11px] italic leading-relaxed" style={{ color: "var(--foreground-on-card-faint)" }}>
+                  Nakshatras are the 27 lunar mansions of Vedic astrology — slices of sky the Moon passes through. Each has a ruling deity that colors the day&apos;s energy.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── On the Horizon ─── */}
+        <p
+          className="text-[9px] tracking-[0.25em] uppercase font-medium mb-4"
+          style={{ color: "var(--brass)" }}
+        >
+          On the horizon
+        </p>
+        <div className="flex flex-col gap-2.5 mb-12">
+          {/* Moon events */}
+          {[
+            nextMoons.nextFull ? { event: nextMoons.nextFull, sheetKind: "next-full-moon" as const, color: "var(--plum)" } : null,
+            nextMoons.nextNew ? { event: nextMoons.nextNew, sheetKind: "next-new-moon" as const, color: "#2d4029" } : null,
+          ].filter(Boolean).sort((a, b) => a!.event.daysUntil - b!.event.daysUntil).map((item) => {
+            const cardId = `moon-${item!.event.kind}`;
+            const isToday = item!.event.daysUntil === 0;
+            return (
+              <div key={item!.event.kind} className="rounded-2xl overflow-hidden transition-all" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+                <button
+                  type="button"
+                  onClick={() => isToday ? setShowMoonEvent(true) : toggleFolder(cardId)}
+                  className="w-full px-4 py-3.5 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+                >
+                  <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: item!.color }}>
+                    <MoonPhaseIcon phase={item!.event.kind === "full" ? "Full Moon" : "New Moon"} size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{item!.event.label}</p>
+                    <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{formatMoonDate(item!.event.date)} · {daysPhrase(item!.event.daysUntil)}</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+                {openFolder === cardId && (() => {
+                  const ev = item!.event;
+                  if (ev.kind === "full") {
+                    const lore = ev.moonName ? MOON_LORE[ev.moonName] : undefined;
+                    return (
+                      <div className="px-4 pb-4 space-y-3">
+                        <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                        {lore ? (
+                          <>
+                            <p className="text-[12px] uppercase tracking-[0.2em] font-bold" style={{ color: "var(--foreground-on-card-muted)" }}>{lore.origin}</p>
+                            <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{lore.story}</p>
+                            {lore.altNames.length > 0 && (
+                              <p className="text-[12px] italic" style={{ color: "var(--foreground-on-card-muted)" }}>Also known as: {lore.altNames.join(", ")}.</p>
+                            )}
+                            <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(201, 169, 97, 0.1)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
+                              <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--brass)" }}>Energy</p>
+                              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{lore.energy}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>The next full moon — a time of culmination, visibility, and release.</p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="px-4 pb-4 space-y-3">
+                      <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>
+                        New moons mark the beginning of a new lunar cycle — a time for setting intentions, planting seeds, and beginning fresh.
+                        {ev.label.includes("in ") && ` This one falls in ${ev.label.split("in ")[1]}, coloring the cycle with that sign's energy.`}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })}
+
+          {/* Cultural events */}
+          {upcomingEvents.map((event, idx) => {
+            const cardId = `event-${idx}`;
+            return (
+              <div key={idx} className="rounded-2xl overflow-hidden transition-all" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+                <button
+                  type="button"
+                  onClick={() => toggleFolder(cardId)}
+                  className="w-full px-4 py-3.5 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+                >
+                  <div className="w-11 h-11 rounded-lg flex flex-col items-center justify-center shrink-0" style={{ backgroundColor: "#5a1f1a" }}>
+                    <p className="text-[8px] uppercase tracking-wider leading-none" style={{ color: "#f0e6d2", opacity: 0.7 }}>{event.date.toLocaleDateString("en-US", { month: "short" })}</p>
+                    <p className="text-[15px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{event.name}</p>
+                    <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{event.daysUntil === 0 ? "today" : event.daysUntil === 1 ? "tomorrow" : `in ${event.daysUntil} days`}</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+                {openFolder === cardId && (
+                  <div className="px-4 pb-4 space-y-3">
+                    <div className="h-px" style={{ backgroundColor: "var(--border-card)" }} />
+                    {event.description && <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{event.description}</p>}
+                    {event.ritualHint && (
+                      <div className="rounded-xl p-3" style={{ backgroundColor: "rgba(201, 169, 97, 0.1)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
+                        <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-1" style={{ color: "var(--brass)" }}>Ritual</p>
+                        <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>{event.ritualHint}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="h-8" />
       </main>
 
-      {/* ─── Detail sheets ─── */}
-      <DetailSheet
-        sheet={sheet}
-        onClose={() => setSheet(null)}
-        moon={moon}
-        season={season}
-        nakshatra={nakshatra}
-        planetaryDay={planetaryDay}
-        nextMoons={nextMoons}
-      />
+      {/* Detail sheets removed — all content now expands inline */}
 
-      {/* ─── Moon event takeover (full/new moon days) ─── */}
+      {/* ─── Moon event takeover ─── */}
       {showMoonEvent && (
         <MoonEventScreen
           onClose={() => setShowMoonEvent(false)}
@@ -1432,14 +1725,14 @@ function AlmanacTipsSection({
     return (
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold">
+          <p className="text-muted text-[10px] uppercase tracking-[0.2em] font-bold">
             Customize tips
           </p>
           <button onClick={() => setEditMode(false)} className="text-terracotta text-[12px] font-semibold">
             Done
           </button>
         </div>
-        <p className="text-foreground/55 text-[12px] leading-snug mb-3">
+        <p className="text-secondary text-[12px] leading-snug mb-3">
           Toggle which life areas show up in your almanac.
         </p>
         <div className="grid grid-cols-4 gap-2">
@@ -1454,7 +1747,7 @@ function AlmanacTipsSection({
                 }`}
               >
                 <span className="text-[20px]">{cat.icon}</span>
-                <span className={`text-[9px] font-semibold leading-tight text-center ${on ? "text-terracotta" : "text-foreground/40"}`}>
+                <span className={`text-[9px] font-semibold leading-tight text-center ${on ? "text-terracotta" : "text-muted"}`}>
                   {cat.label}
                 </span>
               </button>
@@ -1470,14 +1763,14 @@ function AlmanacTipsSection({
     return (
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold">
+          <p className="text-muted text-[10px] uppercase tracking-[0.2em] font-bold">
             Almanac tips
           </p>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowAll(false)} className="text-terracotta text-[11px] font-semibold">
               Show less
             </button>
-            <button onClick={() => setEditMode(true)} className="text-foreground/40 hover:text-foreground/60 transition-colors" aria-label="Customize">
+            <button onClick={() => setEditMode(true)} className="text-muted hover:text-foreground transition-colors" aria-label="Customize">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
               </svg>
@@ -1487,10 +1780,10 @@ function AlmanacTipsSection({
         <div className="flex flex-col gap-2.5">
           {allVisible.map((tip, i) => (
             <div key={i} className="rounded-xl bg-card/40 border border-foreground/12 px-3.5 py-2.5">
-              <p className="text-foreground/50 text-[10px] uppercase tracking-[0.15em] font-bold mb-1">
+              <p className="text-muted text-[10px] uppercase tracking-[0.15em] font-bold mb-1">
                 {tip.icon} {tip.category}
               </p>
-              <p className="text-foreground/80 text-[13px] leading-snug">{tip.tip}</p>
+              <p className="text-foreground text-[13px] leading-snug">{tip.tip}</p>
             </div>
           ))}
         </div>
@@ -1503,10 +1796,10 @@ function AlmanacTipsSection({
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold">
+        <p className="text-muted text-[10px] uppercase tracking-[0.2em] font-bold">
           Almanac tips
         </p>
-        <button onClick={() => setEditMode(true)} className="text-foreground/40 hover:text-foreground/60 transition-colors" aria-label="Customize tips">
+        <button onClick={() => setEditMode(true)} className="text-muted hover:text-foreground transition-colors" aria-label="Customize tips">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
           </svg>
@@ -1528,7 +1821,7 @@ function AlmanacTipsSection({
               }`}
             >
               <span className="text-[20px]">{tip.icon}</span>
-              <span className={`text-[8px] font-semibold leading-tight text-center ${isOpen ? "text-terracotta" : "text-foreground/45"}`}>
+              <span className={`text-[8px] font-semibold leading-tight text-center ${isOpen ? "text-terracotta" : "text-muted"}`}>
                 {tip.category.split(" & ")[0].split(" ").slice(0, 1).join("")}
               </span>
             </button>
@@ -1542,10 +1835,10 @@ function AlmanacTipsSection({
         if (!tip) return null;
         return (
           <div className="rounded-2xl bg-card/50 border border-foreground/12 p-4 mb-3">
-            <p className="text-foreground/50 text-[10px] uppercase tracking-[0.15em] font-bold mb-1.5">
+            <p className="text-muted text-[10px] uppercase tracking-[0.15em] font-bold mb-1.5">
               {tip.icon} {tip.category}
             </p>
-            <p className="text-foreground/80 text-[13px] leading-relaxed">{tip.tip}</p>
+            <p className="text-foreground text-[13px] leading-relaxed">{tip.tip}</p>
           </div>
         );
       })()}
@@ -1561,450 +1854,6 @@ function AlmanacTipsSection({
   );
 }
 
-// ─── Detail Sheet ───────────────────────────────────────────────────────────
-
-interface DetailSheetProps {
-  sheet: SheetKind | null;
-  onClose: () => void;
-  moon: MoonPhaseInfo;
-  season: ZodiacSeason;
-  nakshatra: NakshatraInfo;
-  planetaryDay: PlanetaryDay;
-  nextMoons: { nextFull: NextMoonEvent | null; nextNew: NextMoonEvent | null };
-}
-
-function DetailSheet({
-  sheet,
-  onClose,
-  moon,
-  season,
-  nakshatra,
-  planetaryDay,
-  nextMoons,
-}: DetailSheetProps) {
-  // Load modality prefs for the moon ritual
-  const [modPrefs, setModPrefs] = useState<Record<string, boolean>>({});
-  useEffect(() => { setModPrefs(loadRitualModPrefs()); }, []);
-
-  // Generate the modality-aware moon ritual
-  const moonRitual = useMemo(() => {
-    const daily = getDailyRituals(new Date(), undefined, modPrefs);
-    return daily.moonRitual;
-  }, [modPrefs]);
-
-  if (!sheet) {
-    return <InfoSheet isOpen={false} onClose={onClose} title="">{null}</InfoSheet>;
-  }
-
-  if (sheet.kind === "moon-phase") {
-    const a = moon.almanac;
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={`${moon.illumination}% illuminated · ${planetaryDay.planet}'s day`}
-        title={moon.label}
-        glyph={moon.emoji}
-      >
-        {/* Phase meaning — smaller subtitle under the phase name */}
-        <p className="text-foreground/45 text-[12px] leading-relaxed italic -mt-1">{moon.energy}</p>
-
-        {/* Moon ritual — modality-aware */}
-        <div>
-          <p className="text-terracotta text-[10px] uppercase tracking-[0.2em] font-bold mb-3">
-            Your ritual
-          </p>
-          <div className="rounded-2xl bg-terracotta/10 border border-terracotta/25 p-4">
-            <p className="text-terracotta text-[14px] font-semibold mb-1.5">{moonRitual.title}</p>
-            <p className="text-foreground/70 text-[13px] leading-relaxed mb-3">{moonRitual.description}</p>
-            <div className="space-y-3">
-              {moonRitual.steps.map((step, i) => (
-                <div key={i} className="flex gap-2.5">
-                  <span className="text-terracotta/40 text-[11px] font-mono mt-0.5 w-4 text-right shrink-0">{i + 1}</span>
-                  <p className="text-foreground/75 text-[13px] leading-relaxed">{step}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="text-foreground/35 text-[10px] mt-2 text-center">
-            Customize your tools in the Ritual tab to change this ritual
-          </p>
-        </div>
-
-        {/* Folk wisdom */}
-        <div className="rounded-2xl bg-card/40 border border-foreground/12 p-4">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold mb-2">
-            Folk wisdom
-          </p>
-          <p className="text-foreground/75 text-[13px] leading-relaxed mb-2">
-            {a.folkWisdom}
-          </p>
-          <p className="text-foreground/60 text-[12px] leading-relaxed italic">
-            {a.weatherLore}
-          </p>
-        </div>
-
-        {/* Best for / Avoid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-sage/12 border border-sage/25 p-3">
-            <p className="text-sage text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5">
-              Good for
-            </p>
-            {a.bestFor.map((item, i) => (
-              <p key={i} className="text-foreground/80 text-[13px] leading-snug">+ {item}</p>
-            ))}
-          </div>
-          <div className="rounded-xl bg-card/40 border border-foreground/12 p-3">
-            <p className="text-foreground/50 text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5">
-              Avoid
-            </p>
-            {a.avoid.map((item, i) => (
-              <p key={i} className="text-foreground/60 text-[13px] leading-snug">- {item}</p>
-            ))}
-          </div>
-        </div>
-
-        {/* Almanac tips — icon grid with expand + customize */}
-        <AlmanacTipsSection tips={a.lifeTips} gardening={a.gardening} />
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "season") {
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow="Zodiac season"
-        title={`${season.sign} season`}
-        glyph="♒"
-      >
-        <p>{season.theme}</p>
-        <div className="grid grid-cols-2 gap-3">
-          <MiniFact label="Element" value={season.element} />
-          <MiniFact label="Modality" value={season.modality} />
-          <MiniFact label="Ruler" value={season.rulingPlanet} />
-          <MiniFact
-            label="Span"
-            value={`${monthName(season.startMonth)} ${season.startDay}–${monthName(season.endMonth)} ${season.endDay}`}
-          />
-        </div>
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "planetary-day") {
-    const ctx = PLANETARY_DAY_CONTEXT[planetaryDay.day];
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={planetaryDay.day}
-        title={`${planetaryDay.planet}'s day`}
-        glyph={PLANET_GLYPH[planetaryDay.planet] ?? "✦"}
-      >
-        {/* Vedic name */}
-        <p className="text-foreground/45 text-[12px] italic -mt-1">{ctx.vedicName}</p>
-
-        {/* What this planet means */}
-        <p className="text-foreground/80 text-[13px] leading-relaxed">{ctx.planetMeaning}</p>
-
-        {/* Focus */}
-        <div className="rounded-2xl bg-card/40 border border-foreground/12 p-4">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-            Today&apos;s focus
-          </p>
-          <p className="text-foreground/80 text-[13px] leading-relaxed">{planetaryDay.focus}</p>
-          <p className="text-foreground/45 text-[11px] mt-2">Body area: {ctx.bodyPart}</p>
-        </div>
-
-        {/* Color explanation */}
-        <div className="rounded-2xl bg-amber/20 border border-amber/35 p-4">
-          <p className="text-[color:var(--rust)] text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-            Today&apos;s color · {planetaryDay.color}
-          </p>
-          <p className="text-foreground/80 text-[13px] leading-relaxed mb-2">{ctx.colorMeaning}</p>
-          <p className="text-foreground/65 text-[12px] leading-relaxed italic">{ctx.howToUseColor}</p>
-        </div>
-
-        {/* Do / Avoid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-sage/12 border border-sage/25 p-3">
-            <p className="text-sage text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5">
-              Good for today
-            </p>
-            {ctx.doToday.map((item, i) => (
-              <p key={i} className="text-foreground/75 text-[12px] leading-snug mb-0.5">+ {item}</p>
-            ))}
-          </div>
-          <div className="rounded-xl bg-card/40 border border-foreground/12 p-3">
-            <p className="text-foreground/50 text-[9px] uppercase tracking-[0.2em] font-bold mb-1.5">
-              Doesn&apos;t flow today
-            </p>
-            {ctx.avoidToday.map((item, i) => (
-              <p key={i} className="text-foreground/55 text-[12px] leading-snug mb-0.5">- {item}</p>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-foreground/40 text-[11px] leading-relaxed italic">
-          Each day of the week is governed by one of the seven classical planets — a system
-          shared across Vedic (Jyotish), Hellenistic, and medieval European astrology.
-          The planet shapes the day&apos;s energy, color, and what flows most naturally.
-        </p>
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "element") {
-    const el = season.element;
-    const lore = ELEMENT_LORE[el];
-    const elementSigns: Record<string, string> = {
-      fire: "Aries, Leo, Sagittarius",
-      water: "Cancer, Scorpio, Pisces",
-      earth: "Taurus, Virgo, Capricorn",
-      air: "Gemini, Libra, Aquarius",
-    };
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={`${season.sign} season`}
-        title={capitalize(el)}
-        glyph={elementGlyph(el)}
-      >
-        <p className="text-foreground/45 text-[12px] italic -mt-1">
-          {elementSigns[el]} · {season.modality} modality
-        </p>
-        <p className="text-foreground/80 text-[13px] leading-relaxed">{lore.story}</p>
-
-        <div className="rounded-2xl bg-sage/12 border border-sage/25 p-4">
-          <p className="text-sage text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-            How to work with {el} energy today
-          </p>
-          <p className="text-foreground/80 text-[14px] leading-relaxed">{lore.practice}</p>
-        </div>
-
-        <div className="rounded-2xl bg-card/40 border border-foreground/12 p-4">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold mb-2">
-            What does the element mean?
-          </p>
-          <p className="text-foreground/70 text-[13px] leading-relaxed mb-2">
-            In astrology, elements aren&apos;t just categories — they describe how energy moves.
-            The current zodiac season bathes everyone in its element&apos;s quality, regardless of
-            your personal chart. You don&apos;t have to be a {el} sign to feel this.
-          </p>
-          <p className="text-foreground/70 text-[13px] leading-relaxed">
-            If you have {el} signs in your chart, this season amplifies your natural rhythm.
-            If you don&apos;t, it&apos;s an invitation to develop that side of yourself —{" "}
-            {el === "fire" ? "courage, initiative, and boldness" :
-             el === "water" ? "sensitivity, intuition, and emotional depth" :
-             el === "earth" ? "patience, groundedness, and practical follow-through" :
-             "curiosity, communication, and mental flexibility"}.
-          </p>
-        </div>
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "nakshatra") {
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow="Lunar mansion · Vedic astrology"
-        title={nakshatra.name}
-        glyph="✦"
-      >
-        {/* Quality as subtitle */}
-        <p className="text-foreground/45 text-[12px] italic -mt-1">
-          {nakshatra.quality} energy · {capitalize(nakshatra.element)} element
-        </p>
-
-        {/* Main description */}
-        <p className="text-foreground/80 text-[13px] leading-relaxed">{nakshatra.brief}</p>
-
-        {/* Facts grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-card/50 border border-foreground/12 px-3 py-2.5">
-            <p className="text-foreground/55 text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5">
-              Ruling deity
-            </p>
-            <p className="text-foreground text-[13px] font-semibold">{nakshatra.deity}</p>
-          </div>
-          <div className="rounded-xl bg-card/50 border border-foreground/12 px-3 py-2.5">
-            <p className="text-foreground/55 text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5">
-              Quality
-            </p>
-            <p className="text-foreground text-[13px] font-semibold capitalize">{nakshatra.quality}</p>
-          </div>
-        </div>
-
-        {/* What is a nakshatra — explainer */}
-        <div className="rounded-2xl bg-card/40 border border-foreground/12 p-4">
-          <p className="text-foreground/50 text-[10px] uppercase tracking-[0.2em] font-bold mb-2">
-            What is a nakshatra?
-          </p>
-          <p className="text-foreground/70 text-[13px] leading-relaxed mb-2">
-            Nakshatras are the 27 lunar mansions of Vedic astrology — slices of sky the Moon
-            passes through, spending roughly one day in each. They&apos;re older than the 12 zodiac
-            signs and more specific: while your zodiac sign describes a ~30-day season, the
-            nakshatra describes today&apos;s precise mood.
-          </p>
-          <p className="text-foreground/70 text-[13px] leading-relaxed">
-            Each nakshatra has a ruling deity that colors its energy. <strong>{nakshatra.deity}</strong> shapes
-            how today feels — the quality of attention, what flows easily, and what meets resistance.
-            Think of it as the weather forecast for your inner world.
-          </p>
-        </div>
-
-        <p className="text-foreground/40 text-[11px] leading-relaxed italic">
-          In the traditional Vedic Panchang (five-limbed calendar), the nakshatra is one of five
-          daily factors astrologers track. It&apos;s considered especially important for timing:
-          starting projects, rituals, and important decisions.
-        </p>
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "next-full-moon" && nextMoons.nextFull) {
-    const ev = nextMoons.nextFull;
-    const lore = ev.moonName ? MOON_LORE[ev.moonName] : undefined;
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={`${formatMoonDate(ev.date)} · ${daysPhrase(ev.daysUntil)}`}
-        title={lore?.name ?? "Full Moon"}
-        glyph={lore?.emoji ?? "🌕"}
-      >
-        {lore ? (
-          <>
-            <p className="text-foreground/70 text-[12px] uppercase tracking-[0.2em] font-bold">
-              {lore.origin}
-            </p>
-            <p>{lore.story}</p>
-            {lore.altNames.length > 0 && (
-              <p className="text-foreground/60 text-[13px] italic">
-                Also known as: {lore.altNames.join(", ")}.
-              </p>
-            )}
-            <div className="rounded-2xl bg-terracotta/10 border border-terracotta/25 p-4">
-              <p className="text-terracotta text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-                Energy
-              </p>
-              <p className="text-foreground/85 text-[14px] leading-relaxed">{lore.energy}</p>
-            </div>
-          </>
-        ) : (
-          <p>
-            The next full moon arrives on {formatMoonDate(ev.date)}. The Moon is opposite
-            the Sun, fully lit from our view — a time of culmination, visibility, and release.
-          </p>
-        )}
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "next-new-moon" && nextMoons.nextNew) {
-    const ev = nextMoons.nextNew;
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={`${formatMoonDate(ev.date)} · ${daysPhrase(ev.daysUntil)}`}
-        title={NEW_MOON_LORE.name}
-        glyph={NEW_MOON_LORE.emoji}
-      >
-        <p className="text-foreground/70 text-[12px] uppercase tracking-[0.2em] font-bold">
-          {NEW_MOON_LORE.origin}
-        </p>
-        <p>{NEW_MOON_LORE.story}</p>
-        <p className="text-foreground/60 text-[13px] italic">
-          Also known as: {NEW_MOON_LORE.altNames.join(", ")}.
-        </p>
-        <div className="rounded-2xl bg-terracotta/10 border border-terracotta/25 p-4">
-          <p className="text-terracotta text-[10px] uppercase tracking-[0.2em] font-bold mb-1.5">
-            Energy
-          </p>
-          <p className="text-foreground/85 text-[14px] leading-relaxed">{NEW_MOON_LORE.energy}</p>
-        </div>
-      </InfoSheet>
-    );
-  }
-
-  if (sheet.kind === "horizon-event") {
-    const ev = sheet.event;
-    const ELEMENT_EMOJI: Record<string, string> = {
-      fire: "🔥", earth: "🌿", air: "💨", water: "🌊", spirit: "✨",
-    };
-    const elemEmoji = ev.element ? (ELEMENT_EMOJI[ev.element] ?? "✦") : "✦";
-
-    const TRADITION_LABELS: Record<string, string> = {
-      astronomical: "Astronomical Event",
-      celtic: "Celtic Tradition",
-      vedic: "Vedic / Hindu Tradition",
-      chinese: "Chinese / East Asian Tradition",
-      islamic: "Islamic Tradition",
-      indigenous: "Indigenous Tradition",
-      pagan: "Pagan / Wiccan Tradition",
-      persian: "Persian Tradition",
-      tibetan: "Tibetan Buddhist Tradition",
-      thai: "Thai Buddhist Tradition",
-      japanese: "Japanese Tradition",
-      egyptian: "Ancient Egyptian Tradition",
-    };
-
-    return (
-      <InfoSheet
-        isOpen
-        onClose={onClose}
-        eyebrow={`${ev.date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} · ${ev.daysUntil === 0 ? "today" : ev.daysUntil === 1 ? "tomorrow" : `in ${ev.daysUntil} days`}`}
-        title={ev.name}
-        glyph={elemEmoji}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-foreground/60 text-[12px] uppercase tracking-[0.2em] font-bold capitalize">
-            {TRADITION_LABELS[ev.tradition] || ev.tradition}
-          </span>
-        </div>
-
-        <p className="text-foreground/85 text-[14px] leading-relaxed">{ev.description}</p>
-
-        {ev.ritualHint && (
-          <div className="rounded-2xl bg-sage/10 border border-sage/25 p-5">
-            <p className="text-sage text-[10px] uppercase tracking-[0.2em] font-bold mb-2">
-              How to observe this
-            </p>
-            <p className="text-foreground/85 text-[14px] leading-relaxed mb-3">{ev.ritualHint}</p>
-            <div className="pt-3 border-t border-sage/15 space-y-2">
-              <p className="text-foreground/40 text-[10px] uppercase tracking-widest font-semibold">Setting the space</p>
-              <p className="text-foreground/65 text-[13px] leading-relaxed">
-                {ev.element === "fire" ? "Light a candle or sit near warmth. Fire rituals work best at dusk or dawn when the light is changing." :
-                 ev.element === "water" ? "Work near water if possible — a bowl, a bath, or natural water. Water rituals are strongest at night under moonlight." :
-                 ev.element === "earth" ? "Go outside if you can. Touch soil, stone, or wood. Earth rituals ground best when you're physically connected to the ground." :
-                 ev.element === "air" ? "Open a window or step outside. Breathe deeply and intentionally. Air rituals work best in the morning when the mind is clear." :
-                 "Create a quiet, sacred space. Dim the lights. Silence your phone. This is time between worlds — honor the threshold."}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 text-foreground/40 text-[11px]">
-          <span>{elemEmoji}</span>
-          <span className="capitalize">{ev.element ? `${ev.element} element` : ""}{ev.element && ev.category ? " · " : ""}{ev.category}</span>
-        </div>
-
-        <p className="text-foreground/25 text-[10px] leading-relaxed italic">
-          Ritual suggestions are inspired by each tradition&apos;s practices. We encourage learning more from practitioners and cultural sources.
-        </p>
-      </InfoSheet>
-    );
-  }
-
-  return <InfoSheet isOpen={false} onClose={onClose} title="">{null}</InfoSheet>;
-}
-
 /* ─── Helpers ─── */
 
 interface MetricTileProps {
@@ -2017,49 +1866,45 @@ interface MetricTileProps {
 }
 
 function MetricTile({ label, value, hint, glyph, accent, onClick }: MetricTileProps) {
-  const bg =
-    accent === "amber"
-      ? "bg-amber/25 border-amber/40"
-      : accent === "sage"
-      ? "bg-sage/15 border-sage/30"
-      : accent === "terracotta"
-      ? "bg-terracotta/12 border-terracotta/30"
-      : "bg-card/60 border-foreground/15";
-
-  const labelColor =
-    accent === "amber"
-      ? "text-[color:var(--rust)]/80"
-      : accent === "sage"
-      ? "text-sage/90"
-      : accent === "terracotta"
-      ? "text-terracotta/80"
-      : "text-foreground/55";
+  const accentColor =
+    accent === "amber" ? "var(--rust)"
+    : accent === "sage" ? "var(--sage)"
+    : accent === "terracotta" ? "var(--terracotta)"
+    : "var(--foreground-muted)";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative rounded-2xl border ${bg} px-4 py-3.5
+      className="scrapbook-card relative px-4 py-3.5
                   flex items-start gap-3 text-left
-                  active:scale-[0.98] hover:brightness-[1.02] transition-all`}
+                  active:scale-[0.98] hover:brightness-[1.02] transition-all"
     >
-      <span className="text-xl leading-none mt-0.5 shrink-0" aria-hidden="true">
-        {glyph}
-      </span>
+      <div
+        className="wax-seal shrink-0 mt-0.5"
+        style={{
+          background: `radial-gradient(circle at 35% 35%, ${accentColor}, var(--rust))`,
+        }}
+      >
+        <span className="text-sm leading-none" aria-hidden="true">{glyph}</span>
+      </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5 ${labelColor}`}>
+        <p
+          className="text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5"
+          style={{ color: accentColor }}
+        >
           {label}
         </p>
-        <p className="text-foreground text-[14px] font-semibold leading-tight capitalize">
+        <p className="text-foreground text-[14px] font-semibold leading-tight capitalize" style={{ fontFamily: "var(--font-display)" }}>
           {value}
         </p>
         {hint && (
-          <p className="text-foreground/55 text-[12px] leading-snug mt-1">
+          <p className="text-secondary text-[12px] leading-snug mt-1">
             {hint}
           </p>
         )}
       </div>
-      <span className="text-foreground/25 text-[11px] mt-1 shrink-0">▸</span>
+      <span className="text-muted text-[11px] mt-1 shrink-0">▸</span>
     </button>
   );
 }
@@ -2068,7 +1913,7 @@ function MetricTile({ label, value, hint, glyph, accent, onClick }: MetricTilePr
 function MiniFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-card/50 border border-foreground/12 px-3 py-2.5">
-      <p className="text-foreground/55 text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5">
+      <p className="text-secondary text-[9px] uppercase tracking-[0.18em] font-bold mb-0.5">
         {label}
       </p>
       <p className="text-foreground text-[13px] font-semibold capitalize">{value}</p>

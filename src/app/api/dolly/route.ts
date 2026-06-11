@@ -62,6 +62,14 @@ interface DollyRequest {
   userName?: string;
 }
 
+function ordinalHouse(h: string | number): string {
+  const n = typeof h === "string" ? parseInt(h, 10) : h;
+  if (isNaN(n)) return `${h}`;
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 function buildChartSummary(chart: ChartContext, userName?: string): string {
   if (!chart?.bigThree) return "";
 
@@ -73,10 +81,10 @@ function buildChartSummary(chart: ChartContext, userName?: string): string {
   lines.push(`\nBig Three: ${expandSign(chart.bigThree.sun)} Sun, ${expandSign(chart.bigThree.moon)} Moon, ${expandSign(chart.bigThree.rising)} Rising`);
 
   if (chart.planets?.length) {
-    lines.push("\nPlanet placements:");
+    lines.push("\nPlanet placements (HOUSE numbers are EXACT — use these, do not change them):");
     for (const p of chart.planets) {
       const retro = p.retrograde ? " (retrograde)" : "";
-      const house = p.house ? ` in ${p.house} house` : "";
+      const house = p.house ? ` [HOUSE: ${ordinalHouse(p.house)}]` : "";
       lines.push(`- ${p.name}: ${expandSign(p.sign)} at ${Math.floor(p.position)}°${house}${retro}`);
     }
   }
@@ -84,7 +92,7 @@ function buildChartSummary(chart: ChartContext, userName?: string): string {
   if (chart.specialPoints?.length) {
     lines.push("\nSpecial points:");
     for (const sp of chart.specialPoints) {
-      const house = sp.house ? ` in ${sp.house} house` : "";
+      const house = sp.house ? ` [HOUSE: ${ordinalHouse(sp.house)}]` : "";
       lines.push(`- ${sp.name}: ${expandSign(sp.sign)}${house}`);
     }
   }
@@ -144,7 +152,7 @@ function buildConnectionsSummary(connections: ConnectionContext[]): string {
       lines.push("Placements:");
       for (const p of c.planets) {
         const retro = p.retrograde ? " (retrograde)" : "";
-        const house = p.house ? ` in ${p.house} house` : "";
+        const house = p.house ? ` [HOUSE: ${ordinalHouse(p.house)}]` : "";
         lines.push(`  - ${p.name}: ${expandSign(p.sign)} at ${Math.floor(p.position)}°${house}${retro}`);
       }
     }
@@ -177,6 +185,8 @@ You're warm, direct, and insightful. Like a wise friend who deeply understands a
 
 ## CRITICAL: Use ONLY the actual chart data provided
 You have the user's EXACT birth chart, current transits, and connections listed below. ONLY reference placements that actually appear in the data. NEVER guess, assume, or invent placements. If a placement isn't in the data, don't mention it.
+
+HOUSE NUMBERS: Each planet line includes a [HOUSE: Nth] tag. When you mention which house a planet is in, you MUST use the EXACT house number from that tag. Do not round, estimate, or infer house numbers — copy them directly from the data. For example, if the data says "Moon: Cancer at 15° [HOUSE: 12th]" then the Moon is in the 12th house, period.
 
 The user's chart is labeled "Birth Chart" below. Other people's charts appear under "People in their life." NEVER confuse someone else's placements with the user's. If the user asks about a relationship, clearly distinguish between the user's placements and the other person's.
 

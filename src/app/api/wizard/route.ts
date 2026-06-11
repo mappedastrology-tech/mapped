@@ -59,6 +59,14 @@ function expandSign(s: string): string {
 
 // ─── Build chart summary for the wizard ────────────────────────────────────────
 
+function ordinalHouse(h: string | number): string {
+  const n = typeof h === "string" ? parseInt(h, 10) : h;
+  if (isNaN(n)) return `${h}`;
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 function buildChartContext(chart: WizardRequest["chart"], userName?: string): string {
   if (!chart?.bigThree) return "No chart available — skip chart-specific correspondences and lean on moon phase + day of week only.";
 
@@ -72,7 +80,7 @@ function buildChartContext(chart: WizardRequest["chart"], userName?: string): st
     const relevant = chart.planets.filter(p => keyPlanets.includes(p.name));
     for (const p of relevant) {
       const retro = p.retrograde ? " (retrograde)" : "";
-      const house = p.house ? ` in ${p.house} house` : "";
+      const house = p.house ? ` [HOUSE: ${ordinalHouse(p.house)}]` : "";
       lines.push(`${p.name}: ${expandSign(p.sign)}${house}${retro}`);
     }
   }

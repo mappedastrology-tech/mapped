@@ -18,7 +18,7 @@ export default function DailyQuoteWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center min-h-[160px]">
-        <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function DailyQuoteWidget() {
       >
         &ldquo;{quote}&rdquo;
       </p>
-      <p className="text-foreground/30 text-xs uppercase tracking-[0.15em]">{reason}</p>
+      <p className="text-muted text-xs uppercase tracking-[0.15em]">{reason}</p>
     </div>
   );
 }

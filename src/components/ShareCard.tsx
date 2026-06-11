@@ -83,7 +83,7 @@ export default function ShareCard({
       card.style.top = "0";
 
       const canvas = await html2canvas(card, {
-        backgroundColor: "#F3E8D6",
+        backgroundColor: "#f0e6d2",
         scale: 2, // Retina quality
         useCORS: true,
         logging: false,
@@ -136,10 +136,10 @@ export default function ShareCard({
       <button
         onClick={handleShare}
         disabled={generating}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-foreground/18 bg-card/40 text-foreground/50 text-[11px] hover:bg-card/50 hover:text-foreground transition-all active:scale-[0.97]"
+        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-lavender/30 text-lavender text-xs font-medium tracking-wide hover:bg-lavender/10 hover:text-lavender-light transition-all active:scale-[0.97]"
       >
         {generating ? (
-          <div className="w-3 h-3 border border-foreground/20 border-t-cream rounded-full animate-spin" />
+          <div className="w-3 h-3 border border-foreground/20 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
         ) : (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
@@ -158,9 +158,9 @@ export default function ShareCard({
         <div
           style={{
             background:
-              "linear-gradient(180deg, #F7EDDA 0%, #F3E8D6 40%, #EAD8BC 100%)",
+              "linear-gradient(180deg, #f5f0e1 0%, #f0e6d2 40%, #e8dcc4 100%)",
             padding: "36px 28px",
-            color: "#2A1F18",
+            color: "#1a1815",
           }}
         >
           {/* Logo / branding */}
@@ -181,7 +181,7 @@ export default function ShareCard({
               fontSize: 10,
               letterSpacing: "0.2em",
               textTransform: "uppercase" as const,
-              color: "#B45128",
+              color: "#5a1f1a",
               opacity: 0.8,
               marginBottom: 8,
               fontWeight: 600,
@@ -196,7 +196,7 @@ export default function ShareCard({
               style={{
                 fontFamily: "var(--font-display)",
                 fontSize: type === "synastry" || type === "composite" ? 22 : 30,
-                color: "#2A1F18",
+                color: "#1a1815",
               }}
             >
               {name2 ? `${name} & ${name2}` : name}
@@ -209,7 +209,7 @@ export default function ShareCard({
               style={{
                 textAlign: "center",
                 fontSize: 13,
-                color: "#97563E",
+                color: "#4a2540",
                 marginBottom: 4,
                 fontStyle: "italic",
               }}
@@ -255,10 +255,10 @@ export default function ShareCard({
                   width: 72,
                   height: 72,
                   borderRadius: "50%",
-                  border: `3px solid ${score >= 70 ? "#6BCB77" : score >= 50 ? "#EBC483" : "#B45128"}`,
+                  border: `3px solid ${score >= 70 ? "#5a7a3a" : score >= 50 ? "#c9a961" : "#5a1f1a"}`,
                   fontSize: 24,
                   fontWeight: 700,
-                  color: score >= 70 ? "#6BCB77" : score >= 50 ? "#EBC483" : "#B45128",
+                  color: score >= 70 ? "#5a7a3a" : score >= 50 ? "#c9a961" : "#5a1f1a",
                 }}
               >
                 {score}
@@ -287,7 +287,7 @@ export default function ShareCard({
                     background: "rgba(255, 255, 255, 0.45)",
                   }}
                 >
-                  <div style={{ fontSize: 14, color: "#2A1F18", fontWeight: 700 }}>
+                  <div style={{ fontSize: 14, color: "#1a1815", fontWeight: 700 }}>
                     {h.value}
                   </div>
                   <div

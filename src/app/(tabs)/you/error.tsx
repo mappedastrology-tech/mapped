@@ -15,10 +15,10 @@ export default function YouError({
       >
         Something went wrong
       </h2>
-      <p className="text-foreground/60 text-sm mb-2">
+      <p className="text-secondary text-sm mb-2">
         {error.message || "The chart page encountered an error."}
       </p>
-      <p className="text-foreground/40 text-xs mb-6 font-mono max-w-xs break-all">
+      <p className="text-muted text-xs mb-6 font-mono max-w-xs break-all">
         {error.digest || ""}
       </p>
       <button

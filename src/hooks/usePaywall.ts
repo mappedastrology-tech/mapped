@@ -61,7 +61,7 @@ export function usePaywall() {
     ? createElement(PlansPage, {
         currentTier: tier,
         onClose: () => setShowPlans(false),
-        onSelectTier: async (selectedTier: "free" | "mid" | "top") => {
+        onSelectTier: async (selectedTier: "free" | "mid") => {
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {

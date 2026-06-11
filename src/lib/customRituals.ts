@@ -1,9 +1,13 @@
 /**
- * Custom Rituals — localStorage storage layer for wizard-generated rituals.
+ * Custom Rituals — storage layer for wizard-generated rituals.
  *
  * Manages: saved custom rituals, rotation toggle, wizard history (last 10).
- * V1: localStorage only. V2+: sync to Supabase.
+ * Storage: localStorage is the fast, always-available source of truth;
+ * Supabase (custom_rituals table) is the durable backup, synced
+ * fire-and-forget on every mutation and merged on login/startup.
  */
+
+import { supabase } from "./supabase";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +29,8 @@ export interface CustomRitual {
   timing: string;
   // Rotation
   inRotation: boolean;
+  // User-editable
+  notes?: string;
   // Tags for rotation matching
   tags?: string[];
 }
@@ -62,11 +68,23 @@ export function saveCustomRitual(ritual: CustomRitual): void {
     rituals.unshift(ritual);
   }
   localStorage.setItem(CUSTOM_RITUALS_KEY, JSON.stringify(rituals));
+  pushCustomRitualToSupabase(ritual).catch(() => {});
+}
+
+export function updateCustomRitual(id: string, updates: Partial<Pick<CustomRitual, "title" | "notes">>): void {
+  const rituals = getCustomRituals();
+  const ritual = rituals.find(r => r.id === id);
+  if (!ritual) return;
+  if (updates.title !== undefined) ritual.title = updates.title;
+  if (updates.notes !== undefined) ritual.notes = updates.notes;
+  localStorage.setItem(CUSTOM_RITUALS_KEY, JSON.stringify(rituals));
+  pushCustomRitualToSupabase(ritual).catch(() => {});
 }
 
 export function deleteCustomRitual(id: string): void {
   const rituals = getCustomRituals().filter(r => r.id !== id);
   localStorage.setItem(CUSTOM_RITUALS_KEY, JSON.stringify(rituals));
+  deleteCustomRitualFromSupabase(id).catch(() => {});
 }
 
 export function toggleRitualRotation(id: string): boolean {
@@ -75,7 +93,106 @@ export function toggleRitualRotation(id: string): boolean {
   if (!ritual) return false;
   ritual.inRotation = !ritual.inRotation;
   localStorage.setItem(CUSTOM_RITUALS_KEY, JSON.stringify(rituals));
+  pushCustomRitualToSupabase(ritual).catch(() => {});
   return ritual.inRotation;
+}
+
+// ─── Supabase Sync (dual-write: localStorage primary, Supabase backup) ────────
+
+const CUSTOM_RITUALS_TABLE = "custom_rituals";
+
+/**
+ * Push a single ritual to Supabase (fire-and-forget).
+ * No-ops silently when signed out or offline.
+ */
+export async function pushCustomRitualToSupabase(ritual: CustomRitual): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return; // Not logged in — skip silently
+
+    await supabase.from(CUSTOM_RITUALS_TABLE).upsert({
+      id: ritual.id,
+      user_id: session.user.id,
+      data: ritual, // full payload as JSONB
+      created_at: ritual.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+  } catch {
+    // Network error — local copy is fine, will sync later
+  }
+}
+
+/** Delete the Supabase row for a ritual (fire-and-forget). */
+export async function deleteCustomRitualFromSupabase(id: string): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    await supabase
+      .from(CUSTOM_RITUALS_TABLE)
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.user.id);
+  } catch {
+    // Offline — nothing to do
+  }
+}
+
+/**
+ * Full sync on login or app startup.
+ * 1. Pull remote-only rituals into localStorage (local wins on conflict,
+ *    since every local mutation pushes immediately)
+ * 2. Push any local-only rituals to Supabase
+ */
+export async function syncCustomRituals(): Promise<{ pushed: number; pulled: number }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return { pushed: 0, pulled: 0 };
+
+    const userId = session.user.id;
+    const local = getCustomRituals();
+    const localIds = new Set(local.map((r) => r.id));
+
+    const { data: remoteRows, error } = await supabase
+      .from(CUSTOM_RITUALS_TABLE)
+      .select("*")
+      .eq("user_id", userId);
+    if (error) throw error;
+
+    const remoteRecords = (remoteRows || []) as { id: string; data: CustomRitual }[];
+    const remoteIds = new Set(remoteRecords.map((r) => r.id));
+
+    // Pull remote-only rituals into localStorage
+    const toPull = remoteRecords
+      .filter((r) => !localIds.has(r.id) && r.data)
+      .map((r) => ({ ...r.data, id: r.id }));
+    if (toPull.length > 0) {
+      const merged = [...local, ...toPull];
+      merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      try {
+        localStorage.setItem(CUSTOM_RITUALS_KEY, JSON.stringify(merged));
+      } catch {}
+    }
+
+    // Push local-only rituals to Supabase
+    const toPush = local.filter((r) => !remoteIds.has(r.id));
+    if (toPush.length > 0) {
+      await supabase.from(CUSTOM_RITUALS_TABLE).upsert(
+        toPush.map((r) => ({
+          id: r.id,
+          user_id: userId,
+          data: r,
+          created_at: r.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "id" }
+      );
+    }
+
+    return { pushed: toPush.length, pulled: toPull.length };
+  } catch {
+    return { pushed: 0, pulled: 0 };
+  }
 }
 
 export function getRotationRituals(): CustomRitual[] {

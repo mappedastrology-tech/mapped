@@ -30,7 +30,7 @@ export default function ChartSnapshotWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center h-[180px]">
-        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -41,7 +41,7 @@ export default function ChartSnapshotWidget() {
         <p className="text-xs uppercase tracking-widest text-amber/70 mb-4">
           🌀 Birth Chart
         </p>
-        <p className="text-foreground/60 text-sm mb-4">
+        <p className="text-secondary text-sm mb-4">
           Calculate your birth chart to see your big three and current transits.
         </p>
         <button
@@ -61,15 +61,15 @@ export default function ChartSnapshotWidget() {
       </p>
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center p-4 bg-foreground/5 rounded-lg">
-          <p className="text-foreground/50 text-xs uppercase mb-1">Sun</p>
+          <p className="text-muted text-xs uppercase mb-1">Sun</p>
           <p className="text-foreground font-medium">{chart.sunSign}</p>
         </div>
         <div className="text-center p-4 bg-foreground/5 rounded-lg">
-          <p className="text-foreground/50 text-xs uppercase mb-1">Moon</p>
+          <p className="text-muted text-xs uppercase mb-1">Moon</p>
           <p className="text-foreground font-medium">{chart.moonSign}</p>
         </div>
         <div className="text-center p-4 bg-foreground/5 rounded-lg">
-          <p className="text-foreground/50 text-xs uppercase mb-1">Rising</p>
+          <p className="text-muted text-xs uppercase mb-1">Rising</p>
           <p className="text-foreground font-medium">{chart.risingSign}</p>
         </div>
       </div>

@@ -11,12 +11,13 @@
  * All colors use CSS custom properties for light/dark theme support.
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import {
   MOOD_PALETTE,
   FIT_RATING_OPTIONS,
   saveCompletion,
+  getAllCompletions,
   type MoodWord,
   type FitRating,
   type MoodCategory,
@@ -46,12 +47,37 @@ export default function RitualCompletionCheckin({
   onComplete,
 }: Props) {
   const { toast } = useToast();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<1 | 2 | 3 | "done">(1);
   const [selectedMood, setSelectedMood] = useState<MoodWord | null>(null);
   const [customWord, setCustomWord] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [fitRating, setFitRating] = useState<FitRating | null>(null);
   const [journal, setJournal] = useState("");
+
+  // Focus trap for check-in modal
+  useEffect(() => {
+    if (step === "done") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [step, onClose]);
 
   function handleMoodSelect(mood: MoodWord) {
     setSelectedMood(mood);
@@ -110,13 +136,12 @@ export default function RitualCompletionCheckin({
   // ─── Done state: warm acknowledgment with streak ─────────────────
 
   if (step === "done") {
-    // Count completions for streak
+    // Count completions for streak — reads the real completion records
+    // ("mapped:completions" via feedback.ts, synced to Supabase by completionSync)
     let streakCount = 1;
     try {
-      const history = JSON.parse(localStorage.getItem("mapped:ritual-completions") || "[]");
-      const today = new Date().toDateString();
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      const uniqueDays = [...new Set(history.map((h: { date: string }) => new Date(h.date).toDateString()))];
+      const history = getAllCompletions();
+      const uniqueDays = [...new Set(history.map((h) => new Date(h.completedAt).toDateString()))];
       // Count consecutive days including today
       streakCount = 1;
       for (let i = 0; i < uniqueDays.length; i++) {
@@ -157,7 +182,11 @@ export default function RitualCompletionCheckin({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm"
          style={{ backgroundColor: "var(--modal-overlay)" }}>
-      <div className="rounded-t-3xl sm:rounded-3xl p-5 pb-8 mx-0 sm:mx-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
+      <div ref={dialogRef}
+           role="dialog"
+           aria-modal="true"
+           aria-label="Ritual completion check-in"
+           className="rounded-t-3xl sm:rounded-3xl p-5 pb-8 mx-0 sm:mx-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
            style={{ backgroundColor: "var(--modal-bg)" }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -167,7 +196,7 @@ export default function RitualCompletionCheckin({
           </p>
           <button
             onClick={onClose}
-            className="text-[12px] transition-colors"
+            className="text-[12px] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             style={{ color: "var(--foreground-faint)" }}
           >
             Skip
@@ -216,6 +245,7 @@ export default function RitualCompletionCheckin({
                   onChange={(e) => setCustomWord(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit()}
                   placeholder="Your word..."
+                  aria-label="Custom mood word"
                   className="flex-1 px-3 py-2 rounded-xl text-[12px] focus:outline-none"
                   style={{
                     backgroundColor: "var(--background-elevated)",
@@ -276,6 +306,7 @@ export default function RitualCompletionCheckin({
               value={journal}
               onChange={(e) => setJournal(e.target.value)}
               placeholder="What came up? Skip if nothing."
+              aria-label="Journal reflection"
               rows={3}
               className="w-full px-3 py-3 rounded-xl text-[13px] leading-relaxed focus:outline-none resize-none mb-4"
               style={{

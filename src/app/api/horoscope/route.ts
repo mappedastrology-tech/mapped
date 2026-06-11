@@ -71,6 +71,14 @@ interface HoroscopeRequest {
   };
 }
 
+function ordinalHouse(h: string | number): string {
+  const n = typeof h === "string" ? parseInt(h, 10) : h;
+  if (isNaN(n)) return `${h}`;
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 function buildChartBlock(chart: ChartData, userName?: string): string {
   const lines: string[] = [];
   lines.push(`## ${userName || "User"}'s Birth Chart`);
@@ -80,10 +88,10 @@ function buildChartBlock(chart: ChartData, userName?: string): string {
   }
 
   if (chart.planets?.length) {
-    lines.push("\nPlanet placements:");
+    lines.push("\nPlanet placements (HOUSE numbers are EXACT — use these, do not change them):");
     for (const p of chart.planets) {
       const retro = p.retrograde ? " (retrograde)" : "";
-      const house = p.house ? ` in ${p.house} house` : "";
+      const house = p.house ? ` [HOUSE: ${ordinalHouse(p.house)}]` : "";
       lines.push(`- ${p.name}: ${expandSign(p.sign)} at ${Math.floor(p.position)}°${house}${retro}`);
     }
   }
@@ -91,7 +99,7 @@ function buildChartBlock(chart: ChartData, userName?: string): string {
   if (chart.specialPoints?.length) {
     lines.push("\nSpecial points:");
     for (const sp of chart.specialPoints) {
-      const house = sp.house ? ` in ${sp.house} house` : "";
+      const house = sp.house ? ` [HOUSE: ${ordinalHouse(sp.house)}]` : "";
       lines.push(`- ${sp.name}: ${expandSign(sp.sign)}${house}`);
     }
   }
@@ -176,19 +184,25 @@ NOW make it personal. Their rising sign is the lens — it determines which hous
 
 ## Voice
 - Second person ("you"). Warm, direct, a little poetic. Like a wise friend reading the weather for your soul.
+- ABSOLUTELY NO astrology jargon in the horoscope body. A complete beginner should understand every word. No "stellium," "opposition," "trine," "square," "house" numbers, "transit," "natal," "conjunct," "sextile," "ascendant," or ANY technical term. Translate EVERYTHING into plain emotional/life language.
+- BAD: "The sun opposes your Scorpio stellium from across the sky. This cosmic tension between earthy stability and your deep water nature creates a powerful pull."
+- GOOD: "You're caught between wanting to build something solid and needing to let something go. That push-pull feeling? It's real — and today it's louder than usual."
 - Ground every insight in real life. Not "your 7th house is activated" but "partnerships are demanding your attention today."
-- No emojis. No astro jargon without translation. No filler.
-- 2-3 sentences for the horoscope. Tell one cohesive story, not three disconnected observations.
+- No emojis. No filler.
+- 3-5 sentences for the horoscope. Tell one cohesive story, not disconnected observations. Make the reader feel SEEN, not lectured at.
+- Write like you're texting your best friend who happens to be psychic — intimate, specific, human.
 
 ## Headline
 - The "headline" is a short, evocative title for the day (3-7 words). It should capture the main theme.
-- Examples: "Fire in your first house", "The slow unraveling", "Your career is calling", "Everything wants your attention"
-- NOT generic ("A good day ahead") — it should be specific to their chart + today's sky.
+- Examples: "The slow unraveling", "Your career is calling", "Everything wants your attention", "Let the mess be beautiful", "Something is finally clicking"
+- NO astrology jargon in the headline. Never mention houses, signs, or planets. Make it emotional and poetic.
+- NOT generic ("A good day ahead") — it should feel personal and specific.
 
 ## Vibes & Avoid
-- "vibes" = 3-4 short phrases of what to lean into today. Feel like permissions or invitations.
+- "vibes" = 3-4 short phrases of what to lean into today. Feel like permissions or invitations. Use plain language a friend would use.
 - "avoid" = 3-4 short phrases of what to watch for. Feel like gentle warnings, not doom.
-- Both must connect to the actual chart + sky data. No generic advice.
+- Both must connect to the actual chart + sky data but use ZERO jargon. Not "honor your Scorpio intensity" but "trust your gut even when it's uncomfortable."
+- These should feel like advice from someone who knows you well, not an astrology textbook.
 
 ## CRITICAL: Variety & avoiding repetition
 - If the user has a stellium (3+ planets in one sign/house), do NOT default to that house theme every day. The stellium is always there — it's background noise. Focus on what's DIFFERENT today: which transits are hitting OTHER parts of the chart? What's the moon activating that ISN'T the stellium?
@@ -198,6 +212,7 @@ NOW make it personal. Their rising sign is the lens — it determines which hous
 
 ## CRITICAL: Accuracy
 - ONLY reference placements that appear in the chart data below. If you say "your Venus in the 5th house," Venus MUST be in the 5th house.
+- HOUSE NUMBERS: Each planet line includes a [HOUSE: Nth] tag. When you reference which house a planet is in, you MUST use the EXACT house number from that tag. Copy it directly — do not estimate, round, or infer house numbers.
 - When mentioning transits, distinguish clearly: "Venus is moving through Taurus right now" (transit) vs "your natal Venus" (birth chart).
 - Never fabricate placements. If unsure, focus on what you CAN see in the data.
 
@@ -258,7 +273,8 @@ export async function POST(request: NextRequest) {
     const todayStr = (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate))
       ? localDate
       : new Date().toISOString().slice(0, 10);
-    if (userId) {
+    const forceRefresh = (body as unknown as Record<string, unknown>).forceRefresh === true;
+    if (userId && !forceRefresh) {
       const cached = await getCachedHoroscope(userId, todayStr);
       if (cached) {
         return NextResponse.json(cached);

@@ -63,7 +63,7 @@ function VerifyContent() {
     return (
       <main className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="rounded-2xl bg-surface border border-foreground/15 p-6 max-w-sm w-full text-center">
-          <p className="text-foreground/80 text-sm mb-4">{error}</p>
+          <p className="text-foreground text-sm mb-4">{error}</p>
           <button
             onClick={() => router.push("/account")}
             className="text-terracotta text-sm hover:text-terracotta-light transition-colors"
@@ -78,8 +78,8 @@ function VerifyContent() {
   return (
     <main className="flex-1 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
-        <p className="text-foreground/40 text-sm">Verifying...</p>
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
+        <p className="text-muted text-sm">Verifying...</p>
       </div>
     </main>
   );
@@ -89,7 +89,7 @@ export default function VerifyPage() {
   return (
     <Suspense fallback={
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     }>
       <VerifyContent />

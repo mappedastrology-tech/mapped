@@ -75,7 +75,7 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
                     text-[9px] font-bold ml-1 transition-all flex-shrink-0 cursor-pointer select-none
                     ${open
                       ? "bg-terracotta/30 text-terracotta"
-                      : "bg-foreground/8 text-foreground/30 hover:bg-foreground/12 hover:text-foreground/50"
+                      : "bg-foreground/8 text-muted hover:bg-foreground/12 hover:text-foreground"
                     }`}
         aria-label={`Learn about ${term}`}
       >
@@ -91,8 +91,8 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
             className="rounded-xl bg-surface border border-foreground/20
                        shadow-xl shadow-ink/10 p-3.5"
           >
-            <p className="text-foreground/90 text-xs font-semibold mb-1">{term}</p>
-            <p className="text-foreground/60 text-xs leading-relaxed">{explanation}</p>
+            <p className="text-foreground text-xs font-semibold mb-1">{term}</p>
+            <p className="text-secondary text-xs leading-relaxed">{explanation}</p>
           </div>,
           document.body
         )}

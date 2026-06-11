@@ -125,7 +125,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                 {planet} in {signFull}
               </h2>
               {houseNum && (
-                <p className="text-foreground/40 text-sm">
+                <p className="text-secondary text-sm">
                   {ORDINALS[houseNum]} House
                 </p>
               )}
@@ -145,7 +145,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                   <h3 className={`text-${accent} text-xs uppercase tracking-widest mb-3 font-semibold`}>
                     {planet} in {signFull}
                   </h3>
-                  <p className="text-foreground/75 text-sm leading-relaxed mb-4">
+                  <p className="text-secondary text-sm leading-relaxed mb-4">
                     {pisData.summary}
                   </p>
 
@@ -153,7 +153,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                     <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                       Life patterns
                     </p>
-                    <p className="text-foreground/65 text-sm leading-relaxed">
+                    <p className="text-secondary text-sm leading-relaxed">
                       {pisData.life_patterns}
                     </p>
                   </div>
@@ -162,17 +162,17 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                     <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                       Relationships
                     </p>
-                    <p className="text-foreground/65 text-sm leading-relaxed">
+                    <p className="text-secondary text-sm leading-relaxed">
                       {pisData.relationships}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-card/50 border border-foreground/15 p-4">
-                      <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2 font-semibold">
+                      <p className="text-secondary text-xs uppercase tracking-widest mb-2 font-semibold">
                         Challenges
                       </p>
-                      <p className="text-foreground/65 text-sm leading-relaxed">
+                      <p className="text-secondary text-sm leading-relaxed">
                         {pisData.challenges}
                       </p>
                     </div>
@@ -180,7 +180,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                       <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                         Growth
                       </p>
-                      <p className="text-foreground/65 text-sm leading-relaxed">
+                      <p className="text-secondary text-sm leading-relaxed">
                         {pisData.growth}
                       </p>
                     </div>
@@ -195,7 +195,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                   <h3 className={`text-${accent} text-xs uppercase tracking-widest mb-3 font-semibold`}>
                     {planet} in the {ORDINALS[houseNum]} House
                   </h3>
-                  <p className="text-foreground/75 text-sm leading-relaxed mb-4">
+                  <p className="text-secondary text-sm leading-relaxed mb-4">
                     {pihData.summary}
                   </p>
 
@@ -203,7 +203,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                     <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                       Life patterns
                     </p>
-                    <p className="text-foreground/65 text-sm leading-relaxed">
+                    <p className="text-secondary text-sm leading-relaxed">
                       {pihData.life_patterns}
                     </p>
                   </div>
@@ -213,15 +213,15 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                       <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                         Strengths
                       </p>
-                      <p className="text-foreground/65 text-sm leading-relaxed">
+                      <p className="text-secondary text-sm leading-relaxed">
                         {pihData.strengths}
                       </p>
                     </div>
                     <div className="rounded-xl bg-card/50 border border-foreground/15 p-4">
-                      <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2 font-semibold">
+                      <p className="text-secondary text-xs uppercase tracking-widest mb-2 font-semibold">
                         Challenges
                       </p>
-                      <p className="text-foreground/65 text-sm leading-relaxed">
+                      <p className="text-secondary text-sm leading-relaxed">
                         {pihData.challenges}
                       </p>
                     </div>
@@ -236,7 +236,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                   <h3 className={`text-${accent} text-xs uppercase tracking-widest mb-3 font-semibold`}>
                     {signFull} on the {ORDINALS[houseNum]} House
                   </h3>
-                  <p className="text-foreground/75 text-sm leading-relaxed mb-4">
+                  <p className="text-secondary text-sm leading-relaxed mb-4">
                     {sohData.summary}
                   </p>
 
@@ -244,7 +244,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
                     <p className={`text-${accent} text-xs uppercase tracking-widest mb-2 font-semibold`}>
                       Your approach
                     </p>
-                    <p className="text-foreground/65 text-sm leading-relaxed">
+                    <p className="text-secondary text-sm leading-relaxed">
                       {sohData.approach}
                     </p>
                   </div>
@@ -253,7 +253,7 @@ export default function PlacementDetail({ planet, sign, house, onClose }: Placem
 
               {/* No data fallback */}
               {!pisData && !pihData && !sohData && (
-                <p className="text-foreground/40 text-sm">
+                <p className="text-secondary text-sm">
                   No interpretation available for this placement yet.
                 </p>
               )}

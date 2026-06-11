@@ -9,7 +9,7 @@
  * Triggered from home screen moon badge or horizon event cards.
  */
 
-import { useMemo, useEffect, useState, useRef } from "react";
+import { useMemo, useEffect, useState, useRef, useCallback } from "react";
 import {
   getTodaysMoonEvent,
   getFullMoonsForYear,
@@ -98,10 +98,10 @@ function MoonsOfYear({ moons, currentName }: { moons: YearMoonEntry[]; currentNa
           >
             <span className="text-[14px] shrink-0">{m.emoji}</span>
             <div className="min-w-0">
-              <p className="text-[11px] truncate" style={{ opacity: isCurrent ? 0.9 : 0.55, color: isCurrent ? "#f5e6c8" : undefined }}>
+              <p className="text-[11px] truncate" style={{ opacity: isCurrent ? 0.9 : 0.55, color: isCurrent ? "#e8dfc4" : undefined }}>
                 {monthLabel}
               </p>
-              <p className="text-[9px] truncate" style={{ opacity: isCurrent ? 0.5 : 0.25, color: isCurrent ? "#f5e6c8" : undefined }}>
+              <p className="text-[9px] truncate" style={{ opacity: isCurrent ? 0.5 : 0.25, color: isCurrent ? "#e8dfc4" : undefined }}>
                 {m.name}{isCurrent ? " ←" : ""}
               </p>
             </div>
@@ -129,14 +129,15 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
   const [showRitual, setShowRitual] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const ritualRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const moonRitual = useMemo(() => getDailyRituals(today).moonRitual, [today]);
 
   // Set status bar / theme-color to dark while this screen is open
   useEffect(() => {
     // Change meta theme-color to match dark background
     const meta = document.querySelector('meta[name="theme-color"]');
-    const prevColor = meta?.getAttribute("content") || "#F3E8D6";
-    if (meta) meta.setAttribute("content", "#05050f");
+    const prevColor = meta?.getAttribute("content") || "#f0e6d2";
+    if (meta) meta.setAttribute("content", "#0e0a14");
 
     // Change status bar style for iOS PWA
     const statusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -152,6 +153,29 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
       document.body.style.overflow = "";
     };
   }, []);
+
+  // Focus trap for moon event overlay
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [onClose, showRitual]);
 
   // If no moon event today, show general moon info
   const isFull = moonEvent?.kind === "full" || moonPhase.phase === "full";
@@ -179,9 +203,13 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Moon event"
       className="fixed inset-0 z-[60] overflow-y-auto"
       style={{
-        background: "#05050f",
+        background: "#0e0a14",
         color: "#fff",
         paddingTop: "env(safe-area-inset-top)",
       }}
@@ -192,10 +220,11 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
         {/* Back button */}
         <button
           onClick={onClose}
-          className="pt-4 pb-2 flex items-center gap-1.5 text-[12px]"
+          className="pt-4 pb-2 flex items-center gap-1.5 text-[12px] min-h-[44px]"
           style={{ opacity: 0.55, color: "#fff" }}
+          aria-label="Go back"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -222,7 +251,7 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
         {/* Stats row */}
         <div className="flex justify-center gap-7 py-5 text-center">
           <div>
-            <p className="text-[20px] font-semibold" style={{ color: "#f5e6c8" }}>
+            <p className="text-[20px] font-semibold" style={{ color: "#e8dfc4" }}>
               {illumination}%
             </p>
             <p className="text-[9px] uppercase tracking-[0.15em] mt-1" style={{ opacity: 0.35 }}>
@@ -231,7 +260,7 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
           </div>
           <div style={{ width: 1, background: "rgba(255,255,255,0.1)" }} />
           <div>
-            <p className="text-[20px] font-semibold" style={{ color: "#f5e6c8" }}>
+            <p className="text-[20px] font-semibold" style={{ color: "#e8dfc4" }}>
               {sign}
             </p>
             <p className="text-[9px] uppercase tracking-[0.15em] mt-1" style={{ opacity: 0.35 }}>
@@ -398,7 +427,7 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
             {/* Completion message */}
             {completedSteps.size === moonRitual.steps.length && (
               <div className="mx-5 mt-4 mb-2 py-3 px-4 rounded-xl text-center" style={{ background: "rgba(196,106,69,0.15)" }}>
-                <p className="text-[14px] font-semibold" style={{ color: "#f5e6c8" }}>
+                <p className="text-[14px] font-semibold" style={{ color: "#e8dfc4" }}>
                   ✨ Ritual complete
                 </p>
                 <p className="text-[11px] mt-1" style={{ opacity: 0.45 }}>

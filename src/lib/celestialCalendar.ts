@@ -1200,11 +1200,15 @@ export function getNextMoonEvents(fromDate: Date): {
 
   const msPerDay = 1000 * 60 * 60 * 24;
 
+  // Normalize to start of day so we don't miss today's events
+  // (event dates are midnight, but `from` could be any time of day)
+  const fromStart = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+
   const nextFullEvent = allMoons.find(
-    (e) => e.name.startsWith("Full ") && e.date.getTime() >= from.getTime()
+    (e) => e.name.startsWith("Full ") && e.date.getTime() >= fromStart
   );
   const nextNewEvent = allMoons.find(
-    (e) => e.name === "New Moon" && e.date.getTime() >= from.getTime()
+    (e) => e.name === "New Moon" && e.date.getTime() >= fromStart
   );
 
   // Parse the moon name out of "Full Pink Moon (Esbat)" → "Pink Moon"
@@ -1228,7 +1232,7 @@ export function getNextMoonEvents(fromDate: Date): {
         label: parseMoonName(nextFullEvent.name) ?? "Full Moon",
         zodiacSign: parseMoonSign(nextFullEvent.description) || getCurrentZodiacSeason(nextFullEvent.date).sign,
         daysUntil: Math.round(
-          (nextFullEvent.date.getTime() - from.getTime()) / msPerDay
+          (nextFullEvent.date.getTime() - fromStart) / msPerDay
         ),
       }
     : null;
@@ -1242,7 +1246,7 @@ export function getNextMoonEvents(fromDate: Date): {
           label: `New Moon in ${sign}`,
           zodiacSign: sign,
           daysUntil: Math.round(
-            (nextNewEvent.date.getTime() - from.getTime()) / msPerDay
+            (nextNewEvent.date.getTime() - fromStart) / msPerDay
           ),
         };
       })()

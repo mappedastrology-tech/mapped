@@ -23,7 +23,7 @@ export default function MoonPhaseWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center min-h-[140px]">
-        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -39,10 +39,10 @@ export default function MoonPhaseWidget() {
         </div>
         <div>
           <p className="text-foreground text-lg font-medium">{phase}</p>
-          <p className="text-foreground/60 text-sm">{illumination}% illuminated</p>
+          <p className="text-secondary text-sm">{illumination}% illuminated</p>
         </div>
       </div>
-      <p className="text-foreground/50 text-sm italic">{energy}</p>
+      <p className="text-muted text-sm italic">{energy}</p>
     </div>
   );
 }

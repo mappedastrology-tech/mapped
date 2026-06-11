@@ -71,15 +71,16 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Start typing a city..."
+        aria-label="Search cities"
         className="w-full px-4 py-2.5 rounded-xl bg-card/50 border border-foreground/15
-                   text-foreground placeholder:text-foreground/35
+                   text-foreground placeholder:text-muted
                    focus:outline-none focus:border-terracotta focus:ring-2 focus:ring-terracotta/20
                    text-sm"
       />
 
       {isLoading && (
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
         </div>
       )}
 
@@ -101,7 +102,7 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
                   onChange(result.display_name);
                   setIsOpen(false);
                 }}
-                className="w-full text-left px-4 py-2.5 text-xs text-foreground/80
+                className="w-full text-left px-4 py-2.5 text-xs text-foreground
                            hover:bg-terracotta/10 hover:text-foreground
                            border-b border-foreground/8 last:border-b-0
                            transition-colors"

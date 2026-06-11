@@ -26,6 +26,8 @@ import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
 import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearInfo } from "@/lib/rulers";
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
+import { analyzeChart, type ChartAnalysis } from "@/lib/chartAnalysis";
+import ChartInsightsPanel from "@/components/ChartInsightsPanel";
 
 interface Planet {
   name: string;
@@ -158,8 +160,8 @@ const RISING_DESCRIPTIONS: Record<string, { summary: string; appearance: string;
 function elementColor(sign: string): string {
   if (["Ari", "Leo", "Sag"].includes(sign)) return "text-terracotta";
   if (["Tau", "Vir", "Cap"].includes(sign)) return "text-sage";
-  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-amber";
-  return "text-[#6b8a9e]";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-lavender";
+  return "text-lavender-light";
 }
 
 // Maps Kerykeion house strings like "Fifth_House" to numbers
@@ -296,10 +298,10 @@ const ASPECT_TYPE_INFO: Record<string, { label: string; nature: string; color: s
   sextile: { label: "Sextile", nature: "opportunity", color: "text-sage/70", beginnerDesc: "These two planets get along well and create opportunities — but you have to reach for them. Think of it as an open door you still need to walk through." },
   square: { label: "Square", nature: "tension", color: "text-terracotta", beginnerDesc: "These two planets are in conflict — they want different things and create inner tension. It's uncomfortable, but this friction is what drives your biggest growth." },
   opposition: { label: "Opposition", nature: "polarity", color: "text-terracotta/70", beginnerDesc: "These two planets sit on opposite sides, creating a tug-of-war. You might swing between them or project one side onto other people. Balance is the lesson." },
-  quintile: { label: "Quintile", nature: "talent", color: "text-foreground/50", beginnerDesc: "A creative, somewhat rare aspect. These two planets connect through talent and unique expression — something you do that doesn't fit neatly into any category but is distinctly yours." },
-  "bi-quintile": { label: "Bi-Quintile", nature: "talent", color: "text-foreground/50", beginnerDesc: "Like the quintile but deeper — a refined creative gift. These two planets produce something original when they work together. Think of it as a skill nobody taught you." },
-  "semi-sextile": { label: "Semi-Sextile", nature: "adjustment", color: "text-foreground/40", beginnerDesc: "These two planets are neighbors that don't quite speak the same language. There's a subtle friction that asks you to make small adjustments — nothing dramatic, but a constant nudge toward integration." },
-  quincunx: { label: "Quincunx", nature: "adjustment", color: "text-foreground/40", beginnerDesc: "Also called an inconjunct. These two planets have nothing in common and struggle to relate. It creates a blind spot — something you keep having to recalibrate because it never quite resolves." },
+  quintile: { label: "Quintile", nature: "talent", color: "text-lavender", beginnerDesc: "A creative, somewhat rare aspect. These two planets connect through talent and unique expression — something you do that doesn't fit neatly into any category but is distinctly yours." },
+  "bi-quintile": { label: "Bi-Quintile", nature: "talent", color: "text-lavender", beginnerDesc: "Like the quintile but deeper — a refined creative gift. These two planets produce something original when they work together. Think of it as a skill nobody taught you." },
+  "semi-sextile": { label: "Semi-Sextile", nature: "adjustment", color: "text-lavender-light", beginnerDesc: "These two planets are neighbors that don't quite speak the same language. There's a subtle friction that asks you to make small adjustments — nothing dramatic, but a constant nudge toward integration." },
+  quincunx: { label: "Quincunx", nature: "adjustment", color: "text-lavender-light", beginnerDesc: "Also called an inconjunct. These two planets have nothing in common and struggle to relate. It creates a blind spot — something you keep having to recalibrate because it never quite resolves." },
   "semi-square": { label: "Semi-Square", nature: "irritation", color: "text-terracotta/40", beginnerDesc: "A low-grade tension between these two planets — not as dramatic as a square, but a persistent itch. It creates minor frustrations that push you to deal with things you'd rather ignore." },
   sesquiquadrate: { label: "Sesquiquadrate", nature: "irritation", color: "text-terracotta/40", beginnerDesc: "Like a semi-square's older sibling. Persistent agitation between these two planets that builds slowly. It creates situations where you have to confront patterns you've been avoiding." },
 };
@@ -1141,7 +1143,7 @@ function elementBg(sign: string): string {
   if (["Ari", "Leo", "Sag"].includes(sign)) return "bg-terracotta/15 border-terracotta/25";
   if (["Tau", "Vir", "Cap"].includes(sign)) return "bg-sage/15 border-sage/25";
   if (["Gem", "Lib", "Aqu"].includes(sign)) return "bg-amber/15 border-amber/25";
-  return "bg-[#6b8a9e]/15 border-[#6b8a9e]/25";
+  return "bg-lavender/15 border-lavender/25";
 }
 
 export default function YouTab() {
@@ -1154,6 +1156,7 @@ export default function YouTab() {
   const [cuspDismissed, setCuspDismissed] = useState(false);
   const [openAspect, setOpenAspect] = useState<string | null>(null);
   const [aspectTab, setAspectTab] = useState<"strong" | "medium" | "mild">("strong");
+  const [pageTab, setPageTab] = useState<"placements" | "insights">("placements");
   const [accountName, setAccountName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1340,10 +1343,21 @@ export default function YouTab() {
     }
   }, [chartData]);
 
+  // Comprehensive chart analysis (patterns, dignities, balance, etc.)
+  const chartAnalysis = useMemo<ChartAnalysis | null>(() => {
+    if (!chartData) return null;
+    const sp = chartData.specialPoints || [];
+    const allPoints = lilithFallback
+      ? [...sp, { ...lilithFallback, house: lilithFallback.house != null ? String(lilithFallback.house) : null }]
+      : sp;
+    const mhAbsPos = chartData.midheaven?.absPosition ?? undefined;
+    return analyzeChart(chartData.planets, chartData.houses, chartData.aspects, allPoints, mhAbsPos);
+  }, [chartData, lilithFallback]);
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
@@ -1351,7 +1365,7 @@ export default function YouTab() {
   if (!chartData) {
     return (
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <p className="text-foreground/50 text-lg mb-6">You haven&apos;t calculated your chart yet.</p>
+        <p className="text-secondary text-lg mb-6">You haven&apos;t calculated your chart yet.</p>
         <button
           onClick={() => router.push("/chart/new")}
           className="px-8 py-3 rounded-full bg-terracotta text-cream font-semibold text-sm
@@ -1370,24 +1384,28 @@ export default function YouTab() {
     <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
       {/* Header */}
       <div className="text-center mb-6">
-        <p className="text-foreground/40 text-xs uppercase tracking-widest mb-2">
-          Natal Chart
+        <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3" style={{ color: "var(--brass)" }}>
+          your chart
         </p>
         <h1
-          className="text-2xl text-foreground mb-1"
-          style={{ fontFamily: "var(--font-display)" }}
+          className="text-[26px] tracking-[0.18em] uppercase mb-1.5"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
         >
           {name}
         </h1>
-        <p className="text-foreground/40 text-sm">
-          {chartData.birthDate} &middot; {chartData.birthTime}
+        <p className="text-[13px]" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-secondary)" }}>
+          {chartData.birthDate} · {chartData.birthTime}
           {unknownTime && " (approx)"}
         </p>
         <button
           onClick={() => router.push("/chart/new?edit=true")}
           className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full
-                     border border-terracotta/30 text-terracotta text-xs font-semibold
-                     tracking-wide hover:bg-terracotta/10 active:scale-[0.98] transition-all"
+                     text-[10px] tracking-[0.15em] uppercase font-medium
+                     active:scale-[0.98] transition-all"
+          style={{
+            border: "0.5px solid rgba(201, 169, 97, 0.3)",
+            color: "var(--brass)",
+          }}
         >
           Edit chart
         </button>
@@ -1395,7 +1413,7 @@ export default function YouTab() {
 
       {/* Chart Wheel */}
       <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-terracotta/5 rounded-full blur-2xl" />
+        <div className="absolute inset-0 bg-lavender/5 rounded-full blur-2xl" />
         <ChartWheel planets={planets} houses={effectiveHouses} />
       </div>
 
@@ -1408,11 +1426,12 @@ export default function YouTab() {
         ].map(({ label, sign }) => (
           <div
             key={label}
-            className={`px-4 py-2 rounded-full border text-sm font-medium ${elementBg(sign)}`}
+            className="px-4 py-2 rounded-full text-sm font-medium"
+            style={{ backgroundColor: "var(--brass)", color: "#1a1420" }}
           >
-            <span className="text-foreground/50">{label}</span>
-            <span className="text-foreground/20 mx-1.5">&middot;</span>
-            <span className={elementColor(sign)}>{SIGN_NAMES[sign] || sign}</span>
+            <span style={{ opacity: 0.7 }}>{label}</span>
+            <span className="mx-1.5">·</span>
+            <span className="font-semibold">{SIGN_NAMES[sign] || sign}</span>
           </div>
         ))}
       </div>
@@ -1430,16 +1449,46 @@ export default function YouTab() {
         />
       </div>
 
-      <div className="mb-4" />
+      {/* ═══ PAGE TAB SWITCHER ═══ */}
+      <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ backgroundColor: "rgba(201, 169, 97, 0.08)" }}>
+        {([
+          { key: "placements" as const, label: "Placements" },
+          { key: "insights" as const, label: "Insights" },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setPageTab(tab.key)}
+            className={`flex-1 py-2.5 rounded-lg text-[11px] font-semibold tracking-[0.12em] uppercase transition-all ${
+              pageTab === tab.key
+                ? "shadow-sm"
+                : "hover:opacity-80"
+            }`}
+            style={pageTab === tab.key
+              ? { backgroundColor: "var(--plum)", color: "var(--brass)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }
+              : { color: "var(--foreground-secondary)" }
+            }
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══ INSIGHTS TAB ═══ */}
+      {pageTab === "insights" && chartAnalysis && (
+        <ChartInsightsPanel analysis={chartAnalysis} planets={[...chartData.planets, ...(chartData.specialPoints || []).map(sp => ({ ...sp, house: sp.house != null ? String(sp.house) : null }))]} />
+      )}
+
+      {/* ═══ PLACEMENTS TAB ═══ */}
+      {pageTab === "placements" && (<>
 
       {/* ═══ CHART RULER ═══ */}
       {chartRuler && (
-        <div className="rounded-xl border border-terracotta/15 bg-terracotta/5 px-4 py-4 mb-8">
+        <div className="rounded-xl px-4 py-4 mb-8" style={{ backgroundColor: "var(--plum)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-terracotta text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+            <span className="text-lg" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>
               {PLANET_SYMBOLS[chartRuler.planet] || "?"}
             </span>
-            <span className="text-foreground/30 text-[10px] uppercase tracking-widest font-semibold">
+            <span className="text-[9px] tracking-[0.25em] uppercase font-medium" style={{ color: "var(--brass)" }}>
               Your chart is ruled by {chartRuler.planet}
             </span>
             <InfoTip
@@ -1448,17 +1497,17 @@ export default function YouTab() {
             />
           </div>
           <h3
-            className="text-lg text-foreground mb-2"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-lg mb-2"
+            style={{ fontFamily: "var(--font-heading)", color: "#f0e6d2" }}
           >
             {chartRuler.planet} in {SIGN_FULL[chartRuler.rulerSign] || chartRuler.rulerSign}
             {chartRuler.coRuler && (
-              <span className="text-foreground/30 text-sm font-normal ml-2">
+              <span className="text-sm font-normal ml-2" style={{ color: "rgba(240, 230, 210, 0.6)" }}>
                 + {chartRuler.coRuler}
               </span>
             )}
           </h3>
-          <p className="text-foreground/70 text-sm leading-relaxed">
+          <p className="text-sm leading-relaxed" style={{ color: "rgba(240, 230, 210, 0.75)" }}>
             {chartRuler.summary}
           </p>
         </div>
@@ -1481,7 +1530,7 @@ export default function YouTab() {
                   explanation={getGlossaryEntry("Stellium")?.short || "Three or more planets in the same sign — a massive concentration of energy."}
                 />
               </div>
-              <p className="text-foreground/65 text-sm leading-relaxed">
+              <p className="text-secondary text-sm leading-relaxed">
                 {s.summary}
               </p>
             </div>
@@ -1492,9 +1541,7 @@ export default function YouTab() {
 
       {/* ═══ SECT LIGHT (collapsible) ═══ */}
       {sectLight && (
-        <div className={`rounded-xl border transition-colors duration-200 mb-3 ${
-          openRuler === "sect" ? "bg-amber/5 border-amber/15" : "bg-card/50 border-foreground/15"
-        }`}>
+        <div className="placement-card transition-colors duration-200 mb-3">
           <button
             onClick={() => setOpenRuler(openRuler === "sect" ? null : "sect")}
             className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
@@ -1504,10 +1551,10 @@ export default function YouTab() {
                 {sectLight.sectLight === "Sun" ? "☉" : "☽"}
               </span>
               <div>
-                <span className="text-foreground/80 text-sm font-medium">
+                <span className="placement-card-text text-sm font-medium">
                   Your sect light
                 </span>
-                <span className="text-foreground/30 text-xs ml-2">
+                <span className="placement-card-text-secondary text-xs ml-2">
                   {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight}
                 </span>
               </div>
@@ -1516,24 +1563,24 @@ export default function YouTab() {
                 explanation="Sect divides charts into day and night teams. Your sect light is the leader of your team — the Sun for day charts, the Moon for night charts. It's the planet with the most natural authority in your chart. Most apps ignore sect entirely, but it changes how every other planet performs."
               />
             </div>
-            <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openRuler === "sect" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openRuler === "sect" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
           <div className={`overflow-hidden transition-all duration-300 ease-out ${openRuler === "sect" ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
-            <div className="px-4 pb-4 border-t border-amber/10">
+            <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--border-card)" }}>
               <h3
-                className="text-lg text-foreground mt-3 mb-2"
+                className="text-lg placement-card-text mt-3 mb-2"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight} in {SIGN_FULL[sectLight.sectLightSign] || sectLight.sectLightSign}
               </h3>
-              <p className="text-foreground/70 text-sm leading-relaxed">
+              <p className="placement-card-text-secondary text-sm leading-relaxed">
                 {sectLight.summary}
               </p>
-              <div className="mt-3 flex gap-3 text-xs text-foreground/40">
-                <span>Benefic: <span className="text-foreground/60">{sectLight.benefic}</span></span>
-                <span>Malefic: <span className="text-foreground/60">{sectLight.malefic}</span></span>
+              <div className="mt-3 flex gap-3 text-xs placement-card-text-secondary">
+                <span>Benefic: <span className="placement-card-text">{sectLight.benefic}</span></span>
+                <span>Malefic: <span className="placement-card-text">{sectLight.malefic}</span></span>
               </div>
             </div>
           </div>
@@ -1542,22 +1589,20 @@ export default function YouTab() {
 
       {/* ═══ LORD OF THE YEAR (collapsible) ═══ */}
       {lordOfTheYear && (
-        <div className={`rounded-xl border transition-colors duration-200 mb-8 ${
-          openRuler === "loy" ? "bg-[#6b8a9e]/5 border-[#6b8a9e]/15" : "bg-card/50 border-foreground/15"
-        }`}>
+        <div className="placement-card transition-colors duration-200 mb-8">
           <button
             onClick={() => setOpenRuler(openRuler === "loy" ? null : "loy")}
             className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
           >
             <div className="flex items-center gap-3">
-              <span className="text-[#6b8a9e] text-lg" style={{ fontFamily: "var(--font-heading)" }}>
+              <span className="text-lavender text-lg" style={{ fontFamily: "var(--font-heading)" }}>
                 {PLANET_SYMBOLS[lordOfTheYear.lordPlanet] || "★"}
               </span>
               <div>
-                <span className="text-foreground/80 text-sm font-medium">
+                <span className="placement-card-text text-sm font-medium">
                   Lord of the Year
                 </span>
-                <span className="text-foreground/30 text-xs ml-2">
+                <span className="placement-card-text-secondary text-xs ml-2">
                   {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house
                 </span>
               </div>
@@ -1566,22 +1611,22 @@ export default function YouTab() {
                 explanation="Every birthday, your chart 'profects' — advancing one house. The planet that rules the sign on that house becomes your Lord of the Year. It's the planet running the show for the next 12 months. Transits to this planet hit harder, returns of this planet mark turning points, and its natal condition describes your year's flavor."
               />
             </div>
-            <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openRuler === "loy" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openRuler === "loy" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
           <div className={`overflow-hidden transition-all duration-300 ease-out ${openRuler === "loy" ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
-            <div className="px-4 pb-4 border-t border-[#6b8a9e]/10">
+            <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--border-card)" }}>
               <h3
-                className="text-lg text-foreground mt-3 mb-2"
+                className="text-lg placement-card-text mt-3 mb-2"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house year
               </h3>
-              <p className="text-foreground/70 text-sm leading-relaxed">
+              <p className="placement-card-text-secondary text-sm leading-relaxed">
                 {lordOfTheYear.summary}
               </p>
-              <p className="mt-2 text-xs text-foreground/35">
+              <p className="mt-2 text-xs placement-card-text-secondary">
                 Changes on your next birthday · {lordOfTheYear.nextBirthday}
               </p>
             </div>
@@ -1592,7 +1637,7 @@ export default function YouTab() {
       {/* Divider */}
       <div className="flex items-center gap-3 mb-8">
         <div className="flex-1 h-px bg-foreground/10" />
-        <span className="text-terracotta/40 text-lg">&#x2609;</span>
+        <span className="text-lavender/40 text-lg">&#x2609;</span>
         <div className="flex-1 h-px bg-foreground/10" />
       </div>
 
@@ -1630,59 +1675,61 @@ export default function YouTab() {
 
         {/* ═══ RISING SIGN ═══ */}
         {effectiveBigThree.rising && (
-          <div className={`rounded-xl border transition-colors duration-200 ${
-            openPlanet === "_Rising" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
-          }`}>
+          <div className="placement-card transition-colors duration-200">
             <button
-              onClick={() => setOpenPlanet(openPlanet === "_Rising" ? null : "_Rising")}
+              onClick={(e) => {
+                const opening = openPlanet !== "_Rising";
+                setOpenPlanet(opening ? "_Rising" : null);
+                if (opening) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); }
+              }}
               className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-3">
                 <span className={`text-lg ${elementColor(effectiveBigThree.rising)}`} style={{ fontFamily: "var(--font-heading)" }}>ASC</span>
-                <span className="text-foreground/80 text-sm font-medium">Rising Sign</span>
+                <span className="placement-card-text text-sm font-medium">Rising Sign</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-sm font-medium ${elementColor(effectiveBigThree.rising)}`}>
                   {SIGN_NAMES[effectiveBigThree.rising] || effectiveBigThree.rising}
                 </span>
-                <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Rising" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Rising" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </div>
             </button>
             <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Rising" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
               <div className="px-4 pb-5 pt-1">
-                <div className="h-px bg-foreground/8 mb-5" />
+                <div className="h-px bg-lavender/15 mb-5" />
                 {(() => {
                   const r = RISING_DESCRIPTIONS[effectiveBigThree.rising];
                   const color = elementColor(effectiveBigThree.rising);
-                  if (!r) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                  if (!r) return <p className="placement-card-text-secondary text-sm">No interpretation available.</p>;
                   return (
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Rising Sign</span>
+                        <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">Your Rising Sign</span>
                         <InfoTip term="Rising Sign" explanation="Your Rising sign (or Ascendant) is the sign that was on the eastern horizon when you were born. It's your first impression, your physical energy, and the lens through which you experience life. It's arguably the most personal point in your chart." />
                       </div>
                       <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
                         {SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising
                       </h3>
-                      <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{r.summary}</p>
+                      <p className="placement-card-text text-[15px] leading-relaxed mb-5">{r.summary}</p>
                       <div className="mb-4">
                         <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>How you look and move</p>
-                        <p className="text-foreground/75 text-sm leading-relaxed">{r.appearance}</p>
+                        <p className="placement-card-text-secondary text-sm leading-relaxed">{r.appearance}</p>
                       </div>
                       <div className="mb-4">
                         <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>In relationships</p>
-                        <p className="text-foreground/75 text-sm leading-relaxed">{r.relationships}</p>
+                        <p className="placement-card-text-secondary text-sm leading-relaxed">{r.relationships}</p>
                       </div>
                       <div className="grid grid-cols-1 gap-3">
                         <div>
-                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{r.shadow}</p>
+                          <p className="text-secondary text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{r.shadow}</p>
                         </div>
                         <div>
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Where you grow</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{r.advice}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{r.advice}</p>
                         </div>
                       </div>
                     </div>
@@ -1695,55 +1742,53 @@ export default function YouTab() {
 
         {/* ═══ MIDHEAVEN ═══ */}
         {midheaven && (
-          <div className={`rounded-xl border transition-colors duration-200 ${
-            openPlanet === "_MC" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
-          }`}>
+          <div className="placement-card transition-colors duration-200">
             <button
-              onClick={() => setOpenPlanet(openPlanet === "_MC" ? null : "_MC")}
+              onClick={(e) => { const o = openPlanet !== "_MC"; setOpenPlanet(o ? "_MC" : null); if (o) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); } }}
               className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
             >
               <div className="flex items-center gap-3">
                 <span className={`text-lg ${elementColor(midheaven.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>MC</span>
-                <span className="text-foreground/80 text-sm font-medium">Midheaven</span>
+                <span className="placement-card-text text-sm font-medium">Midheaven</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-sm font-medium ${elementColor(midheaven.sign)}`}>
                   {SIGN_NAMES[midheaven.sign] || midheaven.sign}
                 </span>
-                <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_MC" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openPlanet === "_MC" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </div>
             </button>
             <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_MC" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
               <div className="px-4 pb-5 pt-1">
-                <div className="h-px bg-foreground/8 mb-5" />
+                <div className="h-px bg-lavender/15 mb-5" />
                 {(() => {
                   const mc = MC_DESCRIPTIONS[midheaven.sign];
                   const color = elementColor(midheaven.sign);
-                  if (!mc) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                  if (!mc) return <p className="placement-card-text-secondary text-sm">No interpretation available.</p>;
                   return (
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Midheaven</span>
+                        <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">Your Midheaven</span>
                         <InfoTip term="Midheaven" explanation="Your Midheaven (MC) is the highest point in your chart — it represents your career path, public reputation, and what you're known for in the world." />
                       </div>
                       <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
                         Midheaven in {SIGN_FULL[midheaven.sign] || midheaven.sign}
                       </h3>
-                      <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{mc.summary}</p>
+                      <p className="placement-card-text text-[15px] leading-relaxed mb-5">{mc.summary}</p>
                       <div className="mb-4">
                         <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Career paths</p>
-                        <p className="text-foreground/75 text-sm leading-relaxed">{mc.career}</p>
+                        <p className="placement-card-text-secondary text-sm leading-relaxed">{mc.career}</p>
                       </div>
                       <div className="grid grid-cols-1 gap-3">
                         <div>
-                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{mc.shadow}</p>
+                          <p className="text-secondary text-[11px] uppercase tracking-widest mb-1.5 font-semibold">The shadow</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{mc.shadow}</p>
                         </div>
                         <div>
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Where you grow</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{mc.advice}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{mc.advice}</p>
                         </div>
                       </div>
                     </div>
@@ -1759,70 +1804,68 @@ export default function YouTab() {
           const chiron = specialPoints.find((p) => p.name === "Chiron");
           if (!chiron) return null;
           return (
-            <div className={`rounded-xl border transition-colors duration-200 ${
-              openPlanet === "_Chiron" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
-            }`}>
+            <div className="placement-card transition-colors duration-200">
               <button
-                onClick={() => setOpenPlanet(openPlanet === "_Chiron" ? null : "_Chiron")}
+                onClick={(e) => { const o = openPlanet !== "_Chiron"; setOpenPlanet(o ? "_Chiron" : null); if (o) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); } }}
                 className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
               >
                 <div className="flex items-center gap-3">
                   <span className={`text-lg ${elementColor(chiron.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"\u26B7"}</span>
-                  <span className="text-foreground/80 text-sm font-medium">Chiron</span>
+                  <span className="placement-card-text text-sm font-medium">Chiron</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-right">
                     <span className={`text-sm font-medium ${elementColor(chiron.sign)}`}>
                       {SIGN_NAMES[chiron.sign] || chiron.sign}
                     </span>
-                    <span className="text-foreground/30 text-xs ml-2">
+                    <span className="placement-card-text-secondary text-xs ml-2">
                       {chiron.position.toFixed(0)}&deg;
                       {chiron.house && ` · ${ORDINAL[houseToNum(chiron.house) || 0] || ""} House`}
                     </span>
                   </div>
-                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Chiron" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Chiron" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
               </button>
               <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Chiron" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
                 <div className="px-4 pb-5 pt-1">
-                  <div className="h-px bg-foreground/8 mb-5" />
+                  <div className="h-px bg-lavender/15 mb-5" />
                   {(() => {
                     const ch = CHIRON_DESCRIPTIONS[chiron.sign];
                     const color = elementColor(chiron.sign);
-                    if (!ch) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    if (!ch) return <p className="placement-card-text-secondary text-sm">No interpretation available.</p>;
                     return (
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">The Wounded Healer</span>
+                          <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">The Wounded Healer</span>
                           <InfoTip term="Chiron" explanation="Chiron is the 'wounded healer' — it shows your deepest wound and, paradoxically, the area where you become the greatest healer for others. It's not something to fix; it's something to work with." />
                         </div>
                         <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
                           Chiron in {SIGN_FULL[chiron.sign] || chiron.sign}
                         </h3>
-                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{ch.wound}</p>
+                        <p className="placement-card-text text-[15px] leading-relaxed mb-5">{ch.wound}</p>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Life patterns</p>
-                          <p className="text-foreground/75 text-sm leading-relaxed">{ch.patterns}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{ch.patterns}</p>
                         </div>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your healing gift</p>
-                          <p className="text-foreground/75 text-sm leading-relaxed">{ch.healing}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{ch.healing}</p>
                         </div>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Working with it</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{ch.advice}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{ch.advice}</p>
                         </div>
                         {(() => {
                           const hNum = houseToNum(chiron.house);
                           if (!hNum || !CHIRON_HOUSE[hNum]) return null;
                           return (
-                            <div className="mt-2 pt-5 border-t border-foreground/15">
-                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                            <div className="mt-2 pt-5 border-t border-lavender/15">
+                              <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest mb-2 block">
                                 Where it plays out · {ORDINAL[hNum]} house
                               </span>
-                              <p className="text-foreground/55 text-sm leading-relaxed">{CHIRON_HOUSE[hNum]}</p>
+                              <p className="placement-card-text-secondary text-sm leading-relaxed">{CHIRON_HOUSE[hNum]}</p>
                             </div>
                           );
                         })()}
@@ -1841,80 +1884,78 @@ export default function YouTab() {
           const southNode = specialPoints.find((p) => p.name === "South Node");
           if (!northNode) return null;
           return (
-            <div className={`rounded-xl border transition-colors duration-200 ${
-              openPlanet === "_Nodes" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
-            }`}>
+            <div className="placement-card transition-colors duration-200">
               <button
-                onClick={() => setOpenPlanet(openPlanet === "_Nodes" ? null : "_Nodes")}
+                onClick={(e) => { const o = openPlanet !== "_Nodes"; setOpenPlanet(o ? "_Nodes" : null); if (o) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); } }}
                 className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
               >
                 <div className="flex items-center gap-3">
                   <span className={`text-lg ${elementColor(northNode.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"\u260A"}</span>
-                  <span className="text-foreground/80 text-sm font-medium">Nodal Axis</span>
+                  <span className="placement-card-text text-sm font-medium">Nodal Axis</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${elementColor(northNode.sign)}`}>
                     {SIGN_NAMES[northNode.sign] || northNode.sign}
                   </span>
-                  <span className="text-foreground/30 text-xs mx-1">/</span>
+                  <span className="placement-card-text-secondary text-xs mx-1">/</span>
                   <span className={`text-sm font-medium ${elementColor(southNode?.sign || "")}`}>
                     {southNode ? SIGN_NAMES[southNode.sign] || southNode.sign : ""}
                   </span>
-                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Nodes" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Nodes" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
               </button>
               <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Nodes" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
                 <div className="px-4 pb-5 pt-1">
-                  <div className="h-px bg-foreground/8 mb-5" />
+                  <div className="h-px bg-lavender/15 mb-5" />
                   {(() => {
                     const nd = NORTH_NODE_DESCRIPTIONS[northNode.sign];
                     const color = elementColor(northNode.sign);
-                    if (!nd) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    if (!nd) return <p className="placement-card-text-secondary text-sm">No interpretation available.</p>;
                     return (
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">Your Nodal Axis</span>
+                          <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">Your Nodal Axis</span>
                           <InfoTip term="Nodal Axis" explanation="The North Node is your soul's growth direction — what you're here to learn in this lifetime. The South Node is your comfort zone — talents you came in with but need to grow beyond. Think of it as 'where you've been vs. where you're going.'" />
                         </div>
                         <div className="flex items-center gap-2 mb-4 mt-2">
                           <div className="flex-1">
-                            <p className="text-foreground/50 text-[10px] uppercase tracking-widest font-semibold mb-1">Growing Toward</p>
+                            <p className="placement-card-text-secondary text-[10px] uppercase tracking-widest font-semibold mb-1">Growing Toward</p>
                             <p className={`text-sm font-semibold ${color}`}>
                               {SIGN_FULL[northNode.sign] || northNode.sign}
                             </p>
                           </div>
                           <div className="w-px h-12 bg-foreground/10" />
                           <div className="flex-1">
-                            <p className="text-foreground/50 text-[10px] uppercase tracking-widest font-semibold mb-1">Coming From</p>
+                            <p className="placement-card-text-secondary text-[10px] uppercase tracking-widest font-semibold mb-1">Coming From</p>
                             <p className={`text-sm font-semibold ${elementColor(southNode?.sign || "")}`}>
                               {southNode ? SIGN_FULL[southNode.sign] || southNode.sign : "\u2014"}
                             </p>
                           </div>
                         </div>
-                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{nd.direction}</p>
+                        <p className="placement-card-text text-[15px] leading-relaxed mb-5">{nd.direction}</p>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your comfort zone</p>
-                          <p className="text-foreground/75 text-sm leading-relaxed">{nd.comfort}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{nd.comfort}</p>
                         </div>
                         <div className="mb-4">
-                          <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">Patterns to notice</p>
-                          <p className="text-foreground/75 text-sm leading-relaxed">{nd.patterns}</p>
+                          <p className="text-secondary text-[11px] uppercase tracking-widest mb-1.5 font-semibold">Patterns to notice</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{nd.patterns}</p>
                         </div>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>The lesson</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{nd.advice}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{nd.advice}</p>
                         </div>
                         {(() => {
                           const hNum = houseToNum(northNode.house);
                           if (!hNum || !NODE_HOUSE[hNum]) return null;
                           return (
-                            <div className="mt-2 pt-5 border-t border-foreground/15">
-                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                            <div className="mt-2 pt-5 border-t border-lavender/15">
+                              <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest mb-2 block">
                                 Where it plays out · {ORDINAL[hNum]} house
                               </span>
-                              <p className="text-foreground/55 text-sm leading-relaxed">{NODE_HOUSE[hNum]}</p>
+                              <p className="placement-card-text-secondary text-sm leading-relaxed">{NODE_HOUSE[hNum]}</p>
                             </div>
                           );
                         })()}
@@ -1932,60 +1973,58 @@ export default function YouTab() {
           const lilith = specialPoints.find((p) => p.name === "Lilith");
           if (!lilith) return null;
           return (
-            <div className={`rounded-xl border transition-colors duration-200 ${
-              openPlanet === "_Lilith" ? "bg-surface/80 border-foreground/18" : "bg-card/50 border-foreground/15"
-            }`}>
+            <div className="placement-card transition-colors duration-200">
               <button
-                onClick={() => setOpenPlanet(openPlanet === "_Lilith" ? null : "_Lilith")}
+                onClick={(e) => { const o = openPlanet !== "_Lilith"; setOpenPlanet(o ? "_Lilith" : null); if (o) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); } }}
                 className="flex items-center justify-between py-3 px-4 w-full text-left active:scale-[0.99] transition-all"
               >
                 <div className="flex items-center gap-3">
                   <span className={`text-lg ${elementColor(lilith.sign)}`} style={{ fontFamily: "var(--font-heading)" }}>{"⚸"}</span>
-                  <span className="text-foreground/80 text-sm font-medium">Black Moon Lilith</span>
+                  <span className="placement-card-text text-sm font-medium">Black Moon Lilith</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${elementColor(lilith.sign)}`}>
                     {SIGN_NAMES[lilith.sign] || lilith.sign}
                   </span>
-                  <svg className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Lilith" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg aria-hidden="true" className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${openPlanet === "_Lilith" ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
               </button>
               <div className={`overflow-hidden transition-all duration-300 ease-out ${openPlanet === "_Lilith" ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
                 <div className="px-4 pb-5 pt-1">
-                  <div className="h-px bg-foreground/8 mb-5" />
+                  <div className="h-px bg-lavender/15 mb-5" />
                   {(() => {
                     const li = LILITH_DESCRIPTIONS[lilith.sign];
                     const color = elementColor(lilith.sign);
-                    if (!li) return <p className="text-foreground/70 text-sm">No interpretation available.</p>;
+                    if (!li) return <p className="placement-card-text-secondary text-sm">No interpretation available.</p>;
                     return (
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-foreground/35 text-[10px] uppercase tracking-widest">The Dark Feminine</span>
+                          <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">The Dark Feminine</span>
                           <InfoTip term="Black Moon Lilith" explanation="Lilith represents your wild, untamed energy — the parts of you that society tried to suppress. It shows where you were shamed, what you buried, and the raw power you reclaim when you stop apologizing for who you are." />
                         </div>
                         <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
                           Lilith in {SIGN_FULL[lilith.sign] || lilith.sign}
                         </h3>
-                        <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">{li.shadow}</p>
+                        <p className="placement-card-text text-[15px] leading-relaxed mb-5">{li.shadow}</p>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Your raw power</p>
-                          <p className="text-foreground/75 text-sm leading-relaxed">{li.power}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{li.power}</p>
                         </div>
                         <div className="mb-4">
                           <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>Reclaiming it</p>
-                          <p className="text-foreground/70 text-sm leading-relaxed">{li.reclamation}</p>
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">{li.reclamation}</p>
                         </div>
                         {(() => {
                           const hNum = houseToNum(lilith.house);
                           if (!hNum) return null;
                           return (
-                            <div className="mt-2 pt-5 border-t border-foreground/15">
-                              <span className="text-foreground/30 text-[10px] uppercase tracking-widest mb-2 block">
+                            <div className="mt-2 pt-5 border-t border-lavender/15">
+                              <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest mb-2 block">
                                 Where it plays out · {ORDINAL[hNum]} house
                               </span>
-                              <p className="text-foreground/55 text-sm leading-relaxed">
+                              <p className="placement-card-text-secondary text-sm leading-relaxed">
                                 Lilith in the {ORDINAL[hNum]} house means this energy shows up in your {
                                   hNum === 1 ? "identity and first impressions" :
                                   hNum === 2 ? "finances, self-worth, and values" :
@@ -2029,7 +2068,7 @@ export default function YouTab() {
               explanation="Contradictions between your placements aren't mistakes — they're where your complexity lives. These tensions create inner friction, but they also create depth. Most interesting people have at least a few."
             />
           </div>
-          <p className="text-foreground/40 text-sm mb-6">
+          <p className="text-secondary text-sm mb-6">
             Your chart has placements that pull in opposite directions. That&apos;s not a flaw — it&apos;s complexity.
           </p>
 
@@ -2051,7 +2090,7 @@ export default function YouTab() {
                     <span className={`text-xs font-semibold ${elementColor(c.sign1)}`}>
                       {c.planet1} in {SIGN_FULL[c.sign1]}
                     </span>
-                    <span className="text-foreground/20 text-[10px]">vs</span>
+                    <span className="text-secondary text-[10px]">vs</span>
                     <span className={`text-xs font-semibold ${elementColor(c.sign2)}`}>
                       {c.planet2} in {SIGN_FULL[c.sign2]}
                     </span>
@@ -2059,7 +2098,7 @@ export default function YouTab() {
                 </div>
                 {/* Body */}
                 <div className="px-4 py-4">
-                  <p className="text-foreground/70 text-sm leading-relaxed">
+                  <p className="text-secondary text-sm leading-relaxed">
                     {c.summary}
                   </p>
                 </div>
@@ -2099,24 +2138,24 @@ export default function YouTab() {
                 explanation="Aspects are angles between planets in your chart. They describe how different parts of your personality interact — whether they flow together (trines, sextiles), create friction (squares, oppositions), or fuse into one force (conjunctions). The tighter the angle, the stronger the effect."
               />
             </div>
-            <p className="text-foreground/40 text-sm mb-5">
+            <p className="text-secondary text-sm mb-5">
               How the planets in your chart talk to each other.
             </p>
 
             {/* Tabs */}
-            <div className="flex gap-1 p-1 rounded-xl bg-foreground/[0.04] mb-4">
+            <div className="flex gap-1 p-1 rounded-xl bg-lavender/[0.06] mb-4">
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => { setAspectTab(tab.key); setOpenAspect(null); }}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                     aspectTab === tab.key
-                      ? "bg-surface text-foreground shadow-sm"
-                      : "text-foreground/35 hover:text-foreground/50"
+                      ? "placement-card shadow-sm"
+                      : "placement-card-text-secondary hover:text-foreground"
                   }`}
                 >
                   {tab.label}
-                  <span className={`ml-1.5 ${aspectTab === tab.key ? "text-foreground/40" : "text-foreground/20"}`}>
+                  <span className={`ml-1.5 ${aspectTab === tab.key ? "placement-card-text-secondary" : "placement-card-text-muted"}`}>
                     {tab.items.length}
                   </span>
                 </button>
@@ -2124,60 +2163,60 @@ export default function YouTab() {
             </div>
 
             {/* Tab description */}
-            <p className="text-foreground/30 text-xs leading-relaxed mb-4">
+            <p className="placement-card-text-secondary text-xs leading-relaxed mb-4">
               {active.description}
             </p>
 
             {/* Aspect list */}
             {active.items.length === 0 ? (
-              <p className="text-foreground/20 text-sm text-center py-6">No {active.key} aspects in your chart.</p>
+              <p className="placement-card-text-secondary text-sm text-center py-6">No {active.key} aspects in your chart.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {active.items.map((a, i) => {
-                  const typeInfo = ASPECT_TYPE_INFO[a.aspect] || { label: a.aspect, nature: "", color: "text-foreground/50" };
+                  const typeInfo = ASPECT_TYPE_INFO[a.aspect] || { label: a.aspect, nature: "", color: "text-secondary" };
                   const uid = `${active.key}-${i}`;
                   const isOpen = openAspect === uid;
 
                   return (
-                    <div key={uid} className="rounded-xl border border-foreground/15 bg-surface/60 overflow-hidden">
+                    <div key={uid} className="placement-card overflow-hidden">
                       <button
-                        onClick={() => setOpenAspect(isOpen ? null : uid)}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-foreground/[0.02] transition-colors"
+                        onClick={(e) => { const el = e.currentTarget; setOpenAspect(isOpen ? null : uid); if (!isOpen) setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-lavender/[0.04] transition-colors"
                       >
                         <span className={`text-base ${typeInfo.color}`}>
                           {ASPECT_SYMBOLS[a.aspect] || "·"}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <span className="text-foreground/80 text-sm font-medium">
+                          <span className="placement-card-text text-sm font-medium">
                             {a.p1Name}
                           </span>
                           <span className={`text-xs mx-1.5 ${typeInfo.color}`}>
                             {typeInfo.label.toLowerCase()}
                           </span>
-                          <span className="text-foreground/80 text-sm font-medium">
+                          <span className="placement-card-text text-sm font-medium">
                             {a.p2Name}
                           </span>
                         </div>
-                        <span className="text-foreground/20 text-[10px]">
+                        <span className="placement-card-text-secondary text-[10px]">
                           {a.orbit}&deg;
                         </span>
-                        <svg
+                        <svg aria-hidden="true"
                           width="14" height="14" viewBox="0 0 24 24" fill="none"
                           stroke="currentColor" strokeWidth="2"
-                          className={`text-foreground/20 transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                          className={`placement-card-text-muted transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
 
                       {isOpen && (
-                        <div className="px-4 pb-4 pt-1 border-t border-foreground/15 space-y-3">
+                        <div className="placement-card-expanded px-4 pb-4 pt-1 border-t border-lavender/15 space-y-3 mx-1 mb-1">
                           {/* What this aspect type means */}
-                          <div className="rounded-lg bg-foreground/[0.03] px-3 py-2.5">
-                            <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                          <div className="rounded-lg bg-lavender/[0.06] px-3 py-2.5">
+                            <p className="placement-card-text-secondary text-[9px] uppercase tracking-widest mb-1">
                               What&apos;s a {typeInfo.label.toLowerCase()}?
                             </p>
-                            <p className="text-foreground/55 text-[12px] leading-relaxed">
+                            <p className="placement-card-text-secondary text-[12px] leading-relaxed">
                               {typeInfo.beginnerDesc}
                             </p>
                           </div>
@@ -2185,13 +2224,13 @@ export default function YouTab() {
                           {/* What each planet does */}
                           <div className="flex flex-col gap-1.5">
                             {PLANET_GOVERNS[a.p1Name] && (
-                              <p className="text-foreground/45 text-[11px] leading-relaxed">
-                                <span className="text-foreground/70 font-medium">{a.p1Name}</span> governs {PLANET_GOVERNS[a.p1Name]}.
+                              <p className="placement-card-text-secondary text-[11px] leading-relaxed">
+                                <span className="placement-card-text font-medium">{a.p1Name}</span> governs {PLANET_GOVERNS[a.p1Name]}.
                               </p>
                             )}
                             {PLANET_GOVERNS[a.p2Name] && (
-                              <p className="text-foreground/45 text-[11px] leading-relaxed">
-                                <span className="text-foreground/70 font-medium">{a.p2Name}</span> governs {PLANET_GOVERNS[a.p2Name]}.
+                              <p className="placement-card-text-secondary text-[11px] leading-relaxed">
+                                <span className="placement-card-text font-medium">{a.p2Name}</span> governs {PLANET_GOVERNS[a.p2Name]}.
                               </p>
                             )}
                           </div>
@@ -2199,10 +2238,10 @@ export default function YouTab() {
                           {/* The actual interpretation */}
                           {a.interpretation && (
                             <div>
-                              <p className="text-foreground/30 text-[9px] uppercase tracking-widest mb-1">
+                              <p className="placement-card-text-secondary text-[9px] uppercase tracking-widest mb-1">
                                 What this means for you
                               </p>
-                              <p className="text-foreground/70 text-sm leading-relaxed">
+                              <p className="placement-card-text text-sm leading-relaxed">
                                 {a.interpretation}
                               </p>
                             </div>
@@ -2217,6 +2256,8 @@ export default function YouTab() {
           </div>
         );
       })()}
+
+      </>)}
 
       <div className="h-8" />
     </main>

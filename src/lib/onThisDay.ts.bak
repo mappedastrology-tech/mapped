@@ -1,0 +1,1128 @@
+/**
+ * On This Day — Historical events with astrological signatures.
+ * Curated collection of notable events keyed by month-day,
+ * each with a brief astrological context note.
+ */
+
+export type OnThisDayCategory = "science" | "culture" | "politics" | "achievement" | "nature";
+
+export interface OnThisDayEvent {
+  year: number;
+  event: string;
+  astroNote: string; // brief astrological signature or context
+  category?: OnThisDayCategory;
+}
+
+// Keyed by "MM-DD" string
+const EVENTS: Record<string, OnThisDayEvent[]> = {
+  "01-01": [
+    { year: 1801, event: "Giuseppe Piazzi discovers the dwarf planet Ceres", astroNote: "Sun in Capricorn, Jupiter conjunct Saturn" },
+    { year: 1959, event: "Cuban Revolution succeeds as Batista flees", astroNote: "Sun in Capricorn, Mars in Taurus" },
+  ],
+  "01-02": [
+    { year: 1959, event: "Luna 1 becomes the first spacecraft to reach the vicinity of the Moon", astroNote: "Sun in Capricorn, Moon in Aquarius" },
+  ],
+  "01-03": [
+    { year: 1521, event: "Martin Luther is excommunicated by Pope Leo X", astroNote: "Sun in Capricorn, Pluto in Capricorn" },
+  ],
+  "01-04": [
+    { year: 1643, event: "Isaac Newton is born", astroNote: "Sun in Capricorn, Saturn in Pisces" },
+  ],
+  "01-05": [
+    { year: 1914, event: "Ford Motor Company announces $5/day minimum wage", astroNote: "Sun in Capricorn, Jupiter in Aquarius" },
+  ],
+  "01-06": [
+    { year: 1912, event: "New Mexico becomes the 47th U.S. state", astroNote: "Sun in Capricorn, Uranus in Aquarius" },
+  ],
+  "01-07": [
+    { year: 1610, event: "Galileo observes Jupiter's moons for the first time", astroNote: "Sun in Capricorn conjunct Jupiter" },
+  ],
+  "01-08": [
+    { year: 1935, event: "Elvis Presley is born", astroNote: "Sun in Capricorn, Venus in Aquarius" },
+  ],
+  "01-09": [
+    { year: 2007, event: "Steve Jobs introduces the first iPhone", astroNote: "Sun in Capricorn, Mercury in Sagittarius" },
+  ],
+  "01-10": [
+    { year: 49, event: "Julius Caesar crosses the Rubicon", astroNote: "Sun in Capricorn, Mars in Aries" },
+  ],
+  "01-11": [
+    { year: 1922, event: "First successful insulin injection for diabetes", astroNote: "Sun in Capricorn, Neptune in Leo" },
+  ],
+  "01-12": [
+    { year: 1966, event: "Batman TV series premieres", astroNote: "Sun in Capricorn, Pluto in Virgo" },
+  ],
+  "01-13": [
+    { year: 1910, event: "First public radio broadcast from the Metropolitan Opera", astroNote: "Sun in Capricorn, Uranus in Capricorn" },
+  ],
+  "01-14": [
+    { year: 1967, event: "The Human Be-In takes place in Golden Gate Park", astroNote: "Sun in Capricorn, Jupiter conjunct Uranus in Virgo" },
+  ],
+  "01-15": [
+    { year: 1929, event: "Martin Luther King Jr. is born", astroNote: "Sun in Capricorn, Venus in Sagittarius" },
+  ],
+  "01-16": [
+    { year: 1920, event: "Prohibition begins in the United States", astroNote: "Sun in Capricorn, Saturn in Virgo" },
+  ],
+  "01-17": [
+    { year: 1773, event: "Captain Cook's Resolution becomes the first ship to cross the Antarctic Circle", astroNote: "Sun in Capricorn, Saturn in Sagittarius" },
+  ],
+  "01-18": [
+    { year: 1778, event: "Captain James Cook discovers the Hawaiian Islands", astroNote: "Sun in Capricorn, Neptune in Virgo" },
+  ],
+  "01-19": [
+    { year: 1839, event: "Paul Cézanne is born", astroNote: "Sun in Capricorn, Neptune in Aquarius" },
+  ],
+  "01-20": [
+    { year: 1961, event: "John F. Kennedy is inaugurated as the 35th U.S. president", astroNote: "Sun enters Aquarius, Mars in Cancer" },
+  ],
+  "01-21": [
+    { year: 1954, event: "USS Nautilus, the first nuclear submarine, is launched", astroNote: "Sun in Aquarius, Pluto in Leo" },
+  ],
+  "01-22": [
+    { year: 1973, event: "Roe v. Wade is decided by the U.S. Supreme Court", astroNote: "Sun in Aquarius, Jupiter in Capricorn" },
+  ],
+  "01-23": [
+    { year: 1849, event: "Elizabeth Blackwell becomes the first woman to earn a medical degree in the U.S.", astroNote: "Sun in Aquarius, Saturn in Aries" },
+  ],
+  "01-24": [
+    { year: 1848, event: "James W. Marshall finds gold at Sutter's Mill, starting the California Gold Rush", astroNote: "Sun in Aquarius, Venus in Pisces" },
+  ],
+  "01-25": [
+    { year: 1924, event: "First Winter Olympics open in Chamonix, France", astroNote: "Sun in Aquarius, Mars in Sagittarius" },
+  ],
+  "01-26": [
+    { year: 1788, event: "First Fleet arrives at Sydney Cove, founding Australia", astroNote: "Sun in Aquarius, Uranus in Leo" },
+  ],
+  "01-27": [
+    { year: 1880, event: "Thomas Edison receives a patent for the electric lamp", astroNote: "Sun in Aquarius, Uranus in Virgo" },
+  ],
+  "01-28": [
+    { year: 1986, event: "Space Shuttle Challenger breaks apart 73 seconds after launch", astroNote: "Sun in Aquarius, Mars conjunct Uranus" },
+  ],
+  "01-29": [
+    { year: 1845, event: "Edgar Allan Poe's 'The Raven' is published", astroNote: "Sun in Aquarius, Neptune in Aquarius" },
+  ],
+  "01-30": [
+    { year: 1948, event: "Mahatma Gandhi is assassinated", astroNote: "Sun in Aquarius, Mars in Virgo" },
+  ],
+  "01-31": [
+    { year: 1958, event: "Explorer 1 launches, the first U.S. satellite", astroNote: "Sun in Aquarius, Jupiter in Libra" },
+  ],
+  "02-01": [
+    { year: 2003, event: "Space Shuttle Columbia disintegrates over Texas during re-entry", astroNote: "Sun in Aquarius, Saturn in Gemini" },
+  ],
+  "02-02": [
+    { year: 1887, event: "Groundhog Day is celebrated for the first time in Punxsutawney, PA", astroNote: "Sun in Aquarius at Imbolc cross-quarter" },
+  ],
+  "02-03": [
+    { year: 1959, event: "The Day the Music Died — Buddy Holly, Ritchie Valens, and the Big Bopper die in a plane crash", astroNote: "Sun in Aquarius, Venus in Pisces" },
+  ],
+  "02-04": [
+    { year: 2004, event: "Facebook is launched from a Harvard dorm room", astroNote: "Sun in Aquarius, Mercury in Aquarius" },
+  ],
+  "02-05": [
+    { year: 1919, event: "United Artists is founded by Chaplin, Fairbanks, Pickford, and Griffith", astroNote: "Sun in Aquarius, Jupiter in Cancer" },
+  ],
+  "02-06": [
+    { year: 1952, event: "Queen Elizabeth II accedes to the British throne", astroNote: "Sun in Aquarius, Pluto in Leo" },
+  ],
+  "02-07": [
+    { year: 1964, event: "The Beatles arrive in New York City for the first time", astroNote: "Sun in Aquarius, Uranus conjunct Pluto in Virgo" },
+  ],
+  "02-08": [
+    { year: 1910, event: "The Boy Scouts of America is incorporated", astroNote: "Sun in Aquarius, Saturn in Aries" },
+  ],
+  "02-09": [
+    { year: 1964, event: "The Beatles make their first appearance on The Ed Sullivan Show", astroNote: "Sun in Aquarius, Moon in Sagittarius" },
+  ],
+  "02-10": [
+    { year: 1942, event: "Glenn Miller receives the first gold record", astroNote: "Sun in Aquarius, Neptune in Virgo" },
+  ],
+  "02-11": [
+    { year: 1990, event: "Nelson Mandela is released from prison after 27 years", astroNote: "Sun in Aquarius, Saturn in Capricorn" },
+  ],
+  "02-12": [
+    { year: 1809, event: "Abraham Lincoln and Charles Darwin are born on the same day", astroNote: "Sun in Aquarius, Jupiter in Pisces" },
+  ],
+  "02-13": [
+    { year: 1633, event: "Galileo arrives in Rome for his trial before the Inquisition", astroNote: "Sun in Aquarius, Pluto in Taurus" },
+  ],
+  "02-14": [
+    { year: 1876, event: "Alexander Graham Bell and Elisha Gray both apply for telephone patents", astroNote: "Sun in Aquarius, Mars in Taurus" },
+  ],
+  "02-15": [
+    { year: 1564, event: "Galileo Galilei is born", astroNote: "Sun in Aquarius/Pisces cusp, Jupiter in Cancer" },
+  ],
+  "02-16": [
+    { year: 1923, event: "Howard Carter opens King Tut's burial chamber", astroNote: "Sun in Aquarius, Pluto in Cancer" },
+  ],
+  "02-17": [
+    { year: 1600, event: "Giordano Bruno is burned at the stake for heresy", astroNote: "Sun in Aquarius/Pisces cusp, Saturn in Cancer" },
+  ],
+  "02-18": [
+    { year: 1930, event: "Pluto is discovered by Clyde Tombaugh", astroNote: "Sun in Aquarius, Pluto in Cancer" },
+  ],
+  "02-19": [
+    { year: 1473, event: "Nicolaus Copernicus is born", astroNote: "Sun enters Pisces, Saturn in Leo" },
+  ],
+  "02-20": [
+    { year: 1962, event: "John Glenn orbits the Earth", astroNote: "Sun in Pisces, Aquarius stellium" },
+  ],
+  "02-21": [
+    { year: 1965, event: "Malcolm X is assassinated", astroNote: "Sun in Pisces, Mars in Virgo" },
+  ],
+  "02-22": [
+    { year: 1732, event: "George Washington is born", astroNote: "Sun in Pisces, Moon in Capricorn" },
+  ],
+  "02-23": [
+    { year: 1455, event: "Traditional date of the Gutenberg Bible's first printing", astroNote: "Sun in Pisces, Jupiter in Libra" },
+  ],
+  "02-24": [
+    { year: 1920, event: "The Nazi Party publishes its first platform", astroNote: "Sun in Pisces, Pluto in Cancer" },
+  ],
+  "02-25": [
+    { year: 1870, event: "Hiram Revels becomes the first African American U.S. Senator", astroNote: "Sun in Pisces, Saturn in Sagittarius" },
+  ],
+  "02-26": [
+    { year: 1815, event: "Napoleon Bonaparte escapes from Elba", astroNote: "Sun in Pisces, Mars in Aries" },
+  ],
+  "02-27": [
+    { year: 1932, event: "The neutron is discovered by James Chadwick", astroNote: "Sun in Pisces, Uranus in Aries" },
+  ],
+  "02-28": [
+    { year: 1953, event: "Watson and Crick announce discovery of DNA structure", astroNote: "Sun in Pisces, Neptune in Libra" },
+  ],
+  "02-29": [
+    { year: 1940, event: "Hattie McDaniel becomes the first African American to win an Academy Award", astroNote: "Sun in Pisces, Jupiter in Aries" },
+  ],
+  "03-01": [
+    { year: 1872, event: "Yellowstone becomes the world's first national park", astroNote: "Sun in Pisces, Neptune in Aries" },
+  ],
+  "03-02": [
+    { year: 1962, event: "Wilt Chamberlain scores 100 points in a single NBA game", astroNote: "Sun in Pisces, Jupiter in Aquarius" },
+  ],
+  "03-03": [
+    { year: 1847, event: "Alexander Graham Bell is born", astroNote: "Sun in Pisces, Mercury in Pisces" },
+  ],
+  "03-04": [
+    { year: 1789, event: "The U.S. Constitution goes into effect", astroNote: "Sun in Pisces, Pluto in Aquarius" },
+  ],
+  "03-05": [
+    { year: 1953, event: "Joseph Stalin dies", astroNote: "Sun in Pisces, Saturn in Libra" },
+  ],
+  "03-06": [
+    { year: 1475, event: "Michelangelo is born", astroNote: "Sun in Pisces, Neptune in Sagittarius" },
+  ],
+  "03-07": [
+    { year: 1876, event: "Alexander Graham Bell is granted a patent for the telephone", astroNote: "Sun in Pisces, Uranus in Leo" },
+  ],
+  "03-08": [
+    { year: 1917, event: "The February Revolution begins in Russia", astroNote: "Sun in Pisces, Neptune in Leo" },
+  ],
+  "03-09": [
+    { year: 1959, event: "The Barbie doll makes its debut", astroNote: "Sun in Pisces, Venus in Aries" },
+  ],
+  "03-10": [
+    { year: 1876, event: "Alexander Graham Bell makes the first telephone call", astroNote: "Sun in Pisces, Mars in Aquarius" },
+  ],
+  "03-11": [
+    { year: 2011, event: "A massive earthquake and tsunami devastate Japan", astroNote: "Sun in Pisces, Uranus enters Aries" },
+  ],
+  "03-12": [
+    { year: 1930, event: "Gandhi begins the Salt March", astroNote: "Sun in Pisces, Saturn in Capricorn" },
+  ],
+  "03-13": [
+    { year: 1781, event: "William Herschel discovers Uranus", astroNote: "Sun in Pisces, Uranus in Gemini" },
+  ],
+  "03-14": [
+    { year: 1879, event: "Albert Einstein is born", astroNote: "Sun in Pisces, Mercury in Aries" },
+  ],
+  "03-15": [
+    { year: -43, event: "Julius Caesar is assassinated on the Ides of March", astroNote: "Sun in Pisces, Mars conjunct Saturn" },
+  ],
+  "03-16": [
+    { year: 1802, event: "The United States Military Academy at West Point is established", astroNote: "Sun in Pisces, Saturn in Virgo" },
+  ],
+  "03-17": [
+    { year: 461, event: "Saint Patrick dies, later commemorated as St. Patrick's Day", astroNote: "Sun in Pisces, Jupiter in Aquarius" },
+  ],
+  "03-18": [
+    { year: 1965, event: "Alexei Leonov performs the first spacewalk", astroNote: "Sun in Pisces, Mars in Virgo" },
+  ],
+  "03-19": [
+    { year: 1918, event: "The U.S. Congress establishes time zones and daylight saving time", astroNote: "Sun on Pisces/Aries cusp, Saturn in Leo" },
+  ],
+  "03-20": [
+    { year: 1854, event: "The Republican Party is founded", astroNote: "Sun enters Aries — Vernal Equinox" },
+  ],
+  "03-21": [
+    { year: 1685, event: "Johann Sebastian Bach is born", astroNote: "Sun in Aries, Venus in Pisces" },
+  ],
+  "03-22": [
+    { year: 1895, event: "The Lumière brothers demonstrate motion pictures in Paris", astroNote: "Sun in Aries, Neptune in Gemini" },
+  ],
+  "03-23": [
+    { year: 1775, event: "Patrick Henry delivers his 'Give me liberty' speech", astroNote: "Sun in Aries, Mars in Gemini" },
+  ],
+  "03-24": [
+    { year: 1882, event: "Robert Koch announces the discovery of the tuberculosis bacillus", astroNote: "Sun in Aries, Pluto in Taurus" },
+  ],
+  "03-25": [
+    { year: 1957, event: "The Treaty of Rome establishes the European Economic Community", astroNote: "Sun in Aries, Jupiter in Libra" },
+  ],
+  "03-26": [
+    { year: 1827, event: "Ludwig van Beethoven dies", astroNote: "Sun in Aries, Neptune in Capricorn" },
+  ],
+  "03-27": [
+    { year: 1964, event: "Great Alaskan Earthquake — the most powerful earthquake in U.S. history", astroNote: "Sun in Aries, Uranus conjunct Pluto" },
+  ],
+  "03-28": [
+    { year: 1979, event: "Three Mile Island nuclear accident occurs", astroNote: "Sun in Aries, Pluto in Libra" },
+  ],
+  "03-29": [
+    { year: 1974, event: "Mariner 10 becomes the first spacecraft to fly by Mercury", astroNote: "Sun in Aries, Mercury in Pisces" },
+  ],
+  "03-30": [
+    { year: 1853, event: "Vincent van Gogh is born", astroNote: "Sun in Aries, Neptune in Pisces" },
+  ],
+  "03-31": [
+    { year: 1889, event: "The Eiffel Tower opens in Paris", astroNote: "Sun in Aries, Uranus in Libra" },
+  ],
+  "04-01": [
+    { year: 1976, event: "Steve Wozniak and Steve Jobs found Apple Computer", astroNote: "Sun in Aries, Jupiter in Aries" },
+  ],
+  "04-02": [
+    { year: 1513, event: "Juan Ponce de León sights Florida", astroNote: "Sun in Aries, Mars in Sagittarius" },
+  ],
+  "04-03": [
+    { year: 1973, event: "The first mobile phone call is made by Martin Cooper", astroNote: "Sun in Aries, Uranus in Libra" },
+  ],
+  "04-04": [
+    { year: 1968, event: "Martin Luther King Jr. is assassinated in Memphis", astroNote: "Sun in Aries, Mars conjunct Saturn in Aries" },
+  ],
+  "04-05": [
+    { year: 1722, event: "Jacob Roggeveen discovers Easter Island", astroNote: "Sun in Aries, Neptune in Aries" },
+  ],
+  "04-06": [
+    { year: 1909, event: "Robert Peary claims to reach the North Pole", astroNote: "Sun in Aries, Mars in Aquarius" },
+  ],
+  "04-07": [
+    { year: 1948, event: "The World Health Organization is established", astroNote: "Sun in Aries, Jupiter in Sagittarius" },
+  ],
+  "04-08": [
+    { year: 1974, event: "Hank Aaron hits his 715th home run, breaking Babe Ruth's record", astroNote: "Sun in Aries, Mars in Cancer" },
+  ],
+  "04-09": [
+    { year: 1865, event: "Robert E. Lee surrenders to Ulysses S. Grant at Appomattox", astroNote: "Sun in Aries, Saturn in Libra" },
+  ],
+  "04-10": [
+    { year: 1912, event: "RMS Titanic sets sail from Southampton", astroNote: "Sun in Aries, Mars in Gemini" },
+  ],
+  "04-11": [
+    { year: 1970, event: "Apollo 13 launches from Kennedy Space Center", astroNote: "Sun in Aries, Jupiter in Scorpio" },
+  ],
+  "04-12": [
+    { year: 1961, event: "Yuri Gagarin becomes the first human in space", astroNote: "Sun in Aries, Jupiter in Aquarius" },
+  ],
+  "04-13": [
+    { year: 1743, event: "Thomas Jefferson is born", astroNote: "Sun in Aries, Mercury in Aries" },
+  ],
+  "04-14": [
+    { year: 1865, event: "Abraham Lincoln is shot at Ford's Theatre", astroNote: "Sun in Aries, Mars in Cancer" },
+  ],
+  "04-15": [
+    { year: 1452, event: "Leonardo da Vinci is born", astroNote: "Sun in Aries, Venus in Taurus" },
+  ],
+  "04-16": [
+    { year: 1972, event: "Apollo 16 launches to the Moon", astroNote: "Sun in Aries, Neptune in Sagittarius" },
+  ],
+  "04-17": [
+    { year: 1961, event: "The Bay of Pigs invasion begins", astroNote: "Sun in Aries, Mars in Cancer" },
+  ],
+  "04-18": [
+    { year: 1906, event: "The Great San Francisco Earthquake strikes", astroNote: "Sun in Aries, Uranus in Capricorn" },
+  ],
+  "04-19": [
+    { year: 1775, event: "The Battles of Lexington and Concord begin the American Revolution", astroNote: "Sun in Aries, Mars in Aries" },
+  ],
+  "04-20": [
+    { year: 1902, event: "Marie and Pierre Curie isolate radium chloride", astroNote: "Sun enters Taurus, Pluto in Gemini" },
+  ],
+  "04-21": [
+    { year: 753, event: "Traditional founding date of Rome", astroNote: "Sun in Taurus, Mars in Aries" },
+  ],
+  "04-22": [
+    { year: 1970, event: "The first Earth Day is celebrated", astroNote: "Sun in Taurus, Venus in Aries" },
+  ],
+  "04-23": [
+    { year: 1564, event: "William Shakespeare is born (traditional date)", astroNote: "Sun in Taurus, Mercury in Aries" },
+  ],
+  "04-24": [
+    { year: 1990, event: "The Hubble Space Telescope is deployed from Space Shuttle Discovery", astroNote: "Sun in Taurus, Uranus in Capricorn" },
+  ],
+  "04-25": [
+    { year: 1953, event: "Watson and Crick publish their DNA structure paper in Nature", astroNote: "Sun in Taurus, Neptune in Libra" },
+  ],
+  "04-26": [
+    { year: 1986, event: "The Chernobyl nuclear disaster occurs", astroNote: "Sun in Taurus, Pluto in Scorpio" },
+  ],
+  "04-27": [
+    { year: 1791, event: "Samuel Morse is born", astroNote: "Sun in Taurus, Uranus in Leo" },
+  ],
+  "04-28": [
+    { year: 2001, event: "Dennis Tito becomes the first space tourist", astroNote: "Sun in Taurus, Jupiter in Gemini" },
+  ],
+  "04-29": [
+    { year: 1945, event: "Adolf Hitler marries Eva Braun; Dachau is liberated", astroNote: "Sun in Taurus, Pluto in Leo" },
+  ],
+  "04-30": [
+    { year: 1789, event: "George Washington is inaugurated as the first U.S. president", astroNote: "Sun in Taurus, Jupiter in Cancer" },
+  ],
+  "05-01": [
+    { year: 1931, event: "The Empire State Building opens in New York City", astroNote: "Sun in Taurus at Beltane cross-quarter" },
+  ],
+  "05-02": [
+    { year: 1519, event: "Leonardo da Vinci dies", astroNote: "Sun in Taurus, Saturn in Sagittarius" },
+  ],
+  "05-03": [
+    { year: 1469, event: "Niccolò Machiavelli is born", astroNote: "Sun in Taurus, Pluto in Virgo" },
+  ],
+  "05-04": [
+    { year: 1979, event: "Margaret Thatcher becomes the UK's first female Prime Minister", astroNote: "Sun in Taurus, Saturn in Virgo" },
+  ],
+  "05-05": [
+    { year: 1862, event: "The Battle of Puebla (Cinco de Mayo)", astroNote: "Sun in Taurus, Mars in Leo" },
+  ],
+  "05-06": [
+    { year: 1856, event: "Sigmund Freud is born", astroNote: "Sun in Taurus, Pluto in Taurus" },
+  ],
+  "05-07": [
+    { year: 1824, event: "Beethoven's 9th Symphony premieres in Vienna", astroNote: "Sun in Taurus, Venus in Gemini" },
+  ],
+  "05-08": [
+    { year: 1945, event: "V-E Day: World War II ends in Europe", astroNote: "Sun in Taurus, Jupiter in Virgo" },
+  ],
+  "05-09": [
+    { year: 1960, event: "The FDA approves the first oral contraceptive pill", astroNote: "Sun in Taurus, Venus in Gemini" },
+  ],
+  "05-10": [
+    { year: 1869, event: "The Transcontinental Railroad is completed at Promontory Summit", astroNote: "Sun in Taurus, Uranus in Cancer" },
+  ],
+  "05-11": [
+    { year: 1997, event: "Deep Blue defeats Garry Kasparov in chess", astroNote: "Sun in Taurus, Mars in Virgo" },
+  ],
+  "05-12": [
+    { year: 1820, event: "Florence Nightingale is born", astroNote: "Sun in Taurus, Neptune in Sagittarius" },
+  ],
+  "05-13": [
+    { year: 1981, event: "Pope John Paul II is shot in St. Peter's Square", astroNote: "Sun in Taurus, Saturn in Libra" },
+  ],
+  "05-14": [
+    { year: 1796, event: "Edward Jenner administers the first smallpox vaccination", astroNote: "Sun in Taurus, Jupiter in Aries" },
+  ],
+  "05-15": [
+    { year: 1940, event: "Nylon stockings go on sale for the first time", astroNote: "Sun in Taurus, Uranus in Taurus" },
+  ],
+  "05-16": [
+    { year: 1960, event: "Theodore Maiman demonstrates the first working laser", astroNote: "Sun in Taurus, Mercury in Taurus" },
+  ],
+  "05-17": [
+    { year: 1954, event: "Brown v. Board of Education ruling ends school segregation", astroNote: "Sun in Taurus, Pluto in Leo" },
+  ],
+  "05-18": [
+    { year: 1980, event: "Mount St. Helens erupts catastrophically", astroNote: "Sun in Taurus, Mars in Virgo" },
+  ],
+  "05-19": [
+    { year: 1536, event: "Anne Boleyn is executed at the Tower of London", astroNote: "Sun in Taurus, Mars in Taurus" },
+  ],
+  "05-20": [
+    { year: 1927, event: "Charles Lindbergh begins his solo transatlantic flight", astroNote: "Sun enters Gemini, Jupiter in Pisces" },
+  ],
+  "05-21": [
+    { year: 1927, event: "Charles Lindbergh completes the first solo transatlantic flight", astroNote: "Sun in Gemini, Uranus in Aries" },
+  ],
+  "05-22": [
+    { year: 1906, event: "The Wright Brothers are granted a patent for their airplane", astroNote: "Sun in Gemini, Mars in Leo" },
+  ],
+  "05-23": [
+    { year: 1934, event: "Bonnie and Clyde are ambushed and killed", astroNote: "Sun in Gemini, Mars in Cancer" },
+  ],
+  "05-24": [
+    { year: 1844, event: "Samuel Morse sends the first telegraph message", astroNote: "Sun in Gemini, Mercury in Gemini" },
+  ],
+  "05-25": [
+    { year: 1977, event: "Star Wars is released in theaters", astroNote: "Sun in Gemini, Mars in Aries" },
+    { year: 1961, event: "JFK announces the goal of landing a man on the Moon", astroNote: "Sun in Gemini, Jupiter in Aquarius" },
+  ],
+  "05-26": [
+    { year: 1896, event: "Charles Dow publishes the first Dow Jones Industrial Average", astroNote: "Sun in Gemini, Saturn in Scorpio" },
+  ],
+  "05-27": [
+    { year: 1937, event: "The Golden Gate Bridge opens in San Francisco", astroNote: "Sun in Gemini, Uranus in Taurus" },
+  ],
+  "05-28": [
+    { year: 1959, event: "Two monkeys are launched into space and recovered alive", astroNote: "Sun in Gemini, Venus in Cancer" },
+  ],
+  "05-29": [
+    { year: 1953, event: "Edmund Hillary and Tenzing Norgay reach the summit of Mt. Everest", astroNote: "Sun in Gemini, Mars in Cancer" },
+  ],
+  "05-30": [
+    { year: 1431, event: "Joan of Arc is burned at the stake", astroNote: "Sun in Gemini, Mars in Cancer" },
+  ],
+  "05-31": [
+    { year: 1859, event: "Big Ben rings for the first time in London", astroNote: "Sun in Gemini, Saturn in Leo" },
+  ],
+  "06-01": [
+    { year: 1967, event: "The Beatles release Sgt. Pepper's Lonely Hearts Club Band", astroNote: "Sun in Gemini, Neptune in Scorpio" },
+  ],
+  "06-02": [
+    { year: 1953, event: "Queen Elizabeth II is crowned", astroNote: "Sun in Gemini, Saturn in Libra" },
+  ],
+  "06-03": [
+    { year: 1965, event: "Ed White performs the first American spacewalk", astroNote: "Sun in Gemini, Jupiter in Gemini" },
+  ],
+  "06-04": [
+    { year: 1989, event: "The Tiananmen Square protests are violently suppressed", astroNote: "Sun in Gemini, Saturn conjunct Neptune in Capricorn" },
+  ],
+  "06-05": [
+    { year: 1981, event: "The CDC reports the first cases of what becomes known as AIDS", astroNote: "Sun in Gemini, Jupiter in Libra" },
+  ],
+  "06-06": [
+    { year: 1944, event: "D-Day: Allied forces storm the beaches of Normandy", astroNote: "Sun in Gemini, Mars in Leo" },
+  ],
+  "06-07": [
+    { year: 1965, event: "Griswold v. Connecticut establishes the right to privacy", astroNote: "Sun in Gemini, Uranus in Virgo" },
+  ],
+  "06-08": [
+    { year: 632, event: "Prophet Muhammad dies in Medina", astroNote: "Sun in Gemini, Jupiter in Aquarius" },
+  ],
+  "06-09": [
+    { year: 1934, event: "Donald Duck makes his first screen appearance", astroNote: "Sun in Gemini, Venus in Taurus" },
+  ],
+  "06-10": [
+    { year: 1752, event: "Benjamin Franklin flies a kite in a thunderstorm", astroNote: "Sun in Gemini, Uranus in Pisces" },
+  ],
+  "06-11": [
+    { year: 1962, event: "Three prisoners escape Alcatraz — never found", astroNote: "Sun in Gemini, Mars in Taurus" },
+  ],
+  "06-12": [
+    { year: 1967, event: "Loving v. Virginia strikes down bans on interracial marriage", astroNote: "Sun in Gemini, Venus in Cancer" },
+  ],
+  "06-13": [
+    { year: 1983, event: "Pioneer 10 becomes the first object to leave the inner solar system", astroNote: "Sun in Gemini, Saturn in Scorpio" },
+  ],
+  "06-14": [
+    { year: 1777, event: "The Stars and Stripes is adopted as the U.S. flag", astroNote: "Sun in Gemini, Mars in Gemini" },
+  ],
+  "06-15": [
+    { year: 1215, event: "King John signs the Magna Carta at Runnymede", astroNote: "Sun in Gemini, Jupiter in Cancer" },
+  ],
+  "06-16": [
+    { year: 1963, event: "Valentina Tereshkova becomes the first woman in space", astroNote: "Sun in Gemini, Mercury in Cancer" },
+  ],
+  "06-17": [
+    { year: 1972, event: "The Watergate break-in occurs", astroNote: "Sun in Gemini, Neptune in Sagittarius" },
+  ],
+  "06-18": [
+    { year: 1983, event: "Sally Ride becomes the first American woman in space", astroNote: "Sun in Gemini, Jupiter in Sagittarius" },
+  ],
+  "06-19": [
+    { year: 1865, event: "Juneteenth: slavery ends in Texas, the last holdout state", astroNote: "Sun in Gemini, Saturn in Libra" },
+  ],
+  "06-20": [
+    { year: 1782, event: "The Great Seal of the United States is adopted", astroNote: "Sun on Gemini/Cancer cusp, Jupiter in Sagittarius" },
+  ],
+  "06-21": [
+    { year: 1948, event: "The first commercially successful LP record is introduced by Columbia Records", astroNote: "Sun enters Cancer — Summer Solstice" },
+  ],
+  "06-22": [
+    { year: 1633, event: "Galileo is forced by the Inquisition to recant heliocentrism", astroNote: "Sun in Cancer, Saturn in Taurus" },
+  ],
+  "06-23": [
+    { year: 1868, event: "Christopher Latham Sholes patents the QWERTY keyboard typewriter", astroNote: "Sun in Cancer, Mercury in Gemini" },
+  ],
+  "06-24": [
+    { year: 1947, event: "Kenneth Arnold's UFO sighting sparks the modern UFO era", astroNote: "Sun in Cancer, Uranus in Gemini" },
+  ],
+  "06-25": [
+    { year: 1876, event: "Battle of the Little Bighorn — Custer's Last Stand", astroNote: "Sun in Cancer, Mars in Aries" },
+  ],
+  "06-26": [
+    { year: 2015, event: "The U.S. Supreme Court legalizes same-sex marriage nationwide", astroNote: "Sun in Cancer, Venus in Leo" },
+  ],
+  "06-27": [
+    { year: 1967, event: "The world's first ATM is installed in London", astroNote: "Sun in Cancer, Venus in Leo" },
+  ],
+  "06-28": [
+    { year: 1914, event: "Archduke Franz Ferdinand is assassinated, sparking World War I", astroNote: "Sun in Cancer, Mars in Virgo" },
+  ],
+  "06-29": [
+    { year: 2007, event: "The iPhone goes on sale", astroNote: "Sun in Cancer, Venus in Leo" },
+  ],
+  "06-30": [
+    { year: 1905, event: "Einstein publishes his paper on special relativity", astroNote: "Sun in Cancer, Mercury in Cancer" },
+  ],
+  "07-01": [
+    { year: 1867, event: "Canada becomes a nation (Canada Day)", astroNote: "Sun in Cancer, Neptune in Aries" },
+  ],
+  "07-02": [
+    { year: 1937, event: "Amelia Earhart disappears over the Pacific Ocean", astroNote: "Sun in Cancer, Neptune in Virgo" },
+  ],
+  "07-03": [
+    { year: 1886, event: "Karl Benz drives the first automobile", astroNote: "Sun in Cancer, Uranus in Libra" },
+  ],
+  "07-04": [
+    { year: 1776, event: "The Declaration of Independence is adopted", astroNote: "Sun in Cancer, Pluto in Capricorn" },
+  ],
+  "07-05": [
+    { year: 1946, event: "The bikini is introduced at a fashion show in Paris", astroNote: "Sun in Cancer, Venus in Cancer" },
+  ],
+  "07-06": [
+    { year: 1885, event: "Louis Pasteur successfully tests his rabies vaccine", astroNote: "Sun in Cancer, Mars in Gemini" },
+  ],
+  "07-07": [
+    { year: 1930, event: "Construction of the Hoover Dam begins", astroNote: "Sun in Cancer, Saturn in Capricorn" },
+  ],
+  "07-08": [
+    { year: 1776, event: "The Liberty Bell rings to mark the first public reading of the Declaration of Independence", astroNote: "Sun in Cancer, Jupiter in Libra" },
+  ],
+  "07-09": [
+    { year: 1877, event: "The first Wimbledon tennis championship is held", astroNote: "Sun in Cancer, Mars in Taurus" },
+  ],
+  "07-10": [
+    { year: 1856, event: "Nikola Tesla is born", astroNote: "Sun in Cancer, Uranus in Taurus" },
+  ],
+  "07-11": [
+    { year: 1962, event: "Telstar 1, the first communications satellite, is launched", astroNote: "Sun in Cancer, Jupiter in Pisces" },
+  ],
+  "07-12": [
+    { year: 100, event: "Julius Caesar is born (traditional date)", astroNote: "Sun in Cancer, Mars in Leo" },
+  ],
+  "07-13": [
+    { year: 1977, event: "New York City suffers a massive blackout", astroNote: "Sun in Cancer, Mars in Gemini" },
+  ],
+  "07-14": [
+    { year: 1789, event: "The storming of the Bastille begins the French Revolution", astroNote: "Sun in Cancer, Pluto in Aquarius" },
+  ],
+  "07-15": [
+    { year: 1799, event: "The Rosetta Stone is found in Egypt", astroNote: "Sun in Cancer, Saturn in Pisces" },
+  ],
+  "07-16": [
+    { year: 1969, event: "Apollo 11 launches toward the Moon", astroNote: "Sun in Cancer, Jupiter in Libra" },
+  ],
+  "07-17": [
+    { year: 1955, event: "Disneyland opens in Anaheim, California", astroNote: "Sun in Cancer, Neptune in Libra" },
+  ],
+  "07-18": [
+    { year: 1817, event: "Jane Austen dies", astroNote: "Sun in Cancer, Neptune in Sagittarius" },
+  ],
+  "07-19": [
+    { year: 1848, event: "The Seneca Falls Convention, the first women's rights convention, opens", astroNote: "Sun in Cancer, Uranus in Aries" },
+  ],
+  "07-20": [
+    { year: 1969, event: "Neil Armstrong and Buzz Aldrin walk on the Moon", astroNote: "Sun in Cancer, Mars in Sagittarius" },
+  ],
+  "07-21": [
+    { year: 365, event: "A massive earthquake and tsunami devastate Alexandria, Egypt", astroNote: "Sun in Cancer/Leo cusp" },
+  ],
+  "07-22": [
+    { year: 1934, event: "FBI agents kill John Dillinger outside a movie theater in Chicago", astroNote: "Sun enters Leo, Mars in Virgo" },
+  ],
+  "07-23": [
+    { year: 1829, event: "William Austin Burt patents the typographer, a precursor to the typewriter", astroNote: "Sun in Leo, Mercury in Leo" },
+  ],
+  "07-24": [
+    { year: 1911, event: "Hiram Bingham rediscovers Machu Picchu", astroNote: "Sun in Leo, Jupiter in Scorpio" },
+  ],
+  "07-25": [
+    { year: 1978, event: "Louise Brown, the world's first 'test-tube baby,' is born", astroNote: "Sun in Leo, Uranus in Scorpio" },
+  ],
+  "07-26": [
+    { year: 1775, event: "The U.S. postal system is established by the Continental Congress", astroNote: "Sun in Leo, Mercury in Cancer" },
+  ],
+  "07-27": [
+    { year: 1866, event: "The first successful transatlantic telegraph cable is completed", astroNote: "Sun in Leo, Mercury in Leo" },
+  ],
+  "07-28": [
+    { year: 1914, event: "Austria-Hungary declares war on Serbia, beginning World War I", astroNote: "Sun in Leo, Mars in Virgo" },
+  ],
+  "07-29": [
+    { year: 1958, event: "NASA is created", astroNote: "Sun in Leo, Jupiter in Scorpio" },
+  ],
+  "07-30": [
+    { year: 1619, event: "The first representative assembly in America convenes at Jamestown", astroNote: "Sun in Leo, Saturn in Scorpio" },
+  ],
+  "07-31": [
+    { year: 1790, event: "The first U.S. patent is issued", astroNote: "Sun in Leo, Uranus in Leo" },
+  ],
+  "08-01": [
+    { year: 1774, event: "Joseph Priestley discovers oxygen", astroNote: "Sun in Leo at Lammas cross-quarter" },
+  ],
+  "08-02": [
+    { year: 1990, event: "Iraq invades Kuwait, sparking the Gulf War", astroNote: "Sun in Leo, Mars in Taurus" },
+  ],
+  "08-03": [
+    { year: 1492, event: "Columbus sets sail from Spain on his first voyage", astroNote: "Sun in Leo, Mars in Gemini" },
+  ],
+  "08-04": [
+    { year: 1961, event: "Barack Obama is born", astroNote: "Sun in Leo, Mercury in Leo" },
+  ],
+  "08-05": [
+    { year: 1858, event: "The first transatlantic telegraph cable is completed", astroNote: "Sun in Leo, Jupiter in Gemini" },
+  ],
+  "08-06": [
+    { year: 1945, event: "The atomic bomb is dropped on Hiroshima", astroNote: "Sun in Leo, Pluto in Leo" },
+  ],
+  "08-07": [
+    { year: 1942, event: "The Battle of Guadalcanal begins", astroNote: "Sun in Leo, Neptune in Virgo" },
+  ],
+  "08-08": [
+    { year: 1974, event: "Richard Nixon announces his resignation", astroNote: "Sun in Leo, Saturn in Cancer" },
+  ],
+  "08-09": [
+    { year: 1945, event: "The atomic bomb is dropped on Nagasaki", astroNote: "Sun in Leo, Mars in Gemini" },
+  ],
+  "08-10": [
+    { year: 1846, event: "The Smithsonian Institution is established", astroNote: "Sun in Leo, Jupiter in Gemini" },
+  ],
+  "08-11": [
+    { year: 1999, event: "A total solar eclipse crosses Europe and Asia", astroNote: "Sun conjunct Moon in Leo — Grand Cross" },
+  ],
+  "08-12": [
+    { year: 1981, event: "IBM introduces its Personal Computer", astroNote: "Sun in Leo, Saturn in Libra" },
+  ],
+  "08-13": [
+    { year: 1961, event: "East Germany begins building the Berlin Wall", astroNote: "Sun in Leo, Saturn in Capricorn" },
+  ],
+  "08-14": [
+    { year: 1945, event: "Japan surrenders, ending World War II", astroNote: "Sun in Leo, Pluto in Leo" },
+  ],
+  "08-15": [
+    { year: 1969, event: "The Woodstock Music Festival opens", astroNote: "Sun in Leo, Uranus conjunct Jupiter in Libra" },
+  ],
+  "08-16": [
+    { year: 1977, event: "Elvis Presley dies", astroNote: "Sun in Leo, Moon in Pisces" },
+  ],
+  "08-17": [
+    { year: 1807, event: "Robert Fulton's steamboat makes its maiden voyage", astroNote: "Sun in Leo, Neptune in Scorpio" },
+  ],
+  "08-18": [
+    { year: 1920, event: "The 19th Amendment is ratified, granting women the right to vote", astroNote: "Sun in Leo, Saturn in Virgo" },
+  ],
+  "08-19": [
+    { year: 1839, event: "The daguerreotype photographic process is publicly announced", astroNote: "Sun in Leo, Neptune in Aquarius" },
+  ],
+  "08-20": [
+    { year: 1977, event: "Voyager 2 launches toward the outer planets", astroNote: "Sun in Leo, Jupiter in Cancer" },
+  ],
+  "08-21": [
+    { year: 1959, event: "Hawaii becomes the 50th U.S. state", astroNote: "Sun in Leo, Mars in Libra" },
+  ],
+  "08-22": [
+    { year: 1902, event: "Theodore Roosevelt becomes the first U.S. president to ride in an automobile", astroNote: "Sun in Leo/Virgo cusp, Mars in Sagittarius" },
+  ],
+  "08-23": [
+    { year: 1966, event: "Lunar Orbiter 1 takes the first photograph of Earth from the Moon's orbit", astroNote: "Sun enters Virgo, Mars in Leo" },
+  ],
+  "08-24": [
+    { year: 79, event: "Mount Vesuvius erupts, burying Pompeii and Herculaneum", astroNote: "Sun in Virgo, Mars in Leo" },
+  ],
+  "08-25": [
+    { year: 1609, event: "Galileo demonstrates his first telescope to Venetian lawmakers", astroNote: "Sun in Virgo, Jupiter in Cancer" },
+  ],
+  "08-26": [
+    { year: 1920, event: "The 19th Amendment is certified, completing women's suffrage", astroNote: "Sun in Virgo, Moon in Aquarius" },
+  ],
+  "08-27": [
+    { year: 1883, event: "Krakatoa erupts catastrophically", astroNote: "Sun in Virgo, Pluto in Taurus" },
+  ],
+  "08-28": [
+    { year: 1963, event: "Martin Luther King Jr. delivers his 'I Have a Dream' speech", astroNote: "Sun in Virgo, Mars in Libra" },
+  ],
+  "08-29": [
+    { year: 2005, event: "Hurricane Katrina makes landfall in Louisiana", astroNote: "Sun in Virgo, Mars in Taurus" },
+  ],
+  "08-30": [
+    { year: 1797, event: "Mary Shelley is born", astroNote: "Sun in Virgo, Moon in Sagittarius" },
+  ],
+  "08-31": [
+    { year: 1897, event: "Thomas Edison patents the kinetoscope (movie projector)", astroNote: "Sun in Virgo, Neptune in Gemini" },
+  ],
+  "09-01": [
+    { year: 1939, event: "Germany invades Poland, beginning World War II", astroNote: "Sun in Virgo, Mars conjunct Saturn in Aries" },
+  ],
+  "09-02": [
+    { year: 1945, event: "Japan formally surrenders aboard USS Missouri", astroNote: "Sun in Virgo, Pluto in Leo" },
+  ],
+  "09-03": [
+    { year: 1783, event: "The Treaty of Paris ends the American Revolutionary War", astroNote: "Sun in Virgo, Jupiter in Sagittarius" },
+  ],
+  "09-04": [
+    { year: 1998, event: "Google is founded by Larry Page and Sergey Brin", astroNote: "Sun in Virgo, Mercury in Virgo" },
+  ],
+  "09-05": [
+    { year: 1977, event: "Voyager 1 launches from Cape Canaveral", astroNote: "Sun in Virgo, Jupiter in Cancer" },
+  ],
+  "09-06": [
+    { year: 1522, event: "Ferdinand Magellan's expedition completes the first circumnavigation of Earth", astroNote: "Sun in Virgo, Saturn in Scorpio" },
+  ],
+  "09-07": [
+    { year: 1813, event: "The nickname 'Uncle Sam' is first used for the U.S. government", astroNote: "Sun in Virgo, Uranus in Scorpio" },
+  ],
+  "09-08": [
+    { year: 1966, event: "Star Trek premieres on television", astroNote: "Sun in Virgo, Uranus in Virgo" },
+  ],
+  "09-09": [
+    { year: 1776, event: "The Continental Congress officially names the nation 'the United States'", astroNote: "Sun in Virgo, Moon in Pisces" },
+  ],
+  "09-10": [
+    { year: 2008, event: "The Large Hadron Collider is activated for the first time", astroNote: "Sun in Virgo, Pluto in Capricorn" },
+  ],
+  "09-11": [
+    { year: 2001, event: "Terrorist attacks on the World Trade Center and Pentagon", astroNote: "Sun in Virgo, Saturn opposite Pluto" },
+  ],
+  "09-12": [
+    { year: 1962, event: "JFK delivers his 'We choose to go to the Moon' speech at Rice University", astroNote: "Sun in Virgo, Mars in Cancer" },
+  ],
+  "09-13": [
+    { year: 1916, event: "Roald Dahl is born", astroNote: "Sun in Virgo, Neptune in Leo" },
+  ],
+  "09-14": [
+    { year: 1814, event: "Francis Scott Key writes 'The Star-Spangled Banner'", astroNote: "Sun in Virgo, Mars in Capricorn" },
+  ],
+  "09-15": [
+    { year: 1835, event: "HMS Beagle with Charles Darwin arrives at the Galápagos Islands", astroNote: "Sun in Virgo, Pluto in Aries" },
+  ],
+  "09-16": [
+    { year: 1620, event: "The Mayflower departs from England", astroNote: "Sun in Virgo, Saturn in Capricorn" },
+  ],
+  "09-17": [
+    { year: 1787, event: "The U.S. Constitution is signed in Philadelphia", astroNote: "Sun in Virgo, Pluto in Aquarius" },
+  ],
+  "09-18": [
+    { year: 1947, event: "The CIA and the U.S. Air Force are established", astroNote: "Sun in Virgo, Pluto in Leo" },
+  ],
+  "09-19": [
+    { year: 1983, event: "Saint Kitts and Nevis gains independence", astroNote: "Sun in Virgo, Jupiter in Sagittarius" },
+  ],
+  "09-20": [
+    { year: 1519, event: "Ferdinand Magellan sets sail on his voyage around the world", astroNote: "Sun in Virgo, Mars in Sagittarius" },
+  ],
+  "09-21": [
+    { year: 1937, event: "J.R.R. Tolkien's The Hobbit is published", astroNote: "Sun in Virgo, Neptune in Virgo" },
+  ],
+  "09-22": [
+    { year: 1862, event: "Abraham Lincoln issues the Emancipation Proclamation", astroNote: "Sun enters Libra — Autumnal Equinox" },
+  ],
+  "09-23": [
+    { year: 63, event: "Augustus Caesar is born (traditional date)", astroNote: "Sun in Libra, Venus in Libra" },
+  ],
+  "09-24": [
+    { year: 1957, event: "President Eisenhower sends troops to Little Rock to enforce school desegregation", astroNote: "Sun in Libra, Saturn in Sagittarius" },
+  ],
+  "09-25": [
+    { year: 1513, event: "Vasco Núñez de Balboa reaches the Pacific Ocean", astroNote: "Sun in Libra, Jupiter in Cancer" },
+  ],
+  "09-26": [
+    { year: 1969, event: "Abbey Road by the Beatles is released", astroNote: "Sun in Libra, Venus in Scorpio" },
+  ],
+  "09-27": [
+    { year: 1905, event: "Einstein publishes his paper introducing E=mc²", astroNote: "Sun in Libra, Mercury in Virgo" },
+  ],
+  "09-28": [
+    { year: 551, event: "Confucius is born (traditional date)", astroNote: "Sun in Libra, Jupiter in Cancer" },
+  ],
+  "09-29": [
+    { year: 1829, event: "London's Metropolitan Police begins operating", astroNote: "Sun in Libra, Saturn in Leo" },
+  ],
+  "09-30": [
+    { year: 1846, event: "The first tooth is extracted under anesthesia", astroNote: "Sun in Libra, Neptune in Aquarius" },
+  ],
+  "10-01": [
+    { year: 1908, event: "Henry Ford introduces the Model T", astroNote: "Sun in Libra, Uranus in Capricorn" },
+  ],
+  "10-02": [
+    { year: 1869, event: "Mahatma Gandhi is born", astroNote: "Sun in Libra, Venus in Libra" },
+  ],
+  "10-03": [
+    { year: 1990, event: "Germany is officially reunified", astroNote: "Sun in Libra, Saturn in Capricorn" },
+  ],
+  "10-04": [
+    { year: 1957, event: "The Soviet Union launches Sputnik, the first artificial satellite", astroNote: "Sun in Libra, Mars in Scorpio" },
+  ],
+  "10-05": [
+    { year: 1962, event: "The Beatles release 'Love Me Do,' their first single", astroNote: "Sun in Libra, Venus in Scorpio" },
+  ],
+  "10-06": [
+    { year: 1927, event: "The Jazz Singer premieres — the first feature-length talkie", astroNote: "Sun in Libra, Neptune in Virgo" },
+  ],
+  "10-07": [
+    { year: 2001, event: "U.S. invasion of Afghanistan begins", astroNote: "Sun in Libra, Mars in Capricorn" },
+  ],
+  "10-08": [
+    { year: 1871, event: "The Great Chicago Fire begins", astroNote: "Sun in Libra, Mars in Leo" },
+  ],
+  "10-09": [
+    { year: 1940, event: "John Lennon is born", astroNote: "Sun in Libra, Neptune in Virgo" },
+  ],
+  "10-10": [
+    { year: 1913, event: "The Panama Canal is completed (Gamboa Dike dynamited)", astroNote: "Sun in Libra, Pluto in Cancer" },
+  ],
+  "10-11": [
+    { year: 1975, event: "Saturday Night Live premieres", astroNote: "Sun in Libra, Mars in Cancer" },
+  ],
+  "10-12": [
+    { year: 1492, event: "Christopher Columbus reaches the Americas", astroNote: "Sun in Libra, Jupiter in Virgo" },
+  ],
+  "10-13": [
+    { year: 1792, event: "The White House cornerstone is laid", astroNote: "Sun in Libra, Saturn in Pisces" },
+  ],
+  "10-14": [
+    { year: 1947, event: "Chuck Yeager breaks the sound barrier", astroNote: "Sun in Libra, Mars in Leo" },
+  ],
+  "10-15": [
+    { year: 1844, event: "Friedrich Nietzsche is born", astroNote: "Sun in Libra, Pluto in Aries" },
+  ],
+  "10-16": [
+    { year: 1846, event: "Ether anesthesia is first publicly demonstrated at Massachusetts General Hospital", astroNote: "Sun in Libra, Neptune in Aquarius" },
+  ],
+  "10-17": [
+    { year: 1989, event: "The Loma Prieta earthquake strikes the San Francisco Bay Area", astroNote: "Sun in Libra, Saturn in Capricorn" },
+  ],
+  "10-18": [
+    { year: 1867, event: "The United States takes possession of Alaska from Russia", astroNote: "Sun in Libra, Pluto in Taurus" },
+  ],
+  "10-19": [
+    { year: 1987, event: "Black Monday — stock markets crash worldwide", astroNote: "Sun in Libra, Mars in Aries" },
+  ],
+  "10-20": [
+    { year: 1944, event: "General MacArthur fulfills his promise to return to the Philippines", astroNote: "Sun in Libra, Jupiter in Virgo" },
+  ],
+  "10-21": [
+    { year: 1879, event: "Thomas Edison successfully tests a practical incandescent light bulb", astroNote: "Sun in Libra, Uranus in Virgo" },
+  ],
+  "10-22": [
+    { year: 1962, event: "President Kennedy addresses the nation about the Cuban Missile Crisis", astroNote: "Sun in Libra, Mars conjunct Pluto in Virgo" },
+  ],
+  "10-23": [
+    { year: 4004, event: "The world is created according to Bishop Ussher's chronology", astroNote: "Sun enters Scorpio" },
+  ],
+  "10-24": [
+    { year: 1945, event: "The United Nations is established", astroNote: "Sun in Scorpio, Jupiter in Libra" },
+  ],
+  "10-25": [
+    { year: 1881, event: "Pablo Picasso is born", astroNote: "Sun in Scorpio, Venus in Scorpio" },
+  ],
+  "10-26": [
+    { year: 1825, event: "The Erie Canal opens, connecting the Great Lakes to the Atlantic", astroNote: "Sun in Scorpio, Saturn in Taurus" },
+  ],
+  "10-27": [
+    { year: 1904, event: "The New York City subway opens", astroNote: "Sun in Scorpio, Uranus in Sagittarius" },
+  ],
+  "10-28": [
+    { year: 1886, event: "The Statue of Liberty is dedicated in New York Harbor", astroNote: "Sun in Scorpio, Jupiter in Libra" },
+  ],
+  "10-29": [
+    { year: 1929, event: "Black Tuesday — the U.S. stock market crashes", astroNote: "Sun in Scorpio, Saturn in Sagittarius" },
+  ],
+  "10-30": [
+    { year: 1938, event: "Orson Welles broadcasts War of the Worlds, causing public panic", astroNote: "Sun in Scorpio, Neptune in Virgo" },
+  ],
+  "10-31": [
+    { year: 1517, event: "Martin Luther posts his 95 Theses", astroNote: "Sun in Scorpio at Samhain cross-quarter" },
+  ],
+  "11-01": [
+    { year: 1952, event: "The first hydrogen bomb is detonated at Enewetak Atoll", astroNote: "Sun in Scorpio, Pluto in Leo" },
+  ],
+  "11-02": [
+    { year: 1947, event: "Howard Hughes pilots the Spruce Goose on its only flight", astroNote: "Sun in Scorpio, Mars in Leo" },
+  ],
+  "11-03": [
+    { year: 1957, event: "The Soviet Union launches Laika into space", astroNote: "Sun in Scorpio, Saturn in Sagittarius" },
+  ],
+  "11-04": [
+    { year: 2008, event: "Barack Obama is elected the first African American U.S. president", astroNote: "Sun in Scorpio, Mars in Scorpio" },
+  ],
+  "11-05": [
+    { year: 1605, event: "The Gunpowder Plot is discovered", astroNote: "Sun in Scorpio, Mars in Sagittarius" },
+  ],
+  "11-06": [
+    { year: 1860, event: "Abraham Lincoln is elected president", astroNote: "Sun in Scorpio, Pluto in Taurus" },
+  ],
+  "11-07": [
+    { year: 1867, event: "Marie Curie is born", astroNote: "Sun in Scorpio, Pluto in Taurus" },
+  ],
+  "11-08": [
+    { year: 1895, event: "Wilhelm Röntgen discovers X-rays", astroNote: "Sun in Scorpio, Neptune in Gemini" },
+  ],
+  "11-09": [
+    { year: 1989, event: "The Berlin Wall falls", astroNote: "Sun in Scorpio, Saturn conjunct Neptune in Capricorn" },
+  ],
+  "11-10": [
+    { year: 1969, event: "Sesame Street premieres on television", astroNote: "Sun in Scorpio, Jupiter in Libra" },
+  ],
+  "11-11": [
+    { year: 1918, event: "World War I ends with the Armistice", astroNote: "Sun in Scorpio, Neptune in Leo" },
+  ],
+  "11-12": [
+    { year: 1980, event: "Voyager 1 makes its closest approach to Saturn", astroNote: "Sun in Scorpio, Saturn in Libra" },
+  ],
+  "11-13": [
+    { year: 1971, event: "Mariner 9 becomes the first spacecraft to orbit another planet (Mars)", astroNote: "Sun in Scorpio, Mars in Aquarius" },
+  ],
+  "11-14": [
+    { year: 1889, event: "Nellie Bly begins her trip around the world in 80 days", astroNote: "Sun in Scorpio, Jupiter in Capricorn" },
+  ],
+  "11-15": [
+    { year: 1971, event: "Intel releases the 4004, the first commercial microprocessor", astroNote: "Sun in Scorpio, Uranus in Libra" },
+  ],
+  "11-16": [
+    { year: 1945, event: "UNESCO is founded", astroNote: "Sun in Scorpio, Venus in Libra" },
+  ],
+  "11-17": [
+    { year: 1869, event: "The Suez Canal opens", astroNote: "Sun in Scorpio, Pluto in Taurus" },
+  ],
+  "11-18": [
+    { year: 1928, event: "Mickey Mouse appears in Steamboat Willie", astroNote: "Sun in Scorpio, Neptune in Virgo" },
+  ],
+  "11-19": [
+    { year: 1863, event: "Abraham Lincoln delivers the Gettysburg Address", astroNote: "Sun in Scorpio, Saturn in Libra" },
+  ],
+  "11-20": [
+    { year: 1945, event: "The Nuremberg Trials begin", astroNote: "Sun in Scorpio, Pluto in Leo" },
+  ],
+  "11-21": [
+    { year: 1877, event: "Thomas Edison announces his invention of the phonograph", astroNote: "Sun in Scorpio/Sagittarius cusp, Uranus in Leo" },
+  ],
+  "11-22": [
+    { year: 1963, event: "President John F. Kennedy is assassinated in Dallas", astroNote: "Sun enters Sagittarius, Mars in Sagittarius" },
+  ],
+  "11-23": [
+    { year: 1936, event: "The first issue of Life magazine is published", astroNote: "Sun in Sagittarius, Jupiter in Sagittarius" },
+  ],
+  "11-24": [
+    { year: 1859, event: "Charles Darwin publishes On the Origin of Species", astroNote: "Sun in Sagittarius, Pluto in Taurus" },
+  ],
+  "11-25": [
+    { year: 1915, event: "Einstein presents his general theory of relativity", astroNote: "Sun in Sagittarius, Uranus in Aquarius" },
+  ],
+  "11-26": [
+    { year: 1922, event: "Howard Carter opens King Tut's tomb", astroNote: "Sun in Sagittarius, Pluto in Cancer" },
+  ],
+  "11-27": [
+    { year: 1095, event: "Pope Urban II calls for the First Crusade", astroNote: "Sun in Sagittarius, Jupiter in Virgo" },
+  ],
+  "11-28": [
+    { year: 1520, event: "Ferdinand Magellan enters the Pacific Ocean", astroNote: "Sun in Sagittarius, Neptune in Pisces" },
+  ],
+  "11-29": [
+    { year: 1877, event: "Thomas Edison demonstrates the hand-cranked phonograph", astroNote: "Sun in Sagittarius, Mercury in Scorpio" },
+  ],
+  "11-30": [
+    { year: 1835, event: "Mark Twain is born", astroNote: "Sun in Sagittarius, Jupiter in Virgo" },
+  ],
+  "12-01": [
+    { year: 1955, event: "Rosa Parks refuses to give up her bus seat in Montgomery", astroNote: "Sun in Sagittarius, Mars in Libra" },
+  ],
+  "12-02": [
+    { year: 1942, event: "The first self-sustaining nuclear chain reaction is achieved", astroNote: "Sun in Sagittarius, Pluto in Leo" },
+  ],
+  "12-03": [
+    { year: 1967, event: "The first human heart transplant is performed by Dr. Christiaan Barnard", astroNote: "Sun in Sagittarius, Neptune in Scorpio" },
+  ],
+  "12-04": [
+    { year: 1791, event: "The Observer, the world's first Sunday newspaper, is published", astroNote: "Sun in Sagittarius, Mercury in Sagittarius" },
+  ],
+  "12-05": [
+    { year: 1933, event: "Prohibition ends in the United States with the 21st Amendment", astroNote: "Sun in Sagittarius, Jupiter in Libra" },
+  ],
+  "12-06": [
+    { year: 1877, event: "Thomas Edison records himself reciting 'Mary Had a Little Lamb'", astroNote: "Sun in Sagittarius, Mercury in Sagittarius" },
+  ],
+  "12-07": [
+    { year: 1941, event: "Japan attacks Pearl Harbor, bringing the U.S. into World War II", astroNote: "Sun in Sagittarius, Mars in Aries" },
+  ],
+  "12-08": [
+    { year: 1980, event: "John Lennon is shot and killed in New York City", astroNote: "Sun in Sagittarius, Saturn in Libra" },
+  ],
+  "12-09": [
+    { year: 1979, event: "The WHO declares smallpox eradicated", astroNote: "Sun in Sagittarius, Pluto in Libra" },
+  ],
+  "12-10": [
+    { year: 1901, event: "The first Nobel Prizes are awarded in Stockholm", astroNote: "Sun in Sagittarius, Jupiter in Capricorn" },
+  ],
+  "12-11": [
+    { year: 1972, event: "Apollo 17, the last crewed Moon mission, lands on the lunar surface", astroNote: "Sun in Sagittarius, Mars in Sagittarius" },
+  ],
+  "12-12": [
+    { year: 1901, event: "Guglielmo Marconi receives the first transatlantic radio signal", astroNote: "Sun in Sagittarius, Uranus in Sagittarius" },
+  ],
+  "12-13": [
+    { year: 1577, event: "Sir Francis Drake sets sail from Plymouth on his circumnavigation", astroNote: "Sun in Sagittarius, Jupiter in Aquarius" },
+  ],
+  "12-14": [
+    { year: 1911, event: "Roald Amundsen reaches the South Pole", astroNote: "Sun in Sagittarius, Saturn in Taurus" },
+  ],
+  "12-15": [
+    { year: 1791, event: "The U.S. Bill of Rights is ratified", astroNote: "Sun in Sagittarius, Pluto in Aquarius" },
+  ],
+  "12-16": [
+    { year: 1770, event: "Ludwig van Beethoven is born", astroNote: "Sun in Sagittarius, Uranus in Taurus" },
+  ],
+  "12-17": [
+    { year: 1903, event: "The Wright Brothers make the first powered flight at Kitty Hawk", astroNote: "Sun in Sagittarius, Mars in Aquarius" },
+  ],
+  "12-18": [
+    { year: 1865, event: "The 13th Amendment is ratified, abolishing slavery in the U.S.", astroNote: "Sun in Sagittarius, Saturn in Libra" },
+  ],
+  "12-19": [
+    { year: 1843, event: "Charles Dickens publishes A Christmas Carol", astroNote: "Sun in Sagittarius, Neptune in Aquarius" },
+  ],
+  "12-20": [
+    { year: 1803, event: "The Louisiana Purchase is completed", astroNote: "Sun in Sagittarius, Jupiter in Pisces" },
+  ],
+  "12-21": [
+    { year: 1898, event: "Marie and Pierre Curie discover radium", astroNote: "Sun enters Capricorn — Winter Solstice" },
+  ],
+  "12-22": [
+    { year: 1895, event: "Wilhelm Röntgen takes the first X-ray photograph of his wife's hand", astroNote: "Sun in Capricorn, Pluto in Gemini" },
+  ],
+  "12-23": [
+    { year: 1947, event: "The transistor is demonstrated for the first time at Bell Labs", astroNote: "Sun in Capricorn, Uranus in Gemini" },
+  ],
+  "12-24": [
+    { year: 1968, event: "Apollo 8 astronauts read Genesis during their orbit of the Moon", astroNote: "Sun in Capricorn, Jupiter in Virgo" },
+  ],
+  "12-25": [
+    { year: 1642, event: "Isaac Newton is born (Julian calendar)", astroNote: "Sun in Capricorn, Saturn in Pisces" },
+  ],
+  "12-26": [
+    { year: 1898, event: "Marie Curie announces the discovery of radium", astroNote: "Sun in Capricorn, Pluto in Gemini" },
+  ],
+  "12-27": [
+    { year: 1831, event: "Charles Darwin sets sail on HMS Beagle", astroNote: "Sun in Capricorn, Jupiter in Aquarius" },
+  ],
+  "12-28": [
+    { year: 1895, event: "The Lumière brothers hold the first commercial film screening in Paris", astroNote: "Sun in Capricorn, Neptune in Gemini" },
+  ],
+  "12-29": [
+    { year: 1170, event: "Thomas Becket is murdered in Canterbury Cathedral", astroNote: "Sun in Capricorn, Mars in Cancer" },
+  ],
+  "12-30": [
+    { year: 1922, event: "The Union of Soviet Socialist Republics is officially established", astroNote: "Sun in Capricorn, Pluto in Cancer" },
+  ],
+  "12-31": [
+    { year: 1879, event: "Thomas Edison demonstrates incandescent lighting to the public", astroNote: "Sun in Capricorn, Uranus in Virgo" },
+  ],
+};
+
+/**
+ * Get "On This Day" events for a given date.
+ */
+export function getOnThisDay(date: Date): OnThisDayEvent[] {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const key = `${month}-${day}`;
+  return EVENTS[key] || [];
+}

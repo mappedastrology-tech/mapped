@@ -198,3 +198,261 @@ function drawRoundedRect(
   ctx.lineWidth = 1;
   ctx.stroke();
 }
+
+/* ═══════════════════════════════════════════
+   Tarot / Oracle Reading Share Card
+   ═══════════════════════════════════════════ */
+
+interface ReadingShareCardData {
+  spreadName: string;
+  date: string;
+  cards: { name: string; reversed?: boolean; keywords?: string[]; position?: string }[];
+}
+
+/**
+ * Generate a mystical/celestial shareable image for a tarot or oracle reading.
+ * Returns a PNG Blob ready for Web Share or download.
+ */
+export async function generateReadingShareCard(data: ReadingShareCardData): Promise<Blob> {
+  const W = 1080;
+  // Dynamic height based on card count — min 1200, grows with more cards
+  const cardBlockHeight = Math.max(data.cards.length * 110, 200);
+  const H = Math.min(1920, Math.max(1200, 480 + cardBlockHeight + 200));
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // ─── Deep plum-to-navy gradient background ───
+  const bg = ctx.createLinearGradient(0, 0, W * 0.3, H);
+  bg.addColorStop(0, "#0e0a14");
+  bg.addColorStop(0.4, "#1a1028");
+  bg.addColorStop(0.7, "#0f0e1a");
+  bg.addColorStop(1, "#0e0a14");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ─── Stars field ───
+  for (let i = 0; i < 120; i++) {
+    const sx = Math.random() * W;
+    const sy = Math.random() * H;
+    const sr = Math.random() * 1.8 + 0.3;
+    const alpha = Math.random() * 0.6 + 0.1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(232, 223, 196, ${alpha})`;
+    ctx.fill();
+  }
+
+  // ─── Decorative celestial ring (top center) ───
+  const cx = W / 2;
+  const ringY = 160;
+  const ringR = 80;
+  ctx.beginPath();
+  ctx.arc(cx, ringY, ringR, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(201, 169, 97, 0.2)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(cx, ringY, ringR - 15, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(201, 169, 97, 0.12)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Moon crescent inside ring
+  ctx.beginPath();
+  ctx.arc(cx, ringY, 30, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(201, 169, 97, 0.15)";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 12, ringY - 5, 28, 0, Math.PI * 2);
+  ctx.fillStyle = "#0e0a14";
+  ctx.fill();
+
+  // ─── Decorative dots along top and bottom ───
+  for (let i = 0; i < 9; i++) {
+    const dotX = W * 0.15 + (W * 0.7 / 8) * i;
+    ctx.beginPath();
+    ctx.arc(dotX, 50, 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(201, 169, 97, 0.25)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(dotX, H - 50, 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(201, 169, 97, 0.25)";
+    ctx.fill();
+  }
+
+  // ─── Vertical decorative lines on sides ───
+  ctx.strokeStyle = "rgba(201, 169, 97, 0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(60, 80);
+  ctx.lineTo(60, H - 80);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W - 60, 80);
+  ctx.lineTo(W - 60, H - 80);
+  ctx.stroke();
+
+  const PAD = 100;
+  let y = ringY + ringR + 50;
+
+  // ─── Spread name ───
+  ctx.textAlign = "center";
+  ctx.font = "700 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(201, 169, 97, 0.6)";
+  ctx.letterSpacing = "6px";
+  ctx.fillText(data.spreadName.toUpperCase(), cx, y);
+  y += 35;
+
+  // ─── Date ───
+  ctx.font = "400 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(232, 223, 196, 0.4)";
+  ctx.letterSpacing = "3px";
+  ctx.fillText(data.date.toUpperCase(), cx, y);
+  y += 50;
+
+  // ─── Horizontal ornament ───
+  const ornW = 200;
+  ctx.strokeStyle = "rgba(201, 169, 97, 0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - ornW, y);
+  ctx.lineTo(cx - 20, y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 20, y);
+  ctx.lineTo(cx + ornW, y);
+  ctx.stroke();
+  // Center diamond
+  ctx.beginPath();
+  ctx.moveTo(cx, y - 6);
+  ctx.lineTo(cx + 6, y);
+  ctx.lineTo(cx, y + 6);
+  ctx.lineTo(cx - 6, y);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(201, 169, 97, 0.4)";
+  ctx.fill();
+  y += 50;
+
+  // ─── Cards ───
+  ctx.textAlign = "left";
+  const maxCards = Math.min(data.cards.length, 12);
+  for (let i = 0; i < maxCards; i++) {
+    const card = data.cards[i];
+
+    // Position label (if exists)
+    if (card.position) {
+      ctx.font = "600 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(201, 169, 97, 0.5)";
+      ctx.letterSpacing = "3px";
+      ctx.fillText(card.position.toUpperCase(), PAD, y);
+      ctx.letterSpacing = "0px";
+      y += 28;
+    }
+
+    // Card name
+    ctx.font = "400 32px Georgia, 'Times New Roman', serif";
+    ctx.fillStyle = "rgba(232, 223, 196, 0.9)";
+    const nameStr = card.reversed ? `${card.name}  ↓` : card.name;
+    ctx.fillText(nameStr, PAD, y);
+    y += 10;
+
+    // Reversed label
+    if (card.reversed) {
+      ctx.font = "italic 18px Georgia, 'Times New Roman', serif";
+      ctx.fillStyle = "rgba(201, 169, 97, 0.4)";
+      ctx.fillText("reversed", PAD, y + 18);
+      y += 22;
+    }
+
+    // Keywords
+    if (card.keywords && card.keywords.length > 0) {
+      ctx.font = "400 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(232, 223, 196, 0.4)";
+      ctx.fillText(card.keywords.slice(0, 4).join("  ·  "), PAD, y + 18);
+      y += 22;
+    }
+
+    y += 36;
+
+    // Subtle separator between cards (except last)
+    if (i < maxCards - 1) {
+      ctx.strokeStyle = "rgba(201, 169, 97, 0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD, y);
+      ctx.lineTo(W - PAD, y);
+      ctx.stroke();
+      y += 24;
+    }
+  }
+
+  if (data.cards.length > maxCards) {
+    y += 10;
+    ctx.font = "italic 20px Georgia, 'Times New Roman', serif";
+    ctx.fillStyle = "rgba(232, 223, 196, 0.3)";
+    ctx.textAlign = "center";
+    ctx.fillText(`+ ${data.cards.length - maxCards} more cards`, cx, y);
+    y += 30;
+  }
+
+  // ─── Branding ───
+  ctx.textAlign = "center";
+  ctx.font = "700 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(201, 169, 97, 0.35)";
+  ctx.letterSpacing = "8px";
+  ctx.fillText("MAPPED", cx, H - 60);
+  ctx.letterSpacing = "0px";
+  ctx.font = "400 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(232, 223, 196, 0.2)";
+  ctx.fillText("astrology", cx, H - 38);
+
+  // Convert to blob
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+      "image/png",
+      1.0
+    );
+  });
+}
+
+/**
+ * Share a reading as a graphic image. Falls back to text share if canvas fails.
+ */
+export async function shareReadingAsImage(
+  data: ReadingShareCardData,
+  fallbackText: string
+): Promise<void> {
+  try {
+    const blob = await generateReadingShareCard(data);
+    const file = new File([blob], "mapped-reading.png", { type: "image/png" });
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `${data.spreadName} — Mapped`,
+      });
+    } else if (navigator.share) {
+      // Device supports share but not file sharing — share text + try to open image
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      await navigator.share({ text: fallbackText });
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } else {
+      // Desktop fallback — open image in new tab
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      // Also copy text to clipboard
+      await navigator.clipboard.writeText(fallbackText);
+    }
+  } catch (err) {
+    // Final fallback — plain text
+    if (navigator.share) {
+      try { await navigator.share({ text: fallbackText }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(fallbackText);
+    }
+  }
+}

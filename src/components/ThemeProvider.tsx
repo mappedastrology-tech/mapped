@@ -3,10 +3,10 @@
 /**
  * ThemeProvider — manages light/dark mode for the entire app.
  *
- * Light = "Warm Altar" (golden, warm parchment)
- * Dark = "Spell Book" (atmospheric, candlelit)
+ * Dark = "Midnight Scrapbook" (default — dark background with warm texture)
+ * Light = "Clean & Bright" (white background with dark text)
  *
- * Persists preference to localStorage, respects system preference as default.
+ * Persists preference to localStorage, defaults to dark.
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
@@ -20,7 +20,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "light",
+  theme: "dark",
   toggleTheme: () => {},
   setTheme: () => {},
 });
@@ -32,7 +32,7 @@ export function useTheme() {
 const STORAGE_KEY = "mapped:theme";
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   // Initialize theme from localStorage or system preference
@@ -44,14 +44,14 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
         setThemeState(stored);
         document.documentElement.setAttribute("data-theme", stored);
       } else {
-        // Check system preference
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const detected = prefersDark ? "dark" : "light";
+        // Default to dark (Midnight Scrapbook); respect system light preference
+        const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+        const detected = prefersLight ? "light" : "dark";
         setThemeState(detected);
         document.documentElement.setAttribute("data-theme", detected);
       }
     } catch {
-      document.documentElement.setAttribute("data-theme", "light");
+      document.documentElement.setAttribute("data-theme", "dark");
     }
   }, []);
 

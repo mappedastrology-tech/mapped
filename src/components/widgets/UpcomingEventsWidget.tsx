@@ -35,7 +35,7 @@ export default function UpcomingEventsWidget() {
   if (isLoading) {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6 flex items-center justify-center min-h-[140px]">
-        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-amber/30 border-t-amber rounded-full animate-spin" role="status" aria-label="Loading" />
       </div>
     );
   }
@@ -52,11 +52,11 @@ export default function UpcomingEventsWidget() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className="text-foreground text-sm font-medium">{event.name}</p>
-                <p className="text-foreground/40 text-xs capitalize">
+                <p className="text-muted text-xs capitalize">
                   {event.tradition} tradition
                 </p>
               </div>
-              <span className="text-foreground/40 text-xs whitespace-nowrap ml-2">
+              <span className="text-muted text-xs whitespace-nowrap ml-2">
                 {event.daysUntil === 0
                   ? "Today"
                   : event.daysUntil === 1

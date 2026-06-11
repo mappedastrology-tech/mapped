@@ -43,8 +43,8 @@ interface PlacementAccordionProps {
 function elementColor(sign: string): string {
   if (["Ari", "Leo", "Sag"].includes(sign)) return "text-terracotta";
   if (["Tau", "Vir", "Cap"].includes(sign)) return "text-sage";
-  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-amber";
-  return "text-ink";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-lavender";
+  return "text-lavender-light";
 }
 
 function formatHouse(house: string | number | null): string {
@@ -75,7 +75,7 @@ const DIGNITY_COLORS: Record<string, { bg: string; text: string }> = {
   domicile: { bg: "bg-sage/20", text: "text-sage" },
   exalted: { bg: "bg-amber/20", text: "text-amber" },
   detriment: { bg: "bg-terracotta/15", text: "text-terracotta/70" },
-  fall: { bg: "bg-foreground/8", text: "text-foreground/50" },
+  fall: { bg: "bg-lavender/10", text: "placement-card-text-secondary" },
 };
 
 const DIGNITY_LABELS: Record<string, string> = {
@@ -93,7 +93,7 @@ const MARKER_COLORS: Record<string, { bg: string; text: string; border: string }
   healing: { bg: "bg-sage/10", text: "text-sage", border: "border-sage/20" },
   leadership: { bg: "bg-terracotta/10", text: "text-terracotta", border: "border-terracotta/20" },
   creativity: { bg: "bg-amber/10", text: "text-amber", border: "border-amber/20" },
-  karmic: { bg: "bg-foreground/5", text: "text-foreground/60", border: "border-foreground/18" },
+  karmic: { bg: "bg-lavender/10", text: "placement-card-text-secondary", border: "border-lavender/20" },
 };
 
 export default function PlacementAccordion({
@@ -117,9 +117,19 @@ export default function PlacementAccordion({
   const [markers, setMarkers] = useState<LifeMarker[]>([]);
   const [rxData, setRxData] = useState<Retrograde | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const signFull = SIGN_FULL[sign] || sign;
   const color = elementColor(sign);
+
+  // Scroll the header into view when opened
+  useEffect(() => {
+    if (isOpen && headerRef.current) {
+      setTimeout(() => {
+        headerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && !loaded && !loading) {
@@ -140,19 +150,16 @@ export default function PlacementAccordion({
 
   const shimmer = (
     <div className="flex flex-col gap-2">
-      <div className="h-3 bg-foreground/5 rounded-full animate-pulse w-full" />
-      <div className="h-3 bg-foreground/5 rounded-full animate-pulse w-11/12" />
-      <div className="h-3 bg-foreground/5 rounded-full animate-pulse w-4/5" />
+      <div className="h-3 bg-lavender/10 rounded-full animate-pulse w-full" />
+      <div className="h-3 bg-lavender/10 rounded-full animate-pulse w-11/12" />
+      <div className="h-3 bg-lavender/10 rounded-full animate-pulse w-4/5" />
     </div>
   );
 
   return (
     <div
-      className={`rounded-xl border transition-colors duration-200 ${
-        isOpen
-          ? "bg-surface/80 border-foreground/18"
-          : "bg-card/50 border-foreground/15"
-      }`}
+      ref={headerRef}
+      className="placement-card transition-colors duration-200"
     >
       {/* Header row */}
       <button
@@ -164,16 +171,16 @@ export default function PlacementAccordion({
           <span className={`text-lg ${color}`} style={{ fontFamily: "var(--font-heading)" }}>
             {planetSymbol}
           </span>
-          <span className="text-foreground/80 text-sm font-medium">
+          <span className="text-sm font-medium placement-card-text">
             {planetName}
             {retrograde && (
-              <span className="text-terracotta/60 text-xs ml-1">R</span>
+              <span className="text-lavender text-xs ml-1">R</span>
             )}
           </span>
           {tags && tags.length > 0 && (
             <span className="flex gap-1 ml-1">
               {tags.map(tag => (
-                <span key={tag} className="text-[9px] uppercase tracking-wider font-bold text-foreground/30 bg-foreground/5 px-1.5 py-0.5 rounded">
+                <span key={tag} className="text-[9px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                   {tag}
                 </span>
               ))}
@@ -185,13 +192,13 @@ export default function PlacementAccordion({
             <span className={`text-sm font-medium ${color}`}>
               {SIGN_NAMES[sign] || sign}
             </span>
-            <span className="text-foreground/30 text-xs ml-2">
+            <span className="text-xs ml-2 placement-card-text-secondary">
               {position.toFixed(0)}&deg;
               {house && ` · ${formatHouse(house)}`}
             </span>
           </div>
           <svg
-            className={`w-4 h-4 text-foreground/20 flex-shrink-0 transition-transform duration-200 ${
+            className={`w-4 h-4 placement-card-text-muted flex-shrink-0 transition-transform duration-200 ${
               isOpen ? "rotate-90" : ""
             }`}
             fill="none"
@@ -211,8 +218,8 @@ export default function PlacementAccordion({
           isOpen ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="px-4 pb-5 pt-1">
-          <div className="h-px bg-foreground/8 mb-5" />
+        <div className="mx-3 mb-3 px-4 pb-5 pt-4 placement-card-expanded">
+          <div className="h-px bg-lavender/15 mb-5" />
 
           {loading ? (
             <div className="flex flex-col gap-4">{shimmer}{shimmer}</div>
@@ -226,7 +233,7 @@ export default function PlacementAccordion({
                   <div className="inline-flex self-start items-center mb-4">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full
                       ${DIGNITY_COLORS[dignity.dignity_type]?.bg || "bg-foreground/5"}
-                      ${DIGNITY_COLORS[dignity.dignity_type]?.text || "text-foreground/50"}`}
+                      ${DIGNITY_COLORS[dignity.dignity_type]?.text || "text-secondary"}`}
                     >
                       <span className="text-[10px] uppercase tracking-widest font-semibold">
                         {DIGNITY_LABELS[dignity.dignity_type] || dignity.dignity_type}
@@ -240,7 +247,7 @@ export default function PlacementAccordion({
               {/* ━━━ HERO: Planet in Sign ━━━ */}
               {pisData && (
                 <section>
-                  <span className="flex items-center text-foreground/35 text-[10px] uppercase tracking-widest mb-1">
+                  <span className="flex items-center placement-card-text-secondary text-[10px] uppercase tracking-widest mb-1">
                     The sign
                     <InfoTip term="Sign" explanation={getGlossaryEntry("Sign")?.short || ""} />
                   </span>
@@ -250,7 +257,7 @@ export default function PlacementAccordion({
                   >
                     {planetName} in {signFull}
                   </h3>
-                  <p className="text-foreground/85 text-[15px] leading-relaxed mb-5">
+                  <p className="placement-card-text text-[15px] leading-relaxed mb-5">
                     {pisData.summary}
                   </p>
 
@@ -258,9 +265,9 @@ export default function PlacementAccordion({
                   {dignity && (
                     <div className={`rounded-lg border px-3 py-2.5 mb-5
                       ${DIGNITY_COLORS[dignity.dignity_type]?.bg || "bg-foreground/5"}
-                      border-foreground/15`}
+                      border-lavender/15`}
                     >
-                      <p className="text-foreground/70 text-sm leading-relaxed">
+                      <p className="placement-card-text-secondary text-sm leading-relaxed">
                         {dignity.what_it_means}
                       </p>
                     </div>
@@ -270,7 +277,7 @@ export default function PlacementAccordion({
                     <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>
                       Life patterns
                     </p>
-                    <p className="text-foreground/75 text-sm leading-relaxed">
+                    <p className="placement-card-text-secondary text-sm leading-relaxed">
                       {pisData.life_patterns}
                     </p>
                   </div>
@@ -279,17 +286,17 @@ export default function PlacementAccordion({
                     <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>
                       In relationships
                     </p>
-                    <p className="text-foreground/75 text-sm leading-relaxed">
+                    <p className="placement-card-text-secondary text-sm leading-relaxed">
                       {pisData.relationships}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <p className="text-foreground/40 text-[11px] uppercase tracking-widest mb-1.5 font-semibold">
+                      <p className="placement-card-text-secondary text-[11px] uppercase tracking-widest mb-1.5 font-semibold">
                         The shadow
                       </p>
-                      <p className="text-foreground/70 text-sm leading-relaxed">
+                      <p className="placement-card-text-secondary text-sm leading-relaxed">
                         {pisData.challenges}
                       </p>
                     </div>
@@ -297,7 +304,7 @@ export default function PlacementAccordion({
                       <p className={`${color} text-[11px] uppercase tracking-widest mb-1.5 font-semibold opacity-80`}>
                         Where you grow
                       </p>
-                      <p className="text-foreground/70 text-sm leading-relaxed">
+                      <p className="placement-card-text-secondary text-sm leading-relaxed">
                         {pisData.growth}
                       </p>
                     </div>
@@ -307,8 +314,8 @@ export default function PlacementAccordion({
 
               {/* ━━━ LIFE MARKERS ━━━ */}
               {markers.length > 0 && (
-                <div className="mt-6 pt-5 border-t border-foreground/15">
-                  <span className="flex items-center text-foreground/30 text-[10px] uppercase tracking-widest mb-3">
+                <div className="mt-6 pt-5 border-t border-lavender/15">
+                  <span className="flex items-center placement-card-text-secondary text-[10px] uppercase tracking-widest mb-3">
                     Special in your chart
                   </span>
                   <div className="flex flex-col gap-3">
@@ -328,7 +335,7 @@ export default function PlacementAccordion({
                               return g ? <InfoTip term={g.term} explanation={g.short} /> : null;
                             })()}
                           </div>
-                          <p className="text-foreground/70 text-sm leading-relaxed">
+                          <p className="placement-card-text-secondary text-sm leading-relaxed">
                             {m.summary}
                           </p>
                         </div>
@@ -340,22 +347,22 @@ export default function PlacementAccordion({
 
               {/* ━━━ RETROGRADE ━━━ */}
               {rxData && (
-                <div className="mt-6 pt-5 border-t border-foreground/15">
+                <div className="mt-6 pt-5 border-t border-lavender/15">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-terracotta/60 text-xs font-bold">R</span>
-                    <span className="flex items-center text-foreground/30 text-[10px] uppercase tracking-widest">
+                    <span className="text-lavender text-xs font-bold">R</span>
+                    <span className="flex items-center placement-card-text-secondary text-[10px] uppercase tracking-widest">
                       Natal retrograde
                       <InfoTip term="Retrograde" explanation={getGlossaryEntry("Retrograde")?.short || ""} />
                     </span>
                   </div>
-                  <p className="text-foreground/75 text-sm leading-relaxed mb-3">
+                  <p className="placement-card-text-secondary text-sm leading-relaxed mb-3">
                     {rxData.summary}
                   </p>
                   <div className="mb-3">
-                    <p className="text-foreground/40 text-[10px] uppercase tracking-widest mb-1 font-semibold">
+                    <p className="placement-card-text-secondary text-[10px] uppercase tracking-widest mb-1 font-semibold">
                       How it shows up
                     </p>
-                    <p className="text-foreground/60 text-xs leading-relaxed">
+                    <p className="placement-card-text-secondary text-xs leading-relaxed">
                       {rxData.life_patterns}
                     </p>
                   </div>
@@ -363,7 +370,7 @@ export default function PlacementAccordion({
                     <p className={`${color} text-[10px] uppercase tracking-widest mb-1 font-semibold opacity-70`}>
                       Working with it
                     </p>
-                    <p className="text-foreground/60 text-xs leading-relaxed">
+                    <p className="placement-card-text-secondary text-xs leading-relaxed">
                       {rxData.growth}
                     </p>
                   </div>
@@ -372,12 +379,12 @@ export default function PlacementAccordion({
 
               {/* ━━━ HOUSE CONTEXT (single compact note) ━━━ */}
               {houseNum && (pihData || sohData) && (
-                <div className="mt-6 pt-5 border-t border-foreground/15">
-                  <span className="flex items-center text-foreground/30 text-[10px] uppercase tracking-widest mb-2">
+                <div className="mt-6 pt-5 border-t border-lavender/15">
+                  <span className="flex items-center placement-card-text-secondary text-[10px] uppercase tracking-widest mb-2">
                     Where it plays out · {ORDINALS[houseNum]} house
                     <InfoTip term="House" explanation={getGlossaryEntry("House")?.short || ""} />
                   </span>
-                  <p className="text-foreground/55 text-xs leading-relaxed">
+                  <p className="placement-card-text-secondary text-xs leading-relaxed">
                     {pihData?.summary}
                     {pihData && sohData ? " " : ""}
                     {sohData?.approach}
@@ -387,7 +394,7 @@ export default function PlacementAccordion({
 
               {/* No data fallback */}
               {!pisData && !pihData && !sohData && !loading && (
-                <p className="text-foreground/40 text-sm">
+                <p className="placement-card-text-secondary text-sm">
                   No interpretation available for this placement yet.
                 </p>
               )}

@@ -4,12 +4,13 @@
  * Ritual page — daily ritual suggestions + browseable catalog by life area.
  *
  * Sections:
- * 1. Tonight's Moon — moon-phase-matched ritual (never pure intention-setting)
- * 2. Today's Ritual — one personalized suggestion based on horoscope + moon
- * 3. Today's Energy — moon phase, nakshatra, zodiac season
- * 4. Almanac Best Days — tappable icon grid by category
- * 5. Ritual Catalog — browse by life area with search + pagination
- * 6. Celestial Calendar — upcoming events
+ * 1. Rituals/Tarot tab switcher
+ * 2. Date context line (weekday · date · moon phase in sign)
+ * 3. Today's Ritual — hero card with personalized suggestion
+ * 4. Two side-by-side cards: Tonight's Moon (compact) + Ritual Calendar (date + streak)
+ * 5. Today's Almanac — preview with good-for items
+ * 6. Browse All Rituals — catalog with search + pagination
+ * 7. Interactive Event Calendar — expands from Ritual Calendar card
  *
  * All colors use CSS custom properties for light/dark theme support.
  */
@@ -36,7 +37,7 @@ import RefreshModal from "@/components/RefreshModal";
 import MoonEventScreen from "@/components/MoonEventScreen";
 // feedback utils available if needed later
 import { getGoodForToday, getTodaySky } from "@/lib/almanacData";
-import { getVibeRecommendation, type VibePhrase } from "@/lib/vibeLibrary";
+import { getCachedLocation, fetchUserLocation, type UserLocation } from "@/lib/userLocation";
 // Theme handled via CSS variables — no useTheme needed here
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -65,53 +66,37 @@ function loadRitualPrefs(): Record<string, boolean> {
   return defaults;
 }
 
-const ELEMENT_ICONS: Record<string, string> = {
-  fire: "🔥", water: "🌊", earth: "🌿", air: "💨", spirit: "✨",
+/** Maps element/category keys → image filenames in /public/ritual icons/ */
+const RITUAL_ICON_MAP: Record<string, string> = {
+  // elements
+  fire: "fire.png", water: "water.png", earth: "earth.png", air: "air.png", spirit: "spirit.png",
+  // categories
+  love: "heart.png", career: "career.png", health: "health.png", wealth: "wealth.png",
+  creativity: "creativity.png", protection: "protection.png", growth: "growth.png",
+  peace: "peace.png", clarity: "clarity.png", release: "release.png",
+  manifestation: "manifestation.png", foundation: "rock.png",
 };
+
+/** Reusable icon component that renders watercolor PNGs from /ritual icons/ */
+function RitualIcon({ name, size = 24, className = "" }: { name: string; size?: number; className?: string }) {
+  const file = RITUAL_ICON_MAP[name];
+  if (!file) return <span style={{ fontSize: size }}>{"✨"}</span>; // fallback sparkle
+  return (
+    <Image
+      src={`/ritual%20icons/${file}`}
+      alt={name}
+      width={size}
+      height={size}
+      className={className}
+      style={{ objectFit: "contain" }}
+    />
+  );
+}
 
 const MOOD_LABELS: Record<string, string> = {
   calm: "Calming", energized: "Energizing", reflective: "Reflective",
   joyful: "Uplifting", grounded: "Grounding", releasing: "Releasing",
 };
-
-// ─── Celestial Calendar Components ──────────────────────────────────────────
-
-function EventCard({ event, isToday, onTap }: { event: CelestialEvent; isToday: boolean; onTap: () => void }) {
-  const d = event.date instanceof Date ? event.date : new Date(event.date + "T12:00:00");
-  return (
-    <button
-      onClick={onTap}
-      className="w-full flex gap-3 items-start py-3 last:border-b-0 text-left transition-colors"
-      style={{
-        borderBottom: "1px solid var(--border)",
-        backgroundColor: isToday ? "var(--terracotta-bg)" : "transparent",
-        borderRadius: isToday ? "12px" : undefined,
-        margin: isToday ? "0 -8px" : undefined,
-        padding: isToday ? "12px 8px" : "12px 0",
-      }}
-    >
-      <div className="text-center min-w-[36px]">
-        <p className="text-[9px] uppercase" style={{ color: "var(--foreground-faint)" }}>{d.toLocaleDateString("en-US", { month: "short" })}</p>
-        <p className="text-[18px] font-bold" style={{ color: isToday ? "var(--terracotta)" : "var(--foreground-muted)" }}>{d.getDate()}</p>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{event.name}</p>
-          {isToday && (
-            <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase"
-                  style={{ backgroundColor: "var(--terracotta-bg)", color: "var(--terracotta)", border: "1px solid var(--border-accent)" }}>
-              Today
-            </span>
-          )}
-        </div>
-        <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: "var(--foreground-muted)" }}>{event.ritualHint}</p>
-      </div>
-      <svg className="w-3.5 h-3.5 shrink-0 mt-2" style={{ color: "var(--foreground-ghost)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
-  );
-}
 
 // ─── Tradition display names ───────────────────────────────────────────────
 const TRADITION_LABELS: Record<string, string> = {
@@ -122,6 +107,151 @@ const TRADITION_LABELS: Record<string, string> = {
   japanese: "Japanese / Shinto",
 };
 
+// ─── Ritual Tools (same data as account settings, shared localStorage key) ──
+const TOOL_OPTIONS = [
+  { id: "candles", icon: "🕯️", label: "Candles", desc: "Any color candle" },
+  { id: "salt", icon: "🧂", label: "Salt", desc: "Sea salt or Epsom" },
+  { id: "herbs", icon: "🌿", label: "Kitchen Herbs", desc: "Cinnamon, rosemary, bay, lavender" },
+  { id: "bath", icon: "🛁", label: "Bathtub", desc: "For ritual baths and soaks" },
+  { id: "mirror", icon: "🪞", label: "Mirror", desc: "Any mirror you can sit in front of" },
+  { id: "rose-quartz", icon: "💗", label: "Rose Quartz", desc: "Love and self-love" },
+  { id: "clear-quartz", icon: "🤍", label: "Clear Quartz", desc: "Clarity and amplification" },
+  { id: "amethyst", icon: "💜", label: "Amethyst", desc: "Peace and intuition" },
+  { id: "incense", icon: "🪔", label: "Incense", desc: "Frankincense, sandalwood, palo santo" },
+  { id: "crystals-other", icon: "💎", label: "Other Crystals", desc: "Citrine, black tourmaline, selenite, etc." },
+  { id: "oils", icon: "💧", label: "Essential Oils", desc: "For anointing and scent" },
+  { id: "tarot", icon: "🃏", label: "Tarot / Oracle Deck", desc: "For card-based rituals" },
+];
+const MY_TOOLS_KEY = "mapped:my-tools";
+
+function RitualToolsPopup({ onClose }: { onClose: () => void }) {
+  const [myTools, setMyTools] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(MY_TOOLS_KEY);
+      if (saved) setMyTools(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  const toggleTool = (id: string) => {
+    setMyTools((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem(MY_TOOLS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const enabledCount = Object.values(myTools).filter(Boolean).length;
+
+  return (
+    <>
+      {/* Backdrop — covers entire screen */}
+      <div
+        className="fixed inset-0 z-[60]"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        onClick={onClose}
+      />
+      {/* Bottom sheet — pinned to bottom of viewport, centered */}
+      <div
+        className="fixed bottom-0 left-1/2 z-[61] rounded-t-3xl"
+        style={{
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "28rem",
+          backgroundColor: "var(--background-card)",
+          border: "1px solid var(--border-card)",
+          maxHeight: "80dvh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Customize ritual tools"
+      >
+        {/* Fixed header */}
+        <div style={{ flexShrink: 0, padding: "20px 20px 12px" }}>
+          <div className="flex justify-center mb-4">
+            <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "var(--border)" }} />
+          </div>
+          <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: "var(--terracotta)" }}>
+            Your Ritual Tools
+          </p>
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+            {enabledCount > 0
+              ? `${enabledCount} selected — rituals are filtered to match what you have`
+              : "Tell us what you have at home so we can suggest rituals that work for you"}
+          </p>
+        </div>
+
+        {/* Scrollable grid */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+            padding: "0 20px 12px",
+            minHeight: 0,
+          }}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            {TOOL_OPTIONS.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => toggleTool(tool.id)}
+                className="flex items-center gap-2.5 p-3 rounded-xl text-left transition-all"
+                style={{
+                  backgroundColor: myTools[tool.id] ? "var(--tag-green-bg)" : "var(--background-elevated)",
+                  border: myTools[tool.id] ? "1px solid var(--sage)" : "1px solid var(--border-card)",
+                }}
+              >
+                <span className="text-[16px] shrink-0">{tool.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-medium" style={{ color: myTools[tool.id] ? "var(--foreground)" : "var(--foreground-muted)" }}>
+                    {tool.label}
+                  </p>
+                  <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--foreground-faint)" }}>
+                    {tool.desc}
+                  </p>
+                </div>
+                <div
+                  className="ml-auto w-7 h-4 rounded-full flex items-center px-0.5 shrink-0 transition-all"
+                  style={{
+                    backgroundColor: myTools[tool.id] ? "var(--sage)" : "var(--border)",
+                    justifyContent: myTools[tool.id] ? "flex-end" : "flex-start",
+                  }}
+                >
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "white" }} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Fixed footer — always visible */}
+        <div style={{ flexShrink: 0, padding: "12px 20px 32px", borderTop: "1px solid var(--border-card)" }}>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl text-[14px] font-semibold transition-all"
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  moon: "var(--brass)",
+  solar: "var(--terracotta)",
+  festival: "var(--sage)",
+  season: "var(--sage)",
+  planetary: "var(--oxblood-light)",
+};
+
 const CATEGORY_SYMBOLS: Record<string, { icon: string; meaning: string }> = {
   moon: { icon: "🌙", meaning: "Lunar events mark the rhythm of release and renewal. Cultures across the world have tracked the moon to time planting, ceremony, and emotional cycles." },
   solar: { icon: "☀️", meaning: "Solar events mark the turning of the year — equinoxes and solstices divide the year into its four great quarters, each with its own energy." },
@@ -129,6 +259,243 @@ const CATEGORY_SYMBOLS: Record<string, { icon: string; meaning: string }> = {
   season: { icon: "🍃", meaning: "Seasonal markers connect your practice to the actual rhythms of the earth — the tilt of the planet, the length of light." },
   planetary: { icon: "🪐", meaning: "Planetary events — retrogrades, conjunctions, returns — are moments when specific archetypal energies shift. The sky mirrors the inner landscape." },
 };
+
+// ─── Interactive Event Calendar ─────────────────────────────────────────────
+
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+
+function EventCalendar({
+  events,
+  todayDate,
+  onSelectEvent,
+  selectedEvent,
+  cardShadow,
+}: {
+  events: CelestialEvent[];
+  todayDate: Date;
+  onSelectEvent: (event: CelestialEvent | null) => void;
+  selectedEvent: CelestialEvent | null;
+  cardShadow: string;
+}) {
+  const [viewMonth, setViewMonth] = useState(todayDate.getMonth());
+  const [viewYear, setViewYear] = useState(todayDate.getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const todayDay = todayDate.getDate();
+  const todayMonth = todayDate.getMonth();
+  const todayYear = todayDate.getFullYear();
+  const isCurrentMonth = viewMonth === todayMonth && viewYear === todayYear;
+
+  // Build event lookup: day number → events[]
+  const eventsByDay = useMemo(() => {
+    const map = new Map<number, CelestialEvent[]>();
+    events.forEach((e) => {
+      const d = e.date instanceof Date ? e.date : new Date(e.date + "T12:00:00");
+      if (d.getMonth() === viewMonth && d.getFullYear() === viewYear) {
+        const day = d.getDate();
+        if (!map.has(day)) map.set(day, []);
+        map.get(day)!.push(e);
+      }
+    });
+    return map;
+  }, [events, viewMonth, viewYear]);
+
+  // Grid layout
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+    else setViewMonth(viewMonth - 1);
+    setSelectedDay(null);
+    onSelectEvent(null);
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+    else setViewMonth(viewMonth + 1);
+    setSelectedDay(null);
+    onSelectEvent(null);
+  };
+
+  const goToToday = () => {
+    setViewMonth(todayMonth);
+    setViewYear(todayYear);
+    setSelectedDay(null);
+    onSelectEvent(null);
+  };
+
+  const handleDayTap = (day: number) => {
+    const dayEvents = eventsByDay.get(day);
+    if (selectedDay === day) {
+      setSelectedDay(null);
+      onSelectEvent(null);
+    } else {
+      setSelectedDay(day);
+      onSelectEvent(dayEvents?.[0] ?? null);
+    }
+  };
+
+  // Events for selected day
+  const selectedDayEvents = selectedDay ? (eventsByDay.get(selectedDay) ?? []) : [];
+
+  return (
+    <div className="rounded-2xl mb-5 overflow-hidden" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: cardShadow }}>
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <button onClick={prevMonth} aria-label="Previous month" className="p-2 -ml-2 rounded-lg transition-colors" style={{ color: "var(--foreground-muted)" }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <button onClick={goToToday} className="text-center">
+          <p className="text-[15px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{monthLabel}</p>
+          {!isCurrentMonth && (
+            <p className="text-[10px] font-medium" style={{ color: "var(--terracotta)" }}>Back to today</p>
+          )}
+        </button>
+        <button onClick={nextMonth} aria-label="Next month" className="p-2 -mr-2 rounded-lg transition-colors" style={{ color: "var(--foreground-muted)" }}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 px-3">
+        {WEEKDAY_LABELS.map((d, i) => (
+          <div key={i} className="text-center py-1">
+            <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--foreground-faint)" }}>{d}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 px-3 pb-3">
+        {/* Empty cells for offset */}
+        {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square" />
+        ))}
+
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const isToday = isCurrentMonth && day === todayDay;
+          const dayEvents = eventsByDay.get(day);
+          const hasEvents = !!dayEvents && dayEvents.length > 0;
+          const isSelected = selectedDay === day;
+
+          // Get up to 3 category colors for dot indicators
+          const dotColors = hasEvents
+            ? [...new Set(dayEvents.map(e => CATEGORY_COLORS[e.category] || "var(--foreground-faint)"))].slice(0, 3)
+            : [];
+
+          return (
+            <button
+              key={day}
+              onClick={() => handleDayTap(day)}
+              className="aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative"
+              style={{
+                backgroundColor: isSelected
+                  ? "var(--terracotta)"
+                  : isToday
+                    ? "var(--terracotta-bg)"
+                    : "transparent",
+              }}
+            >
+              <span
+                className="text-[13px] font-medium"
+                style={{
+                  color: isSelected
+                    ? "var(--btn-primary-text)"
+                    : isToday
+                      ? "var(--terracotta)"
+                      : hasEvents
+                        ? "var(--foreground)"
+                        : "var(--foreground-muted)",
+                  fontWeight: isToday || hasEvents ? 600 : 400,
+                }}
+              >
+                {day}
+              </span>
+              {/* Event dots */}
+              {hasEvents && (
+                <div className="flex gap-[2px] mt-[1px]">
+                  {dotColors.map((color, di) => (
+                    <span
+                      key={di}
+                      className="w-[4px] h-[4px] rounded-full"
+                      style={{ backgroundColor: isSelected ? "var(--btn-primary-text)" : color, opacity: isSelected ? 0.8 : 1 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected day detail */}
+      {selectedDay !== null && selectedDayEvents.length > 0 && (
+        <div className="px-4 pb-4 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <p className="text-[10px] uppercase tracking-wider font-semibold pt-3" style={{ color: "var(--foreground-faint)" }}>
+            {new Date(viewYear, viewMonth, selectedDay).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          </p>
+          {selectedDayEvents.map((evt) => {
+            const isActive = selectedEvent?.id === evt.id;
+            const sym = CATEGORY_SYMBOLS[evt.category] || CATEGORY_SYMBOLS.moon;
+            return (
+              <div key={evt.id}>
+                <button
+                  onClick={() => onSelectEvent(isActive ? null : evt)}
+                  className="w-full text-left p-3 rounded-xl transition-all"
+                  style={{
+                    backgroundColor: isActive ? "var(--terracotta-bg)" : "var(--background-elevated)",
+                    border: isActive ? "1px solid var(--border-accent)" : "1px solid transparent",
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[14px]">{sym.icon}</span>
+                    <span className="text-[13px] font-semibold flex-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>{evt.name}</span>
+                    <svg aria-hidden="true" className={`w-3.5 h-3.5 transition-transform ${isActive ? "rotate-90" : ""}`} style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase" style={{ backgroundColor: "var(--tag-bg)", color: "var(--tag-text)" }}>
+                      {TRADITION_LABELS[evt.tradition] || evt.tradition}
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--foreground-faint)" }}>{evt.ritualHint.slice(0, 50)}{evt.ritualHint.length > 50 ? "..." : ""}</span>
+                  </div>
+                </button>
+
+                {/* Expanded event detail */}
+                {isActive && (
+                  <div className="px-3 pb-1 pt-2 space-y-3">
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{evt.description}</p>
+                    <div className="p-3 rounded-xl" style={{ backgroundColor: "var(--background-elevated)" }}>
+                      <p className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>What it symbolizes</p>
+                      <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{sym.meaning}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>Practice suggestion</p>
+                      <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{evt.ritualHint}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Selected day with no events */}
+      {selectedDay !== null && selectedDayEvents.length === 0 && (
+        <div className="px-4 pb-4 pt-3 text-center" style={{ borderTop: "1px solid var(--border)" }}>
+          <p className="text-[12px]" style={{ color: "var(--foreground-faint)" }}>
+            No celestial events on {new Date(viewYear, viewMonth, selectedDay).toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Ritual Card Component ──────────────────────────────────────────────────
 
@@ -158,8 +525,8 @@ function RitualDetailCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[14px]">{ELEMENT_ICONS[ritual.element] || "✨"}</span>
-              <h3 className="text-[14px] font-medium" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>{ritual.title}</h3>
+              <RitualIcon name={ritual.element} size={20} />
+              <h3 className="text-[14px] font-medium" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>{ritual.title}</h3>
             </div>
             <div className="flex items-center gap-2 text-[10px] flex-wrap">
               {(() => {
@@ -201,7 +568,7 @@ function RitualDetailCard({
               })()}
             </div>
           </div>
-          <svg className={`w-4 h-4 transition-transform shrink-0 mt-1 ${isExpanded ? "rotate-90" : ""}`}
+          <svg aria-hidden="true" className={`w-4 h-4 transition-transform shrink-0 mt-1 ${isExpanded ? "rotate-90" : ""}`}
                style={{ color: "var(--foreground-faint)" }}
                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -296,50 +663,37 @@ export default function RitualPageContent() {
   const energy = useMemo(() => getDailyEnergy(today), [today]);
   const events = useMemo(() => getCelestialEvents(today.getFullYear()), [today]);
 
+  // ── User location (profile → birth chart fallback) for real sun times ──
+  // Same pattern as AlmanacPageContent. Hook stays at the top — never
+  // conditional, never after an early return (Rules of Hooks).
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid || cancelled) return;
+        const cached = getCachedLocation(uid);
+        if (cached && !cancelled) setUserLocation(cached);
+        const fresh = await fetchUserLocation(uid);
+        if (fresh && !cancelled) setUserLocation(fresh);
+      } catch {
+        // signed out / offline — getTodaySky falls back to its defaults
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Almanac preview data
   const almanacGoodFor = useMemo(() => getGoodForToday(today), [today]);
-  const almanacSky = useMemo(() => getTodaySky(today), [today]);
+  const almanacSky = useMemo(
+    () => getTodaySky(today, userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null),
+    [today, userLocation]
+  );
   const almanacMoonSign = almanacSky.moonSign;
 
-  // ── Vibe Library: "Right Now" recommendation ──
-  const vibePhrase = useMemo(() => {
-    // Map moon sign to element for vibe filtering
-    const signElements: Record<string, string> = {
-      Aries: "fire", Taurus: "earth", Gemini: "air", Cancer: "water",
-      Leo: "fire", Virgo: "earth", Libra: "air", Scorpio: "water",
-      Sagittarius: "fire", Capricorn: "earth", Aquarius: "air", Pisces: "water",
-    };
-    // Map day of week to planetary tag
-    const dayTags = ["solar", "lunar", "martian", "mercurial", "jupiterian", "venusian", "saturnian"];
-    const planetaryTag = dayTags[today.getDay()];
-    const elementTag = signElements[almanacMoonSign] || undefined;
-
-    // Exclude IDs shown in the last 30 days (stored in localStorage)
-    let recentIds: string[] = [];
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("mapped:vibe-recent");
-        if (stored) recentIds = JSON.parse(stored);
-      } catch { /* ignore */ }
-    }
-
-    return getVibeRecommendation(planetaryTag, elementTag, undefined, recentIds);
-  }, [today, almanacMoonSign]);
-
-  // Track shown vibe phrase
-  useEffect(() => {
-    if (!vibePhrase || typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem("mapped:vibe-recent");
-      const recent: string[] = stored ? JSON.parse(stored) : [];
-      if (!recent.includes(vibePhrase.id)) {
-        recent.push(vibePhrase.id);
-        // Keep last 30 days worth (max ~30 entries)
-        const trimmed = recent.slice(-30);
-        localStorage.setItem("mapped:vibe-recent", JSON.stringify(trimmed));
-      }
-    } catch { /* ignore */ }
-  }, [vibePhrase]);
 
   const [ritualModPrefs] = useState<ModalityPrefs>(loadRitualPrefs);
   const [chartInfo, setChartInfo] = useState<{ sunSign?: string; moonSign?: string; risingSign?: string }>({});
@@ -360,17 +714,14 @@ export default function RitualPageContent() {
   }, []);
 
   // Catalog state
-  const [selectedCategory, setSelectedCategory] = useState<RitualCategory | null>(null);
   const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<RitualCategory | null>(null);
   const [expandedCatalogRitual, setExpandedCatalogRitual] = useState<string | null>(null);
-
-  // Pagination + search state
   const [catalogPage, setCatalogPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const ITEMS_PER_PAGE = 8;
 
-  // Calendar
-  const [showAllEvents, setShowAllEvents] = useState(false);
+  // Calendar (interactive month view at top)
   const [selectedEvent, setSelectedEvent] = useState<CelestialEvent | null>(null);
 
   // Completion check-in state
@@ -381,6 +732,9 @@ export default function RitualPageContent() {
 
   // Moon event overlay (full/new moon detail screen)
   const [showMoonEvent, setShowMoonEvent] = useState(false);
+
+  // Customize tools popup
+  const [showCustomize, setShowCustomize] = useState(false);
 
   const handleRitualComplete = (ritualId: string, ritualTitle: string) => {
     setShowCheckin({ ritualId, ritualTitle });
@@ -540,11 +894,11 @@ export default function RitualPageContent() {
   }, [energy.moonPhase.phase, toolFilteredCatalog, dailySuggestion.id]);
 
   // Filtered catalog rituals (category + tools + search)
+  // Filtered + paginated rituals for Browse section
   const filteredRituals = useMemo(() => {
     let pool = selectedCategory
       ? toolFilteredCatalog.filter((r) => r.category === selectedCategory)
       : toolFilteredCatalog;
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       pool = pool.filter(
@@ -559,308 +913,170 @@ export default function RitualPageContent() {
     return pool;
   }, [selectedCategory, toolFilteredCatalog, searchQuery]);
 
-  // Paginated rituals
   const totalPages = Math.ceil(filteredRituals.length / ITEMS_PER_PAGE);
   const paginatedRituals = useMemo(
     () => filteredRituals.slice(catalogPage * ITEMS_PER_PAGE, (catalogPage + 1) * ITEMS_PER_PAGE),
     [filteredRituals, catalogPage]
   );
 
-  // Reset page when filters change
   useEffect(() => { setCatalogPage(0); }, [selectedCategory, searchQuery]);
 
-  // Upcoming events (next 30 days)
-  const upcomingEvents = useMemo(() => {
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 30);
-    return events.filter((e) => e.date >= today && e.date <= endDate).slice(0, showAllEvents ? 30 : 5);
-  }, [events, today, showAllEvents]);
+  // Practice streak (consecutive days with completions)
+  const practiceStreak = useMemo(() => {
+    try {
+      const all = JSON.parse(localStorage.getItem("mapped:completions") || "[]") as { date?: string }[];
+      if (all.length === 0) return 0;
+      const dates = new Set(all.map(c => c.date || "").filter(Boolean));
+      let streak = 0;
+      const d = new Date(today);
+      // Check today or yesterday as starting point
+      const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (!dates.has(todayKey)) {
+        d.setDate(d.getDate() - 1);
+      }
+      while (true) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (dates.has(key)) { streak++; d.setDate(d.getDate() - 1); }
+        else break;
+      }
+      return streak;
+    } catch { return 0; }
+  }, [today]);
 
   const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   const cardShadow = "var(--card-shadow)";
 
+  // Context line: "TUESDAY · WAXING LIBRA MOON"
+  const contextLine = useMemo(() => {
+    const weekday = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+    // Compact moon label: "WAXING LIBRA MOON"
+    const phaseWord = energy.moonPhase.label.split(" ")[0].toUpperCase(); // "Waxing" from "Waxing Gibbous"
+    const moonSign = almanacMoonSign.toUpperCase();
+    return `${weekday} · ${phaseWord} ${moonSign} MOON`;
+  }, [today, energy.moonPhase.label, almanacMoonSign]);
+
+  // Calendar expanded state
+  const [showCalendar, setShowCalendar] = useState(false);
+
   return (
-    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full pb-28 px-5">
+    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full pb-6 px-5">
 
-      {/* ═══ HEADER ═══ */}
-      <div className="pt-6 pb-4">
-        <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-1" style={{ color: "var(--foreground-muted)" }}>
-          {dateStr}
+      {/* ═══ DATE CONTEXT LINE + CUSTOMIZE ═══ */}
+      <div className="pt-5" />
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[10px] uppercase tracking-[0.15em] font-semibold" style={{ color: "var(--foreground-muted)" }}>
+          {contextLine}
         </p>
-        <div className="flex items-end justify-between">
-          <h1 className="text-[28px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-            Ritual
-          </h1>
-          <Link
-            href="/account#ritual-tools"
-            className="text-[11px] font-medium pb-1 transition-colors"
-            style={{ color: "var(--foreground-faint)" }}
-          >
-            Customize
-          </Link>
-        </div>
+        <button
+          onClick={() => setShowCustomize(true)}
+          className="text-[11px] font-medium transition-colors"
+          style={{ color: "var(--foreground-faint)" }}
+        >
+          Customize
+        </button>
       </div>
 
-      {/* ═══ TONIGHT'S MOON ═══ */}
-      <div className="rounded-2xl p-5 mb-5 relative overflow-hidden" style={{
-        background: "var(--moon-card-bg)",
-      }}>
-        {/* Moon image floating top-right */}
-        <div className="absolute top-4 right-4">
-          <Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} width={56} height={56} className="object-contain" />
-        </div>
-
-        <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--foreground-secondary)" }}>
-          Tonight&apos;s Moon
-        </p>
-        <h2 className="text-[22px] font-bold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-          {energy.moonPhase.label}
-        </h2>
-        <p className="text-[14px] leading-relaxed pr-14 mb-4" style={{ color: "var(--foreground-secondary)" }}>
-          {energy.moonPhase.energy}
-        </p>
-
-        {/* Nested moon ritual card */}
-        {moonRitual && (
-          <button
-            onClick={() => {
-              const phase = energy.moonPhase.phase;
-              if (phase === "full" || phase === "new") {
-                // On full/new moon days, open the full moon detail screen
-                setShowMoonEvent(true);
-              } else {
-                // Other phases: expand ritual inline
-                setExpandedRitual(expandedRitual === moonRitual.id ? null : moonRitual.id);
-              }
-            }}
-            className="w-full rounded-xl p-4 flex items-center justify-between active:scale-[0.98] transition-all"
-            style={{
-              backgroundColor: "var(--moon-card-inner)",
-            }}
-          >
-            <div>
-              <p className="text-[15px] font-semibold text-left" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
-                {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new")
-                  ? `Learn about tonight's ${energy.moonPhase.label}`
-                  : moonRitual.title}
-              </p>
-              <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new")
-                  ? "Lore, correspondences & ritual"
-                  : `${moonRitual.duration || "5 min"} · ${(() => {
-                      const r = moonRitual as CatalogRitual;
-                      return r.tier === 0 ? "No tools" : r.tier === 1 ? "Household" : r.tier === 2 ? "Crystals" : "Full Practice";
-                    })()}`}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ml-3" style={{ backgroundColor: "var(--terracotta)" }}>
-              {(energy.moonPhase.phase === "full" || energy.moonPhase.phase === "new") ? (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 ml-0.5" fill="white" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* Expanded moon ritual detail (shows below card when tapped) */}
-      {moonRitual && expandedRitual === moonRitual.id && (
-        <div className="mb-5 -mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
-          <RitualDetailCard
-            ritual={moonRitual}
-            isExpanded={true}
-            onToggle={() => setExpandedRitual(null)}
-            onComplete={handleRitualComplete}
-            variant="default"
-          />
-        </div>
-      )}
-
-      {/* ═══ RIGHT NOW — Vibe Library recommendation ═══ */}
-      {vibePhrase && (
-        <div className="rounded-2xl p-5 mb-5" style={{
-          backgroundColor: "var(--background-card)",
-          boxShadow: cardShadow,
-        }}>
-          <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: "var(--foreground-muted)" }}>
-            Right Now
-          </p>
-          <p className={`leading-relaxed ${vibePhrase.type === "standalone" ? "text-[16px] italic" : "text-[15px]"}`} style={{
-            fontFamily: "var(--font-heading)",
-            color: "var(--foreground)",
-          }}>
-            {vibePhrase.type === "paired" ? (
-              <>
-                {vibePhrase.phrase.split(", less ").length === 2 ? (
-                  <>
-                    <span style={{ color: "var(--terracotta)" }}>{vibePhrase.phrase.split(", less ")[0]}</span>
-                    <span style={{ color: "var(--foreground-muted)" }}>, less {vibePhrase.phrase.split(", less ")[1]}</span>
-                  </>
-                ) : vibePhrase.phrase}
-              </>
-            ) : (
-              vibePhrase.phrase
-            )}
-          </p>
-        </div>
-      )}
-
-      {/* ═══ ACTIVE RITUAL (pinned multi-day practice) ═══ */}
+      {/* ═══ ACTIVE RITUAL (pinned multi-day practice — shown above today's ritual when active) ═══ */}
       {activeRitual && (() => {
         const ritual = RITUAL_CATALOG.find(r => r.id === activeRitual.id);
         if (!ritual) return null;
         return (
-          <div className="rounded-2xl p-5 mb-5" style={{
-            backgroundColor: "var(--background-card)",
-            border: "2px solid var(--terracotta)",
-            boxShadow: cardShadow,
-          }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px]" style={{
-                backgroundColor: "var(--icon-thumb-love)",
-              }}>
-                {ELEMENT_ICONS[ritual.element] || "✨"}
+          <>
+            <div className="rounded-2xl p-5 mb-4" style={{
+              backgroundColor: "var(--background-card)",
+              border: "2px solid var(--terracotta)",
+              boxShadow: cardShadow,
+            }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "var(--icon-thumb-love)" }}>
+                  <RitualIcon name={ritual.element} size={28} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--terracotta)" }}>
+                    Your Active Practice — Day {activeRitual.dayNumber}
+                  </p>
+                  <h2 className="text-[18px] font-bold" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+                    {ritual.title}
+                  </h2>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--terracotta)" }}>
-                  Your Active Practice — Day {activeRitual.dayNumber}
-                </p>
-                <h2 className="text-[18px] font-bold" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
-                  {ritual.title}
-                </h2>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setExpandedRitual(expandedRitual === ritual.id ? null : ritual.id)}
+                  className="flex-1 py-3 rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+                >
+                  Continue today
+                </button>
+                <button
+                  onClick={clearActiveRitual}
+                  className="px-4 py-3 rounded-xl text-[13px] font-medium transition-colors"
+                  style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
+                >
+                  Done
+                </button>
               </div>
             </div>
-
-            {ritual.afterInstructions && (
-              <p className="text-[13px] leading-relaxed mb-4 italic" style={{ color: "var(--foreground-secondary)" }}>
-                {ritual.afterInstructions}
-              </p>
+            {expandedRitual === activeRitual.id && (
+              <div className="mb-4 -mt-1 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+                <RitualDetailCard
+                  ritual={ritual}
+                  isExpanded={true}
+                  onToggle={() => setExpandedRitual(null)}
+                  onComplete={handleRitualComplete}
+                  variant="featured"
+                />
+              </div>
             )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setExpandedRitual(expandedRitual === ritual.id ? null : ritual.id)}
-                className="flex-1 py-3 rounded-xl text-[14px] font-semibold transition-all active:scale-[0.98]"
-                style={{ fontFamily: "var(--font-heading)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-              >
-                Continue today
-              </button>
-              <button
-                onClick={clearActiveRitual}
-                className="px-4 py-3 rounded-xl text-[13px] font-medium transition-colors"
-                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
-              >
-                Done
-              </button>
-            </div>
-          </div>
+          </>
         );
       })()}
 
-      {/* Expanded active ritual detail */}
-      {activeRitual && expandedRitual === activeRitual.id && (
-        <div className="mb-5 -mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
-          <RitualDetailCard
-            ritual={RITUAL_CATALOG.find(r => r.id === activeRitual.id)!}
-            isExpanded={true}
-            onToggle={() => setExpandedRitual(null)}
-            onComplete={handleRitualComplete}
-            variant="featured"
-          />
-        </div>
-      )}
-
-      {/* ═══ TODAY'S RITUAL ═══ */}
-      <div className="rounded-2xl p-5 mb-5" style={{
-        backgroundColor: "var(--background-card)",
-        border: "1px solid var(--border-card)",
-        boxShadow: cardShadow,
-      }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px]" style={{
-            backgroundColor: "var(--icon-thumb-love)",
-          }}>
-            {ELEMENT_ICONS[dailySuggestion.element] || "✨"}
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--terracotta)" }}>
-              Today&apos;s Ritual
-            </p>
-            <h2 className="text-[18px] font-bold" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
-              {dailySuggestion.title}
-            </h2>
-          </div>
+      {/* ═══ TODAY'S RITUAL (Editorial hero — no card border) ═══ */}
+      <div className="mb-6">
+        {/* Element icon */}
+        <div className="mb-3">
+          <RitualIcon name={dailySuggestion.element} size={64} />
         </div>
 
-        {/* Tags row */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-medium" style={{
-            backgroundColor: "var(--tag-bg)",
-            color: "var(--tag-text)",
-          }}>
-            {MOOD_LABELS[dailySuggestion.mood] || dailySuggestion.mood}
-          </span>
-          {(() => {
-            const tierLabel = dailySuggestion.tier === 0 ? "No tools" : dailySuggestion.tier === 1 ? "Household" : dailySuggestion.tier === 2 ? "Crystals" : dailySuggestion.tier === 3 ? "Full Practice" : "Advanced";
-            return (
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-medium" style={{
-                backgroundColor: "var(--tag-green-bg)",
-                color: "var(--tag-green-text)",
-              }}>
-                {tierLabel}
-              </span>
-            );
-          })()}
-          {dailySuggestion.duration && (
-            <span className="text-[11px]" style={{ color: "var(--foreground-muted)" }}>
-              {dailySuggestion.duration}
-            </span>
-          )}
-        </div>
+        {/* Title — large editorial heading */}
+        <h2 className="text-[32px] font-semibold mb-3 leading-[1.15]" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+          {dailySuggestion.title}
+        </h2>
 
-        <p className="text-[14px] leading-relaxed mb-5" style={{ color: "var(--foreground-secondary)" }}>
-          {dailySuggestion.description}
+        {/* Subtitle line: duration · tier */}
+        <p className="text-[15px] mb-5" style={{ color: "var(--foreground-muted)" }}>
+          {dailySuggestion.duration || "5 min"} · {dailySuggestion.tier === 0 ? "No tools" : dailySuggestion.tier === 1 ? "Household" : dailySuggestion.tier === 2 ? "Crystals" : dailySuggestion.tier === 3 ? "Full Practice" : "Advanced"}
         </p>
 
-        {/* Action buttons */}
+        {/* Tagline — short italic description */}
+        <p className="text-[17px] leading-relaxed mb-8 italic opacity-70" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+          {dailySuggestion.description.split(".")[0]}.
+        </p>
+
+        {/* Begin button */}
         <button
           onClick={() => setExpandedRitual(expandedRitual === dailySuggestion.id ? null : dailySuggestion.id)}
-          className="w-full py-3.5 rounded-xl text-[15px] font-semibold transition-all active:scale-[0.98]"
-          style={{ fontFamily: "var(--font-heading)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+          className="w-full py-4 rounded-2xl text-[15px] font-bold uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
+          style={{ letterSpacing: "0.15em", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
         >
-          Begin ritual
+          Begin
         </button>
 
-        {/* Make this my practice (for multi-day rituals) */}
-        {dailySuggestion.afterInstructions && dailySuggestion.afterInstructions.match(/day|week|daily|repeat|morning|night/i) && !activeRitual && (
-          <button
-            onClick={() => startActiveRitual(dailySuggestion.id)}
-            className="w-full py-2.5 mt-2 text-[13px] font-medium transition-colors"
-            style={{ color: "var(--terracotta)" }}
-          >
-            Make this my daily practice
-          </button>
-        )}
-
-        {/* Not feeling this */}
+        {/* Something else */}
         <button
           onClick={() => setShowRefresh(true)}
-          className="w-full py-2.5 mt-2 text-[13px] font-medium transition-colors"
+          className="w-full py-3 mt-1 text-[14px] font-medium transition-colors"
           style={{ color: "var(--foreground-faint)" }}
         >
-          Not feeling this?
+          Something else
         </button>
       </div>
 
       {/* Expanded today's ritual detail */}
       {expandedRitual === dailySuggestion.id && (
-        <div className="mb-5 -mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+        <div className="mb-4 -mt-3 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
           <RitualDetailCard
             ritual={dailySuggestion}
             isExpanded={true}
@@ -871,24 +1087,111 @@ export default function RitualPageContent() {
         </div>
       )}
 
-      {/* ═══ ALMANAC PREVIEW ═══ */}
-      <Link href="/almanac" className="block rounded-2xl p-5 mb-5 overflow-hidden active:scale-[0.98] transition-all" style={{ backgroundColor: "var(--sage-bg)", border: "1px solid var(--border-card)", boxShadow: cardShadow }}>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--tag-green-text)" }}>
+      {/* ═══ DAY ROW ═══ */}
+      <div className="flex items-center justify-between mb-5 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+        <span className="text-[14px] font-medium" style={{ color: "var(--foreground-muted)" }}>
+          {practiceStreak > 0 ? `Day ${practiceStreak}` : "Start your streak"}
+        </span>
+      </div>
+
+      {/* ═══ TWO SIDE-BY-SIDE CARDS: Moon + Calendar ═══ */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Tonight's Moon (compact) */}
+        <button
+          onClick={() => {
+            const phase = energy.moonPhase.phase;
+            if (phase === "full" || phase === "new") {
+              setShowMoonEvent(true);
+            } else if (moonRitual) {
+              setExpandedRitual(expandedRitual === moonRitual.id ? null : moonRitual.id);
+            }
+          }}
+          className="rounded-2xl p-4 text-left relative overflow-hidden active:scale-[0.97] transition-all"
+          style={{ backgroundColor: "var(--moon-card-bg)", border: "1px solid var(--border-card)", boxShadow: cardShadow }}
+        >
+          <div className="absolute top-3 right-3">
+            <Image src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} width={40} height={40} className="object-contain opacity-80" />
+          </div>
+          <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5 pr-10" style={{ color: "var(--foreground-secondary)" }}>
+            Tonight&apos;s Moon
+          </p>
+          <h3 className="text-[17px] font-bold leading-tight mb-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+            {energy.moonPhase.label}
+          </h3>
+          <p className="text-[11px] leading-snug" style={{ color: "var(--foreground-muted)" }}>
+            {energy.moonPhase.energy.split(".")[0]}.
+          </p>
+        </button>
+
+        {/* Ritual Calendar card */}
+        <button
+          onClick={() => setShowCalendar(!showCalendar)}
+          className="rounded-2xl p-4 text-left active:scale-[0.97] transition-all"
+          style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: cardShadow }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-2" style={{ color: "var(--terracotta)" }}>
+            Ritual Calendar
+          </p>
+          <div className="flex items-baseline gap-1 mb-1.5">
+            <span className="text-[32px] font-bold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+              {today.getDate()}
+            </span>
+            <span className="text-[15px] font-medium" style={{ color: "var(--foreground-muted)" }}>
+              {today.toLocaleDateString("en-US", { month: "short" })}
+            </span>
+          </div>
+          {practiceStreak > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <span className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: "var(--terracotta)" }} />
+              <span className="text-[11px] font-medium" style={{ color: "var(--foreground-muted)" }}>
+                {practiceStreak} day streak
+              </span>
+            </div>
+          ) : (
+            <p className="text-[11px]" style={{ color: "var(--foreground-faint)" }}>
+              Start your streak
+            </p>
+          )}
+        </button>
+      </div>
+
+      {/* Expanded moon ritual */}
+      {moonRitual && expandedRitual === moonRitual.id && (
+        <div className="mb-4 -mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+          <RitualDetailCard
+            ritual={moonRitual}
+            isExpanded={true}
+            onToggle={() => setExpandedRitual(null)}
+            onComplete={handleRitualComplete}
+            variant="default"
+          />
+        </div>
+      )}
+
+      {/* Event calendar (expands from Browse all) */}
+      {showCalendar && (
+        <EventCalendar
+          events={events}
+          todayDate={today}
+          onSelectEvent={setSelectedEvent}
+          selectedEvent={selectedEvent}
+          cardShadow={cardShadow}
+        />
+      )}
+
+      {/* ═══ TODAY'S ALMANAC ═══ */}
+      <Link href="/almanac" className="block rounded-2xl p-4 mb-4 overflow-hidden active:scale-[0.98] transition-all" style={{ backgroundColor: "var(--sage-bg)", border: "1px solid var(--border-card)", boxShadow: cardShadow }}>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] uppercase tracking-[0.12em] font-bold" style={{ color: "var(--tag-green-text)" }}>
             🌾 Today&apos;s Almanac
           </p>
           <span className="text-[11px] font-semibold" style={{ color: "var(--sage)" }}>
-            View full almanac →
+            View full →
           </span>
         </div>
 
-        <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--foreground)" }}>
-          Moon in {almanacMoonSign} · {energy.moonPhase.label}
-        </p>
-
-        {/* Top 3 good-for items */}
-        <div className="flex flex-col gap-1.5 mb-3">
-          {almanacGoodFor.activities.slice(0, 3).map((item, i) => (
+        <div className="flex flex-col gap-1.5">
+          {almanacGoodFor.activities.slice(0, 2).map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="text-[12px] font-semibold" style={{ color: "var(--sage)" }}>✓</span>
               <span className="text-[12px]" style={{ color: "var(--foreground-secondary)" }}>
@@ -897,20 +1200,15 @@ export default function RitualPageContent() {
             </div>
           ))}
         </div>
-
-        <p className="text-[10px] leading-relaxed italic" style={{ color: "var(--foreground-faint)" }}>
-          &ldquo;{energy.moonPhase.almanac.folkWisdom}&rdquo;
-        </p>
       </Link>
-
-      {/* ═══ BROWSE RITUALS ═══ */}
+      {/* ═══ BROWSE ALL RITUALS ═══ */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[12px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--foreground-muted)" }}>
-            Browse Rituals
+          <h2 className="text-[13px] uppercase tracking-[0.12em] font-bold" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+            Browse All Rituals
           </h2>
-          <span className="text-[11px] ml-auto" style={{ color: "var(--foreground-faint)" }}>
-            {filteredRituals.length} available
+          <span className="text-[12px] font-medium" style={{ color: "var(--foreground-muted)" }}>
+            {filteredRituals.length}
           </span>
         </div>
 
@@ -921,7 +1219,7 @@ export default function RitualPageContent() {
             className="shrink-0 px-4 py-2.5 rounded-full text-[11px] font-semibold transition-all"
             style={{
               backgroundColor: selectedCategory === null ? "var(--terracotta)" : "var(--background-card)",
-              color: selectedCategory === null ? "var(--btn-primary-text, #fff)" : "var(--foreground-muted)",
+              color: selectedCategory === null ? "var(--btn-primary-text)" : "var(--foreground-muted)",
               boxShadow: selectedCategory === null ? "0 2px 8px rgba(196,149,106,0.3)" : cardShadow,
             }}
           >
@@ -934,11 +1232,11 @@ export default function RitualPageContent() {
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[11px] font-semibold transition-all"
               style={{
                 backgroundColor: selectedCategory === cat.key ? "var(--terracotta)" : "var(--background-card)",
-                color: selectedCategory === cat.key ? "var(--btn-primary-text, #fff)" : "var(--foreground-muted)",
+                color: selectedCategory === cat.key ? "var(--btn-primary-text)" : "var(--foreground-muted)",
                 boxShadow: selectedCategory === cat.key ? "0 2px 8px rgba(196,149,106,0.3)" : cardShadow,
               }}
             >
-              <span className="text-[13px]">{cat.icon}</span>
+              <RitualIcon name={cat.key} size={16} />
               {cat.label}
             </button>
           ))}
@@ -947,7 +1245,7 @@ export default function RitualPageContent() {
         {/* Search bar */}
         <div className="mb-4">
           <div className="relative">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
             </svg>
@@ -956,6 +1254,7 @@ export default function RitualPageContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search rituals..."
+              aria-label="Search rituals"
               className="w-full pl-10 pr-4 py-3 rounded-2xl text-[13px] focus:outline-none transition-all"
               style={{
                 backgroundColor: "var(--background-card)",
@@ -967,10 +1266,11 @@ export default function RitualPageContent() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "var(--background-elevated)", color: "var(--foreground-muted)" }}
+                aria-label="Clear search"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                style={{ color: "var(--foreground-muted)" }}
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg aria-hidden="true" className="w-5 h-5 rounded-full p-0.5" style={{ backgroundColor: "var(--background-elevated)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -1043,29 +1343,6 @@ export default function RitualPageContent() {
         )}
       </div>
 
-      {/* ═══ CELESTIAL CALENDAR ═══ */}
-      <div className="mb-5">
-        <h2 className="text-[12px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: "var(--foreground-muted)" }}>
-          Celestial Calendar
-        </h2>
-
-        <div className="rounded-2xl px-4 py-2 overflow-hidden" style={{ backgroundColor: "var(--background-card)", boxShadow: cardShadow }}>
-          {upcomingEvents.map((event) => (
-            <EventCard key={event.id} event={event} isToday={event.date.toISOString().slice(0, 10) === todayStr} onTap={() => setSelectedEvent(event)} />
-          ))}
-
-          {!showAllEvents && upcomingEvents.length >= 5 && (
-            <button
-              onClick={() => setShowAllEvents(true)}
-              className="w-full py-3.5 text-[12px] font-semibold transition-colors"
-              style={{ color: "var(--terracotta)" }}
-            >
-              Show more events ↓
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* ═══ MODALS ═══ */}
 
       {/* Post-ritual completion check-in */}
@@ -1080,95 +1357,6 @@ export default function RitualPageContent() {
         />
       )}
 
-      {/* Celestial event detail pop-up */}
-      {selectedEvent && (() => {
-        const evDate = selectedEvent.date instanceof Date ? selectedEvent.date : new Date(selectedEvent.date + "T12:00:00");
-        const sym = CATEGORY_SYMBOLS[selectedEvent.category] || CATEGORY_SYMBOLS.moon;
-        const matchedRitual = RITUAL_CATALOG.find(
-          (r) =>
-            (selectedEvent.element && r.element === selectedEvent.element) ||
-            (selectedEvent.category === "moon" && r.bestPhases.includes(energy.moonPhase.phase) && r.id !== "time-new-moon-intention" && r.id !== "time-full-moon-release")
-        );
-        return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm"
-               style={{ backgroundColor: "var(--modal-overlay)" }}>
-            <div className="rounded-t-3xl sm:rounded-3xl p-5 pb-8 mx-0 sm:mx-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
-                 style={{ backgroundColor: "var(--modal-bg)" }}>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--foreground-faint)" }}>
-                  {evDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-                </span>
-                <button onClick={() => setSelectedEvent(null)} className="text-[12px] transition-colors" style={{ color: "var(--foreground-faint)" }}>
-                  Close
-                </button>
-              </div>
-
-              {/* Event name + icon */}
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-[32px]">{sym.icon}</span>
-                <div>
-                  <h3 className="text-[17px] font-medium" style={{ color: "var(--foreground)" }}>{selectedEvent.name}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase"
-                          style={{ backgroundColor: "var(--tag-bg)", color: "var(--tag-text)" }}>
-                      {TRADITION_LABELS[selectedEvent.tradition] || selectedEvent.tradition}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase"
-                          style={{ backgroundColor: "var(--tag-bg)", color: "var(--tag-text)" }}>
-                      {selectedEvent.category}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description / History */}
-              <div className="mb-4">
-                <p className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>About this day</p>
-                <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{selectedEvent.description}</p>
-              </div>
-
-              {/* Symbolism */}
-              <div className="mb-4 p-3 rounded-xl" style={{ backgroundColor: "var(--background-elevated)" }}>
-                <p className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>What it symbolizes</p>
-                <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{sym.meaning}</p>
-              </div>
-
-              {/* Ritual hint */}
-              <div className="mb-4">
-                <p className="text-[9px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>Practice suggestion</p>
-                <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{selectedEvent.ritualHint}</p>
-              </div>
-
-              {/* Matched ritual */}
-              {matchedRitual && (
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider font-semibold mb-2" style={{ color: "var(--foreground-faint)" }}>Ritual for this day</p>
-                  <button
-                    onClick={() => {
-                      setSelectedEvent(null);
-                      setExpandedCatalogRitual(matchedRitual.id);
-                    }}
-                    className="w-full text-left p-3 rounded-xl active:scale-[0.98] transition-all"
-                    style={{ backgroundColor: "var(--terracotta-bg)", border: "1px solid var(--border-accent)" }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[13px]">{ELEMENT_ICONS[matchedRitual.element] || "✨"}</span>
-                      <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{matchedRitual.title}</span>
-                    </div>
-                    <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: "var(--foreground-muted)" }}>{matchedRitual.description}</p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[10px]">
-                      <span style={{ color: "var(--foreground-faint)" }}>{matchedRitual.duration}</span>
-                      <span className="font-medium" style={{ color: "var(--terracotta)" }}>Tap to view →</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Refresh mode — "Not Feeling This?" */}
       {showRefresh && (
         <RefreshModal
@@ -1178,6 +1366,11 @@ export default function RitualPageContent() {
           }}
           onClose={() => setShowRefresh(false)}
         />
+      )}
+
+      {/* Customize ritual tools popup */}
+      {showCustomize && (
+        <RitualToolsPopup onClose={() => setShowCustomize(false)} />
       )}
 
       {/* Moon event detail screen (full/new moon days) */}

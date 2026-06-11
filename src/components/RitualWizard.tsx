@@ -86,6 +86,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Load chart context on mount
   useEffect(() => {
@@ -115,6 +116,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             // Fetch transits
             try {
               const today = new Date().toISOString().split("T")[0];
+              // Dynamic import to match the supabase pattern above (userLocation imports supabase)
+              const { getCachedLocation, fetchUserLocation } = await import("@/lib/userLocation");
+              const loc = getCachedLocation(session.user.id) ?? (await fetchUserLocation(session.user.id));
               const res = await fetch("/api/transits", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -122,8 +126,8 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
                   natalPlanets: chartData.planets || [],
                   natalHouses: chartData.houses || [],
                   transitDate: today,
-                  latitude: chartData.latitude || 30.27,
-                  longitude: chartData.longitude || -97.74,
+                  latitude: chartData.latitude ?? loc?.lat,
+                  longitude: chartData.longitude ?? loc?.lng,
                   zodiacSystem: chartData.zodiac_system || "tropical",
                 }),
               });
@@ -158,6 +162,29 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [step]);
+
+  // Focus trap for wizard overlay
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [step, onClose]);
 
   // ─── Generate ritual ──────────────────────────────────────────────────
 
@@ -310,9 +337,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
           </svg>
         </div>
-        <span className="text-foreground/25 text-[10px] uppercase tracking-widest">Wizard</span>
+        <span className="text-muted text-[10px] uppercase tracking-widest">Wizard</span>
       </div>
-      <p className="text-foreground/70 text-[14px] leading-relaxed pl-7">{text}</p>
+      <p className="text-secondary text-[14px] leading-relaxed pl-7">{text}</p>
     </div>
   );
 
@@ -328,7 +355,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       className={`w-full text-left px-4 py-3 rounded-xl border text-[13px] transition-all active:scale-[0.98] ${
         selected
           ? "bg-terracotta/10 border-terracotta/25 text-foreground"
-          : "bg-card/40 border-foreground/12 text-foreground/60 hover:border-foreground/20"
+          : "bg-card/40 border-foreground/12 text-secondary hover:border-foreground/20"
       }`}
     >
       {icon && <span className="mr-2">{icon}</span>}
@@ -341,7 +368,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       onClick={onClick}
       disabled={disabled}
       className="mt-4 w-full py-3 rounded-xl text-[13px] font-medium transition-all active:scale-[0.98] disabled:opacity-30"
-      style={{ backgroundColor: "var(--terracotta)", color: "#F2E8D5" }}
+      style={{ backgroundColor: "var(--terracotta)", color: "var(--btn-primary-text)" }}
     >
       Next
     </button>
@@ -351,10 +378,10 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   if (step === "onboarding") {
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
         {/* Back button */}
-        <button onClick={onClose} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button onClick={onClose} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -369,22 +396,20 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           </div>
 
           <h2 className="text-foreground text-xl mb-2" style={{ fontFamily: "var(--font-display)" }}>
-            The wizard knows things.
+            Build your ritual
           </h2>
 
-          <p className="text-foreground/45 text-[13px] leading-relaxed text-center max-w-[300px] mb-2">
-            Pick what you need, what you&apos;ve got on hand, and how much time — she&apos;ll write you something real.
+          <p className="text-muted text-[13px] leading-relaxed text-center max-w-[300px] mb-2">
+            Tell us what you&apos;re working on, what you have on hand, and how much time you&apos;ve got. We&apos;ll put together a ritual that fits.
           </p>
-          <p className="text-foreground/35 text-[12px] leading-relaxed text-center max-w-[280px] mb-8">
-            The moon and the day pick the materials. You pick the goal.
+          <p className="text-muted text-[12px] leading-relaxed text-center max-w-[280px] mb-8">
+            Timed to today&apos;s moon and your chart.
           </p>
-
-          <p className="text-foreground/25 text-[11px] italic mb-8">No two rituals are the same.</p>
 
           <button
             onClick={() => setStep("q1_intent")}
             className="px-8 py-3.5 rounded-xl text-[14px] font-medium transition-all active:scale-[0.97]"
-            style={{ backgroundColor: "var(--terracotta)", color: "#F2E8D5" }}
+            style={{ backgroundColor: "var(--terracotta)", color: "var(--btn-primary-text)" }}
           >
             Start
           </button>
@@ -412,9 +437,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   if (step === "q1_intent") {
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={onClose} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — choose your intention" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={onClose} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -431,7 +456,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
                 className={`flex flex-col items-center gap-1.5 py-3.5 rounded-xl border text-[12px] transition-all active:scale-[0.97] ${
                   intention === opt.id
                     ? "bg-terracotta/10 border-terracotta/25 text-foreground"
-                    : "bg-card/40 border-foreground/12 text-foreground/55 hover:border-foreground/20"
+                    : "bg-card/40 border-foreground/12 text-secondary hover:border-foreground/20"
                 }`}
               >
                 <span className="text-[20px]">{opt.icon}</span>
@@ -453,9 +478,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   if (step === "q2_body") {
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={() => setStep("q1_intent")} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — body or mind" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={() => setStep("q1_intent")} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -492,9 +517,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     ];
 
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={() => setStep("q2_body")} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — choose your tools" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={() => setStep("q2_body")} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -519,7 +544,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
                 className={`w-full text-left px-4 py-2.5 rounded-xl border text-[13px] transition-all active:scale-[0.98] flex items-center gap-2 ${
                   selected
                     ? "bg-terracotta/10 border-terracotta/25 text-foreground"
-                    : "bg-card/40 border-foreground/12 text-foreground/60 hover:border-foreground/20"
+                    : "bg-card/40 border-foreground/12 text-secondary hover:border-foreground/20"
                 }`}
               >
                 <span>{opt.icon}</span>
@@ -548,9 +573,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     ];
 
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={() => setStep("q3_tools")} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — choose time" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={() => setStep("q3_tools")} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -583,9 +608,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     ];
 
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={() => setStep("q4_time")} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — choose timing" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={() => setStep("q4_time")} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -604,7 +629,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             }}
             disabled={!timing || !bodyLevel || minutes === null || !intention.trim()}
             className="mt-4 w-full py-3.5 rounded-xl text-[14px] font-medium transition-all active:scale-[0.97] disabled:opacity-30"
-            style={{ backgroundColor: "var(--terracotta)", color: "#F2E8D5" }}
+            style={{ backgroundColor: "var(--terracotta)", color: "var(--btn-primary-text)" }}
           >
             Create my ritual
           </button>
@@ -618,21 +643,21 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   if (step === "generating") {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-6 max-w-lg mx-auto w-full">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — generating ritual" className="flex-1 flex flex-col items-center justify-center px-5 py-6 max-w-lg mx-auto w-full">
         <div className="w-12 h-12 rounded-full bg-terracotta/10 border border-terracotta/20 flex items-center justify-center mb-4 animate-pulse">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
                stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round" className="opacity-50">
             <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
           </svg>
         </div>
-        <p className="text-foreground/50 text-[14px] mb-2" style={{ fontFamily: "var(--font-display)" }}>
+        <p className="text-muted text-[14px] mb-2" style={{ fontFamily: "var(--font-display)" }}>
           Pulling this together.
         </p>
-        <p className="text-foreground/25 text-[12px]">One sec.</p>
+        <p className="text-muted text-[12px]">One sec.</p>
 
         {streamedText && (
           <div className="mt-6 w-full max-h-[200px] overflow-y-auto px-4">
-            <p className="text-foreground/30 text-[11px] leading-relaxed whitespace-pre-wrap">
+            <p className="text-muted text-[11px] leading-relaxed whitespace-pre-wrap">
               {streamedText.slice(0, 200)}...
             </p>
           </div>
@@ -645,9 +670,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
   if (step === "crisis") {
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-        <button onClick={onClose} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — support resources" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        <button onClick={onClose} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -655,14 +680,14 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
         <div className="flex-1 flex flex-col items-center justify-center px-4">
           <div className="rounded-2xl bg-card/60 border border-foreground/12 p-6 max-w-[340px]">
-            <p className="text-foreground/70 text-[14px] leading-relaxed">
+            <p className="text-secondary text-[14px] leading-relaxed">
               {streamedText || "What you're describing sounds heavy. A ritual isn't going to be enough for this — and you deserve more than enough."}
             </p>
             <div className="mt-4 pt-4 border-t border-foreground/8">
-              <p className="text-foreground/50 text-[13px] font-medium">
+              <p className="text-muted text-[13px] font-medium">
                 988 Suicide & Crisis Lifeline
               </p>
-              <p className="text-foreground/35 text-[12px] mt-1">
+              <p className="text-muted text-[12px] mt-1">
                 Available 24/7. Call or text 988.
               </p>
             </div>
@@ -670,7 +695,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
 
           <button
             onClick={onClose}
-            className="mt-6 text-foreground/30 text-[12px]"
+            className="mt-6 text-muted text-[12px]"
           >
             Back to My Practice
           </button>
@@ -685,8 +710,8 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     // Error state
     if (error && !generatedRitual) {
       return (
-        <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
-          <button onClick={onClose} className="text-foreground/30 text-[12px] mb-6 self-start flex items-center gap-1">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — error" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+          <button onClick={onClose} className="text-muted text-[12px] mb-6 self-start flex items-center gap-1 min-h-[44px]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -694,7 +719,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           </button>
 
           <div className="flex-1 flex flex-col items-center justify-center px-4">
-            <p className="text-foreground/50 text-[14px] mb-4">{error}</p>
+            <p className="text-muted text-[14px] mb-4">{error}</p>
             <div className="flex gap-3">
               <button
                 onClick={generateRitual}
@@ -704,7 +729,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
               </button>
               <button
                 onClick={() => setStep("q1_intent")}
-                className="px-5 py-2.5 rounded-xl text-[13px] text-foreground/40 border border-foreground/12"
+                className="px-5 py-2.5 rounded-xl text-[13px] text-muted border border-foreground/12"
               >
                 Change answers
               </button>
@@ -719,9 +744,9 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
     if (!r) return null;
 
     return (
-      <div className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-28 overflow-y-auto">
-        <button onClick={onClose} className="text-foreground/30 text-[12px] mb-4 self-start flex items-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Ritual Wizard — your ritual" className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full pb-28 overflow-y-auto">
+        <button onClick={onClose} className="text-muted text-[12px] mb-4 self-start flex items-center gap-1">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -734,13 +759,13 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           {/* Header with star icon */}
           <div className="px-5 pt-5 pb-3 border-b border-foreground/8">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-foreground/25 text-[10px] uppercase tracking-widest">Custom · Built {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+              <span className="text-muted text-[10px] uppercase tracking-widest">Custom · Built {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
             </div>
             <h2 className="text-foreground text-lg" style={{ fontFamily: "var(--font-display)" }}>
               ✶ {r.title}
             </h2>
             {(r.duration || r.materials) && (
-              <p className="text-foreground/35 text-[12px] mt-1">
+              <p className="text-muted text-[12px] mt-1">
                 {r.duration}{r.materials ? ` · ${r.materials}` : ""}
               </p>
             )}
@@ -749,7 +774,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           {/* Why this for you */}
           {r.whyThisForYou && (
             <div className="px-5 py-4 border-b border-foreground/6">
-              <p className="text-foreground/50 text-[13px] leading-relaxed italic">
+              <p className="text-muted text-[13px] leading-relaxed italic">
                 {r.whyThisForYou}
               </p>
             </div>
@@ -762,7 +787,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
                 <span className="text-terracotta/50 text-[13px] font-medium tabular-nums flex-shrink-0 w-5 text-right">
                   {i + 1}.
                 </span>
-                <p className="text-foreground/65 text-[13px] leading-relaxed">
+                <p className="text-secondary text-[13px] leading-relaxed">
                   {step}
                 </p>
               </div>
@@ -772,10 +797,10 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           {/* Affirmation */}
           {r.affirmation && (
             <div className="px-5 py-4 border-t border-foreground/6">
-              <p className="text-foreground/25 text-[9px] uppercase tracking-widest mb-1.5">
+              <p className="text-muted text-[9px] uppercase tracking-widest mb-1.5">
                 Affirmation to carry
               </p>
-              <p className="text-foreground/60 text-[14px] font-medium italic">
+              <p className="text-secondary text-[14px] font-medium italic">
                 &ldquo;{r.affirmation}&rdquo;
               </p>
             </div>
@@ -784,7 +809,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           {/* Astro footnote */}
           {r.astroFootnote && (
             <div className="px-5 py-3 border-t border-foreground/6" style={{ background: "var(--background-elevated)" }}>
-              <p className="text-foreground/30 text-[11px] leading-relaxed italic">
+              <p className="text-muted text-[11px] leading-relaxed italic">
                 {r.astroFootnote}
               </p>
             </div>
@@ -797,7 +822,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             <button
               onClick={handleSaveRitual}
               className="flex-1 py-3 rounded-xl text-[13px] font-medium transition-all active:scale-[0.98]"
-              style={{ backgroundColor: "var(--terracotta)", color: "#F2E8D5" }}
+              style={{ backgroundColor: "var(--terracotta)", color: "var(--btn-primary-text)" }}
             >
               Save to my practice
             </button>
@@ -810,7 +835,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
           {spinsUsed < 3 && (
             <button
               onClick={handleRespin}
-              className="px-5 py-3 rounded-xl text-[13px] text-foreground/50 border border-foreground/12 hover:border-foreground/20 transition-all active:scale-[0.98]"
+              className="px-5 py-3 rounded-xl text-[13px] text-muted border border-foreground/12 hover:border-foreground/20 transition-all active:scale-[0.98]"
             >
               Re-spin
             </button>
@@ -820,7 +845,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
         {saved && (
           <button
             onClick={onClose}
-            className="mt-3 w-full py-3 rounded-xl text-[13px] text-foreground/40 border border-foreground/10"
+            className="mt-3 w-full py-3 rounded-xl text-[13px] text-muted border border-foreground/10"
           >
             Done
           </button>

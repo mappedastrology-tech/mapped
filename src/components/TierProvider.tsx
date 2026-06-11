@@ -16,7 +16,7 @@ import {
   getLimits,
   USAGE_LIMITS,
 } from "@/lib/tier";
-import { getActivePromoTier, type PromoRedemption } from "@/lib/promoCodes";
+import { getActivePromoTier } from "@/lib/promoCodes";
 
 type Limits = { dollyMessagesPerDay: number; pullsPerDay: number; synastryPartners: number; familyMembers: number; wizardPerMonth: number; transitsShown: number };
 
@@ -40,12 +40,50 @@ const TierContext = createContext<TierContextValue>({
 });
 
 export function TierProvider({ children }: { children: ReactNode }) {
-  // Tiers disabled — everyone gets full access until payments are wired up
-  const [tier] = useState<TierLevel>("top");
-  const [loading] = useState(false);
+  const [tier, setTier] = useState<TierLevel>("free");
+  const [loading, setLoading] = useState(true);
 
   const fetchTier = useCallback(async () => {
-    // no-op while tiers are disabled
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setTier("free");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch tier from profiles first (set by Stripe webhook or promo code)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("tier")
+        .eq("id", user.id)
+        .single();
+
+      // Check for active promo-based tier (non-fatal — table may not exist)
+      try {
+        const { data: redemptions } = await supabase
+          .from("promo_redemptions")
+          .select("*")
+          .eq("user_id", user.id);
+        if (redemptions && redemptions.length > 0) {
+          const promoTier = getActivePromoTier(redemptions);
+          if (promoTier) {
+            setTier(promoTier);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch { /* promo_redemptions table may not exist — skip */ }
+
+      if (profile?.tier && (profile.tier === "free" || profile.tier === "mid")) {
+        setTier(profile.tier as TierLevel);
+      } else {
+        setTier("free");
+      }
+    } catch {
+      setTier("free");
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {

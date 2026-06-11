@@ -259,7 +259,7 @@ function getShownPrompts(): ShownPromptRecord[] {
   }
 }
 
-function markPromptShown(promptId: string) {
+export function markPromptShown(promptId: string) {
   const shown = getShownPrompts();
   shown.push({ id: promptId, shownAt: new Date().toISOString() });
   // Keep only last 90 days
@@ -293,13 +293,22 @@ export interface PromptContext {
  * Select the best prompt for the current context.
  * Priority: transit > moon phase > day of week > lord of year > generic
  */
+/**
+ * Select the best prompt for the current context.
+ * Priority: transit > moon phase > day of week > lord of year > generic
+ *
+ * The result is deterministic per calendar day — calling this multiple times
+ * on the same day with the same context always returns the same prompt.
+ * The prompt is only marked "shown" when the caller explicitly calls
+ * markPromptShown(), i.e. after the user saves an entry with it.
+ */
 export function selectPrompt(context: PromptContext): JournalPrompt {
   const recentlyShown = getRecentlyShownIds();
 
   function pickFromPool(pool: JournalPrompt[]): JournalPrompt | null {
     const available = pool.filter((p) => !recentlyShown.has(p.id));
     if (available.length === 0) return null;
-    // Pseudo-random based on date so it's stable within a day
+    // Deterministic hash based on date — stable across calls within a day
     const today = new Date().toISOString().slice(0, 10);
     const hash = today.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     return available[hash % available.length];
@@ -311,37 +320,38 @@ export function selectPrompt(context: PromptContext): JournalPrompt {
       context.activeTransits!.includes(p.trigger || "")
     );
     const pick = pickFromPool(transitPool);
-    if (pick) { markPromptShown(pick.id); return pick; }
+    if (pick) return pick;
   }
 
   // Priority 2: Moon phase
   if (context.moonPhase) {
     const moonPool = MOON_PHASE_PROMPTS.filter((p) => p.moonPhase === context.moonPhase);
     const pick = pickFromPool(moonPool);
-    if (pick) { markPromptShown(pick.id); return pick; }
+    if (pick) return pick;
   }
 
   // Priority 3: Day of week
   if (context.dayOfWeek !== undefined) {
     const dayPool = DAY_PROMPTS.filter((p) => p.dayOfWeek === context.dayOfWeek);
     const pick = pickFromPool(dayPool);
-    if (pick) { markPromptShown(pick.id); return pick; }
+    if (pick) return pick;
   }
 
   // Priority 4: Lord of the Year
   if (context.lordOfYear) {
     const lordPool = LORD_PROMPTS.filter((p) => p.lordPlanet === context.lordOfYear);
     const pick = pickFromPool(lordPool);
-    if (pick) { markPromptShown(pick.id); return pick; }
+    if (pick) return pick;
   }
 
   // Priority 5: Generic fallback
   const genericPick = pickFromPool(GENERIC_PROMPTS);
-  if (genericPick) { markPromptShown(genericPick.id); return genericPick; }
+  if (genericPick) return genericPick;
 
-  // Absolute fallback (all prompts seen recently)
-  const fallback = GENERIC_PROMPTS[Math.floor(Math.random() * GENERIC_PROMPTS.length)];
-  return fallback;
+  // Absolute fallback (all prompts seen recently — use date hash for stability)
+  const today = new Date().toISOString().slice(0, 10);
+  const hash = today.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return GENERIC_PROMPTS[hash % GENERIC_PROMPTS.length];
 }
 
 /**

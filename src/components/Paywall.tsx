@@ -11,7 +11,7 @@
  * - After dismissing, don't show again for that feature for 24 hours
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { type FeatureKey, getFeatureInfo, getMinTier, TIERS, recordPaywallDismissed } from "@/lib/tier";
 
 interface PaywallProps {
@@ -24,11 +24,12 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
   const info = getFeatureInfo(feature);
   const minTier = getMinTier(feature);
   const tierInfo = TIERS[minTier];
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  function handleDismiss() {
+  const handleDismiss = useCallback(() => {
     recordPaywallDismissed(feature);
     onDismiss();
-  }
+  }, [feature, onDismiss]);
 
   function handleSeePlans() {
     if (onSeePlans) {
@@ -36,11 +37,38 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
     }
   }
 
+  // Focus trap
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { handleDismiss(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [handleDismiss]);
+
   if (!info) return null;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center px-5" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Feature requires upgrade"
         className="w-full max-w-sm rounded-2xl border border-foreground/12 p-6 relative"
         style={{ backgroundColor: "var(--background)" }}
       >
@@ -53,13 +81,13 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
         </h2>
 
         {/* Description */}
-        <p className="text-foreground/60 text-sm mb-5 leading-relaxed">
+        <p className="text-secondary text-sm mb-5 leading-relaxed">
           {info.description}
         </p>
 
         {/* Tier requirement */}
-        <p className="text-foreground/40 text-xs mb-5">
-          Available with {minTier === "mid" ? "Mid ($11.11/month) and Top ($22.22/month)" : "Top ($22.22/month)"}.
+        <p className="text-muted text-xs mb-5">
+          Available with Mapped+ ($11.11/month).
         </p>
 
         {/* CTAs — equal visual weight */}
@@ -72,7 +100,7 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
           </button>
           <button
             onClick={handleDismiss}
-            className="flex-1 py-3 rounded-full border border-foreground/20 text-foreground/60 text-sm font-semibold active:scale-[0.98] transition-all"
+            className="flex-1 py-3 rounded-full border border-foreground/20 text-secondary text-sm font-semibold active:scale-[0.98] transition-all"
           >
             Maybe later
           </button>
@@ -85,156 +113,181 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
 /* ─── Plans Page Component ─── */
 
 interface PlansPageProps {
-  currentTier: "free" | "mid" | "top";
+  currentTier: "free" | "mid";
   onClose: () => void;
-  onSelectTier?: (tier: "free" | "mid" | "top") => void;
+  onSelectTier?: (tier: "free" | "mid") => void;
 }
 
-export function PlansPage({ currentTier, onClose, onSelectTier }: PlansPageProps) {
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+export function PlansPage({ currentTier, onClose }: PlansPageProps) {
+  const [loading, setLoading] = useState(false);
+  const plansDialogRef = useRef<HTMLDivElement>(null);
 
-  const plans = [
-    {
-      tier: "free" as const,
-      name: "Free",
-      monthly: 0,
-      annual: 0,
-      features: [
-        "Full natal chart calculation",
-        "Sun, Moon, Rising readings",
-        "Chart ruler + sect light",
-        "Daily transit + moon phase",
-        "One ritual per day",
-        "One free deck + one pull per day",
-        "Dolly (5 messages/day)",
-        "Synastry with one partner",
-      ],
-    },
-    {
-      tier: "mid" as const,
-      name: "Mid",
-      monthly: 11.11,
-      annual: 89,
-      features: [
-        "Everything in Free",
-        "Ritual Wizard (10/month)",
-        "Custom rituals",
-        "Full transits + strength scoring",
-        "Multiple synastry partners",
-        "Astrocartography",
-        "Unlimited Dolly with memory",
-        "Unlimited deck purchases",
-        "Unlimited card pulls",
-        "Skeptic Mode",
-      ],
-    },
-    {
-      tier: "top" as const,
-      name: "Top",
-      monthly: 22.22,
-      annual: 179,
-      features: [
-        "Everything in Mid",
-        "Unlimited Wizard + voice input",
-        "Full ZR lifetime timeline",
-        "Almuten figuris (soul ruler)",
-        "Fixed star contacts",
-        "Arabic Lots",
-        "Composite charts",
-        "PDF chart export",
-        "50% off deck purchases",
-        "Practice pattern insights",
-      ],
-    },
+  // Focus trap for plans page
+  useEffect(() => {
+    const dialog = plansDialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [onClose]);
+
+  async function handleUpgrade() {
+    setLoading(true);
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        // Not signed in — redirect to account page
+        window.location.href = "/account";
+        return;
+      }
+
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("No checkout URL returned:", data);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setLoading(false);
+    }
+  }
+
+  const freeFeatures = [
+    "Basic birth chart",
+    "Daily horoscope",
+    "1 card pull per day",
+    "Journal",
+    "Almanac",
+    "1 connection on the map",
   ];
 
+  const paidFeatures = [
+    "Unlimited Dolly conversations",
+    "Unlimited card pulls",
+    "All map connections",
+    "Astrocartography",
+    "Custom practices and rituals",
+    "Detailed transits and aspects",
+    "Family analysis",
+  ];
+
+  const isPaid = currentTier === "mid";
+
   return (
-    <div className="fixed inset-0 z-[250] overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+    <div ref={plansDialogRef} role="dialog" aria-modal="true" aria-label="Subscription plans" className="fixed inset-0 z-[250] overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-foreground/10" style={{ backgroundColor: "var(--background)" }}>
         <h1 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
           Plans
         </h1>
-        <button onClick={onClose} className="text-foreground/50 text-sm font-medium">
+        <button onClick={onClose} className="text-muted text-sm font-medium">
           Close
         </button>
       </div>
 
-      {/* Billing toggle */}
-      <div className="flex justify-center py-4">
-        <div className="flex rounded-full border border-foreground/15 overflow-hidden">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`px-5 py-2 text-xs font-semibold transition-colors ${billing === "monthly" ? "bg-ink text-cream" : "text-foreground/50"}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBilling("annual")}
-            className={`px-5 py-2 text-xs font-semibold transition-colors ${billing === "annual" ? "bg-ink text-cream" : "text-foreground/50"}`}
-          >
-            Annual (save ~30%)
-          </button>
-        </div>
-      </div>
-
       {/* Plan cards */}
-      <div className="px-5 pb-8 space-y-4">
-        {plans.map((plan) => {
-          const isCurrent = plan.tier === currentTier;
-          const price = billing === "monthly" ? plan.monthly : plan.annual;
-          const period = billing === "monthly" ? "/month" : "/year";
+      <div className="px-5 pb-8 pt-4 space-y-4">
+        {/* Free plan */}
+        <div className={`rounded-2xl border p-5 ${currentTier === "free" ? "border-sage bg-sage/5" : "border-foreground/12 bg-card/40"}`}>
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-foreground text-base font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              Free
+            </h3>
+            <span className="text-secondary text-sm">$0</span>
+          </div>
 
-          return (
-            <div
-              key={plan.tier}
-              className={`rounded-2xl border p-5 ${isCurrent ? "border-sage bg-sage/5" : "border-foreground/12 bg-card/40"}`}
-            >
-              <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-foreground text-base font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                  {plan.name}
-                </h3>
-                <div className="text-right">
-                  {price === 0 ? (
-                    <span className="text-foreground/60 text-sm">Free</span>
-                  ) : (
-                    <span className="text-foreground text-sm font-semibold">
-                      ${price}{period}
-                    </span>
-                  )}
-                </div>
-              </div>
+          <ul className="space-y-1.5 mb-4">
+            {freeFeatures.map((f, i) => (
+              <li key={i} className="flex items-start gap-2 text-secondary text-xs">
+                <span className="text-sage mt-0.5">&#10003;</span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
 
-              <ul className="space-y-1.5 mb-4">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-foreground/60 text-xs">
-                    <span className="text-sage mt-0.5">&#10003;</span>
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {isCurrent ? (
-                <div className="text-center text-sage text-xs font-semibold py-2">
-                  Current plan
-                </div>
-              ) : (
-                <button
-                  onClick={() => onSelectTier?.(plan.tier)}
-                  className={`w-full py-3 rounded-full text-sm font-semibold active:scale-[0.98] transition-all ${
-                    plan.tier === "free"
-                      ? "border border-foreground/15 text-foreground/50"
-                      : "bg-ink text-cream"
-                  }`}
-                >
-                  {plan.tier === "free" ? "Stay on Free" : `Try ${plan.name} — $${billing === "monthly" ? plan.monthly : plan.annual}${period}`}
-                </button>
-              )}
+          {currentTier === "free" && (
+            <div className="text-center text-sage text-xs font-semibold py-2">
+              Current plan
             </div>
-          );
-        })}
+          )}
+        </div>
 
-        <p className="text-center text-foreground/35 text-xs pt-2">
+        {/* Mapped+ plan */}
+        <div className={`rounded-2xl border p-5 ${isPaid ? "border-sage bg-sage/5" : "border-foreground/12 bg-card/40"}`}>
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-foreground text-base font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              Mapped+
+            </h3>
+            <span className="text-foreground text-sm font-semibold">
+              $11.11/month
+            </span>
+          </div>
+
+          <ul className="space-y-1.5 mb-4">
+            <li className="flex items-start gap-2 text-secondary text-xs">
+              <span className="text-sage mt-0.5">&#10003;</span>
+              <span className="font-medium">Everything in Free, plus:</span>
+            </li>
+            {paidFeatures.map((f, i) => (
+              <li key={i} className="flex items-start gap-2 text-secondary text-xs">
+                <span className="text-sage mt-0.5">&#10003;</span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+
+          {isPaid ? (
+            <div className="text-center text-sage text-xs font-semibold py-2">
+              Current plan
+            </div>
+          ) : (
+            <button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="w-full py-3 rounded-full bg-ink text-cream text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
+                  Connecting...
+                </span>
+              ) : (
+                "Subscribe — $11.11/month"
+              )}
+            </button>
+          )}
+        </div>
+
+        <p className="text-center text-muted text-xs pt-2">
           Cancel anytime. All prices in USD.
         </p>
       </div>

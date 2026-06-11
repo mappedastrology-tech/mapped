@@ -56,10 +56,10 @@ const ROMAN: Record<number, string> = {
 const SIGN_ORDER = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
 
 function elementColor(sign: string): string {
-  if (["Ari", "Leo", "Sag"].includes(sign)) return "#B45128";
-  if (["Tau", "Vir", "Cap"].includes(sign)) return "#7a8c6e";
-  if (["Gem", "Lib", "Aqu"].includes(sign)) return "#C4A265";
-  return "#6b8a9e";
+  if (["Ari", "Leo", "Sag"].includes(sign)) return "#5a1f1a";
+  if (["Tau", "Vir", "Cap"].includes(sign)) return "#5a7a3a";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "#c9a961";
+  return "#B8A0D2";
 }
 
 interface Planet {
@@ -108,9 +108,9 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
     return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
   }
 
-  const ink = "#4A3F35";
-  const inkMed = "#6B5E50";
-  const axisInk = "#8B6B4A";
+  const ink = "#1a1420";
+  const inkMed = "#2a2030";
+  const axisInk = "#c9a961";
 
   // Resolve planets: keep at true angle, stack radially when close
   const resolvedPlanets = useMemo(() => {
@@ -167,7 +167,7 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
       <div
         className="relative rounded-full overflow-hidden"
         style={{
-          background: "radial-gradient(ellipse at 42% 38%, #F2E8D5 0%, #E8DCC8 40%, #DDD0B8 70%, #D0C0A4 100%)",
+          background: "radial-gradient(ellipse at 42% 38%, #f0e6d2 0%, #e8dcc4 40%, #d0c4a8 70%, #c4b8a0 100%)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2), inset 0 2px 20px rgba(0,0,0,0.06)",
           aspectRatio: "1",
         }}
@@ -283,7 +283,7 @@ export default function ChartWheel({ planets, houses }: ChartWheelProps) {
                 {/* Retrograde */}
                 {planet.retrograde && (
                   <text x={px + 7} y={py - 5}
-                        fontSize="4" fill="#B45128" opacity="0.55"
+                        fontSize="4" fill="#5a1f1a" opacity="0.55"
                         style={{ fontFamily: "var(--font-body)", fontWeight: "600" }}>
                     R
                   </text>
