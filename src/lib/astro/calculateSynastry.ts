@@ -19,6 +19,16 @@ import {
 // Which contacts count as "fated"
 const FATED_BODIES = new Set(["North Node", "South Node", "Chiron", "Saturn", "Pluto"]);
 
+const NODE_POINTS = new Set(["North Node", "South Node"]);
+
+// Outer-planet pairs are generational — nearly everyone born within a few years
+// shares them, so they don't qualify as personal "fated" contacts.
+const OUTER_PLANETS = new Set(["Uranus", "Neptune", "Pluto"]);
+
+const SOFT_ASPECTS = new Set(["trine", "sextile"]);
+const HARD_ASPECTS = new Set(["square", "opposition"]);
+const HARD_VERB: Record<string, string> = { square: "squares", opposition: "opposes" };
+
 const CORE_PLANETS = new Set([
   "Sun", "Moon", "Mercury", "Venus", "Mars",
   "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
@@ -72,14 +82,66 @@ function countElements(planets: ChartPoint[]): Record<string, number> {
 
 // ---------- Fated reason generator ----------
 
+// Noun themes used in direction-aware node/Chiron copy.
+const PLANET_THEME: Record<string, string> = {
+  Sun: "core identity",
+  Moon: "emotional world",
+  Mercury: "way of thinking",
+  Venus: "sense of love and worth",
+  Mars: "drive",
+  Jupiter: "optimism",
+  Saturn: "discipline",
+  Uranus: "wildcard streak",
+  Neptune: "imagination",
+  Pluto: "intensity",
+  Chiron: "healing journey",
+  Lilith: "untamed side",
+};
+
+function themeOf(name: string): string {
+  return PLANET_THEME[name] ?? "energy";
+}
+
+/**
+ * p1Name always belongs to chart1 (the user — "your"); p2Name belongs to
+ * chart2 (the other person — "their" — or the city). The copy must respect
+ * that direction: "Their Venus on your North Node" vs "Your Venus on their North Node".
+ */
 function getFatedReason(p1Name: string, p2Name: string, aspect: string, context: Context): string {
-  const bodies = new Set([p1Name, p2Name]);
   const isFamily = context === "family";
   const isCity = context === "city";
+  const p1IsNode = NODE_POINTS.has(p1Name);
+  const p2IsNode = NODE_POINTS.has(p2Name);
 
-  if (bodies.has("North Node")) {
-    const other = [...bodies].find((b) => b !== "North Node") ?? "North Node";
+  // --- Nodal axis meets nodal axis: one relationship, one piece of copy ---
+  if (p1IsNode && p2IsNode) {
+    if (aspect === "square") {
+      if (isCity) return "Your nodal axis squares this city's — your growth direction and this place's story pull crossways. Living here asks you to grow on purpose rather than by default.";
+      return "Your nodal axes are crossed — your growth directions run at right angles. That's not a flaw: your purposes intersect rather than run parallel, and respecting the difference sharpens you both.";
+    }
+    if (aspect === "conjunction" || aspect === "opposition") {
+      if (isCity) return "Your nodal axis aligns with this city's — the direction you're growing and the story of this place run along the same line. Being here feels like part of the plot.";
+      return "Your nodal axes are aligned — your growth directions and your pasts are intertwined. You recognize something of your own journey in each other.";
+    }
+    // trine / sextile
+    if (isCity) return "Your nodal axis flows with this city's — the way this place evolves supports the direction you're growing.";
+    return "Your nodal axes support each other — your growth directions run in harmony. You make each other's next chapter feel more reachable.";
+  }
 
+  if (p1IsNode && p1Name === "North Node") {
+    // Their planet (or the city's) contacts YOUR North Node.
+    const other = p2Name;
+
+    if (SOFT_ASPECTS.has(aspect)) {
+      if (isCity) return `The city's ${other} flows with your North Node — this place quietly supports the direction you're growing. Progress here feels natural rather than forced.`;
+      return `Their ${other} flows with your North Node — their ${themeOf(other)} supports the direction you're growing. Around them, your next chapter feels easier to reach.`;
+    }
+    if (HARD_ASPECTS.has(aspect)) {
+      if (isCity) return `The city's ${other} ${HARD_VERB[aspect]} your North Node — this place tests the direction you're growing. The friction is real, and it's also formative.`;
+      return `Their ${other} ${HARD_VERB[aspect]} your North Node — their ${themeOf(other)} challenges the direction you're growing. Growth through tension: this bond moves you forward by testing you.`;
+    }
+
+    // Conjunction — rich per-planet copy.
     if (other === "Sun") {
       if (isCity) return "This city's identity aligns with your soul's growth direction. Living here pulls you toward who you're meant to become — it's not a coincidence you ended up in this place.";
       if (isFamily) return "Their Sun lights up your growth direction. This family member models something your soul is trying to learn in this lifetime.";
@@ -122,10 +184,30 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     return nnVariants[other] ?? `Their ${other} connects to your North Node — this person is linked to your soul's growth direction in this lifetime.`;
   }
 
-  if (bodies.has("South Node")) {
-    const other = [...bodies].find((b) => b !== "South Node") ?? "South Node";
+  if (p2IsNode && p2Name === "North Node") {
+    // YOUR planet contacts THEIR (or the city's) North Node.
+    const other = p1Name;
+
+    if (isCity) {
+      if (HARD_ASPECTS.has(aspect)) return `Your ${other} ${HARD_VERB[aspect]} the city's North Node — your ${themeOf(other)} cuts against the grain of where this place is headed. Growth here comes through friction.`;
+      return `Your ${other} connects to the city's North Node — what you bring resonates with where this place is headed. You're part of this city's becoming, not just a visitor.`;
+    }
+    if (SOFT_ASPECTS.has(aspect)) {
+      return `Your ${other} flows with their North Node — your ${themeOf(other)} supports the direction they're growing. You make their evolution feel more possible just by being yourself.`;
+    }
+    if (HARD_ASPECTS.has(aspect)) {
+      return `Your ${other} ${HARD_VERB[aspect]} their North Node — your ${themeOf(other)} challenges the direction they're growing; you push each other's evolution. The tension is part of the point.`;
+    }
+    if (isFamily) return `Your ${other} sits on their North Node — your ${themeOf(other)} models something this family member's soul is trying to learn. You're part of their growth direction.`;
+    return `Your ${other} sits on their North Node — your ${themeOf(other)} points exactly where they're trying to grow. To them, you feel like part of the plan.`;
+  }
+
+  if (p1IsNode) {
+    // Their planet (or the city's) contacts YOUR South Node.
+    const other = p2Name;
     if (isCity) return `The city's ${other} touches your South Node — this place carries deep familiarity, like you've lived here before in another life. The comfort is real, but the lesson is not to get stuck in old patterns.`;
     if (isFamily) return `Their ${other} touches your South Node — this family connection carries deep familiarity, possibly from past lives. The lesson is growing beyond old family patterns together.`;
+    if (HARD_ASPECTS.has(aspect)) return `Their ${other} pulls against your South Node — they stir up old patterns and old versions of you. Uncomfortable, but it helps you release what you've outgrown.`;
 
     const snVariants: Record<string, string> = {
       Sun: "Their Sun sits on your South Node — they feel like home in a way you can't explain. The comfort is real; just don't let this bond only look backward.",
@@ -139,8 +221,18 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     return snVariants[other] ?? `Their ${other} touches your South Node — you may have known each other in a past life. There's instant familiarity, but the lesson is not to stay stuck in old patterns.`;
   }
 
-  if (bodies.has("Chiron")) {
-    const other = [...bodies].find((b) => b !== "Chiron") ?? "Chiron";
+  if (p2IsNode) {
+    // YOUR planet contacts THEIR (or the city's) South Node.
+    const other = p1Name;
+    if (isCity) return `Your ${other} touches the city's South Node — you connect to this place's past more than its future. The nostalgia is real; just don't let it keep you from moving forward.`;
+    if (HARD_ASPECTS.has(aspect)) return `Your ${other} pulls against their South Node — you stir up their old patterns, and it's not always comfortable. You're part of how they grow past what they've outgrown.`;
+    if (isFamily) return `Your ${other} touches their South Node — to them, you feel woven into the family's past. The familiarity runs deep; the work is growing forward together, not just looking back.`;
+    return `Your ${other} touches their South Node — to them you feel instantly familiar, like someone they've known before. The comfort is real; the work is helping each other look forward, not just back.`;
+  }
+
+  if (p1Name === "Chiron") {
+    // Their planet (or the city's) contacts YOUR Chiron.
+    const other = p2Name;
     if (isCity) {
       if (aspect === "conjunction" || aspect === "opposition")
         return `The city's ${other} activates your Chiron — this place touches your deepest wound. Something about living here brings old pain to the surface, but that's where the healing happens.`;
@@ -169,44 +261,105 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     return chironVariants[other] ?? `Their ${other} aspects your Chiron — this person can help you heal something you've been carrying for a long time, if you let them.`;
   }
 
-  if (bodies.has("Saturn")) {
-    const other = [...bodies].find((b) => b !== "Saturn") ?? "Saturn";
+  if (p2Name === "Chiron") {
+    // YOUR planet contacts THEIR (or the city's) Chiron.
+    const other = p1Name;
+    if (isCity) return `Your ${other} touches the city's Chiron — this place shows you its wounded side, and you have something that helps. Your relationship with this city runs deeper than convenience.`;
+    if (aspect === "conjunction" || aspect === "opposition")
+      return `Your ${other} activates their Chiron — you touch their deepest wound, often without meaning to. Handle it gently: you're also part of how it heals.`;
+    return `Your ${other} aspects their Chiron — your ${themeOf(other)} reaches an old hurt of theirs and quietly helps it mend. You're good medicine for them.`;
+  }
+
+  if (p1Name === "Saturn" || p2Name === "Saturn") {
+    const saturnIsYours = p1Name === "Saturn";
+    const other = saturnIsYours ? p2Name : p1Name;
+    const sat = saturnIsYours ? "Your Saturn" : "Their Saturn";
+    const oth = saturnIsYours ? `their ${other}` : `your ${other}`;
     if (isCity) {
+      const citySat = saturnIsYours ? "Your Saturn" : "The city's Saturn";
+      const cityOth = saturnIsYours ? `the city's ${other}` : `your ${other}`;
       if (aspect === "conjunction")
-        return `Saturn conjunct the city's ${other} — this place carries weight for you. There's a sense of duty or destiny tied to being here. It's not the easiest city for you, but it builds something lasting.`;
-      if (aspect === "square" || aspect === "opposition")
-        return `Saturn ${aspect}s the city's ${other} — this city tests you. The structures, rules, or pace of this place create friction with your ambitions. Growth here requires patience and persistence.`;
-      return `Saturn aspects the city's ${other} — there's a stabilizing, grounding quality to your relationship with this place. It endures.`;
+        return `${citySat} conjunct ${cityOth} — this place carries weight for you. There's a sense of duty or destiny tied to being here. It's not the easiest city for you, but it builds something lasting.`;
+      if (HARD_ASPECTS.has(aspect))
+        return `${citySat} ${HARD_VERB[aspect]} ${cityOth} — this city tests you. The structures, rules, or pace of this place create friction with your ambitions. Growth here requires patience and persistence.`;
+      return `${citySat} aspects ${cityOth} — there's a stabilizing, grounding quality to your relationship with this place. It endures.`;
     }
     if (isFamily) {
       if (aspect === "conjunction")
-        return `Saturn conjunct their ${other} — this family bond carries weight and responsibility. There's a sense of duty that defines this relationship.`;
-      if (aspect === "square" || aspect === "opposition")
-        return `Saturn ${aspect}s their ${other} — this family relationship tests both of you around authority, expectations, and generational patterns.`;
-      return `Saturn aspects their ${other} — there's a stabilizing, foundational quality to this family bond. It endures.`;
+        return `${sat} conjunct ${oth} — this family bond carries weight and responsibility. There's a sense of duty that defines this relationship.`;
+      if (HARD_ASPECTS.has(aspect))
+        return `${sat} ${HARD_VERB[aspect]} ${oth} — this family relationship tests both of you around authority, expectations, and generational patterns.`;
+      return `${sat} aspects ${oth} — there's a stabilizing, foundational quality to this family bond. It endures.`;
     }
     if (aspect === "conjunction")
-      return `Saturn conjunct their ${other} — this is a serious bond. There's a sense of duty, responsibility, and long-term commitment here. It might not be easy, but it's real.`;
-    if (aspect === "square" || aspect === "opposition")
-      return `Saturn ${aspect}s their ${other} — this relationship tests both of you. There's friction around responsibility, authority, and expectations. Growth requires patience.`;
-    return `Saturn aspects their ${other} — there's a stabilizing, grounding quality to this connection. It has staying power.`;
+      return `${sat} conjunct ${oth} — this is a serious bond. There's a sense of duty, responsibility, and long-term commitment here. It might not be easy, but it's real.`;
+    if (HARD_ASPECTS.has(aspect))
+      return `${sat} ${HARD_VERB[aspect]} ${oth} — this relationship tests both of you. There's friction around responsibility, authority, and expectations. Growth requires patience.`;
+    return `${sat} aspects ${oth} — there's a stabilizing, grounding quality to this connection. It has staying power.`;
   }
 
-  if (bodies.has("Pluto")) {
-    const other = [...bodies].find((b) => b !== "Pluto") ?? "Pluto";
-    if (isCity)
-      return `Pluto aspects the city's ${other} — your relationship with this place is intense and transformative. Power dynamics with the city itself may be a theme. Living here changes you at a deep level.`;
+  if (p1Name === "Pluto" || p2Name === "Pluto") {
+    const plutoIsYours = p1Name === "Pluto";
+    const other = plutoIsYours ? p2Name : p1Name;
+    const plu = plutoIsYours ? "Your Pluto" : "Their Pluto";
+    const oth = plutoIsYours ? `their ${other}` : `your ${other}`;
+    if (isCity) {
+      const cityPlu = plutoIsYours ? "Your Pluto" : "The city's Pluto";
+      const cityOth = plutoIsYours ? `the city's ${other}` : `your ${other}`;
+      return `${cityPlu} aspects ${cityOth} — your relationship with this place is intense and transformative. Power dynamics with the city itself may be a theme. Living here changes you at a deep level.`;
+    }
     if (isFamily)
-      return `Pluto aspects their ${other} — this family bond is intense and transformative. Power dynamics may be a theme. This relationship changes both of you at a deep level.`;
+      return `${plu} aspects ${oth} — this family bond is intense and transformative. Power dynamics may be a theme. This relationship changes both of you at a deep level.`;
     if (aspect === "conjunction")
-      return `Pluto conjunct their ${other} — an all-or-nothing bond. Intensity, obsession, and real transformation live close together here. Neither of you will leave unchanged.`;
-    if (aspect === "square" || aspect === "opposition")
-      return `Pluto ${aspect}s their ${other} — power struggles are part of this story. The friction transforms you both, if you let it teach instead of win.`;
-    return `Pluto aspects their ${other} — quietly transformative. This connection works on you below the surface; you mostly notice the change afterward.`;
+      return `${plu} conjunct ${oth} — an all-or-nothing bond. Intensity, obsession, and real transformation live close together here. Neither of you will leave unchanged.`;
+    if (HARD_ASPECTS.has(aspect))
+      return `${plu} ${HARD_VERB[aspect]} ${oth} — power struggles are part of this story. The friction transforms you both, if you let it teach instead of win.`;
+    return `${plu} aspects ${oth} — quietly transformative. This connection works on you below the surface; you mostly notice the change afterward.`;
   }
 
   if (isCity) return "This contact carries a fated quality — your connection to this place has a purposeful, karmic dimension.";
   return "This contact carries a fated quality — it may not be comfortable, but it's purposeful.";
+}
+
+// ---------- Fated contact dedupe ----------
+
+/**
+ * The lunar nodes are antipodal, so any planet aspecting one node aspects the
+ * other with a near-identical orb — without dedupe every node contact shows up
+ * twice (and node-axis-to-node-axis shows up four times). Keep one entry per
+ * underlying relationship, preferring the North Node representation.
+ */
+function dedupeNodalContacts(list: CrossAspect[]): CrossAspect[] {
+  // Prefer entries that mention the North Node, then tighter orbs.
+  const prioritized = [...list].sort((a, b) => {
+    const aNN = (a.p1Name === "North Node" ? 1 : 0) + (a.p2Name === "North Node" ? 1 : 0);
+    const bNN = (b.p1Name === "North Node" ? 1 : 0) + (b.p2Name === "North Node" ? 1 : 0);
+    if (aNN !== bNN) return bNN - aNN;
+    return a.orb - b.orb;
+  });
+
+  const out: CrossAspect[] = [];
+  const seen = new Set<string>();
+  let hasAxisEntry = false;
+
+  for (const e of prioritized) {
+    const p1Node = NODE_POINTS.has(e.p1Name);
+    const p2Node = NODE_POINTS.has(e.p2Name);
+
+    if (p1Node && p2Node) {
+      // Node axis on node axis: one relationship, one entry.
+      if (hasAxisEntry) continue;
+      hasAxisEntry = true;
+    } else if (p1Node || p2Node) {
+      // Same planet hitting both ends of the same chart's nodal axis.
+      const key = p1Node ? `your-node|${e.p2Name}` : `their-node|${e.p1Name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+
+    out.push(e);
+  }
+  return out;
 }
 
 // ---------- Theme scoring ----------
@@ -602,7 +755,9 @@ export function calculateSynastry(
           orb,
         };
 
-        const isFated = FATED_BODIES.has(p1.name) || FATED_BODIES.has(p2.name);
+        // Outer-planet pairs are generational, not personal — never "fated".
+        const isGenerational = OUTER_PLANETS.has(p1.name) && OUTER_PLANETS.has(p2.name);
+        const isFated = !isGenerational && (FATED_BODIES.has(p1.name) || FATED_BODIES.has(p2.name));
         if (isFated) {
           entry.fated = true;
           entry.fatedReason = getFatedReason(p1.name, p2.name, aspectName, ctx);
@@ -615,7 +770,8 @@ export function calculateSynastry(
   }
 
   crossAspects.sort((a, b) => a.orb - b.orb);
-  fatedContacts.sort((a, b) => a.orb - b.orb);
+  const dedupedFated = dedupeNodalContacts(fatedContacts);
+  dedupedFated.sort((a, b) => a.orb - b.orb);
 
   const elem1 = countElements(core1);
   const elem2 = countElements(core2);
@@ -631,7 +787,7 @@ export function calculateSynastry(
 
   return {
     crossAspects: crossAspects.slice(0, 30),
-    fatedContacts,
+    fatedContacts: dedupedFated,
     elementBalance: { person1: elem1, person2: elem2 },
     themes,
     harmony,

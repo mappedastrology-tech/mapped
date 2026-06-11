@@ -4844,7 +4844,7 @@ export default function MapsTab() {
                       <InfoTip term="Fated Contacts" explanation="Aspects involving Saturn, Pluto, Chiron, or the Lunar Nodes between your charts. They indicate a bond that goes beyond the casual — there's a karmic or destined quality." />
                     </div>
                     <div className="flex flex-col gap-2">
-                      {syn.fatedContacts.map((fc, i) => (
+                      {syn.fatedContacts.slice(0, 10).map((fc, i) => (
                         <div key={i} className="rounded-xl border border-amber/10 bg-amber/5 px-4 py-3">
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className={`text-xs ${ASPECT_COLORS[fc.aspect] || "text-muted"}`}>
@@ -4860,6 +4860,11 @@ export default function MapsTab() {
                           )}
                         </div>
                       ))}
+                      {syn.fatedContacts.length > 10 && (
+                        <p className="text-muted text-xs px-1 pt-1">
+                          + {syn.fatedContacts.length - 10} more fated contacts in all aspects below
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
