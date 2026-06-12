@@ -842,8 +842,14 @@ export default function OnboardingPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password (6+ characters)"
                         aria-label="Password"
+                        aria-describedby="password-hint"
                         className={inputClass}
                       />
+                      {password.length > 0 && password.length < 6 && (
+                        <p id="password-hint" className="text-terracotta text-[11px] -mt-1" role="status">
+                          Passwords need at least 6 characters — {6 - password.length} more to go.
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => setHasAccount(!hasAccount)}

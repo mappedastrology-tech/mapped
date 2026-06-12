@@ -449,9 +449,15 @@ function NewChart() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password (6+ characters)"
                 aria-label="Password"
+                aria-describedby="password-hint-new"
                 minLength={6}
                 className={inputClass}
               />
+              {password.length > 0 && password.length < 6 && (
+                <p id="password-hint-new" className="text-terracotta text-[11px]" role="status">
+                  Passwords need at least 6 characters — {6 - password.length} more to go.
+                </p>
+              )}
 
               {/* Already have an account toggle */}
               <button
