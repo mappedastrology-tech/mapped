@@ -151,6 +151,14 @@ export const astrologyFoundations: Course = {
           objective: "Recall each sign's element, modality, and ruling planet.",
           estMinutes: 5,
           blocks: [
+            { kind: "flip", prompt: "Meet the twelve signs", instructions: "Tap each card to turn it over", cards: [
+              { img: "/images/learn/zodiac-aries.webp", name: "Aries", caption: "Cardinal fire — the initiator" },
+              { img: "/images/learn/zodiac-taurus.webp", name: "Taurus", caption: "Fixed earth — the stabiliser" },
+              { img: "/images/learn/zodiac-gemini.webp", name: "Gemini", caption: "Mutable air — the messenger" },
+              { img: "/images/learn/zodiac-cancer.webp", name: "Cancer", caption: "Cardinal water — the nurturer" },
+              { img: "/images/learn/zodiac-leo.webp", name: "Leo", caption: "Fixed fire — the performer" },
+              { img: "/images/learn/zodiac-virgo.webp", name: "Virgo", caption: "Mutable earth — the analyst" },
+            ] },
             { kind: "text", text: "Each sign blends an element and modality, and each has a traditional ruling planet — the planet most 'at home' in that sign. Don't memorize all of this at once; use the table as a reference you'll absorb over time." },
             { kind: "table", headers: ["Sign", "Element", "Modality", "Ruler"], rows: [
               ["Aries", "Fire", "Cardinal", "Mars"],

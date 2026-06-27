@@ -157,6 +157,11 @@ export const herbalismFoundations: Course = {
           objective: "Summarize the (mixed) evidence for echinacea and turmeric.",
           estMinutes: 4,
           blocks: [
+            { kind: "sort", prompt: "Sort herbs by traditional use", instructions: "Tap a herb, then tap its category", groups: [
+              { name: "Calming", accent: "#8e6bb5", items: ["Chamomile", "Lemon balm", "Lavender"] },
+              { name: "Digestive", accent: "#6a9a4a", items: ["Peppermint", "Ginger", "Fennel"] },
+              { name: "Immune", accent: "#c9881f", items: ["Echinacea", "Elderberry", "Astragalus"] },
+            ] },
             { kind: "table", headers: ["Herb", "Use", "Evidence"], rows: [
               ["Echinacea", "Colds", "Mixed/weak — may slightly shorten colds at best"],
               ["Turmeric (curcumin)", "Inflammation, joints", "Some evidence; poorly absorbed on its own"],

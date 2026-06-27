@@ -59,6 +59,21 @@ export const numerologyFoundations: Course = {
           objective: "Recall the core meaning of each number 1–9 and the master numbers.",
           estMinutes: 5,
           blocks: [
+            { kind: "explore", prompt: "The numbers 1–9", instructions: "Tap a number to meet its archetype", items: [
+              { glyph: "1", name: "The Leader", meta: "Independent · pioneering", accent: "#c0392b", blurb: "Initiative, drive and originality. The number of beginnings and the self." },
+              { glyph: "2", name: "The Peacemaker", meta: "Diplomatic · sensitive", accent: "#2e86c1", blurb: "Partnership, balance and intuition. Works best in harmony with others." },
+              { glyph: "3", name: "The Communicator", meta: "Expressive · creative", accent: "#c9a227", blurb: "Joy, self-expression and imagination — a social, artistic vibration." },
+              { glyph: "4", name: "The Builder", meta: "Practical · disciplined", accent: "#6a9a4a", blurb: "Structure, order and hard work. Lays solid, dependable foundations." },
+              { glyph: "5", name: "The Adventurer", meta: "Free · curious", accent: "#d35400", blurb: "Change, freedom and the senses. Restless, versatile and bold." },
+              { glyph: "6", name: "The Nurturer", meta: "Caring · responsible", accent: "#c0398a", blurb: "Home, love and service. Devoted to family and community." },
+              { glyph: "7", name: "The Seeker", meta: "Analytical · spiritual", accent: "#6c5ce7", blurb: "Introspection, study and wisdom. Drawn to mystery and truth." },
+              { glyph: "8", name: "The Powerhouse", meta: "Ambitious · capable", accent: "#a8842c", blurb: "Authority, money and achievement — the number of material mastery." },
+              { glyph: "9", name: "The Humanitarian", meta: "Compassionate · wise", accent: "#b8a0d2", blurb: "Completion, idealism and giving. Holds a broad, selfless view." },
+            ] },
+            { kind: "sort", prompt: "Active vs receptive numbers", instructions: "In numerology, odd numbers are active (yang); even are receptive (yin). Sort them", groups: [
+              { name: "Active (odd)", accent: "#c9881f", items: ["1", "3", "5", "7", "9"] },
+              { name: "Receptive (even)", accent: "#5b6bb5", items: ["2", "4", "6", "8"] },
+            ] },
             { kind: "text", text: "Almost everything in numerology reduces to a single digit, 1–9, each with a core theme. Three 'master numbers' (11, 22, 33) are kept un-reduced because they're considered especially potent." },
             { kind: "table", headers: ["Number", "Core theme"], rows: [
               ["1", "Independence, leadership, initiative"],

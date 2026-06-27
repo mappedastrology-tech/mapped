@@ -161,6 +161,11 @@ export const essentialOilsFoundations: Course = {
           objective: "Recall key uses and cautions for tea tree, eucalyptus, and citrus oils.",
           estMinutes: 4,
           blocks: [
+            { kind: "sort", prompt: "Sort oils by their effect", instructions: "Tap an oil, then tap its common use", groups: [
+              { name: "Calming", accent: "#8e6bb5", items: ["Lavender", "Chamomile", "Bergamot"] },
+              { name: "Energizing", accent: "#c9881f", items: ["Peppermint", "Eucalyptus"] },
+              { name: "Cleansing", accent: "#6a9a4a", items: ["Tea tree", "Lemon"] },
+            ] },
             { kind: "table", headers: ["Oil", "Used for", "Key caution"], rows: [
               ["Tea tree", "Topical antimicrobial (acne, skin)", "Never ingest — it's toxic if swallowed; toxic to pets"],
               ["Eucalyptus", "Congestion, fresh scent", "Strong; keep from young children's faces; toxic to pets"],

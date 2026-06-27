@@ -131,6 +131,16 @@ export const almanacFoundations: Course = {
           objective: "Name the 8 phases and their traditional themes.",
           estMinutes: 5,
           blocks: [
+            { kind: "explore", prompt: "The eight moon phases", instructions: "Tap a phase to learn it", items: [
+              { glyph: "🌑", name: "New Moon", meta: "Beginnings", accent: "#5b6bb5", blurb: "The Moon sits between Earth and Sun, unlit. A time for intentions and fresh starts." },
+              { glyph: "🌒", name: "Waxing Crescent", meta: "Intention", accent: "#6a9a4a", blurb: "A sliver returns. Energy builds; take first steps toward what you set." },
+              { glyph: "🌓", name: "First Quarter", meta: "Action", accent: "#c9881f", blurb: "Half-lit and climbing. A decision point — push through resistance." },
+              { glyph: "🌔", name: "Waxing Gibbous", meta: "Refinement", accent: "#c9a227", blurb: "Almost full. Adjust, refine and stay the course." },
+              { glyph: "🌕", name: "Full Moon", meta: "Culmination", accent: "#d4b878", blurb: "Fully lit. Things come to light — celebration, clarity, release." },
+              { glyph: "🌖", name: "Waning Gibbous", meta: "Gratitude", accent: "#a8842c", blurb: "The light recedes. Share, give thanks and digest what came." },
+              { glyph: "🌗", name: "Last Quarter", meta: "Release", accent: "#8e6bb5", blurb: "Half-lit and falling. Let go of what no longer serves." },
+              { glyph: "🌘", name: "Waning Crescent", meta: "Rest", accent: "#6c5ce7", blurb: "The final sliver. Rest, reflect and prepare for the next new moon." },
+            ] },
             { kind: "table", headers: ["Phase", "Traditional theme"], rows: [
               ["New moon", "Intention, fresh starts, planting seeds"],
               ["Waxing crescent", "First steps, hope, building"],
@@ -203,6 +213,12 @@ export const almanacFoundations: Course = {
           objective: "Describe the eight festivals of the seasonal wheel.",
           estMinutes: 4,
           blocks: [
+            { kind: "sort", prompt: "Sort the Wheel of the Year", instructions: "Tap a festival, then tap its season", groups: [
+              { name: "Spring", accent: "#6a9a4a", items: ["Ostara", "Beltane"] },
+              { name: "Summer", accent: "#c9881f", items: ["Litha", "Lughnasadh"] },
+              { name: "Autumn", accent: "#a8842c", items: ["Mabon", "Samhain"] },
+              { name: "Winter", accent: "#5b6bb5", items: ["Yule", "Imbolc"] },
+            ] },
             { kind: "text", text: "The 'Wheel of the Year' is a modern seasonal calendar (drawn from older European traditions) of eight festivals: the four solar points plus four 'cross-quarter' days that fall between them." },
             { kind: "table", headers: ["Festival", "Roughly when", "Marks"], rows: [
               ["Yule", "Winter solstice", "The longest night; the return of the light"],

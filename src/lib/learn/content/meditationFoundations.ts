@@ -177,6 +177,11 @@ export const meditationFoundations: Course = {
           objective: "Distinguish loving-kindness and open-awareness practices.",
           estMinutes: 4,
           blocks: [
+            { kind: "sort", prompt: "Sort practices by type", instructions: "Tap a practice, then tap its family", groups: [
+              { name: "Focused attention", accent: "#c9881f", items: ["Breath focus", "Mantra", "Candle gazing"] },
+              { name: "Open monitoring", accent: "#2e86c1", items: ["Body scan", "Noting", "Open awareness"] },
+              { name: "Heart-based", accent: "#c0398a", items: ["Loving-kindness", "Compassion"] },
+            ] },
             { kind: "text", text: "Beyond focusing on the breath, two other families of practice are worth knowing:" },
             { kind: "list", items: [
               "**Loving-kindness (metta)** — silently repeating warm wishes ('May you be well, may you be happy, may you be at ease'), first for yourself, then widening to others. It cultivates warmth and reduces self-criticism.",

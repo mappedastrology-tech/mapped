@@ -170,6 +170,12 @@ export const tarotFoundations: Course = {
           objective: "Match each Minor Arcana suit to its element and theme.",
           estMinutes: 5,
           blocks: [
+            { kind: "sort", prompt: "Match each theme to its suit", instructions: "Tap a theme, then tap the suit that carries it", groups: [
+              { name: "Wands (Fire)", accent: "#c9881f", items: ["Passion", "Creativity", "Drive"] },
+              { name: "Cups (Water)", accent: "#5b6bb5", items: ["Love", "Emotion", "Intuition"] },
+              { name: "Swords (Air)", accent: "#B8A0D2", items: ["Intellect", "Conflict", "Truth"] },
+              { name: "Pentacles (Earth)", accent: "#6a9a4a", items: ["Money", "Work", "Body"] },
+            ] },
             { kind: "text", text: "Each of the four Minor suits maps to an element and a broad theme. This is the backbone of reading the Minors." },
             { kind: "table", headers: ["Suit", "Element", "Theme"], rows: [
               ["Wands", "Fire", "Energy, passion, action, will"],

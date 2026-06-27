@@ -245,6 +245,12 @@ export const crystalsFoundations: Course = {
           objective: "Identify a few popular non-quartz stones and a couple of common myths about them.",
           estMinutes: 5,
           blocks: [
+            { kind: "sort", prompt: "Match crystals to their reputation", instructions: "Tap a stone, then tap its traditional use (lore, not medicine)", groups: [
+              { name: "Calm", accent: "#8e6bb5", items: ["Amethyst", "Lepidolite"] },
+              { name: "Love", accent: "#c0398a", items: ["Rose Quartz", "Rhodonite"] },
+              { name: "Protection", accent: "#3d3d4a", items: ["Black Tourmaline", "Obsidian"] },
+              { name: "Abundance", accent: "#c9a227", items: ["Citrine", "Pyrite"] },
+            ] },
             { kind: "text", text: "Plenty of popular pieces aren't quartz — and a few aren't even crystals. Two great myth-busters:" },
             { kind: "keyfacts", items: [
               "**Obsidian is volcanic glass** — it cooled too fast for atoms to form a lattice, so it's amorphous (no crystal structure). Technically it isn't a crystal at all.",

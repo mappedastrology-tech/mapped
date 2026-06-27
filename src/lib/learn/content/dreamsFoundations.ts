@@ -134,6 +134,11 @@ export const dreamsFoundations: Course = {
           objective: "Interpret a dream symbol through personal association.",
           estMinutes: 4,
           blocks: [
+            { kind: "sort", prompt: "Common dream symbols", instructions: "Tap a symbol, then tap the feeling it often reflects — though yours may differ", groups: [
+              { name: "Anxiety", accent: "#c0392b", items: ["Teeth falling out", "Being chased", "Falling"] },
+              { name: "Freedom", accent: "#2e86c1", items: ["Flying", "Open sky"] },
+              { name: "Transition", accent: "#6a9a4a", items: ["New rooms in a house", "Packing to move"] },
+            ] },
             { kind: "text", text: "Dream symbols are best read through your own associations, not a one-size-fits-all dictionary. A dog might mean loyalty to one person and fear to another, depending on their life." },
             { kind: "callout", tone: "tip", title: "How to question a symbol", text: "When a striking image appears, ask yourself: What does this remind me of in my waking life? What was I feeling toward it in the dream? What's going on right now that this could mirror? The answers — not a generic meaning — are where the insight lives." },
             { kind: "callout", tone: "tradition", title: "Themes can rhyme", text: "Some broad themes do recur across people (falling, being chased, losing teeth, being unprepared for a test). These often connect to common feelings — loss of control, anxiety, pressure — but the specific meaning is still personal to you." },

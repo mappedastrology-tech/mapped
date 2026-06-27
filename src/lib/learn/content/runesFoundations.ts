@@ -99,6 +99,16 @@ export const runesFoundations: Course = {
           objective: "Recall the meanings of the first eight runes.",
           estMinutes: 5,
           blocks: [
+            { kind: "explore", prompt: "The first aett", instructions: "Tap a rune to learn it", items: [
+              { glyph: "ᚠ", name: "Fehu", meta: "Wealth · cattle", accent: "#c9881f", blurb: "Movable wealth and abundance — earned prosperity and its responsible flow." },
+              { glyph: "ᚢ", name: "Uruz", meta: "Strength · the aurochs", accent: "#6a9a4a", blurb: "Raw vitality, health and untamed power. Endurance and formative force." },
+              { glyph: "ᚦ", name: "Thurisaz", meta: "Thorn · giant", accent: "#c0392b", blurb: "A reactive force — defence, conflict and catharsis. Use with care." },
+              { glyph: "ᚨ", name: "Ansuz", meta: "Odin · the mouth", accent: "#6c5ce7", blurb: "Words, wisdom and divine inspiration — communication and insight." },
+              { glyph: "ᚱ", name: "Raidho", meta: "Journey · the ride", accent: "#2e86c1", blurb: "Travel, rhythm and right action — the journey and its lessons." },
+              { glyph: "ᚲ", name: "Kenaz", meta: "Torch · the beacon", accent: "#d35400", blurb: "Illumination, craft and knowledge — the controlled fire of creation." },
+              { glyph: "ᚷ", name: "Gebo", meta: "Gift · exchange", accent: "#c0398a", blurb: "Generosity, partnership and the balance of giving and receiving." },
+              { glyph: "ᚹ", name: "Wunjo", meta: "Joy · harmony", accent: "#c9a227", blurb: "Joy, belonging and fulfilment — harmony among kindred spirits." },
+            ] },
             { kind: "table", headers: ["Rune", "Keyword"], rows: [
               ["Fehu (ᚠ)", "Wealth, abundance, cattle"],
               ["Uruz (ᚢ)", "Strength, vitality, the wild ox"],
@@ -169,6 +179,11 @@ export const runesFoundations: Course = {
           objective: "Recall the meanings of the third eight runes.",
           estMinutes: 5,
           blocks: [
+            { kind: "sort", prompt: "Sort runes into their aett", instructions: "Tap a rune, then tap the aett it belongs to", groups: [
+              { name: "Freyr's aett", accent: "#c9881f", items: ["ᚠ Fehu", "ᚢ Uruz", "ᚦ Thurisaz"] },
+              { name: "Heimdall's aett", accent: "#2e86c1", items: ["ᚺ Hagalaz", "ᚾ Nauthiz", "ᛁ Isa"] },
+              { name: "Tyr's aett", accent: "#c0392b", items: ["ᛏ Tiwaz", "ᛒ Berkana", "ᛗ Mannaz"] },
+            ] },
             { kind: "table", headers: ["Rune", "Keyword"], rows: [
               ["Tiwaz (ᛏ)", "Justice, honor, courage (the god Tyr)"],
               ["Berkano (ᛒ)", "Birch — growth, birth, nurturing, new beginnings"],

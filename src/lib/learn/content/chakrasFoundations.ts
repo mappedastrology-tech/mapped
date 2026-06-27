@@ -158,6 +158,10 @@ export const chakrasFoundations: Course = {
           objective: "Recall the upper four chakras and their themes.",
           estMinutes: 5,
           blocks: [
+            { kind: "sort", prompt: "Lower vs upper chakras", instructions: "Tap a centre, then tap where it sits", groups: [
+              { name: "Lower (body)", accent: "#c0392b", items: ["Root", "Sacral", "Solar Plexus"] },
+              { name: "Upper (spirit)", accent: "#8e6bb5", items: ["Heart", "Throat", "Third Eye", "Crown"] },
+            ] },
             { kind: "text", text: "The upper four centers move from connection and expression toward insight and spirit." },
             { kind: "table", headers: ["Chakra", "Location", "Color", "Theme"], rows: [
               ["Heart (Anahata)", "Center of chest", "Green", "Love, compassion"],
@@ -191,6 +195,15 @@ export const chakrasFoundations: Course = {
           objective: "Name the practices used to 'balance' chakras and their real benefits.",
           estMinutes: 4,
           blocks: [
+            { kind: "explore", prompt: "The seven chakras", instructions: "Tap a centre to learn it", items: [
+              { glyph: "🔴", name: "Root", meta: "Muladhara · base of spine", accent: "#c0392b", blurb: "Safety, grounding and the body. Governs our sense of security." },
+              { glyph: "🟠", name: "Sacral", meta: "Svadhisthana · lower belly", accent: "#d35400", blurb: "Pleasure, creativity and emotion — the flow of feeling and desire." },
+              { glyph: "🟡", name: "Solar Plexus", meta: "Manipura · upper belly", accent: "#c9a227", blurb: "Will, confidence and personal power. The seat of self-esteem." },
+              { glyph: "🟢", name: "Heart", meta: "Anahata · centre of chest", accent: "#6a9a4a", blurb: "Love and compassion — the bridge between lower and upper centres." },
+              { glyph: "🔵", name: "Throat", meta: "Vishuddha · throat", accent: "#2e86c1", blurb: "Voice, truth and expression — speaking and being heard." },
+              { glyph: "🟣", name: "Third Eye", meta: "Ajna · brow", accent: "#6c5ce7", blurb: "Insight, intuition and imagination. Seeing clearly within." },
+              { glyph: "⚪", name: "Crown", meta: "Sahasrara · top of head", accent: "#b8a0d2", blurb: "Connection to the whole — meaning, awareness and the transpersonal." },
+            ] },
             { kind: "text", text: "Traditional practices to work with the chakras include pranayama (breath control), seated meditation and visualization, bija ('seed') mantras like LAM or OM, yoga postures, and sound." },
             { kind: "callout", tone: "evidence", title: "The real benefit", text: "Frame these honestly: breathwork, focused attention, and relaxation have genuine, measurable effects on stress and mood — independent of whether a literal 'wheel' is being unblocked. That's the substance behind the practice." },
           ],
