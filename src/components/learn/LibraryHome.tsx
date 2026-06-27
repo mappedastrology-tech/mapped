@@ -201,24 +201,9 @@ export default function LibraryHome() {
                 const toGo = Math.max(0, goalXp - s.todayXp);
                 const goalPct = Math.min(100, (s.todayXp / goalXp) * 100);
                 const toLevel = s.xpForLevel - s.xpIntoLevel;
-                // Brand-new user (no activity yet): keep the home calm — skip the
-                // XP/level/streak/stats dashboard and just welcome them in. The
-                // "begin your path" card + topics below carry the first action.
-                const isNew = s.totalXp === 0 && eng.ctx.lessonsCompleted === 0;
-                if (isNew) {
-                  return (
-                    <div className="text-center pt-3 pb-1">
-                      <div className="relative mx-auto mb-3" style={{ width: 76, height: 76 }}>
-                        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "radial-gradient(circle at 42% 36%, rgba(201,169,97,0.5), rgba(201,169,97,0.16) 60%, rgba(11,7,18,0) 84%)" }} />
-                        <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }} aria-hidden="true">✦</span>
-                      </div>
-                      <h2 className="text-[22px] font-medium leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>Welcome to the Library</h2>
-                      <p className="mt-2 mx-auto text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)", maxWidth: 320 }}>
-                        Eleven topics, taught honestly. Start anywhere — finish your first lesson and your streak, XP, and daily reviews unlock here.
-                      </p>
-                    </div>
-                  );
-                }
+                // Always show the level/streak/XP dashboard — even for brand-new
+                // users (Level 1, 0-day streak, 0 XP). The dashboard itself is the
+                // welcome; the "begin your path" card + topics carry the first action.
                 const streakMsg = s.streak === 0
                   ? "Begin a streak today"
                   : s.atRisk
