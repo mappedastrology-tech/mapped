@@ -10,6 +10,7 @@ import {
   getMoonIllumination,
   getMoonLongitude,
   getCurrentSunSign,
+  getSeasonDates,
 } from "@/lib/astro/currentSky";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -1257,6 +1258,105 @@ export function getNextMoonEvents(fromDate: Date): {
 
 // ─── TODAY'S MOON EVENT ─────────────────────────────────────────────────────
 // Returns info about today's full/new moon event, or null if today isn't one.
+
+// ─── Solstices & Equinoxes (the solar wheel of the year) ────────────────────
+
+export type SolarEventKind =
+  | "spring-equinox"
+  | "summer-solstice"
+  | "autumn-equinox"
+  | "winter-solstice";
+
+export interface TodaysSolarEvent {
+  kind: SolarEventKind;
+  name: string;
+  date: Date;
+  sign: string;        // the sign the Sun enters: Aries / Cancer / Libra / Capricorn
+  element: string;     // air / fire / earth / water
+  dayType: string;     // "The longest day", "Day and night in balance", etc.
+  description: string;
+  ritualHint: string;
+  bestFor: string[];
+}
+
+const SOLAR_META: Record<SolarEventKind, Omit<TodaysSolarEvent, "date">> = {
+  "spring-equinox": {
+    kind: "spring-equinox",
+    name: "Spring Equinox",
+    sign: "Aries",
+    element: "air",
+    dayType: "Day and night in balance",
+    description: "Day and night are equal, and light begins to overtake darkness. This is the astrological new year — the Sun enters Aries. Celebrated across the world as Ostara, Nowruz, and Holi: a moment of renewal, fresh starts, and planting what you want to grow.",
+    ritualHint: "Balance ritual — equal parts letting go and welcoming in. Plant a seed, literal or symbolic.",
+    bestFor: ["New beginnings", "Planting intentions", "Fresh starts", "Renewal"],
+  },
+  "summer-solstice": {
+    kind: "summer-solstice",
+    name: "Summer Solstice",
+    sign: "Cancer",
+    element: "fire",
+    dayType: "The longest day",
+    description: "The longest day of the year and the peak of solar power, as the Sun enters Cancer. Honored as Litha, Midsommar, and countless sun ceremonies. A time to celebrate your fullest expression, soak in light, and stand in your own warmth.",
+    ritualHint: "Celebrate your fullest expression. Soak in sunlight, name what's flourishing, and let yourself be seen.",
+    bestFor: ["Celebration", "Full expression", "Gratitude", "Vitality"],
+  },
+  "autumn-equinox": {
+    kind: "autumn-equinox",
+    name: "Autumn Equinox",
+    sign: "Libra",
+    element: "earth",
+    dayType: "Day and night in balance",
+    description: "Balance returns — day equals night once more before the dark half of the year grows. The Sun enters Libra. Celebrated as Mabon and countless harvest festivals: a time for gratitude, gathering what you've grown, and releasing what you haven't.",
+    ritualHint: "Gratitude harvest — name everything that grew this year, and what you're ready to release.",
+    bestFor: ["Gratitude", "Harvest", "Letting go", "Balance"],
+  },
+  "winter-solstice": {
+    kind: "winter-solstice",
+    name: "Winter Solstice",
+    sign: "Capricorn",
+    element: "water",
+    dayType: "The longest night",
+    description: "The longest night — and the turning point where light begins its return, as the Sun enters Capricorn. Honored as Yule, Dongzhi, Inti Raymi, and Shab-e Yalda. The darkest night holds the promise of returning light; a time for rest, reflection, and inner warmth.",
+    ritualHint: "Light a candle in the darkness. Sit with the quiet. Ask what inner light carries you through.",
+    bestFor: ["Rest", "Reflection", "Inner light", "Setting roots"],
+  },
+};
+
+/**
+ * Returns the solstice/equinox falling on `date` (local calendar day), or null.
+ * Dates are computed exactly from astronomy-engine, so this fires on the real
+ * day each year (e.g. the solstice may be Jun 20, 21, or 22).
+ */
+export function getTodaysSolarEvent(date: Date): TodaysSolarEvent | null {
+  const seasons = getSeasonDates(date.getFullYear());
+  const candidates: [SolarEventKind, Date][] = [
+    ["spring-equinox", seasons.springEquinox],
+    ["summer-solstice", seasons.summerSolstice],
+    ["autumn-equinox", seasons.autumnEquinox],
+    ["winter-solstice", seasons.winterSolstice],
+  ];
+  const sameLocalDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  for (const [kind, eventDate] of candidates) {
+    if (sameLocalDay(eventDate, date)) {
+      return { ...SOLAR_META[kind], date: eventDate };
+    }
+  }
+  return null;
+}
+
+/** The four solar points for a year, for the "Wheel of the Year" grid. */
+export function getSolarEventsForYear(year: number): TodaysSolarEvent[] {
+  const seasons = getSeasonDates(year);
+  return [
+    { ...SOLAR_META["spring-equinox"], date: seasons.springEquinox },
+    { ...SOLAR_META["summer-solstice"], date: seasons.summerSolstice },
+    { ...SOLAR_META["autumn-equinox"], date: seasons.autumnEquinox },
+    { ...SOLAR_META["winter-solstice"], date: seasons.winterSolstice },
+  ];
+}
 
 export interface TodaysMoonEvent {
   kind: "full" | "new";

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -14,8 +15,12 @@ export const runtime = "edge";
 const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
-  const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
-  const { allowed } = checkRateLimit(`journal-prompt:${getClientIP(req)}`, 10, 60 * 60 * 1000);
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const uid = await getAuthedUserId(req);
+  if (!uid) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+
+  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+  const { allowed } = await checkRateLimitDurable(`journal-prompt:${uid}`, 10, 60 * 60 * 1000);
   if (!allowed) return NextResponse.json({ error: "Rate limited" }, { status: 429 });
 
   try {
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest) {
     const nakshatraQuality = celestial?.nakshatraQuality || "";
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 400,
       messages: [
         {
@@ -50,6 +55,8 @@ ${userName ? `User's name: ${userName}` : ""}
 Return a JSON object with exactly two fields:
 1. "prompt": One introspective question or invitation to write (1-2 sentences max). Should feel specific to TODAY's energy, not generic. Tone: warm, curious, a little poetic — like a thoughtful friend asking you a question. Don't mention astrology jargon — translate the energy into emotional/experiential language. Don't start with "Today" or "Write about".
 2. "context": A brief 1-sentence note explaining what celestial factor inspired this prompt, written casually. Example: "Inspired by the waxing crescent's energy of first steps and Mars's push toward action." Use plain language but name the actual celestial elements.
+
+Keep the prompt emotionally gentle and safe: invite reflection, never probe trauma, grief, medical issues, self-harm, or crisis.
 
 Return ONLY the JSON object, no other text.`,
         },

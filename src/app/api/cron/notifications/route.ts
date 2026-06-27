@@ -12,11 +12,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
+import { calculateTransits } from "@/lib/astro/calculateTransits";
+import { computeStreak } from "@/lib/learn/stats";
 import {
   SAMPLE_COPY,
   type NotificationPreferences,
   DEFAULT_PREFERENCES,
   type NotificationCategory,
+  getPriority,
 } from "@/lib/notifications";
 
 /* ─── Types ─── */
@@ -60,12 +63,87 @@ function isPaused(prefs: NotificationPreferences): boolean {
   return new Date(prefs.paused_until) > new Date();
 }
 
+/* ─── Personal transits ─── */
+
+interface ChartRow {
+  user_id: string;
+  planets: { name: string; sign: string; absPosition: number; house?: number | null }[] | null;
+  houses: { number: number; sign: string; absPosition: number }[] | null;
+  zodiac_system: string | null;
+  ayanamsa: string | null;
+}
+
+interface TransitAspectLite {
+  transitPlanet: string;
+  natalPlanet: string;
+  aspect: string;
+  exactDate?: string;
+}
+
+// Only outer/intense transiters and hard/flowing major aspects are worth a push.
+const NOTIFIABLE_ASPECTS = new Set(["conjunction", "opposition", "square", "trine"]);
+const NOTIFIABLE_TRANSITERS = new Set(["Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
+const TRANSIT_VERB: Record<string, string> = {
+  conjunction: "meets", opposition: "opposes", square: "squares", trine: "trines",
+};
+const TRANSIT_FLAVOR: Record<string, string> = {
+  conjunction: "A new cycle starts here.",
+  opposition: "Something comes to a head today.",
+  square: "Friction you can put to work.",
+  trine: "A door opens — walk through it.",
+};
+
+/**
+ * Returns a notification for the single strongest major transit that is EXACT
+ * today against the user's natal chart, or null if none qualifies. Transits to
+ * natal planets are valid even for unknown-birth-time charts (planet positions
+ * don't depend on time), so no time guard is needed here.
+ */
+function personalTransitNotification(
+  chart: ChartRow,
+  today: string,
+): { category: NotificationCategory; title: string; body: string } | null {
+  const planets = chart.planets;
+  if (!Array.isArray(planets) || planets.length === 0) return null;
+
+  let aspects: TransitAspectLite[];
+  try {
+    const result = calculateTransits({
+      natalPlanets: planets,
+      natalHouses: Array.isArray(chart.houses) ? chart.houses : [],
+      transitDate: today,
+      zodiacSystem: chart.zodiac_system === "sidereal" ? "sidereal" : "tropical",
+      ayanamsa: chart.ayanamsa || "lahiri",
+    }) as { transitAspects?: TransitAspectLite[] };
+    aspects = result.transitAspects ?? [];
+  } catch {
+    return null;
+  }
+
+  // aspects arrive pre-sorted by intensity, so the first qualifying hit is the strongest.
+  const hit = aspects.find(
+    (a) => a.exactDate === today && NOTIFIABLE_ASPECTS.has(a.aspect) && NOTIFIABLE_TRANSITERS.has(a.transitPlanet),
+  );
+  if (!hit) return null;
+
+  const verb = TRANSIT_VERB[hit.aspect] ?? "aspects";
+  const flavor = TRANSIT_FLAVOR[hit.aspect] ?? "";
+  return {
+    category: "major_transits",
+    title: "Your chart today",
+    body: `${hit.transitPlanet} ${verb} your natal ${hit.natalPlanet} today, exact. ${flavor}`.trim(),
+  };
+}
+
 /* ─── Determine today's notifications for a user ─── */
 
 function determineNotifications(
   prefs: NotificationPreferences,
   moonLabel: string,
   moonSign: string,
+  chart: ChartRow | undefined,
+  today: string,
+  learning: { atRisk: boolean; streak: number } | undefined,
 ): { category: NotificationCategory; title: string; body: string }[] {
   const out: { category: NotificationCategory; title: string; body: string }[] = [];
 
@@ -87,14 +165,30 @@ function determineNotifications(
     out.push({ category: "new_moon", title: "New Moon", body });
   }
 
-  // 2. Daily content (only if no moon event already queued, to avoid stacking)
+  // 2. Personal transits — major aspect exact today against the natal chart
+  if (prefs.major_transits && chart) {
+    const transit = personalTransitNotification(chart, today);
+    if (transit) out.push(transit);
+  }
+
+  // 3. Daily content (only if nothing else is queued, to avoid stacking)
   if (prefs.daily_content && out.length === 0) {
     const copies = SAMPLE_COPY.filter((c) => c.category === "daily_content");
     const copy = pickRandom(copies);
     out.push({ category: "daily_content", title: "Mapped", body: copy.body });
   }
 
-  // 3. Practice reminders on full/new moon days
+  // 3b. Learning streak about to lapse — active yesterday, nothing today yet.
+  if (prefs.learning_reminder && learning?.atRisk && learning.streak > 0) {
+    const copies = SAMPLE_COPY.filter((c) => c.category === "learning_reminder");
+    if (copies.length > 0) {
+      const copy = pickRandom(copies);
+      const body = copy.body.replace("[streak]", String(learning.streak));
+      out.push({ category: "learning_reminder", title: "Mapped", body });
+    }
+  }
+
+  // 4. Practice reminders on full/new moon days
   if (prefs.practice_reminders && (isFullMoon || isNewMoon)) {
     const copies = SAMPLE_COPY.filter((c) => c.category === "practice_reminders");
     if (copies.length > 0) {
@@ -106,9 +200,8 @@ function determineNotifications(
     }
   }
 
-  // TODO: 4. Personal transits — load user's chart placements, calculate current
-  // transits against natal positions, and send when major aspects are exact.
-
+  // Highest-priority notification first — the caller sends only out[0].
+  out.sort((a, b) => getPriority(a.category) - getPriority(b.category));
   return out;
 }
 
@@ -162,6 +255,32 @@ export async function GET(request: Request) {
 
   const profileMap = new Map((profiles as ProfileRow[] | null)?.map((p) => [p.id, p]) ?? []);
 
+  // Fetch each user's natal chart for personal-transit notifications. Most recent
+  // chart per user wins (matches what the app treats as their primary chart).
+  const { data: charts } = await supabase
+    .from("charts")
+    .select("user_id, planets, houses, zodiac_system, ayanamsa, created_at")
+    .in("user_id", userIds)
+    .order("created_at", { ascending: false });
+
+  const chartMap = new Map<string, ChartRow>();
+  for (const c of (charts as (ChartRow & { created_at: string })[] | null) ?? []) {
+    if (!chartMap.has(c.user_id)) chartMap.set(c.user_id, c);
+  }
+
+  // Fetch learning activity to detect streaks about to lapse.
+  const { data: learningRows } = await supabase
+    .from("learning_activity")
+    .select("user_id, activity_date, xp, items")
+    .in("user_id", userIds);
+  const activeByUser = new Map<string, Set<string>>();
+  for (const r of (learningRows as { user_id: string; activity_date: string; xp: number; items: number }[] | null) ?? []) {
+    if ((r.items ?? 0) <= 0 && (r.xp ?? 0) <= 0) continue;
+    const set = activeByUser.get(r.user_id) ?? new Set<string>();
+    set.add(r.activity_date);
+    activeByUser.set(r.user_id, set);
+  }
+
   // Compute moon phase once for today
   const now = new Date();
   const moonLabel = getMoonPhaseLabel(now);
@@ -184,7 +303,8 @@ export async function GET(request: Request) {
 
     if (isPaused(prefs)) continue;
 
-    const notifications = determineNotifications(prefs, moonLabel, moonSign);
+    const { streak, atRisk } = computeStreak(activeByUser.get(userId) ?? new Set<string>(), now);
+    const notifications = determineNotifications(prefs, moonLabel, moonSign, chartMap.get(userId), today, { streak, atRisk });
     if (notifications.length === 0) continue;
 
     // Send highest-priority notification only (respect rate limits)

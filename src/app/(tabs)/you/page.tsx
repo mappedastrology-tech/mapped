@@ -1352,12 +1352,19 @@ export default function YouTab() {
   // Comprehensive chart analysis (patterns, dignities, balance, etc.)
   const chartAnalysis = useMemo<ChartAnalysis | null>(() => {
     if (!chartData) return null;
+    const noTime = chartData.unknownTime;
     const sp = chartData.specialPoints || [];
-    const allPoints = lilithFallback
+    const allPointsRaw = lilithFallback
       ? [...sp, { ...lilithFallback, house: lilithFallback.house != null ? String(lilithFallback.house) : null }]
       : sp;
-    const mhAbsPos = chartData.midheaven?.absPosition ?? undefined;
-    return analyzeChart(chartData.planets, chartData.houses, chartData.aspects, allPoints, mhAbsPos);
+    // With no accurate birth time, houses and angles are unreliable — strip them
+    // so house-emphasis / angular / sect insights don't surface (consistent with
+    // the rest of the chart hiding houses for unknown-time charts).
+    const allPoints = noTime ? allPointsRaw.map((p) => ({ ...p, house: null })) : allPointsRaw;
+    const planetsForAnalysis = noTime ? chartData.planets.map((p) => ({ ...p, house: null })) : chartData.planets;
+    const housesForAnalysis = noTime ? [] : chartData.houses;
+    const mhAbsPos = noTime ? undefined : (chartData.midheaven?.absPosition ?? undefined);
+    return analyzeChart(planetsForAnalysis, housesForAnalysis, chartData.aspects, allPoints, mhAbsPos);
   }, [chartData, lilithFallback]);
 
   if (isLoading) {
@@ -1384,7 +1391,13 @@ export default function YouTab() {
   }
 
   const { name, bigThree, planets, houses, unknownTime, risingCusp, specialPoints: rawSpecialPoints = [], midheaven } = chartData;
-  const specialPoints = lilithFallback ? [...rawSpecialPoints, lilithFallback] : rawSpecialPoints;
+  const specialPointsBuilt = lilithFallback ? [...rawSpecialPoints, lilithFallback] : rawSpecialPoints;
+  // Without an accurate birth time, the Ascendant, houses, and angles can't be
+  // calculated reliably. We strip house data from points so the UI never
+  // asserts an unreliable house placement as fact for unknown-time charts.
+  const specialPoints = unknownTime
+    ? specialPointsBuilt.map((p) => ({ ...p, house: null }))
+    : specialPointsBuilt;
 
   return (
     <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
@@ -1420,15 +1433,15 @@ export default function YouTab() {
       {/* Chart Wheel */}
       <div className="mb-8 relative">
         <div className="absolute inset-0 bg-lavender/5 rounded-full blur-2xl" />
-        <ChartWheel planets={planets} houses={effectiveHouses} />
+        <ChartWheel planets={planets} houses={unknownTime ? [] : effectiveHouses} />
       </div>
 
-      {/* Big 3 pills */}
+      {/* Big 3 pills (Rising hidden when birth time is unknown) */}
       <div className="flex flex-wrap justify-center gap-2 mb-4">
         {[
           { label: "Sun", sign: effectiveBigThree.sun },
           { label: "Moon", sign: effectiveBigThree.moon },
-          { label: "Rising", sign: effectiveBigThree.rising },
+          ...(unknownTime ? [] : [{ label: "Rising", sign: effectiveBigThree.rising }]),
         ].map(({ label, sign }) => (
           <div
             key={label}
@@ -1442,12 +1455,35 @@ export default function YouTab() {
         ))}
       </div>
 
+      {/* Birth time unknown — explain what can't be shown */}
+      {unknownTime && (
+        <div
+          className="rounded-xl px-4 py-3 mb-4 text-center"
+          style={{ backgroundColor: "var(--plum)", border: "0.5px solid rgba(201, 169, 97, 0.25)" }}
+        >
+          <p className="text-[11px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+            Your birth time is unknown, so your rising sign, houses, and angles
+            (like the Midheaven) can&apos;t be calculated accurately — they&apos;re hidden
+            here. Your Sun, Moon, and planetary signs are still accurate.
+          </p>
+          <button
+            onClick={() => router.push("/chart/new?edit=true")}
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] tracking-[0.15em] uppercase font-medium active:scale-[0.98] transition-all"
+            style={{ border: "0.5px solid rgba(201, 169, 97, 0.4)", color: "var(--brass)" }}
+          >
+            Add your birth time
+          </button>
+        </div>
+      )}
+
       {/* Share as branded image */}
       <div className="flex justify-center mb-4">
         <ShareCard
           type="natal"
           name={name}
-          subtitle={`${SIGN_FULL[effectiveBigThree.sun] || effectiveBigThree.sun} Sun · ${SIGN_FULL[effectiveBigThree.moon] || effectiveBigThree.moon} Moon · ${SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising`}
+          subtitle={unknownTime
+            ? `${SIGN_FULL[effectiveBigThree.sun] || effectiveBigThree.sun} Sun · ${SIGN_FULL[effectiveBigThree.moon] || effectiveBigThree.moon} Moon`
+            : `${SIGN_FULL[effectiveBigThree.sun] || effectiveBigThree.sun} Sun · ${SIGN_FULL[effectiveBigThree.moon] || effectiveBigThree.moon} Moon · ${SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising`}
           highlights={planets?.slice(0, 6).map((p: any) => ({
             label: p.name,
             value: `${SIGN_FULL[p.sign] || p.sign}`,
@@ -1487,8 +1523,8 @@ export default function YouTab() {
       {/* ═══ PLACEMENTS TAB ═══ */}
       {pageTab === "placements" && (<>
 
-      {/* ═══ CHART RULER ═══ */}
-      {chartRuler && (
+      {/* ═══ CHART RULER (needs an accurate birth time) ═══ */}
+      {!unknownTime && chartRuler && (
         <div className="rounded-xl px-4 py-4 mb-8" style={{ backgroundColor: "var(--plum)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>
@@ -1546,7 +1582,7 @@ export default function YouTab() {
 
 
       {/* ═══ SECT LIGHT (collapsible) ═══ */}
-      {sectLight && (
+      {!unknownTime && sectLight && (
         <div className="placement-card transition-colors duration-200 mb-3">
           <button
             onClick={() => setOpenRuler(openRuler === "sect" ? null : "sect")}
@@ -1594,7 +1630,7 @@ export default function YouTab() {
       )}
 
       {/* ═══ LORD OF THE YEAR (collapsible) ═══ */}
-      {lordOfTheYear && (
+      {!unknownTime && lordOfTheYear && (
         <div className="placement-card transition-colors duration-200 mb-8">
           <button
             onClick={() => setOpenRuler(openRuler === "loy" ? null : "loy")}
@@ -1668,7 +1704,7 @@ export default function YouTab() {
               planetSymbol={PLANET_SYMBOLS[planet.name] || "?"}
               sign={planet.sign}
               position={planet.position}
-              house={planet.house}
+              house={unknownTime ? null : planet.house}
               retrograde={planet.retrograde}
               isOpen={openPlanet === planet.name}
               onToggle={() =>
@@ -1680,7 +1716,7 @@ export default function YouTab() {
         })}
 
         {/* ═══ RISING SIGN ═══ */}
-        {effectiveBigThree.rising && (
+        {!unknownTime && effectiveBigThree.rising && (
           <div className="placement-card transition-colors duration-200">
             <button
               onClick={(e) => {
@@ -1747,7 +1783,7 @@ export default function YouTab() {
         )}
 
         {/* ═══ MIDHEAVEN ═══ */}
-        {midheaven && (
+        {!unknownTime && midheaven && (
           <div className="placement-card transition-colors duration-200">
             <button
               onClick={(e) => { const o = openPlanet !== "_MC"; setOpenPlanet(o ? "_MC" : null); if (o) { const el = e.currentTarget; setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); } }}

@@ -456,3 +456,150 @@ export async function shareReadingAsImage(
     }
   }
 }
+
+/* ═══════════════════════════════════════════
+   Palmistry Reading Share Card
+   ═══════════════════════════════════════════ */
+
+interface PalmShareCardData {
+  personName: string;
+  handLabel: string; // e.g. "Right hand"
+  summary: string;
+  highlights: { title: string; text: string }[];
+}
+
+export async function generatePalmShareCard(data: PalmShareCardData): Promise<Blob> {
+  const W = 1080;
+  const H = 1350; // 4:5 — IG feed + stories
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Warm background gradient (matches the app's palette)
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, "#2A1F18");
+  grad.addColorStop(0.5, "#3D2E23");
+  grad.addColorStop(1, "#2A1F18");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle texture
+  ctx.fillStyle = "rgba(243, 232, 214, 0.03)";
+  for (let i = 0; i < 180; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, Math.random() * 2 + 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const PAD = 90;
+  let y = 150;
+
+  // Palm glyph
+  ctx.textAlign = "center";
+  ctx.font = "110px serif";
+  ctx.fillText("✋", W / 2, y + 90);
+  y += 150;
+
+  // Eyebrow
+  ctx.font = "700 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(200, 140, 100, 0.75)";
+  ctx.letterSpacing = "6px";
+  ctx.fillText("PALMISTRY", W / 2, y);
+  y += 60;
+
+  // Person name
+  ctx.font = "600 56px Georgia, 'Times New Roman', serif";
+  ctx.fillStyle = "rgba(243, 232, 214, 0.96)";
+  ctx.letterSpacing = "0px";
+  ctx.fillText(data.personName, W / 2, y);
+  y += 48;
+
+  // Hand label
+  ctx.font = "400 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(243, 232, 214, 0.45)";
+  ctx.letterSpacing = "2px";
+  ctx.fillText(data.handLabel, W / 2, y);
+  y += 55;
+
+  // Divider
+  ctx.strokeStyle = "rgba(200, 140, 100, 0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD, y);
+  ctx.lineTo(W - PAD, y);
+  ctx.stroke();
+  y += 50;
+
+  // Summary
+  ctx.textAlign = "left";
+  ctx.letterSpacing = "0px";
+  ctx.font = "400 30px Georgia, 'Times New Roman', serif";
+  ctx.fillStyle = "rgba(243, 232, 214, 0.85)";
+  const summaryLines = wrapText(ctx, data.summary, W - PAD * 2, 30).slice(0, 7);
+  for (const line of summaryLines) {
+    ctx.fillText(line, PAD, y);
+    y += 42;
+  }
+  y += 25;
+
+  // Highlights
+  for (const h of data.highlights.slice(0, 3)) {
+    if (y > H - 220) break;
+    ctx.font = "700 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(200, 140, 100, 0.85)";
+    ctx.fillText(h.title, PAD, y);
+    y += 38;
+    ctx.font = "400 25px Georgia, 'Times New Roman', serif";
+    ctx.fillStyle = "rgba(243, 232, 214, 0.7)";
+    const hl = wrapText(ctx, h.text, W - PAD * 2, 25).slice(0, 2);
+    for (const line of hl) {
+      ctx.fillText(line, PAD, y);
+      y += 34;
+    }
+    y += 22;
+  }
+
+  // Branding
+  ctx.textAlign = "center";
+  ctx.font = "600 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "rgba(200, 140, 100, 0.4)";
+  ctx.letterSpacing = "6px";
+  ctx.fillText("MAPPED", W / 2, H - 60);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+      "image/png",
+      1.0,
+    );
+  });
+}
+
+export async function sharePalmReadingAsImage(
+  data: PalmShareCardData,
+  fallbackText: string,
+): Promise<void> {
+  try {
+    const blob = await generatePalmShareCard(data);
+    const file = new File([blob], "mapped-palm-reading.png", { type: "image/png" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: `${data.personName} — Palmistry · Mapped` });
+    } else if (navigator.share) {
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      await navigator.share({ text: fallbackText });
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } else {
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      await navigator.clipboard.writeText(fallbackText);
+    }
+  } catch {
+    if (navigator.share) {
+      try { await navigator.share({ text: fallbackText }); } catch {}
+    } else {
+      try { await navigator.clipboard.writeText(fallbackText); } catch {}
+    }
+  }
+}

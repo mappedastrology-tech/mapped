@@ -35,6 +35,12 @@ export default function RefreshModal({ onSelect, onClose }: Props) {
 
   // ─── Matching logic ──────────────────────────────────────────────────
 
+  // Stable "day of year" computed once per mount (not during render) so the
+  // daily shuffle is deterministic and doesn't re-order on every re-render.
+  const [dayOfYear] = useState(() =>
+    Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000),
+  );
+
   const results = useMemo(() => {
     if (!time || !location || !vibe) return [];
 
@@ -70,15 +76,12 @@ export default function RefreshModal({ onSelect, onClose }: Props) {
       return true;
     });
 
-    const dayOfYear = Math.floor(
-      (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
-    );
     const shuffled = matches.sort(
       (a, b) => ((a.id.charCodeAt(0) + dayOfYear) % 7) - ((b.id.charCodeAt(0) + dayOfYear) % 7)
     );
 
     return shuffled.slice(0, 3);
-  }, [time, location, vibe]);
+  }, [time, location, vibe, dayOfYear]);
 
   // ─── If no matches, try softening ─────────────────────────────────────
 

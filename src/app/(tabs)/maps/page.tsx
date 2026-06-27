@@ -13,6 +13,8 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
 import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
+import { getGrowthArea, getStrengthArea, getAspectCopy } from "@/lib/astro/growthAreas";
+import { toPlatonic } from "@/lib/astro/platonicText";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { useBirthTime } from "@/components/BirthTimeProvider";
@@ -133,6 +135,10 @@ interface CrossAspect {
   orb: number;
   fated?: boolean;
   fatedReason?: string;
+  fatedCategory?: string;
+  fatedCategoryLabel?: string;
+  fatedKeywords?: string[];
+  fatedWeight?: number;
 }
 
 interface UserChart {
@@ -254,22 +260,13 @@ const PLANET_THEMES: Record<string, string> = {
   Chiron: "deepest wound and healing gift",
 };
 
-function getAspectDescription(a: CrossAspect): string {
-  const nature = ASPECT_NATURE[a.aspect];
-  const p1Theme = PLANET_THEMES[a.p1Name] || a.p1Name;
-  const p2Theme = PLANET_THEMES[a.p2Name] || a.p2Name;
-
-  if (a.fatedReason) return a.fatedReason;
-
-  if (!nature) return `Your ${a.p1Name} connects with their ${a.p2Name}.`;
-
-  if (nature.nature === "harmonious") {
-    return `Your ${p1Theme} naturally ${nature.keyword} their ${p2Theme}. This creates ease and mutual understanding in how you relate on this level.`;
-  } else if (nature.nature === "challenging") {
-    return `Your ${p1Theme} ${nature.keyword} their ${p2Theme}. This creates tension that pushes both of you to grow, but can feel frustrating if unaddressed.`;
-  } else {
-    return `Your ${p1Theme} ${nature.keyword} their ${p2Theme}. This is an intense point of focus in the relationship — it can be magnetic or overwhelming depending on how you both navigate it.`;
-  }
+function getAspectDescription(a: CrossAspect, platonic = false): string {
+  // Fated aspects carry their own rich, direction-aware copy.
+  if (a.fatedReason) return platonic ? toPlatonic(a.fatedReason) : a.fatedReason;
+  if (!ASPECT_NATURE[a.aspect]) return `Your ${a.p1Name} connects with their ${a.p2Name}.`;
+  // Per-planet-pair copy so every aspect reads distinctly (not just a shared
+  // "harmonious/challenging" template with the two planet names swapped in).
+  return getAspectCopy(a.p1Name, a.p2Name, a.aspect, platonic);
 }
 
 /* ═══════════════════════════════════════════
@@ -1021,8 +1018,8 @@ function computeCompatibility(
   // 1. Calculate raw weighted score
   let totalWeight = 0;
   let weightedSum = 0;
-  const strengthAspects: { text: string; weight: number; cats: string[] }[] = [];
-  const challengeAspects: { text: string; weight: number; cats: string[] }[] = [];
+  const strengthAspects: { text: string; weight: number; cats: string[]; p1Name: string; p2Name: string; aspect: string }[] = [];
+  const challengeAspects: { text: string; weight: number; cats: string[]; p1Name: string; p2Name: string; aspect: string }[] = [];
 
   for (const a of allAspects) {
     const aspectW = ASPECT_WEIGHT[a.aspect] ?? 0;
@@ -1039,9 +1036,9 @@ function computeCompatibility(
     const uniqueCats = [...new Set(cats)];
 
     if (aspectW > 0) {
-      strengthAspects.push({ text: `${a.p1Name} ${a.aspect} ${a.p2Name}`, weight: Math.abs(contribution), cats: uniqueCats });
+      strengthAspects.push({ text: `${a.p1Name} ${a.aspect} ${a.p2Name}`, weight: Math.abs(contribution), cats: uniqueCats, p1Name: a.p1Name, p2Name: a.p2Name, aspect: a.aspect });
     } else if (aspectW < 0) {
-      challengeAspects.push({ text: `${a.p1Name} ${a.aspect} ${a.p2Name}`, weight: Math.abs(contribution), cats: uniqueCats });
+      challengeAspects.push({ text: `${a.p1Name} ${a.aspect} ${a.p2Name}`, weight: Math.abs(contribution), cats: uniqueCats, p1Name: a.p1Name, p2Name: a.p2Name, aspect: a.aspect });
     }
   }
 
@@ -1218,8 +1215,34 @@ function computeCompatibility(
 
   const strengthPhrases = isPlatonic ? PLATONIC_STRENGTHS : ROMANTIC_STRENGTHS;
   const challengePhrases = isPlatonic ? PLATONIC_CHALLENGES : ROMANTIC_CHALLENGES;
-  const strengths = topStrengths.map(c => strengthPhrases[c] || `Strong ${c} connection`);
-  const challenges = topChallenges.map(c => challengePhrases[c] || `Navigating ${c} differences`);
+  // Strengths: render each from the strongest *actual* harmonious aspect in
+  // that category, so the copy reflects this chart's real planets.
+  const usedStrengthAspects = new Set<string>();
+  const strengths = topStrengths.map((cat) => {
+    const best = strengthAspects.find(
+      (a) => a.cats.includes(cat) && !usedStrengthAspects.has(a.text),
+    );
+    if (best) {
+      usedStrengthAspects.add(best.text);
+      return getStrengthArea(best.p1Name, best.p2Name, best.aspect, isPlatonic);
+    }
+    return strengthPhrases[cat] || `Strong ${cat} connection`;
+  });
+
+  // Growth areas: render each from the strongest *actual* challenge aspect in
+  // that category, so the copy reflects this specific chart rather than a fixed
+  // per-category phrase. Avoid reusing the same aspect across two areas.
+  const usedChallengeAspects = new Set<string>();
+  const challenges = topChallenges.map((cat) => {
+    const best = challengeAspects.find(
+      (a) => a.cats.includes(cat) && !usedChallengeAspects.has(a.text),
+    );
+    if (best) {
+      usedChallengeAspects.add(best.text);
+      return getGrowthArea(best.p1Name, best.p2Name, best.aspect, isPlatonic);
+    }
+    return challengePhrases[cat] || `Navigating ${cat} differences`;
+  });
 
   // 5. Generate summary paragraph
   const person = String(partnerName || "").split(" ")[0] || "them";
@@ -1328,6 +1351,41 @@ const PLANET_SYMBOLS: Record<string, string> = {
   Mars: "\u2642", Jupiter: "\u2643", Saturn: "\u2644",
   Uranus: "\u2645", Neptune: "\u2646", Pluto: "\u2647",
   "North Node": "\u260A", "South Node": "\u260B", Chiron: "\u26B7",
+  Lilith: "\u26B8", Vertex: "Vx",
+};
+
+// Compute a chart's Vertex (fated point) from birth data. Returns null when the
+// birth time is unknown or data is incomplete — synastry then simply skips it.
+function chartVertex(
+  birthDate?: string | null, birthTime?: string | null,
+  latitude?: number | null, longitude?: number | null,
+  unknownTime?: boolean | null, zodiacSystem?: string | null, ayanamsa?: string | null,
+): { sign: string; absPosition: number } | null {
+  if (!birthDate || !birthTime || latitude == null || longitude == null || unknownTime) return null;
+  try {
+    const c = calculateChart({
+      name: "",
+      birthDate,
+      birthTime,
+      latitude,
+      longitude,
+      zodiacSystem: (zodiacSystem as "tropical" | "sidereal") || "tropical",
+      ...(zodiacSystem === "sidereal" ? { ayanamsa: (ayanamsa as "lahiri" | "krishnamurti" | "raman") || "lahiri" } : {}),
+    }) as { vertex?: { sign: string; absPosition: number } | null };
+    return c.vertex ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Accent color + label for each fated-mark category.
+const FATED_CATEGORY_STYLE: Record<string, { label: string; cls: string }> = {
+  destiny: { label: "Destiny", cls: "text-amber border-amber/30 bg-amber/10" },
+  karmic: { label: "Karmic", cls: "text-sage border-sage/30 bg-sage/10" },
+  binding: { label: "Binding", cls: "text-ink border-ink/30 bg-ink/10" },
+  soulmate: { label: "Soul-deep", cls: "text-terracotta border-terracotta/30 bg-terracotta/10" },
+  healing: { label: "Healing", cls: "text-sage border-sage/30 bg-sage/10" },
+  shadow: { label: "Shadow", cls: "text-ink border-ink/30 bg-ink/10" },
 };
 
 function elementColor(sign: string): string {
@@ -2965,12 +3023,24 @@ export default function MapsTab() {
     if (!userChart || !conn.planets) return;
     setSynastryLoading(true);
     try {
+      // The Vertex (a fated point) needs an accurate birth time + location.
+      // Compute it fresh for both charts so it can drive fated marks.
+      const userVertex = chartVertex(
+        (userChart as any).birthDate, (userChart as any).birthTime,
+        (userChart as any).latitude, (userChart as any).longitude,
+        false, (userChart as any).zodiacSystem, (userChart as any).ayanamsa,
+      );
+      const connVertex = chartVertex(
+        conn.birth_date, conn.birth_time,
+        (conn as any).latitude, (conn as any).longitude,
+        (conn as any).unknown_time, (conn as any).zodiac_system, (conn as any).ayanamsa,
+      );
       const res = await fetch("/api/synastry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chart1: { planets: userChart.planets, specialPoints: userChart.specialPoints, bigThree: userChart.bigThree },
-          chart2: { planets: conn.planets, specialPoints: conn.special_points || [], bigThree: conn.big_three },
+          chart1: { planets: userChart.planets, specialPoints: userChart.specialPoints, bigThree: userChart.bigThree, vertex: userVertex },
+          chart2: { planets: conn.planets, specialPoints: conn.special_points || [], bigThree: conn.big_three, vertex: connVertex },
           context: conn.category,
         }),
       });
@@ -4671,7 +4741,7 @@ export default function MapsTab() {
                                         </span>
                                         <span className="text-muted ml-auto">{ra.orb}&deg;</span>
                                       </div>
-                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra)}</p>
+                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra, selected.category !== "partner")}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -4725,7 +4795,7 @@ export default function MapsTab() {
                                         </span>
                                         <span className="text-muted ml-auto">{ra.orb}&deg;</span>
                                       </div>
-                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra)}</p>
+                                      <p className="text-muted leading-relaxed">{getAspectDescription(ra, selected.category !== "partner")}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -4824,7 +4894,7 @@ export default function MapsTab() {
                           {isOpen && (
                             <div className="px-4 pb-3 border-t border-foreground/15">
                               <p className="text-secondary text-xs leading-relaxed pt-2">
-                                {getAspectDescription(a)}
+                                {getAspectDescription(a, selected.category !== "partner")}
                               </p>
                             </div>
                           )}
@@ -4846,19 +4916,10 @@ export default function MapsTab() {
                 : syn.themes;
 
               // Sanitize fated reasons that may have been calculated without context
+              // Backstop: rewrite any romantic/sexual language for family/friend.
+              // Delegates to the centralized, comprehensive toPlatonic util.
               function sanitizePlatonicText(text: string): string {
-                if (!isPlatonic) return text;
-                return text
-                  .replace(/loving them pushes you to grow\. The attraction feels purposeful\./g, "this bond teaches you about love, values, and worthiness.")
-                  .replace(/The attraction feels purposeful/g, "The connection feels purposeful")
-                  .replace(/romantic/gi, "emotional")
-                  .replace(/sexual/gi, "intense")
-                  .replace(/physical chemistry/gi, "shared energy")
-                  .replace(/magnetic attraction/gi, "natural pull")
-                  .replace(/desire and affection/gi, "care and affection")
-                  .replace(/You feel it in your body/gi, "You feel it intuitively")
-                  .replace(/beyond friendship/gi, "beyond the ordinary")
-                  .replace(/lover/gi, "kindred spirit");
+                return isPlatonic ? toPlatonic(text) : text;
               }
 
               return (
@@ -4942,7 +5003,7 @@ export default function MapsTab() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
                                   <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
-                                    {theme.title}
+                                    {sanitizePlatonicText(theme.title)}
                                   </p>
                                   <InfoTip term={intensity.label} explanation={intensity.desc} />
                                 </div>
@@ -4962,10 +5023,12 @@ export default function MapsTab() {
                       <h2 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>
                         Fated contacts
                       </h2>
-                      <InfoTip term="Fated Contacts" explanation="Aspects involving Saturn, Pluto, Chiron, or the Lunar Nodes between your charts. They indicate a bond that goes beyond the casual — there's a karmic or destined quality." />
+                      <InfoTip term="Fated Contacts" explanation="Contacts involving the Lunar Nodes, the Vertex, Saturn, Pluto, Chiron, or Black Moon Lilith between your charts. Each is tagged by what kind of fate it carries — Destiny, Karmic, Binding, Soul-deep, Healing, or Shadow — and ranked by how strongly it shows up." />
                     </div>
                     <div className="flex flex-col gap-2">
-                      {syn.fatedContacts.slice(0, 10).map((fc, i) => (
+                      {syn.fatedContacts.slice(0, 10).map((fc, i) => {
+                        const cat = fc.fatedCategory ? FATED_CATEGORY_STYLE[fc.fatedCategory] : null;
+                        return (
                         <div key={i} className="rounded-xl border border-amber/10 bg-amber/5 px-4 py-3">
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className={`text-xs ${ASPECT_COLORS[fc.aspect] || "text-muted"}`}>
@@ -4976,11 +5039,20 @@ export default function MapsTab() {
                             </span>
                             <span className="text-muted text-[10px] ml-auto">{fc.orb}&deg;</span>
                           </div>
+                          {cat && (
+                            <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${cat.cls}`}>{cat.label}</span>
+                              {(fc.fatedKeywords || []).map((kw, k) => (
+                                <span key={k} className="text-muted text-[10px]">{kw}{k < (fc.fatedKeywords!.length - 1) ? " ·" : ""}</span>
+                              ))}
+                            </div>
+                          )}
                           {fc.fatedReason && (
                             <p className="text-secondary text-sm leading-relaxed">{sanitizePlatonicText(fc.fatedReason)}</p>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                       {syn.fatedContacts.length > 10 && (
                         <p className="text-muted text-xs px-1 pt-1">
                           + {syn.fatedContacts.length - 10} more fated contacts in all aspects below
@@ -5035,7 +5107,7 @@ export default function MapsTab() {
                           {isOpen && (
                             <div className="px-4 pb-3 border-t border-foreground/15">
                               <p className="text-secondary text-xs leading-relaxed pt-2">
-                                {sanitizePlatonicText(getAspectDescription(a))}
+                                {sanitizePlatonicText(getAspectDescription(a, isPlatonic))}
                               </p>
                             </div>
                           )}
@@ -5056,7 +5128,7 @@ export default function MapsTab() {
             {personPlanets.length > 0 && (
                   <div className="mb-6 relative">
                     <div className="absolute inset-0 bg-terracotta/5 rounded-full blur-2xl" />
-                    <ChartWheel planets={personPlanets} houses={personHouses} />
+                    <ChartWheel planets={personPlanets} houses={selected.unknown_time ? [] : personHouses} />
                   </div>
                 )}
 
@@ -5065,7 +5137,7 @@ export default function MapsTab() {
                     {[
                       { label: "Sun", sign: bt.sun },
                       { label: "Moon", sign: bt.moon },
-                      { label: "Rising", sign: bt.rising || "" },
+                      { label: "Rising", sign: selected.unknown_time ? "" : (bt.rising || "") },
                     ].filter(p => p.sign).map(({ label, sign }) => (
                       <div
                         key={label}
@@ -5084,7 +5156,9 @@ export default function MapsTab() {
                   <ShareCard
                     type="natal"
                     name={selected.name}
-                    subtitle={bt ? `${SIGN_FULL[bt.sun] || bt.sun} Sun · ${SIGN_FULL[bt.moon] || bt.moon} Moon · ${SIGN_FULL[bt.rising] || bt.rising} Rising` : undefined}
+                    subtitle={bt ? (selected.unknown_time
+                      ? `${SIGN_FULL[bt.sun] || bt.sun} Sun · ${SIGN_FULL[bt.moon] || bt.moon} Moon`
+                      : `${SIGN_FULL[bt.sun] || bt.sun} Sun · ${SIGN_FULL[bt.moon] || bt.moon} Moon · ${SIGN_FULL[bt.rising] || bt.rising} Rising`) : undefined}
                     highlights={selected.planets?.slice(0, 6).map((p: any) => ({
                       label: p.name,
                       value: `${SIGN_FULL[p.sign] || p.sign}`,
@@ -5108,6 +5182,13 @@ export default function MapsTab() {
                     {selected.unknown_time && <span className="text-muted">Time unknown</span>}
                     {selected.city_name && <span>{selected.city_name}</span>}
                   </div>
+                  {selected.unknown_time && (
+                    <p className="text-[11px] text-muted mt-2 leading-relaxed">
+                      Without a birth time, {selected.name.split(" ")[0]}&rsquo;s rising sign, houses, and
+                      angles can&rsquo;t be calculated, so they&rsquo;re hidden. Sun, Moon, and planetary
+                      signs are still accurate, and connection insights based on them hold up.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 mb-6">
@@ -5128,14 +5209,14 @@ export default function MapsTab() {
                       planetSymbol={PLANET_SYMBOLS[planet.name] || "?"}
                       sign={planet.sign}
                       position={planet.position}
-                      house={planet.house}
+                      house={selected.unknown_time ? null : planet.house}
                       retrograde={planet.retrograde}
                       isOpen={openPlacement === planet.name}
                       onToggle={() => setOpenPlacement(openPlacement === planet.name ? null : planet.name)}
                     />
                   ))}
-                  {/* Rising / Ascendant — static row (no accordion, no knowledge entry) */}
-                  {bt?.rising && (() => {
+                  {/* Rising / Ascendant — only when an accurate birth time is known */}
+                  {!selected.unknown_time && bt?.rising && (() => {
                     const ascPt = selected.special_points?.find(sp => sp.name === "Ascendant" || sp.name === "ASC");
                     const risingSign = SIGN_NAMES[bt.rising] || bt.rising;
                     const risingColor = ["Ari","Leo","Sag"].includes(bt.rising) ? "text-terracotta"
@@ -5172,7 +5253,7 @@ export default function MapsTab() {
                           planetSymbol={PLANET_SYMBOLS[sp.name] || "?"}
                           sign={sp.sign}
                           position={sp.position}
-                          house={sp.house}
+                          house={selected.unknown_time ? null : sp.house}
                           retrograde={sp.retrograde}
                           isOpen={openPlacement === `sp-${sp.name}`}
                           onToggle={() => setOpenPlacement(openPlacement === `sp-${sp.name}` ? null : `sp-${sp.name}`)}
@@ -5605,6 +5686,11 @@ export default function MapsTab() {
             ) : compositeData && compositePersonId === selected.id ? (
               (() => {
                 const relSummary = generateRelationshipSummary(compositeData, selected.category as "partner" | "family" | "friend", selected.name);
+                // Backstop: scrub any residual romantic language from composite copy for family/friend.
+                if (selected.category === "family" || selected.category === "friend") {
+                  relSummary.title = toPlatonic(relSummary.title);
+                  relSummary.themes = relSummary.themes.map((t) => ({ ...t, heading: toPlatonic(t.heading), body: toPlatonic(t.body) }));
+                }
                 return (
                   <>
                     {/* Header */}

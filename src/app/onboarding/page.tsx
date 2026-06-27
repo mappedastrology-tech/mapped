@@ -869,6 +869,14 @@ export default function OnboardingPage() {
                         </span>
                         <span className="text-[11px] text-secondary">I already have an account</span>
                       </button>
+                      {!hasAccount && (
+                        <p className="text-[11px] text-muted/80 leading-relaxed">
+                          By creating an account, you agree to our{" "}
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-terracotta hover:text-terracotta-light transition-colors">Terms</a>{" "}
+                          and{" "}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-terracotta hover:text-terracotta-light transition-colors">Privacy Policy</a>.
+                        </p>
+                      )}
                     </div>
                   </>
                 )}

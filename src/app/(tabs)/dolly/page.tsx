@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
@@ -342,11 +343,14 @@ export default function DollyTab() {
     setMessages([...updatedMessages, assistantMsg]);
     setIsStreaming(true);
 
+    let streamTimeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const controller = new AbortController();
       abortRef.current = controller;
+      // Safety net: abort a hung stream after 90s so it can never spin forever.
+      streamTimeout = setTimeout(() => controller.abort(), 90000);
 
-      const res = await fetch("/api/dolly", {
+      const res = await authedFetch("/api/dolly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -419,6 +423,7 @@ export default function DollyTab() {
         )
       );
     } finally {
+      if (streamTimeout) clearTimeout(streamTimeout);
       setIsStreaming(false);
       abortRef.current = null;
     }

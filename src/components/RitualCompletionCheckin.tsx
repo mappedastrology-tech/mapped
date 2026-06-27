@@ -35,6 +35,14 @@ interface Props {
   onComplete?: () => void;
 }
 
+const DONE_MESSAGES = [
+  "You showed up for yourself today.",
+  "That was a gift to your future self.",
+  "Small rituals, big shifts.",
+  "Your practice is building something.",
+  "The work you can't see is the work that matters most.",
+];
+
 export default function RitualCompletionCheckin({
   ritualId,
   ritualTitle,
@@ -54,6 +62,23 @@ export default function RitualCompletionCheckin({
   const [showCustom, setShowCustom] = useState(false);
   const [fitRating, setFitRating] = useState<FitRating | null>(null);
   const [journal, setJournal] = useState("");
+
+  // Computed once on mount so Date.now() never runs during render (keeps the
+  // streak + message stable across re-renders).
+  const [doneMsg] = useState(() => DONE_MESSAGES[Math.floor(Date.now() / 86400000) % DONE_MESSAGES.length]);
+  const [streakCount] = useState(() => {
+    try {
+      const history = getAllCompletions();
+      const uniqueDays = [...new Set(history.map((h) => new Date(h.completedAt).toDateString()))];
+      let streak = 1;
+      for (let i = 0; i < uniqueDays.length; i++) {
+        const checkDate = new Date(Date.now() - (i + 1) * 86400000).toDateString();
+        if (uniqueDays.includes(checkDate)) streak++;
+        else break;
+      }
+      return streak;
+    } catch { return 1; }
+  });
 
   // Focus trap for check-in modal
   useEffect(() => {
@@ -136,29 +161,7 @@ export default function RitualCompletionCheckin({
   // ─── Done state: warm acknowledgment with streak ─────────────────
 
   if (step === "done") {
-    // Count completions for streak — reads the real completion records
-    // ("mapped:completions" via feedback.ts, synced to Supabase by completionSync)
-    let streakCount = 1;
-    try {
-      const history = getAllCompletions();
-      const uniqueDays = [...new Set(history.map((h) => new Date(h.completedAt).toDateString()))];
-      // Count consecutive days including today
-      streakCount = 1;
-      for (let i = 0; i < uniqueDays.length; i++) {
-        const checkDate = new Date(Date.now() - (i + 1) * 86400000).toDateString();
-        if (uniqueDays.includes(checkDate)) streakCount++;
-        else break;
-      }
-    } catch {}
-
-    const messages = [
-      "You showed up for yourself today.",
-      "That was a gift to your future self.",
-      "Small rituals, big shifts.",
-      "Your practice is building something.",
-      "The work you can't see is the work that matters most.",
-    ];
-    const msg = messages[Math.floor(Date.now() / 86400000) % messages.length];
+    const msg = doneMsg;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"

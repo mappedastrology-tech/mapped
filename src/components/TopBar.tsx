@@ -13,6 +13,30 @@ import Logo from "@/components/Logo";
 
 const MENU_ITEMS = [
   {
+    label: "Learn",
+    href: "/library",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+    description: "Courses, lessons & certificates",
+  },
+  {
+    label: "Library",
+    href: "/library/reference",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+    description: "Look up cards, signs, crystals & herbs",
+  },
+  {
     label: "Journal",
     href: "/journal",
     icon: (
@@ -34,6 +58,18 @@ const MENU_ITEMS = [
       </svg>
     ),
     description: "Streaks, stats & patterns",
+  },
+  {
+    label: "Palmistry",
+    href: "/palmistry",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M18 11V6a1.5 1.5 0 0 0-3 0M15 6V4.5a1.5 1.5 0 0 0-3 0V6M12 6V5a1.5 1.5 0 0 0-3 0v7" />
+        <path d="M9 12V8.5a1.5 1.5 0 0 0-3 0V14c0 3.5 2.5 6.5 6 6.5s6-2.8 6-6.5v-3" />
+      </svg>
+    ),
+    description: "Read your palm",
   },
   {
     label: "Account",

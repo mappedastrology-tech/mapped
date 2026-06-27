@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -215,9 +216,14 @@ SAFETY — ALWAYS CHECK:
 // ─── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
-  const ip = getClientIP(request);
-  const { allowed } = checkRateLimit(`wizard:${ip}`, 15, 24 * 60 * 60 * 1000);
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const uid = await getAuthedUserId(request);
+  if (!uid) {
+    return new Response(JSON.stringify({ error: "Sign in required." }), { status: 401, headers: { "Content-Type": "application/json" } });
+  }
+
+  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+  const { allowed } = await checkRateLimitDurable(`wizard:${uid}`, 15, 24 * 60 * 60 * 1000);
   if (!allowed) {
     return new Response(
       JSON.stringify({ error: "You've reached the daily wizard limit. Try again tomorrow." }),
@@ -306,7 +312,7 @@ Generate the ritual now. Follow the output format exactly.`;
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 2048,
       system: WIZARD_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],

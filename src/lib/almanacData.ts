@@ -930,15 +930,198 @@ const SIGN_ACTIVITY_ALIGNMENT: Record<string, Record<string, number>> = {
   Pisces: { action: 0, communication: 2, creativity: 4, patience: 3, planning: 1 },
 };
 
-/** Map activity text to a broad category for scoring */
-function getActivityCategory(activity: string): string {
-  const lower = activity.toLowerCase();
-  if (lower.includes("start") || lower.includes("exercise") || lower.includes("new") || lower.includes("adventur") || lower.includes("bold") || lower.includes("leap")) return "action";
-  if (lower.includes("date") || lower.includes("conversation") || lower.includes("reach") || lower.includes("social") || lower.includes("network") || lower.includes("negotiat")) return "communication";
-  if (lower.includes("creative") || lower.includes("art") || lower.includes("writing") || lower.includes("tattoo") || lower.includes("journal") || lower.includes("meditat")) return "creativity";
-  if (lower.includes("patience") || lower.includes("wait") || lower.includes("nurtur") || lower.includes("slow") || lower.includes("routine") || lower.includes("plan")) return "patience";
-  if (lower.includes("career") || lower.includes("financial") || lower.includes("organiz") || lower.includes("schedule") || lower.includes("commit") || lower.includes("long-term")) return "planning";
+type ActivityCategory = "action" | "communication" | "creativity" | "patience" | "planning";
+
+/** Normalize a label so lookups tolerate punctuation, em dashes, and apostrophes. */
+function normalizeActivity(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Explicit category for every curated activity (keyed by normalized label).
+ * Built by hand so scoring reflects what each activity actually is, instead of
+ * collapsing edge cases ("Reviewing your budget", "Signing contracts") into the
+ * "action" default the way loose substring matching did.
+ */
+const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
+  // Aries
+  "starting a new project": "action",
+  "beginning an exercise routine": "action",
+  "getting a haircut for growth": "action",
+  "having that hard conversation": "communication",
+  "asking directly for what you want": "communication",
+  "trying a new sport or workout": "action",
+  "making the bold decision you ve been circling": "action",
+  "tackling the hardest task first": "action",
+  // Taurus
+  "starting a skincare routine": "patience",
+  "making a big purchase you ve researched": "planning",
+  "hosting a gathering": "communication",
+  "planting something": "patience",
+  "cooking a slow comforting meal": "patience",
+  "reviewing your budget or savings": "planning",
+  "spending unhurried time in nature": "patience",
+  "savoring a small sensory luxury": "patience",
+  // Gemini
+  "going on a first date": "communication",
+  "signing contracts or agreements": "planning",
+  "starting a creative writing project": "creativity",
+  "reaching out to someone you ve lost touch with": "communication",
+  "brainstorming or mind mapping ideas": "creativity",
+  "clearing your inbox and messages": "communication",
+  "learning something new in short bursts": "communication",
+  "running errands and short trips": "action",
+  // Cancer
+  "deep cleaning your space": "patience",
+  "starting a home improvement": "action",
+  "cooking or preserving food": "patience",
+  "nurturing an important relationship": "patience",
+  "looking through old photos or keepsakes": "patience",
+  "baking something from scratch": "patience",
+  "calling family or chosen family": "communication",
+  "planning a cozy night in": "patience",
+  // Leo
+  "getting a tattoo or piercing": "creativity",
+  "throwing or attending a party": "communication",
+  "working on a creative project": "creativity",
+  "expressing yourself boldly": "creativity",
+  "sharing your work publicly": "communication",
+  "planning a date night": "communication",
+  "refreshing your look or wardrobe": "creativity",
+  "playing with kids pets or friends": "communication",
+  // Virgo
+  "starting a health routine": "patience",
+  "organizing your space or schedule": "planning",
+  "deep cleaning and decluttering": "planning",
+  "scheduling a dental or doctor appointment": "planning",
+  "tidying up your digital files": "planning",
+  "meal prepping for the week": "planning",
+  "making a detailed to do list": "planning",
+  "fixing the small thing that s been bugging you": "action",
+  // Libra
+  "getting a beauty treatment": "creativity",
+  "redecorating a room": "creativity",
+  "working on a partnership": "communication",
+  "smoothing over a disagreement": "communication",
+  "writing a thoughtful thank you note": "communication",
+  "curating something beautiful a playlist a shelf": "creativity",
+  "collaborating on a shared project": "communication",
+  // Scorpio
+  "quitting a bad habit": "action",
+  "doing shadow work or therapy": "patience",
+  "having a deep conversation": "communication",
+  "scheduling surgery or procedures": "planning",
+  "reviewing debts taxes or investments": "planning",
+  "decluttering with ruthless honesty": "planning",
+  "researching something all the way down": "planning",
+  "setting a firm boundary": "communication",
+  // Sagittarius
+  "booking or starting travel": "action",
+  "starting a class or course": "planning",
+  "big picture planning": "planning",
+  "doing something adventurous": "action",
+  "trying food from a new cuisine": "action",
+  "teaching someone what you know": "communication",
+  "reading about far off places or big ideas": "communication",
+  "saying yes to a spontaneous invitation": "action",
+  // Capricorn
+  "making a career move": "planning",
+  "submitting a job application": "planning",
+  "financial planning": "planning",
+  "committing to something long term": "planning",
+  "updating your resume or portfolio": "planning",
+  "building a system that saves future time": "planning",
+  "asking for the raise or the bigger role": "communication",
+  "knocking out paperwork and admin": "planning",
+  // Aquarius
+  "trying something totally new": "action",
+  "joining or starting a group project": "communication",
+  "volunteering or humanitarian work": "action",
+  "innovating on a problem": "creativity",
+  "connecting with your wider community": "communication",
+  "learning a new tool or technology": "communication",
+  "brainstorming unconventional solutions": "creativity",
+  "reconnecting with friends who get you": "communication",
+  // Pisces
+  "spiritual practice or meditation": "patience",
+  "dream journaling": "creativity",
+  "making art": "creativity",
+  "healing work yours or someone else s": "patience",
+  "listening to music with full attention": "patience",
+  "taking a long bath or a swim": "patience",
+  "writing poetry or free form journaling": "creativity",
+  "resting without guilt": "patience",
+  // Moon-phase bonus activities
+  "setting new intentions": "planning",
+  "starting something you ve been putting off": "action",
+  "finishing a lingering project": "action",
+  "letting go of what s not working": "patience",
+  // "Hold off / skip" activities (categorized by what the activity actually is)
+  "delicate negotiations": "communication",
+  "patience heavy tasks": "patience",
+  "passive aggressive texts": "communication",
+  "rushing a big decision": "action",
+  "drastic changes to routine": "action",
+  "impulse purchases": "planning",
+  "committing to long term plans": "planning",
+  "deep emotional processing": "patience",
+  "solo work that needs deep focus": "planning",
+  "confrontational conversations": "communication",
+  "risk taking": "action",
+  "ignoring your gut feeling": "patience",
+  "accepting criticism gracefully": "communication",
+  "behind the scenes tedious work": "planning",
+  "people pleasing at your expense": "communication",
+  "winging it": "action",
+  "starting something messy": "action",
+  "ignoring the details": "planning",
+  "solo decision making": "planning",
+  "picking fights": "communication",
+  "skipping self care": "patience",
+  "haircuts bangs": "action",
+  "first dates": "communication",
+  "surface level networking": "communication",
+  "micromanaging": "planning",
+  "routine paperwork": "planning",
+  "playing it safe when you should leap": "action",
+  "spontaneous splurges": "planning",
+  "emotional vulnerability with strangers": "communication",
+  "quitting something impulsively": "action",
+  "following the crowd": "communication",
+  "emotionally loaded conversations": "communication",
+  "rigid scheduling": "planning",
+  "major financial decisions": "planning",
+  "confrontation": "communication",
+  "anything requiring sharp logic": "planning",
+  "starting anything you want to last": "action",
+  // Moon-sign gardening tasks (patient, earth-oriented cultivation)
+  "plant leafy greens and herbs": "patience",
+  "sow seeds for above ground crops": "patience",
+  "transplant seedlings": "patience",
+  "fertilize and feed plants": "patience",
+  "plant root vegetables": "patience",
+  "harvest herbs for potency": "patience",
+  "weed prune and clear beds": "patience",
+  "turn compost and amend soil": "patience",
+  "water deeply plants absorb more in water signs": "patience",
+  "work the soil and transplant": "patience",
+  "harvest fruits and seeds": "patience",
+  "harvest flowers and herbs for drying": "patience",
+};
+
+/** Keyword fallback for any activity not in the curated map (e.g. dynamic text). */
+function categorizeByKeyword(lower: string): ActivityCategory {
+  if (/(budget|saving|financ|invest|\btax|debt|career|resume|portfolio|applicat|paperwork|admin|schedul|organiz|declutter|tidy|to-do|to do|\bplan(?:s|ning)?\b|system|long-term|commit|meal prep)/.test(lower)) return "planning";
+  if (/(conversation|\bdates?\b|reach|social|network|negotiat|\bcall|party|gather|collaborat|partnership|thank-you|message|inbox|boundary|teach|connect|communit)/.test(lower)) return "communication";
+  if (/(creative|\bart\b|writ|poetry|journal|tattoo|decorat|curat|design|innovat|brainstorm|music|dream)/.test(lower)) return "creativity";
+  if (/(patien|wait|nurtur|slow|\brest|bath|meditat|heal|savor|unhurried|cozy|comfort|routine|preserv|bak)/.test(lower)) return "patience";
+  if (/(start|begin|exercise|workout|sport|\bnew\b|adventur|bold|leap|travel|quit|\bfix|errand|volunteer)/.test(lower)) return "action";
   return "action";
+}
+
+/** Map activity text to a broad category for scoring. */
+function getActivityCategory(activity: string): string {
+  return ACTIVITY_CATEGORY[normalizeActivity(activity)] ?? categorizeByKeyword(activity.toLowerCase());
 }
 
 /** Planet ruler descriptions keyed by day-of-week */

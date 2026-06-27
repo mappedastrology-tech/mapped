@@ -632,6 +632,21 @@ function RitualDetailCard({
               </div>
             )}
 
+            {/* Honest framing — only when the ritual leans on crystals, oils, or chakras */}
+            {(() => {
+              const r = ritual as CatalogRitual;
+              const hay = `${r.description} ${(r.toolsNeeded || []).join(" ")} ${r.steps.join(" ")}`.toLowerCase();
+              const usesCorrespondence = /crystal|quartz|amethyst|citrine|obsidian|selenite|tourmaline|fluorite|labradorite|carnelian|moonstone|rose quartz|essential oil|\boils?\b|chakra/.test(hay);
+              if (!usesCorrespondence) return null;
+              return (
+                <div className="mt-3 p-2.5 rounded-xl" style={{ backgroundColor: "var(--background-elevated)" }}>
+                  <p className="text-[10px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
+                    Crystals, oils, and chakras are traditional, symbolic practices — not scientifically proven to have physical or medical effects. Use them as focusing tools alongside, never instead of, professional care.
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* I'm Done button */}
             {onComplete && (
               <button

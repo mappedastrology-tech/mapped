@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { authedFetch } from "@/lib/authedFetch";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import {
   type CustomRitual,
@@ -214,7 +215,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const res = await fetch("/api/wizard", {
+      const res = await authedFetch("/api/wizard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

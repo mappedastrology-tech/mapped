@@ -18,6 +18,35 @@
     Cream    = canvas in day, content in night
 */
 
+/* Felt-paper texture — a desaturated noise blended into the page background.
+   Approximates the design's dark-felt.png; swap the data-URI for the real
+   image if/when it's added to /public. */
+.lib-felt {
+  background-color: var(--background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='0.6'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  background-blend-mode: soft-light;
+
+  /* Match the Claude Design type system inside Learn/Library:
+     Bodoni Moda for display, DM Sans for everything else. */
+  --font-display: "Bodoni Moda", "Playfair Display", Georgia, serif;
+  --font-body: "DM Sans", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
+}
+.lib-felt input, .lib-felt button, .lib-felt textarea, .lib-felt select { font-family: inherit; }
+[data-theme="light"] .lib-felt { background-blend-mode: multiply; }
+
+/* Respect prefers-reduced-motion across the Learn/Library screens:
+   neutralize card flips, twinkles, floats, pops, and slide/zoom enters. */
+@media (prefers-reduced-motion: reduce) {
+  .lib-felt *, .lib-felt *::before, .lib-felt *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ═══ BASE (Night mode — default) ═══ */
 :root {
   --background: #0e0a14;
@@ -193,6 +222,14 @@
   --moon-card-bg: linear-gradient(135deg, var(--plum-deep), var(--plum));
   --moon-card-inner: rgba(255, 255, 255, 0.06);
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  /* Learning Library — design-specific surfaces (no existing equivalent) */
+  --lib-plum: #41213a;                    /* raised plum panel */
+  --lib-surface: #15101c;                 /* recessed tile / search field */
+  --lib-track: rgba(255, 255, 255, 0.07); /* progress tracks, subtle fills */
+  --lib-soft: rgba(255, 255, 255, 0.05);  /* faint chips / dividers */
+  --lib-orb-text: #281320;                /* number on the bright gold orb */
+  --lib-on-plum: #f0e6d2;                 /* text on always-dark plum surfaces */
 }
 
 /* ═══ DAY MODE — cream canvas with dark content ═══ */
@@ -277,6 +314,13 @@
   --moon-card-bg: linear-gradient(135deg, #f0eaf5, #e8e0f0);
   --moon-card-inner: rgba(0, 0, 0, 0.03);
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  /* Learning Library — design-specific surfaces (light variants) */
+  --lib-plum: #f0eaf5;                   /* soft lavender panel */
+  --lib-surface: #ffffff;                /* recessed tile / search field */
+  --lib-track: rgba(0, 0, 0, 0.07);      /* progress tracks, subtle fills */
+  --lib-soft: rgba(0, 0, 0, 0.045);      /* faint chips / dividers */
+  --lib-orb-text: #3a1830;               /* number on the bright gold orb */
 }
 
 /* Day mode body — no dark texture */
@@ -484,6 +528,15 @@ input, select, textarea {
   color: var(--cream);
   --color-foreground: var(--cream);
   --foreground: var(--cream);
+  /* Placement cards are always dark, so the element accent colors must stay
+     bright here even in light theme — otherwise the light-theme dark-purple
+     lavender/sage renders as dark-on-dark and the sign text is unreadable. */
+  --lavender: #B8A0D2;
+  --lavender-light: #CDBAE0;
+  /* Earth-sign accent: the green (#8aa860) was muddy and hard to read on the
+     deep-plum card, so it's rendered as the same readable cream/white as the
+     card body text instead of green. */
+  --sage: #f0e6d2;
 }
 .placement-card-text { color: #f0e6d2; }
 .placement-card-text-secondary { color: #c4b8a0; }

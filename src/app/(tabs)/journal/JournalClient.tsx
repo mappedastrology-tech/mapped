@@ -14,6 +14,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { authedFetch } from "@/lib/authedFetch";
 import { getTarotHistoryKey } from "@/lib/completionSync";
 import { useTier } from "@/components/TierProvider";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -190,7 +191,7 @@ function JournalPage() {
         const body = JSON.parse(decodeURIComponent(generateParam));
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 6000);
-        fetch("/api/journal/prompt", {
+        authedFetch("/api/journal/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,

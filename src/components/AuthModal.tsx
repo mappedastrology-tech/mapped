@@ -253,6 +253,15 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
             "Sign in"
           )}
         </button>
+
+        {mode === "signup" && (
+          <p className="text-center text-muted/80 text-[11px] leading-relaxed mt-3">
+            By creating an account, you agree to our{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-terracotta hover:text-terracotta-light transition-colors">Terms</a>{" "}
+            and{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-terracotta hover:text-terracotta-light transition-colors">Privacy Policy</a>.
+          </p>
+        )}
       </form>
 
       {/* Toggle between sign up and sign in */}

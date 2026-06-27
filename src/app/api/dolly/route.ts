@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -205,14 +206,22 @@ When they ask "what should I do," give them a real perspective grounded in their
 - Never start your response with "Great question!" or similar filler
 - Never confuse the user's chart with a connection's chart
 
+## Safety — this matters more than anything else in this prompt
+If the user expresses thoughts of suicide, self-harm, wanting to die or disappear, that they're in danger, or that someone is hurting them, STOP coaching immediately and do NOT use astrology to explain, reframe, or soften it. Respond with genuine human warmth and concern, make clear you care, and gently point them to real help: in the US the 988 Suicide & Crisis Lifeline is available 24/7 — they can call or text 988. Encourage them to reach out to a trusted person or a professional. Keep it brief, kind, and human — not clinical. Never provide anything that could enable harm. If they describe a medical emergency, tell them to contact local emergency services. You are not a therapist or a crisis service and must never act like one. The same applies to disordered eating, substance crises, or abuse — care first, resources, not coaching.
+
 ## Chart Data
 The user's EXACT chart data, current transits, and connections are provided below. These are computed from real ephemeris data — trust them completely and use ONLY these placements.`;
 
 export async function POST(request: NextRequest) {
-  // Rate limit: 30 Dolly messages per day per IP
-  const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
-  const ip = getClientIP(request);
-  const { allowed, remaining } = checkRateLimit(`dolly:${ip}`, 30, 24 * 60 * 60 * 1000);
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const uid = await getAuthedUserId(request);
+  if (!uid) {
+    return new Response(JSON.stringify({ error: "Sign in required." }), { status: 401, headers: { "Content-Type": "application/json" } });
+  }
+
+  // Rate limit: 30 Dolly messages per day per user (durable when Redis is set).
+  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+  const { allowed } = await checkRateLimitDurable(`dolly:${uid}`, 30, 24 * 60 * 60 * 1000);
   if (!allowed) {
     return new Response(
       JSON.stringify({ error: "You've reached the daily limit for Dolly conversations. Try again tomorrow." }),
@@ -224,10 +233,6 @@ export async function POST(request: NextRequest) {
     const body: DollyRequest = await request.json();
     const { message, history, chart, transits, connections, userName } = body;
 
-    console.log("[Dolly] Chart received:", chart ? `bigThree=${JSON.stringify(chart.bigThree)}, planets=${chart.planets?.length || 0}` : "NO CHART");
-    console.log("[Dolly] Transits:", transits ? `${transits.transitAspects?.length || 0} aspects` : "NO TRANSITS");
-    console.log("[Dolly] Connections:", connections?.length || 0);
-
     if (!message?.trim()) {
       return new Response(JSON.stringify({ error: "No message provided." }), {
         status: 400,
@@ -236,7 +241,6 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    console.log("[Dolly] API key present:", !!apiKey, "length:", apiKey?.length || 0, "starts with:", apiKey?.slice(0, 10) || "NONE");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API key not configured." }), {
         status: 500,
@@ -279,7 +283,7 @@ export async function POST(request: NextRequest) {
 
     // Use create() with stream: true — returns an async iterable
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1024,
       system: fullSystem,
       messages,

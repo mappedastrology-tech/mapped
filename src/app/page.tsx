@@ -138,6 +138,11 @@ export default function Home() {
           <span className="text-brass/60 text-sm">&#x2726;</span>
           <div className="h-px flex-1 bg-foreground/15" />
         </div>
+        <div className="flex items-center justify-center gap-4 mt-4">
+          <Link href="/privacy" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Privacy</Link>
+          <span className="text-muted/40 text-[11px]">&middot;</span>
+          <Link href="/terms" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Terms</Link>
+        </div>
       </div>
     </main>
   );

@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import AppTour from "@/components/AppTour";
+import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
@@ -107,6 +108,7 @@ export default function TabsLayout({
           </div>
           <BottomNav />
         </div>
+        <BugReportButton />
         {showTour && <AppTour onComplete={handleTourComplete} />}
       </BirthTimeProvider>
     </TierProvider>

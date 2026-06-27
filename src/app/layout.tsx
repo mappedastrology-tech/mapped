@@ -3,15 +3,37 @@ import Script from "next/script";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import ToastProvider from "@/components/Toast";
+import ErrorMonitorInit from "@/components/ErrorMonitorInit";
 
 // NOTE: We're using system fonts + CSS @import for Google Fonts
 // instead of next/font, because next/font downloads fonts at build time
 // and some build environments block that. This works just as well.
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-olive.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Mapped — astrology for your actual life",
   description:
     "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+  applicationName: "Mapped",
+  appleWebApp: { capable: true, title: "Mapped", statusBarStyle: "default" },
+  openGraph: {
+    type: "website",
+    siteName: "Mapped",
+    url: SITE_URL,
+    title: "Mapped — astrology for your actual life",
+    description:
+      "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Mapped" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mapped — astrology for your actual life",
+    description:
+      "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+    images: ["/icon-512.png"],
+  },
 };
 
 // This tells mobile browsers to render at phone width and sets the
@@ -53,6 +75,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="min-h-dvh flex flex-col antialiased" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+        <ErrorMonitorInit />
         <ThemeProvider>
           <ToastProvider>
             {children}

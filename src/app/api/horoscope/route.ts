@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createMessageResilient } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -225,9 +226,11 @@ Respond with ONLY valid JSON, no markdown, no explanation:
 async function getCachedHoroscope(userId: string, dateStr: string) {
   try {
     const { createClient } = await import("@supabase/supabase-js");
+    // Server-side only: use the service role so this table can have strict RLS
+    // (no public/anon access). Falls back to anon if the service key is unset.
     const sb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
     const { data } = await sb
       .from("horoscope_cache")
@@ -242,9 +245,11 @@ async function getCachedHoroscope(userId: string, dateStr: string) {
 async function setCachedHoroscope(userId: string, dateStr: string, response: object) {
   try {
     const { createClient } = await import("@supabase/supabase-js");
+    // Server-side only: use the service role so this table can have strict RLS
+    // (no public/anon access). Falls back to anon if the service key is unset.
     const sb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
     await sb
       .from("horoscope_cache")
@@ -253,10 +258,16 @@ async function setCachedHoroscope(userId: string, dateStr: string, response: obj
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limit: 5 horoscope generations per hour per IP (normally cached client-side)
-  const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
-  const ip = getClientIP(request);
-  const { allowed } = checkRateLimit(`horoscope:${ip}`, 5, 60 * 60 * 1000);
+  // Require a signed-in user; derive their id from the verified token (never the body).
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const userId = await getAuthedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  // Rate limit per user (durable across workers when Redis is configured).
+  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+  const { allowed } = await checkRateLimitDurable(`horoscope:${userId}`, 5, 60 * 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: "Rate limited. Horoscope should be cached — try refreshing." }, { status: 429 });
   }
@@ -268,7 +279,6 @@ export async function POST(request: NextRequest) {
     // Check server-side cache (cross-device consistency)
     // Use the client's local date if provided, so all devices in the same timezone
     // get the same horoscope regardless of when they hit the UTC boundary.
-    const userId = body.userId as string | undefined;
     const localDate = (body as unknown as Record<string, unknown>).localDate as string | undefined;
     const todayStr = (localDate && /^\d{4}-\d{2}-\d{2}$/.test(localDate))
       ? localDate
@@ -336,8 +346,7 @@ export async function POST(request: NextRequest) {
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const response = await createMessageResilient(client, {
       max_tokens: 512,
       system: fullSystem,
       messages: [
@@ -400,9 +409,9 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Horoscope error:", errMsg, error);
-
+    // Don't leak internal/provider error detail to the client.
     return NextResponse.json(
-      { error: errMsg },
+      { error: "Couldn't generate your horoscope right now." },
       { status: 500 }
     );
   }

@@ -8,13 +8,15 @@
  * Reset mode: Set a new password after clicking email reset link
  */
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/components/ThemeProvider";
 import { useTier } from "@/components/TierProvider";
 import { PlansPage } from "@/components/Paywall";
 import CitySearch from "@/components/CitySearch";
+import BugReportModal from "@/components/BugReportModal";
+import DataExportButton from "@/components/DataExportButton";
 import {
   getCachedLocation,
   fetchUserLocation,
@@ -74,11 +76,41 @@ function ConfirmDialog({
   onCancel: () => void;
   isLoading?: boolean;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Keyboard accessibility: close on Escape, focus the dialog on open, and trap
+  // Tab focus inside it while it's up.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = dialog.querySelectorAll<HTMLElement>("button:not([disabled])");
+    (focusable[0] ?? dialog).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onCancel(); return; }
+      if (e.key !== "Tab" || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div className="absolute inset-0 backdrop-blur-[2px]" style={{ backgroundColor: "var(--modal-overlay)" }} onClick={onCancel} />
-      <div className="relative bg-background rounded-2xl border border-foreground/15 p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div aria-hidden="true" className="absolute inset-0 backdrop-blur-[2px]" style={{ backgroundColor: "var(--modal-overlay)" }} onClick={onCancel} />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative bg-background rounded-2xl border border-foreground/15 p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 outline-none"
+      >
         <h3
+          id={titleId}
           className="text-lg text-foreground mb-2"
           style={{ fontFamily: "var(--font-display)" }}
         >
@@ -596,17 +628,18 @@ function NotificationSettingsSection() {
         const np = data.notification_preferences;
         // Map full prefs back to simplified view (handles existing users)
         if ("moon_phases" in np) {
-          setPrefs(np);
+          setPrefs({ learning_streak: true, ...np });
         } else {
           setPrefs({
             moon_phases: np.full_moon ?? true,
             your_chart: np.major_transits ?? true,
             daily_message: np.daily_content ?? false,
+            learning_streak: np.learning_reminder ?? true,
           });
         }
       } else {
         setPrefs({
-          moon_phases: true, your_chart: true, daily_message: false,
+          moon_phases: true, your_chart: true, daily_message: false, learning_streak: true,
         });
       }
       setLoaded(true);
@@ -658,6 +691,7 @@ function NotificationSettingsSection() {
         major_ingresses: !!updated.your_chart,
         daily_content: !!updated.daily_message,
         practice_reminders: !!updated.moon_phases,
+        learning_reminder: updated.learning_streak !== false,
         re_engagement: true,
         preferred_hour: 19,
         paused_until: null,
@@ -682,6 +716,7 @@ function NotificationSettingsSection() {
     { key: "moon_phases", label: "Moon phases", desc: "Full moons, new moons, and eclipses" },
     { key: "your_chart", label: "Your chart", desc: "Transits, retrogrades, and birthdays" },
     { key: "daily_message", label: "Daily message", desc: "A short note each morning" },
+    { key: "learning_streak", label: "Learning streak", desc: "A nudge only when your streak is about to lapse" },
   ];
 
   return (
@@ -1001,215 +1036,32 @@ function ThemeSection() {
 
 /* ─── Report a Bug section ─── */
 
-function ReportBugSection({ userEmail }: { userEmail: string | null }) {
+function ReportBugSection() {
   const [open, setOpen] = useState(false);
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<"bug" | "suggestion" | "other">("bug");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [page, setPage] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      // Auto-detect current page from referrer
-      try {
-        const path = window.location.pathname;
-        setPage(path);
-      } catch { /* ignore */ }
-    }
-  }, [open]);
-
-  async function handleSubmit() {
-    if (!description.trim()) return;
-    setSending(true);
-
-    try {
-      // Collect device info automatically
-      const deviceInfo = {
-        userAgent: navigator.userAgent,
-        screen: `${window.screen.width}x${window.screen.height}`,
-        viewport: `${window.innerWidth}x${window.innerHeight}`,
-        platform: navigator.platform,
-        language: navigator.language,
-        timestamp: new Date().toISOString(),
-        url: window.location.href,
-      };
-
-      // Build the email body
-      const subject = `[Mapped ${category}] ${description.slice(0, 60)}`;
-      const body = [
-        `Category: ${category}`,
-        `Page: ${page || "unknown"}`,
-        `From: ${userEmail || "anonymous"}`,
-        "",
-        "Description:",
-        description,
-        "",
-        "--- Device Info ---",
-        `Browser: ${deviceInfo.userAgent}`,
-        `Screen: ${deviceInfo.screen}`,
-        `Viewport: ${deviceInfo.viewport}`,
-        `Platform: ${deviceInfo.platform}`,
-        `Time: ${deviceInfo.timestamp}`,
-        `URL: ${deviceInfo.url}`,
-      ].join("\n");
-
-      // Open mailto link as fallback (works everywhere)
-      const mailtoUrl = `mailto:contacttaylorsometimes@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.open(mailtoUrl, "_blank");
-
-      setSent(true);
-      setTimeout(() => {
-        setSent(false);
-        setOpen(false);
-        setDescription("");
-        setCategory("bug");
-      }, 2500);
-    } catch {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(`Bug Report:\n${description}\n\nPage: ${page}`);
-        setSent(true);
-        setTimeout(() => { setSent(false); setOpen(false); setDescription(""); }, 2500);
-      } catch { /* ignore */ }
-    } finally {
-      setSending(false);
-    }
-  }
-
   return (
-    <div className="mt-6">
+    <>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(true)}
         className="w-full flex items-center justify-between py-3 text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="text-lg">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-terracotta">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
+          <span className="text-terracotta">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 2l1.5 2.5M16 2l-1.5 2.5" />
+              <rect x="8" y="6" width="8" height="12" rx="4" />
+              <path d="M8 11H4M16 11h4M8 15H4M16 15h4M9 18l-2 3M15 18l2 3M12 6V4" />
             </svg>
           </span>
           <span className="text-foreground text-sm" style={{ fontFamily: "var(--font-display)" }}>
             Report a Bug
           </span>
         </div>
-        <svg
-          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="text-muted transition-transform"
-          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-        >
-          <polyline points="6 9 12 15 18 9" />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+          <polyline points="9 18 15 12 9 6" />
         </svg>
       </button>
-
-      {open && (
-        <div className="rounded-2xl bg-surface border border-foreground/10 p-5 mt-2 space-y-4">
-          {sent ? (
-            <div className="text-center py-6">
-              <div className="text-3xl mb-2">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brass, #b8a068)" strokeWidth="2" className="mx-auto">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              <p className="text-foreground text-sm font-medium">Thank you!</p>
-              <p className="text-muted text-xs mt-1">Your feedback helps us improve Mapped.</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-muted text-xs leading-relaxed">
-                Found something off? We want to hear about it. Your device info will be included automatically.
-              </p>
-
-              {/* Category pills */}
-              <div className="flex gap-2">
-                {(["bug", "suggestion", "other"] as const).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCategory(c)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      category === c
-                        ? "bg-terracotta/20 text-terracotta border border-terracotta/30"
-                        : "bg-surface border border-foreground/10 text-muted hover:text-foreground"
-                    }`}
-                  >
-                    {c === "bug" ? "Bug" : c === "suggestion" ? "Idea" : "Other"}
-                  </button>
-                ))}
-              </div>
-
-              {/* What happened */}
-              <div>
-                <label className="block text-xs text-muted mb-1.5">
-                  {category === "bug" ? "What happened?" : category === "suggestion" ? "What would you like to see?" : "Tell us more"}
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={category === "bug"
-                    ? "e.g. When I tap on my chart, the page goes blank..."
-                    : category === "suggestion"
-                    ? "e.g. It would be cool if the almanac showed weather..."
-                    : "Anything on your mind..."
-                  }
-                  rows={3}
-                  className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/12
-                             text-foreground text-sm placeholder:text-muted/60
-                             focus:outline-none focus:border-terracotta/40 focus:ring-1 focus:ring-terracotta/20
-                             resize-none"
-                  aria-label="Bug description"
-                />
-              </div>
-
-              {/* Where it happened */}
-              <div>
-                <label className="block text-xs text-muted mb-1.5">Which page? (optional)</label>
-                <select
-                  value={page}
-                  onChange={(e) => setPage(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/12
-                             text-foreground text-sm
-                             focus:outline-none focus:border-terracotta/40"
-                  aria-label="Page where bug occurred"
-                >
-                  <option value="">Not sure</option>
-                  <option value="/home">Home</option>
-                  <option value="/almanac">Almanac</option>
-                  <option value="/chart">Chart / You</option>
-                  <option value="/practice">Practice / Rituals</option>
-                  <option value="/maps">Maps</option>
-                  <option value="/dolly">Dolly</option>
-                  <option value="/onboarding">Onboarding</option>
-                  <option value="/account">Account</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              {/* Submit */}
-              <button
-                onClick={handleSubmit}
-                disabled={!description.trim() || sending}
-                className="w-full py-3 rounded-full text-sm font-medium transition-all
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: description.trim() ? "var(--brass, #b8a068)" : "var(--surface)",
-                  color: description.trim() ? "#1a1a1a" : "var(--muted)",
-                }}
-              >
-                {sending ? "Opening email..." : "Send Report"}
-              </button>
-
-              <p className="text-muted/50 text-[10px] text-center">
-                Opens your email app with the report pre-filled.
-              </p>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+      <BugReportModal open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
@@ -1855,7 +1707,7 @@ function AccountPage() {
           <SourcesSection />
 
           {/* ─── Report a Bug ─── */}
-          <ReportBugSection userEmail={email} />
+          <ReportBugSection />
 
           {/* ─── Sign out ─── */}
           <button
@@ -1874,6 +1726,18 @@ function AccountPage() {
           >
             Delete account
           </button>
+
+          {/* ─── Your data ─── */}
+          <div className="pt-2">
+            <DataExportButton />
+          </div>
+
+          {/* ─── Legal ─── */}
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Privacy Policy</a>
+            <span className="text-muted/40 text-[11px]">&middot;</span>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Terms of Service</a>
+          </div>
 
           {/* Error display */}
           {error && (

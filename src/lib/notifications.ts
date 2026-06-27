@@ -21,6 +21,7 @@ export type NotificationCategory =
   | "mercury_retrograde"
   | "major_ingresses"
   | "practice_reminders"
+  | "learning_reminder"
   | "re_engagement";
 
 /* ─── Preferences interface (stored in Supabase profile) ─── */
@@ -39,6 +40,7 @@ export interface NotificationPreferences {
   mercury_retrograde: boolean;
   major_ingresses: boolean;
   practice_reminders: boolean;
+  learning_reminder: boolean;
   re_engagement: boolean;
 
   // Delivery time preference (hour in user's local timezone, 0-23)
@@ -66,6 +68,7 @@ export const DEFAULT_PREFERENCES: NotificationPreferences = {
   mercury_retrograde: true,    // ON
   major_ingresses: true,       // ON
   practice_reminders: true,    // ON (only shown if user has a practice)
+  learning_reminder: true,     // ON — nudges only when a learning streak is at risk
   re_engagement: true,         // ON
 
   preferred_hour: 19,          // 7 PM default
@@ -99,6 +102,7 @@ export const PRIORITY_ORDER: NotificationCategory[] = [
   "practice_reminders",
   "daily_content",
   "quarter_moon",
+  "learning_reminder",
   "re_engagement",
 ];
 
@@ -331,6 +335,11 @@ export const SAMPLE_COPY: NotificationCopy[] = [
   // Mercury retrograde
   { category: "mercury_retrograde", body: "Mercury retrograde starts Friday. Three weeks. You know the drill.", hasVariables: false },
 
+  // Learning streak (sent only when a streak is about to lapse)
+  { category: "learning_reminder", body: "Your [streak]-day streak is still lit. One lesson keeps it going.", hasVariables: true },
+  { category: "learning_reminder", body: "Two minutes keeps your streak alive. A quick review is waiting in the Library.", hasVariables: false },
+  { category: "learning_reminder", body: "You're on a roll — don't let today be the gap. One lesson, that's all.", hasVariables: false },
+
   // Re-engagement (Day 7, 21, 60)
   { category: "re_engagement", body: "Mercury is doing something interesting today. Want to look at your chart?", hasVariables: false },
   { category: "re_engagement", body: "Your chart didn't go anywhere. Whenever you're ready.", hasVariables: false },
@@ -427,6 +436,7 @@ export const CATEGORY_META: CategoryMeta[] = [
 
   // Group: Your practice
   { key: "practice_reminders", label: "Moon practice phase reminders", description: "Before each phase you have a ritual for", group: "Your practice", defaultOn: true },
+  { key: "learning_reminder", label: "Keep my learning streak alive", description: "A gentle nudge only when your streak is about to lapse", group: "Your practice", defaultOn: true },
 
   // Group: Quiet check-ins
   { key: "re_engagement", label: "If I haven't opened in a while, let me know", description: "Max 3 total, then we stop", group: "Quiet check-ins", defaultOn: true },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createMessageResilient } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -23,8 +24,23 @@ interface ReflectRequest {
 
 export async function POST(req: NextRequest) {
   try {
+    const { getAuthedUserId } = await import("@/lib/apiAuth");
+    const uid = await getAuthedUserId(req);
+    if (!uid) {
+      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    }
+
+    // Rate limit: this route makes paid AI calls. 10 reflections/hr per user.
+    const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+    const { allowed } = await checkRateLimitDurable(`journal-reflect:${uid}`, 10, 60 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     const body: ReflectRequest = await req.json();
-    const { entries, cadence, periodStart, periodEnd, userName, chartSummary } = body;
+    const { cadence, periodStart, periodEnd, userName, chartSummary } = body;
+    // Cap the number of entries we process to bound token cost.
+    const entries = (body.entries || []).slice(0, 200);
 
     if (!entries || entries.length === 0) {
       return NextResponse.json({ error: "No entries to reflect on" }, { status: 400 });
@@ -52,10 +68,11 @@ Structure: Start with where they were at the beginning of this period. Notice th
 Length: 3-5 paragraphs for weekly, 4-6 for monthly, 5-8 for quarterly/yearly.
 ${cadence === "new-year" && chartSummary ? `\nAstrological context for the year:\n${chartSummary}\n\nWeave in references to how their chart's transits aligned with what they wrote about — but don't force it. Only mention astrology where it genuinely illuminates the pattern.` : ""}
 
-Do NOT use bullet points or headers. Write in flowing prose.`;
+Do NOT use bullet points or headers. Write in flowing prose.
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+SAFETY: If the entries suggest the person may be in crisis — thoughts of suicide or self-harm, abuse, a serious eating disorder, or a medical emergency — do not interpret it through astrology or frame it as growth. Gently and warmly acknowledge it and encourage them to reach out for real support (in the US, the 988 Suicide & Crisis Lifeline is available 24/7 by call or text). Care comes before reflection.`;
+
+    const message = await createMessageResilient(anthropic, {
       max_tokens: cadence === "weekly" ? 600 : cadence === "monthly" ? 1000 : 1500,
       system: systemPrompt,
       messages: [

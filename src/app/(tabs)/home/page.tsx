@@ -16,6 +16,8 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { buildFallbackHoroscope } from "@/lib/fallbackHoroscope";
+import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { BirthTimeRepromptBanner } from "@/components/BirthTimeCue";
@@ -91,7 +93,8 @@ import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
-import { getTodaysMoonEvent } from "@/lib/celestialCalendar";
+import SolarEventScreen from "@/components/SolarEventScreen";
+import { getTodaysMoonEvent, getTodaysSolarEvent } from "@/lib/celestialCalendar";
 import { getCurrentMoonSign, getCurrentPlanetSign } from "@/lib/astro/currentSky";
 
 interface DailyHoroscope {
@@ -136,6 +139,7 @@ export default function HomeTab() {
   const toggleFolder = (id: string) => setOpenFolder(prev => prev === id ? null : id);
   const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
   const [horoscopeStatus, setHoroscopeStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [horoscopeUpgrading, setHoroscopeUpgrading] = useState<boolean>(false);
   const [horoscopeError, setHoroscopeError] = useState<string>("");
   const [journalPrompt, setJournalPrompt] = useState<string | null>(null);
   const [journalPromptContext, setJournalPromptContext] = useState<string>("");
@@ -143,6 +147,8 @@ export default function HomeTab() {
   const [shareLoading, setShareLoading] = useState(false);
   const [showMoonBanner, setShowMoonBanner] = useState<boolean | null>(null);
   const [showMoonEvent, setShowMoonEvent] = useState(false);
+  const [showSolarBanner, setShowSolarBanner] = useState<boolean | null>(null);
+  const [showSolarEvent, setShowSolarEvent] = useState(false);
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [tarotFlipping, setTarotFlipping] = useState(false);
@@ -224,7 +230,7 @@ export default function HomeTab() {
   const generateDollyNotes = useCallback(async (cardName: string, keywords: string, meaning: string) => {
     setGeneratingNotes(true);
     try {
-      const res = await fetch("/api/dolly/notes", {
+      const res = await authedFetch("/api/dolly/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -289,6 +295,22 @@ export default function HomeTab() {
   const handleCloseMoonBanner = useCallback(() => {
     setShowMoonBanner(false);
     try { localStorage.setItem(`mapped:moon-banner-dismissed-${todayLocal}`, "1"); } catch {}
+  }, [todayLocal]);
+
+  // Solstice / equinox — the solar wheel of the year, surfaced like moon events.
+  const todaysSolarEvent = useMemo(() => getTodaysSolarEvent(today), [today]);
+
+  useEffect(() => {
+    if (!todaysSolarEvent) { setShowSolarBanner(false); return; }
+    const dismissKey = `mapped:solar-banner-dismissed-${todayLocal}`;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(dismissKey) === "1"; } catch {}
+    setShowSolarBanner(!dismissed);
+  }, [todaysSolarEvent, todayLocal]);
+
+  const handleCloseSolarBanner = useCallback(() => {
+    setShowSolarBanner(false);
+    try { localStorage.setItem(`mapped:solar-banner-dismissed-${todayLocal}`, "1"); } catch {}
   }, [todayLocal]);
 
   // Deterministic daily seed — same value all day, changes at midnight
@@ -459,15 +481,37 @@ export default function HomeTab() {
       }
     } catch { /* stale cache — refetch */ }
 
-    // Mark as loading immediately so this effect won't re-fire
-    setHoroscopeStatus("loading");
+    // Celestial context comes from real sky data already on this page.
+    const celestial = {
+      moonPhase: moon.label,
+      moonIllumination: moon.illumination,
+      zodiacSeason: season.sign,
+      seasonElement: season.element,
+      planetaryDay: planetaryDay.day,
+      planetaryDayPlanet: planetaryDay.planet,
+      nakshatra: nakshatra.name,
+      nakshatraQuality: nakshatra.quality,
+    };
+
+    // Populate INSTANTLY with a real reading from today's sky, then upgrade to
+    // the personalized AI version in the background (generation can take ~10s).
+    // This avoids a long spinner on the first open of the day. Status is "done"
+    // so the section renders immediately; the upgrading flag drives a subtle hint.
+    setHoroscope(buildFallbackHoroscope(celestial));
+    setHoroscopeStatus("done");
+    setHoroscopeUpgrading(true);
+
+    // On any AI failure we simply keep the instant fallback already on screen.
+    const showFallback = () => {
+      console.warn("[horoscope] AI unavailable — keeping local fallback reading");
+      setHoroscopeUpgrading(false);
+    };
 
     async function doFetch() {
       try {
         const { data: { session: authSession } } = await supabase.auth.getSession();
         if (!authSession?.user) {
-          setHoroscopeError("No auth session");
-          setHoroscopeStatus("error");
+          showFallback();
           return;
         }
 
@@ -481,22 +525,9 @@ export default function HomeTab() {
           .single();
 
         if (chartErr || !chartData?.big_three) {
-          setHoroscopeError("Couldn't load your chart data. Try refreshing.");
-          setHoroscopeStatus("error");
+          showFallback();
           return;
         }
-
-        // Build celestial context
-        const celestial = {
-          moonPhase: moon.label,
-          moonIllumination: moon.illumination,
-          zodiacSeason: season.sign,
-          seasonElement: season.element,
-          planetaryDay: planetaryDay.day,
-          planetaryDayPlanet: planetaryDay.planet,
-          nakshatra: nakshatra.name,
-          nakshatraQuality: nakshatra.quality,
-        };
 
         // Try to get transits (optional)
         let transits = undefined;
@@ -535,7 +566,7 @@ export default function HomeTab() {
           }
         } catch { /* storage full or unavailable */ }
 
-        const res = await fetch("/api/horoscope", {
+        const res = await authedFetch("/api/horoscope", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -555,20 +586,18 @@ export default function HomeTab() {
         });
 
         if (!res.ok) {
-          const errBody = await res.text().catch(() => "");
-          setHoroscopeError("API " + res.status + ": " + errBody);
-          setHoroscopeStatus("error");
+          showFallback();
           return;
         }
 
         const data = await res.json();
         setHoroscope(data);
         setHoroscopeStatus("done");
+        setHoroscopeUpgrading(false);
         try { localStorage.setItem(todayKey, JSON.stringify(data)); } catch { /* quota */ }
 
-      } catch (err) {
-        setHoroscopeError("Exception: " + String(err));
-        setHoroscopeStatus("error");
+      } catch {
+        showFallback();
       }
     }
 
@@ -781,6 +810,58 @@ export default function HomeTab() {
           );
         })()}
 
+        {/* ─── Solstice / Equinox banner ─── */}
+        {showSolarBanner && todaysSolarEvent && (() => {
+          const warm = todaysSolarEvent.kind === "winter-solstice"
+            ? "linear-gradient(135deg, #161334 0%, #0a0a18 100%)"
+            : "linear-gradient(135deg, #3a2410 0%, #1f1408 100%)";
+          const accent = todaysSolarEvent.kind === "winter-solstice" ? "#cbb6ff" : "#e0a458";
+          return (
+            <div className="relative rounded-2xl px-5 py-5 mb-8 overflow-hidden"
+              style={{ background: warm, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <button
+                type="button"
+                onClick={handleCloseSolarBanner}
+                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+                aria-label="Dismiss solstice banner"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[28px]">☀️</span>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
+                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                    Today · {todaysSolarEvent.dayType}
+                  </p>
+                  <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
+                    {todaysSolarEvent.name}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[13px] leading-[1.6] mb-4"
+                 style={{ color: "rgba(240,230,210,0.75)", fontFamily: "var(--font-body)" }}>
+                {todaysSolarEvent.ritualHint}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setShowSolarEvent(true)}
+                className="text-[12px] tracking-[0.06em] px-4 py-2 rounded-full active:scale-95 transition-transform"
+                style={{ background: `${accent}33`, color: accent, border: `1px solid ${accent}44`, fontFamily: "var(--font-display)" }}
+                aria-label="View full solstice event details"
+              >
+                Explore this turning point →
+              </button>
+            </div>
+          );
+        })()}
+
         {/* ─── Reading card ─── */}
         <div
           className="rounded-2xl px-6 py-7 mb-8"
@@ -808,12 +889,21 @@ export default function HomeTab() {
                 {horoscope.horoscope}
               </p>
               <div className="w-12 mx-auto mb-5" style={{ height: 1, backgroundColor: "#c9a961", opacity: 0.4 }} />
-              <p
-                className="text-[11px] italic text-center"
-                style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.6 }}
-              >
-                {season.sign} season · {capitalize(season.element)} element
-              </p>
+              {horoscopeUpgrading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3 h-3 border-2 rounded-full animate-spin" style={{ borderColor: "#f0e6d2", borderTopColor: "#c9a961", opacity: 0.6 }} role="status" aria-label="Personalizing" />
+                  <p className="text-[11px] italic text-center" style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.6 }}>
+                    Personalizing your reading&hellip;
+                  </p>
+                </div>
+              ) : (
+                <p
+                  className="text-[11px] italic text-center"
+                  style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.6 }}
+                >
+                  {season.sign} season · {capitalize(season.element)} element
+                </p>
+              )}
             </>
           ) : horoscopeStatus === "loading" ? (
             <div className="flex items-center justify-center gap-3 py-6">
@@ -1678,6 +1768,13 @@ export default function HomeTab() {
       {showMoonEvent && (
         <MoonEventScreen
           onClose={() => setShowMoonEvent(false)}
+        />
+      )}
+      {/* ─── Solstice / Equinox takeover ─── */}
+      {showSolarEvent && todaysSolarEvent && (
+        <SolarEventScreen
+          event={todaysSolarEvent}
+          onClose={() => setShowSolarEvent(false)}
         />
       )}
       {PaywallModal}

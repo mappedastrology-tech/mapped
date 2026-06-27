@@ -5,6 +5,9 @@
  * Shows a branded fallback instead of the generic Vercel "This page couldn't load" screen.
  */
 
+import { useEffect } from "react";
+import { captureError } from "@/lib/errorMonitor";
+
 export default function GlobalError({
   error,
   reset,
@@ -12,6 +15,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    captureError(error, { boundary: "app/error", digest: error.digest });
+  }, [error]);
+
   return (
     <div
       className="min-h-dvh flex flex-col items-center justify-center px-6 text-center"

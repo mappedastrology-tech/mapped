@@ -57,6 +57,26 @@ export function getCurrentSunSign(date: Date = new Date()): { abbr: string; full
   return lonToSign(getSunLongitude(date));
 }
 
+/**
+ * Exact dates/times of the four seasonal turning points for a given year,
+ * computed from astronomy-engine (sub-minute accuracy). These are the moments
+ * the Sun reaches 0° Aries / Cancer / Libra / Capricorn.
+ */
+export function getSeasonDates(year: number): {
+  springEquinox: Date;
+  summerSolstice: Date;
+  autumnEquinox: Date;
+  winterSolstice: Date;
+} {
+  const s = Astronomy.Seasons(year);
+  return {
+    springEquinox: s.mar_equinox.date,
+    summerSolstice: s.jun_solstice.date,
+    autumnEquinox: s.sep_equinox.date,
+    winterSolstice: s.dec_solstice.date,
+  };
+}
+
 /** Get any planet's current sign (planet names: Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto). */
 export function getCurrentPlanetSign(planet: string, date: Date = new Date()): { abbr: string; full: string; degree: number } {
   if (planet === "Moon") return getCurrentMoonSign(date);

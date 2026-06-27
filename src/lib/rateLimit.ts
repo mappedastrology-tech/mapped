@@ -59,6 +59,59 @@ export function checkRateLimit(
   return { allowed: true, remaining: limit - entry.count };
 }
 
+// ───────────────────────── Durable (Redis-backed) limiter ─────────────────────────
+//
+// The in-memory limiter above resets per worker and is easy to bypass. When an
+// Upstash Redis store is connected (via the Vercel Marketplace, which injects
+// KV_REST_API_URL / KV_REST_API_TOKEN — or a direct Upstash UPSTASH_REDIS_*),
+// counts are shared across all workers and survive restarts. If no store is
+// configured (or it errors), this transparently falls back to the in-memory
+// limiter so the app keeps working before/without Redis.
+
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+/** True when a shared Redis store is configured. */
+export const hasDurableRateLimit = Boolean(REDIS_URL && REDIS_TOKEN);
+
+/**
+ * Durable rate limit check. Same contract as checkRateLimit, but backed by a
+ * shared Redis fixed-window counter when configured. Falls back to in-memory.
+ */
+export async function checkRateLimitDurable(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<{ allowed: boolean; remaining: number }> {
+  if (!REDIS_URL || !REDIS_TOKEN) return checkRateLimit(key, limit, windowMs);
+
+  const ttlSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+  const k = `rl:${key}`;
+  try {
+    // Atomic-ish fixed window: INCR the counter, and set the expiry only on the
+    // first hit of the window (EXPIRE ... NX) so the window doesn't keep sliding.
+    const res = await fetch(`${REDIS_URL}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REDIS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["INCR", k],
+        ["EXPIRE", k, String(ttlSeconds), "NX"],
+      ]),
+    });
+    if (!res.ok) return checkRateLimit(key, limit, windowMs);
+    const data = (await res.json()) as Array<{ result?: number }>;
+    const count = Number(data?.[0]?.result ?? 0);
+    if (!count) return checkRateLimit(key, limit, windowMs);
+    return { allowed: count <= limit, remaining: Math.max(0, limit - count) };
+  } catch {
+    // Network/Redis error — fail over to the in-memory limiter rather than 500.
+    return checkRateLimit(key, limit, windowMs);
+  }
+}
+
 /**
  * Get client IP from request headers (works on Cloudflare + Vercel).
  */

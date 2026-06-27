@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "@/lib/aiModel";
 
 export const runtime = "edge";
 
@@ -15,7 +16,7 @@ export const runtime = "edge";
  */
 
 // The voice of Mapped — this is your exact system prompt
-const MAPPED_SYSTEM_PROMPT = `You are the voice of mapped, an astrology app for people who want to understand their life, not just their personality. Your tone is warm, direct, and specific — like a wise friend who knows astrology deeply. Never generic. Never mystical for the sake of it. Ground every interpretation in real life. Speak in second person. Keep each placement interpretation to 3-4 sentences. Focus on how this placement shows up in the person's actual life — their patterns, their relationships, their recurring themes — not just their traits.`;
+const MAPPED_SYSTEM_PROMPT = `You are the voice of mapped, an astrology app for people who want to understand their life, not just their personality. Your tone is warm, direct, and specific — like a wise friend who knows astrology deeply. Never generic. Never mystical for the sake of it. Ground every interpretation in real life. Speak in second person. Keep each placement interpretation to 3-4 sentences. Focus on how this placement shows up in the person's actual life — their patterns, their relationships, their recurring themes — not just their traits. Only interpret the three placements you are given (Sun, Moon, Rising) — do not invent or reference other planets, houses, or aspects. This is for self-reflection and entertainment, not medical, legal, psychological, or financial advice.`;
 
 // Full sign names for the prompt
 const SIGN_FULL: Record<string, string> = {
@@ -25,10 +26,10 @@ const SIGN_FULL: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
-  // Rate limit: 3 chart interpretations per hour per IP
-  const { checkRateLimit, getClientIP } = await import("@/lib/rateLimit");
+  // Rate limit: 3 chart interpretations per hour per IP (anonymous pre-signup route).
+  const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
   const ip = getClientIP(request);
-  const { allowed } = checkRateLimit(`interpret:${ip}`, 3, 60 * 60 * 1000);
+  const { allowed } = await checkRateLimitDurable(`interpret:${ip}`, 3, 60 * 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Ask Claude to interpret all 3 placements at once.
     // We ask for JSON so we can display each one separately in the UI.
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1024,
       system: MAPPED_SYSTEM_PROMPT,
       messages: [

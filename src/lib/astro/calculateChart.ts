@@ -155,6 +155,17 @@ export function calculateChart(data: ChartInput) {
     midheaven = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   }
 
+  // --- Vertex (fated point) ---
+  // Kept as a top-level field rather than a specialPoint so it powers synastry's
+  // fated marks without leaking into the natal placement list / chart analysis.
+  // Requires an accurate birth time, so it's omitted for unknown-time charts.
+  let vertex: { sign: string; signNum: number; position: number; absPosition: number } | null = null;
+  if (!data.unknownTime) {
+    const vLon = houseData.vertex;
+    const vInfo = isSidereal ? applySidereal(vLon, ayanamsaOffset) : posToSign(vLon);
+    vertex = { sign: vInfo.sign, signNum: vInfo.signNum, position: vInfo.position, absPosition: vInfo.absPosition };
+  }
+
   // --- Aspects ---
   const allBodies = [...planets, ...specialPoints];
   const aspects: { p1Name: string; p2Name: string; aspect: string; orbit: number; aspectDegrees: number }[] = [];
@@ -219,6 +230,7 @@ export function calculateChart(data: ChartInput) {
     planets,
     specialPoints,
     midheaven,
+    vertex,
     houses,
     aspects,
     risingCusp,

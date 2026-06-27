@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 
 const DOLLY_NOTES = [
   "You're allowed to take up space today.",
@@ -28,10 +28,11 @@ const DOLLY_NOTES = [
 export default function DollyNoteWidget() {
   const [visible, setVisible] = useState(false);
 
-  const note = useMemo(() => {
-    const day = Math.floor(Date.now() / 86400000); // changes daily
+  // Pick the daily note once per mount (lazy init keeps Date.now() out of render).
+  const [note] = useState(() => {
+    const day = Math.floor(Date.now() / 86400000);
     return DOLLY_NOTES[day % DOLLY_NOTES.length];
-  }, []);
+  });
 
   useEffect(() => {
     setVisible(true);
