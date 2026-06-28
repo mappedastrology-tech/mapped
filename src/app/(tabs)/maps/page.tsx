@@ -7414,12 +7414,37 @@ export default function MapsTab() {
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full overflow-y-auto">
       {/* ═══ NIGHT SKY — Your Constellation ═══ */}
       <NightSky
-        people={connections.map((c) => ({ id: c.id, name: c.name, category: c.category, sun: c.big_three?.sun ?? null }))}
+        people={connections.map((c) => ({
+          id: c.id,
+          name: c.name,
+          sun: c.big_three?.sun ?? null,
+          group: c.category === "friend"
+            ? "friend"
+            : (c.category === "partner" || CIRCLE_RELATIONSHIPS.includes(c.relationship))
+              ? "circle"
+              : "origin",
+        }))}
         userSun={userChart ? SIGN_FULL[userChart.bigThree.sun] : null}
         hasChart={!!userChart}
         onSelectPerson={(id) => { setSelectedId(id); setShowSelfView(false); }}
         onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
         onAdd={(category) => openAddForm(category)}
+        onOpenPlaces={() => {
+          if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
+          if (gate("astrocartography")) return;
+          if (userChart && !userChart.birthDate) {
+            try {
+              const raw = sessionStorage.getItem("chartResult");
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.birthDate) {
+                  setUserChart((prev) => prev ? { ...prev, birthDate: parsed.birthDate, birthTime: parsed.birthTime, latitude: parsed.latitude, longitude: parsed.longitude, timezone: parsed.timezone } : prev);
+                }
+              }
+            } catch { /* ignore */ }
+          }
+          setShowAstroMap(true);
+        }}
       />
 
       {showAddForm && (
