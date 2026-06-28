@@ -1330,17 +1330,6 @@ const RELATIONSHIP_OPTIONS: { value: string; label: string; category: string }[]
   { value: "friend", label: "Friend", category: "friend" },
 ];
 
-const CATEGORY_META: Record<string, { label: string; icon: string; color: string; bgColor: string; borderColor: string; subtitle?: string }> = {
-  circle:  { label: "Your Home", icon: "\u2665", color: "text-terracotta", bgColor: "bg-terracotta/15", borderColor: "border-terracotta/30", subtitle: "Partner & children" },
-  origin:  { label: "Origin Family", icon: "\u2302", color: "text-sage", bgColor: "bg-sage/15", borderColor: "border-sage/30", subtitle: "Where you come from" },
-  friend:  { label: "Friends", icon: "\u2606", color: "text-amber", bgColor: "bg-amber/15", borderColor: "border-amber/30" },
-  city:    { label: "City", icon: "\u2609", color: "text-ink", bgColor: "bg-ink/15", borderColor: "border-ink/30" },
-  // Legacy keys kept for any straggling references
-  family:  { label: "Family", icon: "\u2302", color: "text-sage", bgColor: "bg-sage/15", borderColor: "border-sage/30" },
-  partner: { label: "Partner", icon: "\u2665", color: "text-terracotta", bgColor: "bg-terracotta/15", borderColor: "border-terracotta/30" },
-};
-
-const CATEGORY_ORDER = ["circle", "origin", "friend", "city"];
 
 // Relationships that belong to "Your Circle" (the family you're building)
 const CIRCLE_RELATIONSHIPS = ["partner", "child", "godchild"];
@@ -2335,7 +2324,6 @@ export default function MapsTab() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // Navigation
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [personTab, setPersonTab] = useState<"synastry" | "chart" | "transits" | "solar" | "composite">("synastry");
   const [openPlacement, setOpenPlacement] = useState<string | null>(null);
@@ -2372,7 +2360,6 @@ export default function MapsTab() {
       const detail = (e as CustomEvent).detail;
       if (detail === "/maps") {
         setSelectedId(null);
-        setExpandedCategory(null);
         setShowAddForm(false);
         setShowAstroMap(false);
         setShowCityPicker(false);
@@ -2478,6 +2465,22 @@ export default function MapsTab() {
   // Self view (transit overlap)
   const [showSelfView, setShowSelfView] = useState(false);
   const [selfTab, setSelfTab] = useState<"transits" | "synastry" | "solar">("transits");
+
+  // Maps is an immersive night-sky experience — force dark while this tab is
+  // mounted (no light mode here). Restore the saved theme preference on leave.
+  useEffect(() => {
+    const html = document.documentElement;
+    const forceDark = () => { if (html.getAttribute("data-theme") !== "dark") html.setAttribute("data-theme", "dark"); };
+    forceDark();
+    const obs = new MutationObserver(forceDark);
+    obs.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      obs.disconnect();
+      let pref: string | null = null;
+      try { pref = localStorage.getItem("mapped:theme"); } catch { /* ignore */ }
+      html.setAttribute("data-theme", pref === "dark" || pref === "light" ? pref : "light");
+    };
+  }, []);
   const [selfTransitData, setSelfTransitData] = useState<TransitData | null>(null);
   const [selfTransitLoading, setSelfTransitLoading] = useState(false);
   const [transitFilterLoY, setTransitFilterLoY] = useState(false);
@@ -2690,26 +2693,6 @@ export default function MapsTab() {
   }, [showAstroMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Grouped connections ───
-  const grouped = useMemo(() => {
-    const groups: Record<string, Connection[]> = {};
-    // Split family into circle (partner + children) and origin (parents, siblings, etc.)
-    const circleItems = connections.filter((c) =>
-      c.category === "partner" || (c.category === "family" && CIRCLE_RELATIONSHIPS.includes(c.relationship))
-    );
-    const originItems = connections.filter((c) =>
-      c.category === "family" && ORIGIN_RELATIONSHIPS.includes(c.relationship)
-    );
-    const friendItems = connections.filter((c) => c.category === "friend");
-    if (circleItems.length > 0) groups["circle"] = circleItems;
-    if (originItems.length > 0) groups["origin"] = originItems;
-    if (friendItems.length > 0) groups["friend"] = friendItems;
-    // Keep legacy keys for code that still references them
-    const partnerItems = connections.filter((c) => c.category === "partner");
-    if (partnerItems.length > 0) groups["partner"] = partnerItems;
-    const familyItems = connections.filter((c) => c.category === "family");
-    if (familyItems.length > 0) groups["family"] = familyItems;
-    return groups;
-  }, [connections]);
 
   const selected = useMemo(() => {
     const raw = connections.find((c) => c.id === selectedId) || null;
@@ -6324,58 +6307,6 @@ export default function MapsTab() {
     }
   }
 
-  // ─── Map layout positions ───
-  // Four quadrants: top-left, top-right, bottom-left, bottom-right
-  // Well separated so nothing overlaps
-  const mapW = 380;
-  const mapCx = mapW / 2;
-  const centerY = 80;
-  const catPositions: Record<string, { x: number; y: number }> = {
-    circle:  { x: mapW - 75, y: centerY + 20 },   // right, near you (partner & kids)
-    origin:  { x: 75,  y: centerY + 120 },         // bottom-left (where you come from)
-    friend:  { x: mapW - 80, y: centerY + 140 },   // bottom-right
-    city:    { x: 80,  y: centerY - 10 },           // top-left
-  };
-
-  // Fan members outward from category node, AWAY from center but clamped in-bounds
-  function getMemberPositions(cat: string, count: number): { x: number; y: number }[] {
-    const base = catPositions[cat];
-    if (!base || count === 0) return [];
-    const positions: { x: number; y: number }[] = [];
-    const radius = Math.min(75, 50 + count * 5);
-    // Angle pointing away from center
-    const awayAngle = Math.atan2(base.y - centerY, base.x - mapCx) * (180 / Math.PI);
-    const spread = Math.min(45, 140 / Math.max(count, 1));
-    const startAngle = awayAngle - ((count - 1) * spread) / 2;
-
-    const pad = 25; // keep circles this far from edges
-    for (let i = 0; i < count; i++) {
-      const angle = startAngle + i * spread;
-      const rad = (angle * Math.PI) / 180;
-      const rawX = base.x + radius * Math.cos(rad);
-      const rawY = base.y + radius * Math.sin(rad);
-      positions.push({
-        x: Math.max(pad, Math.min(rawX, mapW - pad)),
-        y: Math.max(pad, rawY),
-      });
-    }
-    return positions;
-  }
-
-  const categoryColorHex: Record<string, string> = {
-    circle: "#5a1f1a",
-    origin: "#2d4029",
-    friend: "#c9a961",
-    city: "#1a2548",
-  };
-
-  // Dynamic map height
-  const allPositions = CATEGORY_ORDER.flatMap((cat) => {
-    const items = grouped[cat] || [];
-    return [catPositions[cat], ...getMemberPositions(cat, items.length)];
-  });
-  const maxY = allPositions.reduce((m, p) => Math.max(m, p.y), centerY + 80);
-  const mapH = maxY + 70;
 
 
   // ─── Birth Time Placeholder for Astrocartography ───
@@ -7491,132 +7422,6 @@ export default function MapsTab() {
         onAdd={(category) => openAddForm(category)}
       />
 
-      {/* ═══ EXPANDED CATEGORY PANEL (below the map) ═══ */}
-      {expandedCategory && expandedCategory !== "city" && (() => {
-        const cat = expandedCategory;
-        const meta = CATEGORY_META[cat];
-        const items = grouped[cat] || [];
-
-        return (
-          <div className="px-5 pb-6 animate-slide-up">
-            <div className="rounded-2xl border border-foreground/15 bg-surface/60 overflow-hidden">
-              {/* Panel header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/15">
-                <div className="flex items-center gap-2">
-                  <span className={`${meta.color} text-sm`}>{meta.icon}</span>
-                  <p className="text-foreground text-sm font-medium">{meta.label}</p>
-                </div>
-                <button onClick={() => setExpandedCategory(null)}
-                  aria-label="Close category" className="text-muted hover:text-foreground">
-                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Members — swipe left to reveal edit/remove */}
-              {items.length > 0 && (
-                <div className="flex flex-col">
-                  {items.map((conn) => (
-                    <div key={conn.id} className="relative overflow-hidden border-b border-foreground/[0.04] last:border-b-0">
-                      {/* Swipe action buttons (behind) */}
-                      <div className="absolute inset-y-0 right-0 flex items-stretch">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditForm(conn); setSwipedId(null); }}
-                          className="w-16 flex items-center justify-center bg-amber/80 text-ink text-xs font-semibold"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); if (confirm(`Remove ${conn.name}?`)) { handleRemoveConnection(conn.id); setSwipedId(null); } }}
-                          className="w-16 flex items-center justify-center bg-terracotta text-cream text-xs font-semibold"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      {/* Main row (slides left on swipe) */}
-                      <div
-                        className="relative flex items-center gap-3 px-4 py-3 bg-background transition-transform duration-200 ease-out cursor-pointer active:scale-[0.99]"
-                        style={{ transform: swipedId === conn.id ? "translateX(-128px)" : "translateX(0)" }}
-                        onClick={() => {
-                          if (swipedId === conn.id) { setSwipedId(null); return; }
-                          setSelectedId(conn.id); setShowSelfView(false);
-                        }}
-                        onTouchStart={(e) => {
-                          const touch = e.touches[0];
-                          (e.currentTarget as HTMLElement).dataset.startX = String(touch.clientX);
-                        }}
-                        onTouchEnd={(e) => {
-                          const startX = parseFloat((e.currentTarget as HTMLElement).dataset.startX || "0");
-                          const endX = e.changedTouches[0].clientX;
-                          const diff = startX - endX;
-                          if (diff > 60) setSwipedId(conn.id);
-                          else if (diff < -30) setSwipedId(null);
-                        }}
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${meta.bgColor} ${meta.color}`}>
-                          {conn.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-foreground text-sm font-medium truncate">{conn.name}</p>
-                          <p className="text-muted text-xs">
-                            {conn.relationship}
-                            {conn.big_three && <span> · {SIGN_FULL[conn.big_three.sun]}</span>}
-                          </p>
-                        </div>
-                        {conn.synastry && (
-                          <div className="flex items-center gap-1 text-xs">
-                            <span className="text-sage">{conn.synastry.harmony}</span>
-                            <span className="text-foreground/10">/</span>
-                            <span className="text-terracotta">{conn.synastry.tension}</span>
-                          </div>
-                        )}
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          strokeWidth="2" className="text-muted flex-shrink-0">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add button */}
-              <div className="px-4 py-3">
-                <button
-                  onClick={() => openAddForm(cat)}
-                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed ${meta.borderColor} ${meta.color} text-xs font-semibold tracking-wide hover:bg-foreground/[0.02] active:scale-[0.99] transition-all`}
-                >
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-                  </svg>
-                  Add {cat === "circle" ? "to your home" : cat === "origin" ? "family member" : "friend"}
-                </button>
-
-                {/* Family analysis */}
-                {cat === "family" && items.length >= 2 && userChart && (
-                  <button
-                    onClick={handleFamilyAnalysis}
-                    disabled={analysisLoading}
-                    className="flex items-center justify-center gap-2 w-full py-3 mt-2 rounded-xl bg-sage/10 border border-sage/20 text-sage text-xs font-semibold tracking-wide hover:bg-sage/15 active:scale-[0.99] transition-all disabled:opacity-50"
-                  >
-                    {analysisLoading ? (
-                      <>
-                        <span className="w-3 h-3 border-2 border-sage/30 border-t-sage rounded-full animate-spin" role="status" aria-label="Loading" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      familyAnalysis ? "Regenerate Family Analysis" : "Generate Family Strengths & Curses"
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Add person modal/form */}
       {showAddForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm" style={{ backgroundColor: "var(--modal-overlay)" }}
           onClick={(e) => { if (e.target === e.currentTarget) { setShowAddForm(false); setEditingConnectionId(null); } }}>

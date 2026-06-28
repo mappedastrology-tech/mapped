@@ -167,7 +167,7 @@ export default function NightSky({
           <span style={{ fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#9a8662", fontWeight: 600 }}>The people in your orbit</span>
           <span style={{ width: 18, height: 1, background: "rgba(201,169,97,.5)" }} />
         </div>
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 27, fontWeight: 600, margin: 0, color: "#f0e6d2" }}>Your Constellation</h1>
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 27, fontWeight: 600, margin: 0, color: "#f0e6d2" }}>Your Map</h1>
       </div>
 
       {/* Draggable sky */}

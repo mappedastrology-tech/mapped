@@ -47,3 +47,6 @@ broken_next_temp*
 broken_temp*
 broken_name*
 .next-corrupted/
+
+# stale renamed build output
+.next-dead*
