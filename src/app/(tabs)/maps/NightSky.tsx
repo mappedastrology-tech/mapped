@@ -33,17 +33,6 @@ const ADD_OPTIONS: { cat: string; label: string; hint: string }[] = [
   { cat: "friend", label: "Friend", hint: "Anyone else" },
 ];
 
-// Deterministic PRNG so the far-star field is identical on server + client.
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 // Golden-angle spiral places people in a balanced, organic scatter around You.
 function constellation(n: number): { x: number; y: number }[] {
   const GA = Math.PI * (3 - Math.sqrt(5));
@@ -75,7 +64,6 @@ export default function NightSky({
 }) {
   const skyRef = useRef<HTMLDivElement>(null);
   const midRef = useRef<HTMLDivElement>(null);
-  const farRef = useRef<HTMLDivElement>(null);
   const pan = useRef({ x: 0, y: 0 });
   const drag = useRef(false);
   const start = useRef({ x: 0, y: 0 });
@@ -85,22 +73,9 @@ export default function NightSky({
 
   const positions = useMemo(() => constellation(people.length), [people.length]);
 
-  // Faint background star-field (fixed seed → no hydration mismatch).
-  const farStars = useMemo(() => {
-    const rnd = mulberry32(20260627);
-    return Array.from({ length: 78 }, () => ({
-      x: (rnd() - 0.5) * 1040,
-      y: (rnd() - 0.5) * 1040,
-      s: 0.8 + rnd() * 1.9,
-      o: 0.2 + rnd() * 0.6,
-      d: 2.4 + rnd() * 3.2,
-    }));
-  }, []);
-
   const apply = () => {
     const { x, y } = pan.current;
     if (midRef.current) midRef.current.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-    if (farRef.current) farRef.current.style.transform = `translate(calc(-50% + ${x * 0.4}px), calc(-50% + ${y * 0.4}px))`;
   };
 
   useEffect(() => {
@@ -130,7 +105,7 @@ export default function NightSky({
   const onUp = () => { drag.current = false; };
 
   const recenter = () => {
-    const layers = [midRef.current, farRef.current];
+    const layers = [midRef.current];
     layers.forEach((l) => l && (l.style.transition = "transform 0.5s cubic-bezier(.22,1,.36,1)"));
     pan.current = { x: 0, y: 0 };
     apply();
@@ -154,11 +129,12 @@ export default function NightSky({
         touchAction: "none",
       }}
     >
-      <style>{`@keyframes ns-tw{0%,100%{opacity:.25}50%{opacity:1}}@keyframes ns-drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}`}</style>
+      <style>{`@keyframes ns-drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}`}</style>
 
-      {/* Backdrop: deep space + faint nebula band */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(130% 90% at 50% 30%, #1c1430 0%, #120c20 42%, #0a0710 78%)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(118deg, transparent 30%, rgba(120,90,160,.10) 46%, rgba(150,120,190,.05) 54%, transparent 70%)", filter: "blur(2px)" }} />
+      {/* Backdrop: the app's original night-sky image (same one used elsewhere) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/night-sky.png" alt="" aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }} />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,5,15,0.25) 0%, rgba(5,5,15,0.45) 55%, rgba(5,5,15,0.72) 100%)" }} />
 
       {/* Header overlay */}
       <div style={{ position: "absolute", top: 18, left: 0, right: 0, zIndex: 30, textAlign: "center", pointerEvents: "none" }}>
@@ -179,20 +155,6 @@ export default function NightSky({
         onPointerUp={onUp}
         onPointerCancel={onUp}
       >
-        {/* Far parallax stars */}
-        <div ref={farRef} style={{ position: "absolute", top: "50%", left: "50%", willChange: "transform" }}>
-          {farStars.map((st, i) => (
-            <span
-              key={i}
-              style={{
-                position: "absolute", left: st.x, top: st.y, width: st.s, height: st.s,
-                borderRadius: 999, background: "#fff", opacity: st.o,
-                animation: `ns-tw ${st.d}s ease-in-out infinite`,
-              }}
-            />
-          ))}
-        </div>
-
         {/* Mid layer: constellation lines + person nodes + You */}
         <div ref={midRef} style={{ position: "absolute", top: "50%", left: "50%", willChange: "transform" }}>
           <svg width="1100" height="1100" viewBox="0 0 1100 1100" style={{ position: "absolute", left: -550, top: -550, overflow: "visible", pointerEvents: "none" }}>
