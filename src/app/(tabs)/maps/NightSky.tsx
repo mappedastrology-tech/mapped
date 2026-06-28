@@ -81,6 +81,7 @@ export default function NightSky({
   hasChart,
   onSelectPerson,
   onSelectSelf,
+  onSelectGroup,
   onAdd,
   onOpenPlaces,
 }: {
@@ -89,6 +90,7 @@ export default function NightSky({
   hasChart: boolean;
   onSelectPerson: (id: string) => void;
   onSelectSelf: () => void;
+  onSelectGroup: (group: string) => void;
   onAdd: (category: string) => void;
   onOpenPlaces: () => void;
 }) {
@@ -220,19 +222,21 @@ export default function NightSky({
             {clusters.map((c) => (
               <line key={`c-${c.group}`} x1={550} y1={550} x2={550 + c.cx} y2={550 + c.cy} stroke={c.color} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             ))}
+            {/* You → Your places (astrocartography star) */}
+            <line x1={550} y1={550} x2={550} y2={682} stroke="#c9a961" strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             {nodes.map((n) => {
               const cl = clusters.find((c) => c.group === n.group)!;
               return <line key={`n-${n.id}`} x1={550 + cl.cx} y1={550 + cl.cy} x2={550 + n.x} y2={550 + n.y} stroke={n.color} strokeOpacity="0.3" strokeWidth="1" />;
             })}
           </svg>
 
-          {/* cluster labels */}
+          {/* cluster labels (tap to open the group — Origin Family → gifts & curses) */}
           {clusters.map((c) => (
-            <span key={`l-${c.group}`} style={{
+            <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup(c.group))} style={{
               position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
-              fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
-              textShadow: "0 1px 6px rgba(0,0,0,.9)", pointerEvents: "none",
-            }}>{c.label}</span>
+              fontFamily: "inherit", fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
+              textShadow: "0 1px 6px rgba(0,0,0,.9)", background: "none", border: "none", cursor: "pointer", padding: 4,
+            }}>{c.label}</button>
           ))}
 
           {/* You — centre */}

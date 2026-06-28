@@ -7403,6 +7403,7 @@ export default function MapsTab() {
         hasChart={!!userChart}
         onSelectPerson={(id) => { setSelectedId(id); setShowSelfView(false); }}
         onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
+        onSelectGroup={(g) => { if (g === "origin") handleFamilyAnalysis(); }}
         onAdd={(category) => openAddForm(category)}
         onOpenPlaces={() => {
           if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
