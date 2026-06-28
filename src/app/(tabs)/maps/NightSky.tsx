@@ -56,17 +56,18 @@ function layout(people: SkyPerson[]): { nodes: LaidNode[]; clusters: Cluster[] }
     const arr = groups[g];
     clusters.push({
       group: g, label: meta.label, color: meta.color, cx, cy,
-      // push the label out from You, but clamp horizontally so it stays on-screen
-      lx: Math.max(-135, Math.min(135, Math.cos(ang) * (R + 48))),
-      ly: Math.sin(ang) * (R + 48),
+      // sit the label just above the cluster, clamped horizontally to stay on-screen
+      lx: Math.max(-130, Math.min(130, cx)),
+      ly: cy - 54,
     });
+    const n = arr.length;
     arr.forEach((p, i) => {
       let x = cx, y = cy;
-      if (arr.length > 1) {
-        const a = (i / arr.length) * Math.PI * 2 + 0.6;
-        const r = 34 + (i % 3) * 15;
-        x = cx + Math.cos(a) * r;
-        y = cy + Math.sin(a) * r;
+      if (n > 1) {
+        // tidy downward fan below the centroid, so the label above stays clear
+        const off = i - (n - 1) / 2;
+        x = cx + off * 46;
+        y = cy + 24 + Math.abs(off) * 12;
       }
       nodes.push({ ...p, x, y, color: meta.color });
     });
@@ -190,8 +191,8 @@ export default function NightSky({
   return (
     <div
       style={{
-        position: "relative", width: "100%", height: "calc(100dvh - 172px)", minHeight: 440,
-        overflow: "hidden", borderRadius: 24, color: "#e8dfc4", background: "#0a0710", touchAction: "none",
+        position: "relative", width: "100%", height: "calc(100dvh - 131px)", minHeight: 440,
+        overflow: "hidden", color: "#e8dfc4", background: "#0a0710", touchAction: "none",
       }}
     >
       <style>{`@keyframes ns-drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}`}</style>
@@ -256,6 +257,17 @@ export default function NightSky({
               <span style={{ fontSize: 9.5, color: "#e8dfc4", maxWidth: 76, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name}</span>
             </button>
           ))}
+
+          {/* Astrocartography — your places, as a star on the map */}
+          <button onClick={tap(onOpenPlaces)} style={{ position: "absolute", left: 0, top: 132, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: "ns-drift 7s ease-in-out infinite" }}>
+            <span style={{ position: "relative", width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ position: "absolute", inset: -7, borderRadius: 999, background: "radial-gradient(circle, rgba(201,169,97,.6), rgba(201,169,97,.18) 60%, transparent 74%)" }} />
+              <span style={{ position: "relative", width: 32, height: 32, borderRadius: 999, background: "rgba(10,7,16,.6)", border: "1px solid #c9a961", display: "flex", alignItems: "center", justifyContent: "center", color: "#c9a961" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
+              </span>
+            </span>
+            <span style={{ fontSize: 9.5, color: "#e8dfc4", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>Your places</span>
+          </button>
         </div>
       </div>
 
@@ -280,12 +292,6 @@ export default function NightSky({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor" stroke="none" /></svg>
         </button>
       </div>
-
-      {/* Astrocartography — your places */}
-      <button onClick={onOpenPlaces} style={{ position: "absolute", left: 16, bottom: 84, zIndex: 35, display: "flex", alignItems: "center", gap: 7, padding: "0 14px", height: 46, borderRadius: 999, background: "rgba(20,16,28,.6)", border: "1px solid rgba(201,169,97,.25)", backdropFilter: "blur(8px)", cursor: "pointer", color: "#c9a961", boxShadow: "0 6px 18px rgba(0,0,0,.4)" }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z" /></svg>
-        <span style={{ fontSize: 12, fontWeight: 600 }}>Astrocartography</span>
-      </button>
 
       {/* Add person (with category menu) */}
       <div style={{ position: "absolute", right: 16, bottom: 84, zIndex: 36 }}>
