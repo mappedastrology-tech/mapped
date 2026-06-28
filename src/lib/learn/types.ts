@@ -61,6 +61,13 @@ export type LessonBlock =
       instructions?: string;
       cards: { img: string; name: string; caption?: string }[];
     }
+  /** Tap a cue (image or glyph), then tap its meaning. Self-checking recall. */
+  | {
+      kind: "match";
+      prompt: string;
+      instructions?: string;
+      pairs: { cue: string; img?: string; match: string }[];
+    }
   /** Tap glyph nodes arranged around a wheel to reveal each one's detail. */
   | {
       kind: "explore";

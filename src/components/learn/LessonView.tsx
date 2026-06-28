@@ -13,7 +13,7 @@ import LibraryHeader from "./LibraryHeader";
 import LessonBlocks from "./LessonBlocks";
 import Quiz from "./Quiz";
 
-const INTERACTIVE = new Set(["sort", "flip", "explore", "annotated"]);
+const INTERACTIVE = new Set(["sort", "flip", "match", "explore", "annotated"]);
 
 export default function LessonView({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const router = useRouter();

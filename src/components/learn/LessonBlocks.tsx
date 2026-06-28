@@ -1,6 +1,7 @@
 import type { CalloutTone, LessonBlock } from "@/lib/learn/types";
 import SortBlock from "./blocks/SortBlock";
 import FlipBlock from "./blocks/FlipBlock";
+import MatchBlock from "./blocks/MatchBlock";
 import ExploreBlock from "./blocks/ExploreBlock";
 import AnnotatedBlock from "./blocks/AnnotatedBlock";
 
@@ -113,6 +114,8 @@ export default function LessonBlocks({ blocks }: { blocks: LessonBlock[] }) {
             return <SortBlock key={i} prompt={b.prompt} instructions={b.instructions} groups={b.groups} />;
           case "flip":
             return <FlipBlock key={i} prompt={b.prompt} instructions={b.instructions} cards={b.cards} />;
+          case "match":
+            return <MatchBlock key={i} prompt={b.prompt} instructions={b.instructions} pairs={b.pairs} />;
           case "explore":
             return <ExploreBlock key={i} prompt={b.prompt} instructions={b.instructions} image={b.image} items={b.items} />;
           case "annotated":
