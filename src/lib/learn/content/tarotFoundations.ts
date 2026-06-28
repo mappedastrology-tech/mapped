@@ -37,27 +37,27 @@ export const tarotFoundations: Course = {
           blocks: [
             { kind: "text", text: "Tarot is a deck of 78 symbolic images used as a tool for reflection and storytelling. A reading lays out cards whose pictures act as prompts — mirrors that help you think through a situation from new angles." },
             { kind: "text", text: "Nothing about the cards is random in the sense that matters. The deck is a fixed, shared vocabulary of recurring human situations: beginnings, choices, grief, ambition, rest, rivalry, hope. When you draw a card, you're handed one of those situations to hold up against your own life and ask, 'where does this fit?'" },
-            { kind: "callout", tone: "evidence", title: "What the evidence says", text: "Tarot has no demonstrated power to predict the future. It works as a 'projective' tool: the open-ended images invite you to project your own thoughts and feelings onto them, which is genuinely useful for reflection. The 'Forer effect' — vague statements feeling personally true — explains much of why readings can feel uncannily accurate." },
+            { kind: "callout", tone: "tradition", title: "How a reading works", text: "Tarot works as a 'projective' tool: the open-ended images invite you to bring your own thoughts and feelings to them, which is what makes it so useful for reflection. A reading is a mirror — it gives a question shape, and lets you meet your own situation from a new angle." },
             { kind: "callout", tone: "evidence", title: "Why ambiguous images work", text: "Psychologists call open-ended prompts that invite you to read meaning into them 'projective' (the inkblot test is the famous example). Ambiguity isn't a bug here — it's the mechanism. A vivid, slightly puzzling picture gives your mind room to surface the thought it was already circling." },
             { kind: "callout", tone: "tradition", title: "Why it still has value", text: "Used as structured self-inquiry, tarot can surface what you already half-know, spark insight, and help you sit with a question. That's the honest, powerful version — no claim of fortune-telling required." },
             { kind: "callout", tone: "tip", title: "The single most useful reframe", text: "Treat every card as a question, not a verdict. 'The Tower' isn't 'disaster is coming' — it's 'where in your life is something built on shaky ground?' The card that lands hardest is usually the one worth journaling about." },
             { kind: "keyfacts", items: [
               "78 cards = a shared visual vocabulary of human situations.",
               "Projective tool: you supply the meaning the image only hints at.",
-              "Best framed as reflection and self-inquiry, never prediction.",
-              "The Forer effect explains much of the 'uncanny accuracy.'",
+              "Best held as reflection and self-inquiry — a mirror for your own life.",
+              "A reading turns a question into something you can hold and explore.",
             ] },
           ],
           quiz: [
             { id: "q1", type: "mcq", prompt: "Tarot is best understood as…", options: [
               { id: "a", text: "A projective tool for reflection and storytelling", correct: true, explanation: "Yes — the images prompt your own reflection." },
-              { id: "b", text: "A proven method of predicting the future", correct: false, explanation: "Tarot has no demonstrated predictive power." },
-              { id: "c", text: "A medical diagnostic system", correct: false, explanation: "Tarot makes no medical claims." },
+              { id: "b", text: "A medical diagnostic system", correct: false, explanation: "Tarot makes no medical claims." },
+              { id: "c", text: "A way to read tomorrow's news", correct: false, explanation: "Tarot is a mirror for reflection, not a newsfeed." },
             ] },
-            { id: "q2", type: "mcq", prompt: "The 'Forer effect' helps explain…", options: [
-              { id: "a", text: "Why vague statements feel personally accurate", correct: true, explanation: "Correct — it's why readings can feel uncannily 'true.'" },
-              { id: "b", text: "How cards are printed", correct: false, explanation: "It's a psychological effect, not a printing process." },
-              { id: "c", text: "The price of a deck", correct: false, explanation: "Unrelated." },
+            { id: "q2", type: "mcq", prompt: "When a card lands and feels strikingly relevant, the most useful response is to…", options: [
+              { id: "a", text: "Treat it as a prompt and ask where it fits in your own life", correct: true, explanation: "Correct — the card opens a question you can journal and reflect on." },
+              { id: "b", text: "Assume the event it pictures is fixed and unavoidable", correct: false, explanation: "A card is an invitation to reflect, not a verdict." },
+              { id: "c", text: "Stop reflecting because the answer is settled", correct: false, explanation: "The value is in the reflection the card sparks." },
             ] },
             { id: "q3", type: "mcq", prompt: "Calling tarot a 'projective' tool means…", options: [
               { id: "a", text: "Its ambiguous images invite you to read your own meaning into them", correct: true, explanation: "Right — like an inkblot, the openness is the mechanism." },
@@ -68,9 +68,9 @@ export const tarotFoundations: Course = {
               { id: "t", text: "True", correct: true, explanation: "Correct — 22 Major + 56 Minor Arcana." },
               { id: "f", text: "False", correct: false, explanation: "It is 78 cards total." },
             ] },
-            { id: "q5", type: "true-false", prompt: "Tarot has a scientifically demonstrated ability to foresee future events.", options: [
-              { id: "t", text: "True", correct: false, explanation: "No — there's no demonstrated predictive power." },
-              { id: "f", text: "False", correct: true, explanation: "Correct — its value is reflective, not predictive." },
+            { id: "q5", type: "true-false", prompt: "Tarot is best held as a reflective, symbolic tool — a mirror for thinking through your own situation.", options: [
+              { id: "t", text: "True", correct: true, explanation: "Correct — the images are prompts that help you reflect and find your own meaning." },
+              { id: "f", text: "False", correct: false, explanation: "Reflection and self-inquiry are exactly where tarot's value lives." },
             ] },
             { id: "q6", type: "recall", prompt: "Type the word for a tool whose open-ended images invite you to read your own meaning into them.", options: [], answer: "projective", accept: ["projective tool", "projection"], explanation: "Projective tools (like the inkblot test) work because ambiguity lets you surface your own thoughts." },
           ],

@@ -5,6 +5,11 @@ import { tarotReference } from "./tarot";
 import { herbReference } from "./herbs";
 import { essentialOilReference } from "./essentialOils";
 import { runeReference } from "./runes";
+import { numerologyReference } from "./numerology";
+import { chakraReference } from "./chakras";
+import { dreamReference } from "./dreams";
+import { almanacReference } from "./almanac";
+import { meditationReference } from "./meditation";
 
 /** All quick-reference entries across domains. */
 export const ALL_REFERENCE: ReferenceEntry[] = [
@@ -14,6 +19,11 @@ export const ALL_REFERENCE: ReferenceEntry[] = [
   ...herbReference,
   ...essentialOilReference,
   ...runeReference,
+  ...numerologyReference,
+  ...chakraReference,
+  ...dreamReference,
+  ...almanacReference,
+  ...meditationReference,
 ];
 
 export function referenceByDomain(domain: LearnDomain): ReferenceEntry[] {

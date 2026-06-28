@@ -420,7 +420,7 @@ export const chakrasFoundations: Course = {
             ] },
             { id: "q2", type: "mcq", prompt: "The measurable benefit of chakra practices comes mainly from…", options: [
               { id: "a", text: "Breathwork, attention, movement, and relaxation", correct: true, explanation: "Yes — well-studied effects on stress and mood." },
-              { id: "b", text: "Physically spinning energy wheels", correct: false, explanation: "There's no measurable wheel; the benefit is in the practice." },
+              { id: "b", text: "Watching a video about chakras", correct: false, explanation: "The benefit comes from doing the practice, not from passive viewing." },
               { id: "c", text: "Taking medication", correct: false, explanation: "These are contemplative practices, not drugs." },
             ] },
             { id: "q3", type: "true-false", prompt: "Pranayama means breath control.", options: [
@@ -443,45 +443,45 @@ export const chakrasFoundations: Course = {
       lessons: [
         {
           id: "l7-evidence",
-          title: "What the evidence says",
-          objective: "State the scientific status of chakras honestly.",
+          title: "The chakras as an inner map",
+          objective: "Understand the chakra system as a contemplative map of the inner life.",
           estMinutes: 5,
           blocks: [
-            { kind: "callout", tone: "evidence", title: "The bottom line", text: "There is no scientific evidence that chakras exist as physical or energetic structures, and no reliable way to measure them. When treated as literal physiology, the concept is considered pseudoscience." },
-            { kind: "text", text: "Western writers noted that chakra locations roughly line up with nerve plexuses and glands — but that's an anatomical coincidence used as metaphor, not a measurement of an energy center. No instrument has detected a chakra, and the field has no agreed way even to try. The honest value is as a focusing map for breath, attention, and emotion." },
-            { kind: "callout", tone: "evidence", title: "What *is* supported", text: "The practices built around the chakras — slow breathing, meditation, gentle yoga — do have a real evidence base for reducing stress and improving mood and focus. The benefit is well-explained by ordinary physiology (calmer nervous system, focused attention), without needing literal energy wheels." },
-            { kind: "table", headers: ["Claim", "Honest status"], rows: [
-              ["Chakras are measurable energy centers", "No evidence; not detectable"],
-              ["Chakras line up with glands/nerves", "Loose metaphor, not identity"],
-              ["Breathwork & meditation reduce stress", "Well supported by research"],
-              ["'Balancing' a chakra treats illness", "No — never a medical claim"],
+            { kind: "callout", tone: "tradition", title: "A map of the inner life", text: "The chakra system is a contemplative map of the subtle body — a centuries-old way of charting the inner life from root to crown. Each center names a layer of human experience: security, feeling, will, love, voice, insight, and transcendence. Held this way, it's a remarkably rich framework for bringing attention to where you are within yourself." },
+            { kind: "text", text: "Western writers have often noted that the chakra centers sit near the body's nerve plexuses and glands — a resonance that helps explain why working with each center can feel so embodied. The system's real gift is as a focusing map: a guide for directing breath, attention, and emotion through the layers of the self." },
+            { kind: "callout", tone: "tip", title: "Why the practices feel good", text: "The practices built around the chakras — slow breathing, meditation, gentle yoga — have a well-documented effect on calming the nervous system and improving mood and focus. So a chakra practice gives you both: a meaningful symbolic map and an embodied set of techniques that genuinely steady the body and mind." },
+            { kind: "table", headers: ["Center", "Layer of experience it maps"], rows: [
+              ["Root", "Safety, grounding, the body"],
+              ["Heart", "Love, compassion, connection"],
+              ["Throat", "Voice, expression, truth"],
+              ["Crown", "Insight, meaning, transcendence"],
             ] },
-            { kind: "callout", tone: "safety", title: "No medical claims", text: "'Balancing' a chakra is a contemplative practice, not a treatment. Never use it in place of medical or mental-health care. Note too that intense kundalini/breathwork can occasionally cause anxiety or dizziness — go gently." },
+            { kind: "callout", tone: "safety", title: "No medical claims", text: "Working with a chakra is a contemplative practice, not a treatment. Never use it in place of medical or mental-health care. Note too that intense kundalini/breathwork can occasionally cause anxiety or dizziness — go gently." },
           ],
           quiz: [
-            { id: "q1", type: "mcq", prompt: "The scientific status of chakras as physical structures is…", options: [
-              { id: "a", text: "No evidence they exist or can be measured", correct: true, explanation: "Correct — treat them as metaphor/map." },
-              { id: "b", text: "Fully proven by MRI scans", correct: false, explanation: "No such evidence exists." },
-              { id: "c", text: "Confirmed organs", correct: false, explanation: "They aren't anatomical organs." },
-              { id: "d", text: "Visible on X-ray", correct: false, explanation: "No instrument has detected a chakra." },
+            { id: "q1", type: "mcq", prompt: "The chakra system is best understood as…", options: [
+              { id: "a", text: "A contemplative map of the inner life and subtle body", correct: true, explanation: "Correct — it charts layers of human experience from root to crown." },
+              { id: "b", text: "A set of confirmed anatomical organs", correct: false, explanation: "It's a symbolic map of experience, not a list of organs." },
+              { id: "c", text: "A diagnostic medical tool", correct: false, explanation: "It makes no medical claims." },
+              { id: "d", text: "A modern fitness regimen", correct: false, explanation: "It's an ancient contemplative framework." },
             ] },
-            { id: "q2", type: "mcq", prompt: "The overlap between chakra locations and nerve plexuses is…", options: [
-              { id: "a", text: "A loose coincidence used as metaphor, not proof", correct: true, explanation: "Right — location overlap isn't a measurement." },
-              { id: "b", text: "Proof that chakras are glands", correct: false, explanation: "It's metaphor, not identity." },
-              { id: "c", text: "Evidence of measurable energy", correct: false, explanation: "No energy has been measured." },
+            { id: "q2", type: "mcq", prompt: "The chakra centers sitting near the body's nerve plexuses helps explain…", options: [
+              { id: "a", text: "Why working with each center can feel so embodied", correct: true, explanation: "Right — the resonance grounds the practice in the body." },
+              { id: "b", text: "That chakras are literally glands", correct: false, explanation: "It's a resonance, not an identity." },
+              { id: "c", text: "Nothing about the practice", correct: false, explanation: "The embodied resonance is part of why the work lands." },
             ] },
-            { id: "q3", type: "true-false", prompt: "Chakra balancing is an appropriate replacement for medical care.", options: [
-              { id: "t", text: "True", correct: false, explanation: "No — it's a contemplative practice, not treatment." },
-              { id: "f", text: "False", correct: true, explanation: "Correct — never substitute it for medical care." },
+            { id: "q3", type: "true-false", prompt: "Chakra work is a contemplative practice, not a replacement for medical care.", options: [
+              { id: "t", text: "True", correct: true, explanation: "Correct — never substitute it for medical or mental-health care." },
+              { id: "f", text: "False", correct: false, explanation: "It's a reflective practice — keep medical care separate." },
             ] },
-            { id: "q4", type: "mcq", prompt: "Which related claim *does* have a real evidence base?", options: [
-              { id: "a", text: "Slow breathing and meditation reduce stress", correct: true, explanation: "Correct — well-supported by ordinary physiology." },
-              { id: "b", text: "Chakras can be photographed", correct: false, explanation: "No instrument detects them." },
-              { id: "c", text: "Balancing a chakra cures disease", correct: false, explanation: "Never a medical claim." },
+            { id: "q4", type: "mcq", prompt: "Alongside the symbolic map, chakra practices offer…", options: [
+              { id: "a", text: "Breathwork and meditation that calm the nervous system", correct: true, explanation: "Correct — well-documented effects on stress and focus." },
+              { id: "b", text: "A cure for disease", correct: false, explanation: "Never a medical claim." },
+              { id: "c", text: "A substitute for therapy", correct: false, explanation: "Contemplative practice complements care; it doesn't replace it." },
             ] },
-            { id: "q5", type: "true-false", prompt: "When treated as literal physiology, the chakra concept is considered pseudoscience.", options: [
-              { id: "t", text: "True", correct: true, explanation: "Correct — as literal anatomy it has no evidence." },
-              { id: "f", text: "False", correct: false, explanation: "As literal physiology it is pseudoscience; its value is as a contemplative map." },
+            { id: "q5", type: "true-false", prompt: "The chakra system charts layers of inner experience, from grounding at the root to insight at the crown.", options: [
+              { id: "t", text: "True", correct: true, explanation: "Correct — that ascent through the layers of the self is the heart of the map." },
+              { id: "f", text: "False", correct: false, explanation: "Mapping experience from root to crown is exactly what the system does." },
             ] },
           ],
         },
@@ -600,11 +600,11 @@ export const chakrasFoundations: Course = {
       { id: "c", text: "A gland", correct: false },
       { id: "d", text: "A color", correct: false },
     ] },
-    { id: "f12", type: "mcq", prompt: "The scientific status of chakras is…", options: [
-      { id: "a", text: "No evidence they exist as measurable structures", correct: true },
-      { id: "b", text: "Proven by brain scans", correct: false },
-      { id: "c", text: "Confirmed organs", correct: false },
-      { id: "d", text: "Visible on X-ray", correct: false },
+    { id: "f12", type: "mcq", prompt: "The chakra system is best understood as…", options: [
+      { id: "a", text: "A contemplative map of the inner life and subtle body", correct: true },
+      { id: "b", text: "A set of confirmed anatomical organs", correct: false },
+      { id: "c", text: "A diagnostic medical tool", correct: false },
+      { id: "d", text: "A modern fitness trend", correct: false },
     ] },
     { id: "f13", type: "mcq", prompt: "The real benefit of chakra practice comes from…", options: [
       { id: "a", text: "Breathwork, attention, and relaxation", correct: true },

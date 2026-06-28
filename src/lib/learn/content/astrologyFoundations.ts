@@ -40,14 +40,14 @@ export const astrologyFoundations: Course = {
             { kind: "text", text: "Crucially, the chart is not a force acting on you. Think of it less like a weather forecast and more like a mirror or a deck of prompts: a structured way to reflect on who you are and what you're navigating. The planets don't 'do' anything to you; their positions are a vocabulary you can think with." },
             { kind: "callout", tone: "history", title: "An old, layered tradition", text: "Western astrology grew out of Babylonian sky-watching over 2,000 years ago, was systematized in the Hellenistic Greek-Egyptian world, and was carried forward through the Islamic Golden Age and Renaissance Europe. Until the 1600s astrology and astronomy were studied together — Kepler and Galileo both cast charts. They split as the scientific method matured." },
             { kind: "callout", tone: "culture", title: "Many astrologies", text: "There isn't one astrology. Western (tropical) astrology ties the signs to the seasons; Vedic (Jyotish) astrology in India uses a sidereal zodiac fixed to the constellations; Chinese astrology runs on a twelve-year animal cycle. This course teaches the Western tropical system, the most common in the English-speaking world." },
-            { kind: "callout", tone: "evidence", title: "A note on evidence", text: "Astrology isn't a science, and controlled studies haven't found that it predicts events or measures personality. But prediction isn't really what most people come to it for. Think of astrology as a language or a mirror — a rich symbolic framework for reflecting on yourself, your relationships, and your timing. Held that way, many people find it genuinely meaningful. Stay curious, take what resonates, and leave what doesn't." },
-            { kind: "callout", tone: "evidence", title: "Why a chart can feel uncannily accurate", text: "Part of the felt 'accuracy' is the Forer (or Barnum) effect: vague, generally flattering statements feel personally true to almost everyone. Knowing this doesn't spoil astrology — it just keeps you honest about why a reading lands, and steers you toward using the chart as a prompt for reflection rather than proof of anything." },
+            { kind: "callout", tone: "tradition", title: "How to hold it", text: "Astrology is a symbolic language and a mirror for self-reflection — a rich framework for thinking about who you are, your relationships, and your timing. Prediction isn't really the point; the chart is a vocabulary you can think with. Held that way, many people find it genuinely meaningful. Stay curious, take what resonates, and leave what doesn't." },
+            { kind: "callout", tone: "tip", title: "Why a chart can feel so personal", text: "A good reading lands because the chart hands you precise, evocative language for things you're already living. That's the gift of a symbolic system: it gives shape to inner experience and a fresh angle on it. Use the chart as a prompt for reflection — a way to put words to what you're navigating." },
             { kind: "keyfacts", items: [
               "A natal chart = the sky at your exact birth time and place.",
-              "Astrology is a symbolic/reflective language, not a physical force.",
-              "Mainstream science does not consider astrology validated as predictive.",
+              "Astrology is a symbolic, reflective language — a mirror, not a physical force.",
+              "The chart is a vocabulary you think with, not a forecast that acts on you.",
               "Western (tropical), Vedic (sidereal), and Chinese astrology are distinct systems.",
-              "The Forer effect helps explain why vague statements feel personal.",
+              "A reading lands by giving precise language to what you're already living.",
             ] },
           ],
           quiz: [
@@ -61,17 +61,17 @@ export const astrologyFoundations: Course = {
               { id: "t", text: "True", correct: true, explanation: "Yes — its real value is as a mirror for self-reflection and meaning, not forecasting." },
               { id: "f", text: "False", correct: false, explanation: "Astrology isn't a reliable predictor; it shines as a reflective, symbolic language." },
             ] },
-            { id: "q3", type: "mcq", prompt: "The 'Forer effect' refers to…", options: [
-              { id: "a", text: "The tendency for vague, flattering statements to feel personally accurate", correct: true, explanation: "Right — it explains much of astrology's felt accuracy." },
-              { id: "b", text: "A method for calculating the Ascendant", correct: false, explanation: "That's unrelated to the Forer effect." },
-              { id: "c", text: "The gravitational pull of the Moon", correct: false, explanation: "No — the Forer effect is a psychological phenomenon, not astronomical." },
+            { id: "q3", type: "mcq", prompt: "Treating the chart as 'a vocabulary you think with' means…", options: [
+              { id: "a", text: "Using its symbols as prompts to reflect on your life", correct: true, explanation: "Right — that's astrology as a symbolic language and mirror." },
+              { id: "b", text: "Believing the planets physically control your day", correct: false, explanation: "The chart is symbolic, not a force acting on you." },
+              { id: "c", text: "Calculating the gravitational pull of the Moon", correct: false, explanation: "That's astronomy, not how astrology's symbols are used." },
             ] },
             { id: "q4", type: "mcq", prompt: "Which system fixes the zodiac to the seasons rather than the constellations?", options: [
               { id: "a", text: "Western (tropical) astrology", correct: true, explanation: "Tropical astrology anchors 0° Aries to the spring equinox." },
               { id: "b", text: "Vedic (sidereal) astrology", correct: false, explanation: "Vedic astrology uses a sidereal zodiac tied to the constellations." },
               { id: "c", text: "Chinese astrology", correct: false, explanation: "Chinese astrology uses a twelve-year animal cycle, not the tropical zodiac." },
             ] },
-            { id: "q5", type: "recall", prompt: "Type the one-word psychological term for vague, flattering statements feeling personally true (also called the Barnum effect).", options: [], answer: "Forer", accept: ["forer effect", "barnum", "barnum effect"], explanation: "The Forer (Barnum) effect — a key reason a reading can feel uncannily accurate." },
+            { id: "q5", type: "recall", prompt: "Astrology is often described as a symbolic language and a ______ for self-reflection. Fill in the one word.", options: [], answer: "mirror", accept: ["mirror", "a mirror"], explanation: "A mirror — the chart reflects you back to yourself, a prompt for reflection rather than a forecast." },
           ],
         },
         {
@@ -870,11 +870,11 @@ export const astrologyFoundations: Course = {
       { id: "c", text: "Aries and Scorpio", correct: false },
       { id: "d", text: "Cancer and Leo", correct: false },
     ] },
-    { id: "f14", type: "mcq", prompt: "Which best describes astrology's relationship to science?", options: [
-      { id: "a", text: "It isn't a science; it's best used as a reflective, symbolic tool", correct: true },
-      { id: "b", text: "It has been scientifically proven to predict the future", correct: false },
-      { id: "c", text: "It is a modern branch of astronomy", correct: false },
-      { id: "d", text: "It reliably diagnoses health conditions", correct: false },
+    { id: "f14", type: "mcq", prompt: "Which best describes how to approach astrology?", options: [
+      { id: "a", text: "As a symbolic language and mirror for self-reflection", correct: true },
+      { id: "b", text: "As a force that physically controls your future", correct: false },
+      { id: "c", text: "As a modern branch of astronomy", correct: false },
+      { id: "d", text: "As a tool that diagnoses health conditions", correct: false },
     ] },
     { id: "f15", type: "true-false", prompt: "Outer planets describe generational themes by sign because they move slowly.", options: [
       { id: "t", text: "True", correct: true },

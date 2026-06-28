@@ -135,9 +135,11 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
             </div>
           )}
 
-          <p className="text-[10px] leading-relaxed mt-6 text-center" style={{ color: "rgba(240,230,210,0.45)" }}>
-            Traditional associations are cultural, not medical claims. For learning and reflection only.
-          </p>
+          {(entry.safety || entry.domain === "herbalism" || entry.domain === "essential-oils") && (
+            <p className="text-[10px] leading-relaxed mt-6 text-center" style={{ color: "rgba(240,230,210,0.45)" }}>
+              Not medical advice — check with a clinician or pharmacist before using herbs or oils for a health condition or alongside medication.
+            </p>
+          )}
         </div>
       </div>
     </>
