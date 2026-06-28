@@ -34,6 +34,7 @@ import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import { DEFAULT_COORDS } from "@/lib/celestialMechanics";
+import NightSky from "./NightSky";
 
 /* ═══════════════════════════════════════════
    Error Boundary — catches rendering crashes
@@ -7455,189 +7456,33 @@ export default function MapsTab() {
   // ─── Main map view ───
   return (
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full overflow-y-auto">
-      {/* Header */}
-      <div className="text-center pt-6 px-5 mb-2">
-        <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
-          Your Map
-        </h1>
-        <p className="text-muted text-sm">
-          Tap a circle to explore.
-        </p>
-        {userChart?.zodiacSystem === "sidereal" && (
-          <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full bg-amber/10 border border-amber/20 text-amber text-[10px] uppercase tracking-wider">
-            Vedic (Sidereal)
-          </span>
-        )}
-      </div>
-
-      {!userChart && connections.length === 0 && (
-        <div className="text-center px-8 py-8 mb-4">
-          <p className="text-3xl mb-3 opacity-40">✦</p>
-          <p className="text-muted text-[14px] mb-2">Start with your chart</p>
-          <p className="text-muted text-[12px] leading-relaxed">
-            Calculate your birth chart first, then come back to map the people in your life.
-          </p>
-        </div>
-      )}
-      {userChart && connections.length === 0 && (
-        <div className="text-center px-8 py-6 mb-4">
-          <p className="text-muted text-[12px] leading-relaxed">
-            Tap any circle on the map to add someone — your partner and children go in Your Circle, parents and siblings in Origin Family.
-          </p>
-        </div>
-      )}
-
-      {/* ═══ VISUAL MAP ═══ */}
-      <div className="relative w-full px-2">
-        <svg
-          viewBox={`0 0 ${mapW} ${mapH}`}
-          className="w-full"
-          style={{ minHeight: 400 }}
-        >
-          {/* Connecting lines from center to category nodes */}
-          {CATEGORY_ORDER.map((cat) => {
-            const pos = catPositions[cat];
-            const color = categoryColorHex[cat];
-            return (
-              <line
-                key={`line-${cat}`}
-                x1={mapCx} y1={centerY}
-                x2={pos.x} y2={pos.y}
-                stroke={color}
-                strokeWidth="1"
-                strokeOpacity="0.2"
-                strokeDasharray="4 4"
-              />
-            );
-          })}
-
-          {/* Lines from category nodes to members */}
-          {CATEGORY_ORDER.map((cat) => {
-            const items = grouped[cat] || [];
-            const memberPos = getMemberPositions(cat, items.length);
-            const catPos = catPositions[cat];
-            const color = categoryColorHex[cat];
-            return memberPos.map((mp, i) => (
-              <line
-                key={`mline-${cat}-${i}`}
-                x1={catPos.x} y1={catPos.y}
-                x2={mp.x} y2={mp.y}
-                stroke={color}
-                strokeWidth="0.8"
-                strokeOpacity="0.15"
-              />
-            ));
-          })}
-
-          {/* YOU — center node */}
-          <g className="cursor-pointer" onClick={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}>
-            <circle cx={mapCx} cy={centerY} r="28" fill="#5a1f1a" fillOpacity="0.12" stroke="#5a1f1a" strokeOpacity="0.3" strokeWidth="1.5" />
-            <text x={mapCx} y={centerY + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="#5a1f1a" fontSize="18" fontFamily="serif">{"\u2609"}</text>
-            <text x={mapCx} y={centerY + 42} textAnchor="middle"
-              fill="var(--foreground-muted)" fontSize="10" fontWeight="500">You</text>
-            {userChart && (
-              <text x={mapCx} y={centerY + 54} textAnchor="middle"
-                fill="var(--foreground-faint)" fontSize="8">
-                {SIGN_FULL[userChart.bigThree.sun]}
-              </text>
-            )}
-          </g>
-
-          {/* Category nodes */}
-          {CATEGORY_ORDER.map((cat) => {
-            const pos = catPositions[cat];
-            const meta = CATEGORY_META[cat];
-            const items = grouped[cat] || [];
-            const color = categoryColorHex[cat];
-            const isExpanded = expandedCategory === cat;
-            const isCity = cat === "city";
-
-            return (
-              <g key={cat} className="cursor-pointer" onClick={() => {
-                if (isCity) {
-                  // Gate: astrocartography needs exact birth time
-                  if (!shouldRenderTimeFeature("astrocartography")) {
-                    setShowBirthTimePlaceholder(true);
-                    return;
+      {/* ═══ NIGHT SKY — Your Constellation ═══ */}
+      <NightSky
+        people={connections.map((c) => ({ id: c.id, name: c.name, category: c.category, sun: c.big_three?.sun ?? null }))}
+        userSun={userChart ? SIGN_FULL[userChart.bigThree.sun] : null}
+        hasChart={!!userChart}
+        onSelectPerson={(id) => { setSelectedId(id); setShowSelfView(false); }}
+        onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
+        onAdd={(category) => openAddForm(category)}
+        onOpenPlaces={() => {
+          if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
+          if (gate("astrocartography")) return;
+          if (userChart) {
+            if (!userChart.birthDate) {
+              try {
+                const raw = sessionStorage.getItem("chartResult");
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (parsed.birthDate) {
+                    setUserChart((prev) => prev ? { ...prev, birthDate: parsed.birthDate, birthTime: parsed.birthTime, latitude: parsed.latitude, longitude: parsed.longitude, timezone: parsed.timezone } : prev);
                   }
-                  // Gate: astrocartography is a paid feature
-                  if (gate("astrocartography")) return;
-                  // Go straight to astrocartography
-                  if (userChart) {
-                    if (!userChart.birthDate) {
-                      try {
-                        const raw = sessionStorage.getItem("chartResult");
-                        if (raw) {
-                          const parsed = JSON.parse(raw);
-                          if (parsed.birthDate) {
-                            setUserChart(prev => prev ? { ...prev, birthDate: parsed.birthDate, birthTime: parsed.birthTime, latitude: parsed.latitude, longitude: parsed.longitude, timezone: parsed.timezone } : prev);
-                          }
-                        }
-                      } catch { /* ignore */ }
-                    }
-                    setShowAstroMap(true);
-                  }
-                  return;
                 }
-                // Always expand the panel for circle/home \u2014 no shortcut
-                setExpandedCategory(isExpanded ? null : cat);
-              }}>
-                {/* Node circle */}
-                <circle cx={pos.x} cy={pos.y} r="22"
-                  fill={color} fillOpacity={isExpanded || (isCity && cityName) || items.length > 0 ? "0.2" : "0.1"}
-                  stroke={color} strokeOpacity={isExpanded || (isCity && cityName) || items.length > 0 ? "0.5" : "0.25"} strokeWidth="1.5" />
-                <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle"
-                  fill={color} fontSize="14">{meta.icon}</text>
-                {/* Label */}
-                <text x={pos.x} y={pos.y + 34} textAnchor="middle"
-                  fill="var(--foreground-muted)" fontSize="9" fontWeight="500">
-                  {isCity && cityName ? cityName.split(",")[0] : meta.label}
-                </text>
-                {meta.subtitle && (
-                  <text x={pos.x} y={pos.y + 45} textAnchor="middle"
-                    fill="var(--foreground-faint)" fontSize="7">
-                    {meta.subtitle}
-                  </text>
-                )}
-                <text x={pos.x} y={pos.y + (meta.subtitle ? 56 : 45)} textAnchor="middle"
-                  fill="var(--foreground-faint)" fontSize="7.5">
-                  {isCity
-                    ? (cityName ? "tap for lines" : "tap to explore")
-                    : items.length === 0 ? "tap to add" : `${items.length}`}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Member nodes */}
-          {CATEGORY_ORDER.map((cat) => {
-            const items = grouped[cat] || [];
-            const memberPos = getMemberPositions(cat, items.length);
-            const color = categoryColorHex[cat];
-
-            return items.map((conn, i) => {
-              const mp = memberPos[i];
-              if (!mp) return null;
-              return (
-                <g key={conn.id} className="cursor-pointer" onClick={() => { setSelectedId(conn.id); setShowSelfView(false); }}>
-                  <circle cx={mp.x} cy={mp.y} r="15"
-                    fill={color} fillOpacity="0.08"
-                    stroke={color} strokeOpacity="0.2" strokeWidth="1" />
-                  <text x={mp.x} y={mp.y + 1} textAnchor="middle" dominantBaseline="middle"
-                    fill={color} fontSize="10" fontWeight="600">
-                    {conn.name.charAt(0).toUpperCase()}
-                  </text>
-                  <text x={mp.x} y={mp.y + 26} textAnchor="middle"
-                    fill="var(--foreground-faint)" fontSize="7">
-                    {conn.name.length > 8 ? conn.name.slice(0, 7) + "\u2026" : conn.name}
-                  </text>
-                </g>
-              );
-            });
-          })}
-        </svg>
-      </div>
+              } catch { /* ignore */ }
+            }
+            setShowAstroMap(true);
+          }
+        }}
+      />
 
       {/* ═══ EXPANDED CATEGORY PANEL (below the map) ═══ */}
       {expandedCategory && expandedCategory !== "city" && (() => {
