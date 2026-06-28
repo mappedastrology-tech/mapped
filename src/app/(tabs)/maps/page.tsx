@@ -3744,6 +3744,31 @@ export default function MapsTab() {
           >
             Between Us
           </button>
+          <button
+            onClick={() => {
+              // Astrocartography lives inside your reading. Gate on birth time
+              // (and the paywall), then open the relocation map from here.
+              if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
+              if (gate("astrocartography")) return;
+              if (userChart && !userChart.birthDate) {
+                try {
+                  const raw = sessionStorage.getItem("chartResult");
+                  if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.birthDate) {
+                      setUserChart((prev) => prev ? { ...prev, birthDate: parsed.birthDate, birthTime: parsed.birthTime, latitude: parsed.latitude, longitude: parsed.longitude, timezone: parsed.timezone } : prev);
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+              setShowSelfView(false);
+              setShowAstroMap(true);
+            }}
+            className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all text-muted border border-transparent flex items-center justify-center gap-1"
+          >
+            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z" /></svg>
+            Places
+          </button>
         </div>
 
         {/* ═══ My Transits Tab ═══ */}
@@ -6403,13 +6428,13 @@ export default function MapsTab() {
     return (
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
-          onClick={() => { setShowAstroMap(false); setAstroLines(null); setAstroNearby(null); setAstroParans([]); setAdvancedMode(false); }}
+          onClick={() => { setShowAstroMap(false); setShowSelfView(true); setAstroLines(null); setAstroNearby(null); setAstroParans([]); setAdvancedMode(false); }}
           className="flex items-center gap-2 text-muted text-sm mb-6 active:text-secondary"
         >
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Back to map
+          Back to your reading
         </button>
 
         <div className="text-center mb-6">
@@ -7464,24 +7489,6 @@ export default function MapsTab() {
         onSelectPerson={(id) => { setSelectedId(id); setShowSelfView(false); }}
         onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
         onAdd={(category) => openAddForm(category)}
-        onOpenPlaces={() => {
-          if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
-          if (gate("astrocartography")) return;
-          if (userChart) {
-            if (!userChart.birthDate) {
-              try {
-                const raw = sessionStorage.getItem("chartResult");
-                if (raw) {
-                  const parsed = JSON.parse(raw);
-                  if (parsed.birthDate) {
-                    setUserChart((prev) => prev ? { ...prev, birthDate: parsed.birthDate, birthTime: parsed.birthTime, latitude: parsed.latitude, longitude: parsed.longitude, timezone: parsed.timezone } : prev);
-                  }
-                }
-              } catch { /* ignore */ }
-            }
-            setShowAstroMap(true);
-          }
-        }}
       />
 
       {/* ═══ EXPANDED CATEGORY PANEL (below the map) ═══ */}

@@ -65,7 +65,6 @@ export default function NightSky({
   onSelectPerson,
   onSelectSelf,
   onAdd,
-  onOpenPlaces,
 }: {
   people: SkyPerson[];
   userSun: string | null;
@@ -73,7 +72,6 @@ export default function NightSky({
   onSelectPerson: (id: string) => void;
   onSelectSelf: () => void;
   onAdd: (category: string) => void;
-  onOpenPlaces: () => void;
 }) {
   const skyRef = useRef<HTMLDivElement>(null);
   const midRef = useRef<HTMLDivElement>(null);
@@ -270,15 +268,6 @@ export default function NightSky({
         style={{ position: "absolute", right: 16, bottom: 84, zIndex: 35, width: 46, height: 46, borderRadius: 999, background: "rgba(20,16,28,.6)", border: "1px solid rgba(201,169,97,.25)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 6px 18px rgba(0,0,0,.4)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a961" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="#c9a961" stroke="none" /></svg>
-      </button>
-
-      {/* Places / astrocartography */}
-      <button
-        onClick={onOpenPlaces}
-        aria-label="Your places"
-        style={{ position: "absolute", left: 16, bottom: 84, zIndex: 35, width: 46, height: 46, borderRadius: 999, background: "rgba(20,16,28,.6)", border: "1px solid rgba(201,169,97,.25)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 6px 18px rgba(0,0,0,.4)" }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9a961" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z" /></svg>
       </button>
 
       {/* Add person (with category menu) */}
