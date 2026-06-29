@@ -184,8 +184,9 @@ export default function NightSky({
   const recenter = () => { pan.current = { x: 0, y: 0 }; scale.current = 1; animate(); };
   const zoomBy = (f: number) => { scale.current = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale.current * f)); animate(); };
 
-  // A tap (not a drag) on a star selects it.
-  const tap = (fn: () => void) => () => { if (moved.current <= 8) fn(); };
+  // A tap (not a drag) on a star selects it. A little drift is forgiven so an
+  // imperfect tap on the pannable map still registers.
+  const tap = (fn: () => void) => () => { if (moved.current <= 14) fn(); };
 
   const fabBtn: React.CSSProperties = {
     width: 46, height: 46, borderRadius: 999, background: "rgba(20,16,28,.6)", border: "1px solid rgba(201,169,97,.25)",
@@ -235,13 +236,17 @@ export default function NightSky({
           {/* cluster labels — Origin Family is a tappable pill that opens the family panel */}
           {clusters.map((c) => (
             c.group === "origin" ? (
-              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} style={{
+              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} aria-label="Origin Family — view traits & curses" style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
-                display: "flex", alignItems: "center", gap: 5, fontFamily: "inherit",
-                fontSize: 10, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: c.color,
-                padding: "5px 11px", borderRadius: 999, background: "rgba(184,160,210,.16)", border: `1px solid ${c.color}88`,
-                cursor: "pointer", boxShadow: "0 3px 12px rgba(0,0,0,.5)",
-              }}>{c.label} <span aria-hidden="true" style={{ opacity: 0.7 }}>›</span></button>
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 1, fontFamily: "inherit",
+                color: c.color, padding: "8px 15px", borderRadius: 16, background: "rgba(184,160,210,.22)",
+                border: `1px solid ${c.color}`, cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,.55)",
+              }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
+                  {c.label} <span aria-hidden="true" style={{ opacity: 0.85, fontSize: 13 }}>›</span>
+                </span>
+                <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; curses</span>
+              </button>
             ) : (
               <span key={`l-${c.group}`} style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",

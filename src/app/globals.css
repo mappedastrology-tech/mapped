@@ -23,9 +23,12 @@
    image if/when it's added to /public. */
 .lib-felt {
   background-color: var(--background);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='0.6'/%3E%3C/svg%3E");
-  background-size: 240px 240px;
-  background-blend-mode: soft-light;
+  /* Use the same dark-felt starfield the rest of the app's dark mode uses, so
+     Learn/Library match the home screen exactly. Light mode falls back to the
+     plain cream background (no image), mirroring the body. */
+  background-image: url('/backgrounds/dark-felt.png');
+  background-size: 512px;
+  background-repeat: repeat;
 
   /* Match the Claude Design type system inside Learn/Library:
      Bodoni Moda for display, DM Sans for everything else. */
@@ -34,7 +37,7 @@
   font-family: var(--font-body);
 }
 .lib-felt input, .lib-felt button, .lib-felt textarea, .lib-felt select { font-family: inherit; }
-[data-theme="light"] .lib-felt { background-blend-mode: multiply; }
+[data-theme="light"] .lib-felt { background-image: none; }
 
 /* Respect prefers-reduced-motion across the Learn/Library screens:
    neutralize card flips, twinkles, floats, pops, and slide/zoom enters. */

@@ -91,6 +91,7 @@ import Image from "next/image";
 import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
+import StartHereCard from "@/components/StartHereCard";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
 import SolarEventScreen from "@/components/SolarEventScreen";
@@ -689,6 +690,9 @@ export default function HomeTab() {
             {moon.label.toLowerCase()} · moon in {currentMoonSign.full.toLowerCase()}
           </p>
         </div>
+
+        {/* ─── First-session orientation (new users only, dismissible) ─── */}
+        <StartHereCard />
 
         {/* ─── Moon phase inline expansion ─── */}
         {openFolder === "moon-phase" && (() => {

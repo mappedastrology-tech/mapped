@@ -292,8 +292,8 @@ export default function LibraryHome() {
                 <Link href="/library/review" className="flex items-center gap-3 px-4 py-3 rounded-2xl mt-5 active:scale-[0.99] transition-transform" style={{ background: "linear-gradient(135deg, var(--plum), var(--plum-deep))", border: "1px solid var(--brass)" }}>
                   <span className="text-xl" aria-hidden="true">🔁</span>
                   <div className="flex-1">
-                    <p className="text-[14px] font-semibold" style={{ color: "var(--lib-on-plum)" }}>Daily review ready</p>
-                    <p className="text-[11px]" style={{ color: "rgba(240,230,210,0.7)" }}>{dueCount} {dueCount === 1 ? "lesson" : "lessons"} due — keep it fresh</p>
+                    <p className="text-[14px] font-semibold" style={{ color: "var(--lib-on-plum)" }}>Daily review</p>
+                    <p className="text-[11px]" style={{ color: "rgba(240,230,210,0.7)" }}>A 2-minute refresher to lock in what you&rsquo;ve learned</p>
                   </div>
                   <span className="text-[12px]" style={{ color: "var(--brass-light)" }}>Review →</span>
                 </Link>

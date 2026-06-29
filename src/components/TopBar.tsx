@@ -88,6 +88,12 @@ const MENU_ITEMS = [
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  // Highlight only the most specific menu item, so /library/reference lights up
+  // "Library" — not also "Learn" (which lives at the shorter /library prefix).
+  const activeHref = MENU_ITEMS
+    .map((i) => i.href)
+    .filter((h) => pathname === h || pathname.startsWith(h + "/"))
+    .sort((a, b) => b.length - a.length)[0] ?? "";
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -226,7 +232,7 @@ export default function TopBar() {
             {/* Menu items */}
             <nav className="flex-1 px-3 py-4" aria-label="Site navigation">
               {MENU_ITEMS.map((item) => {
-                const isActive = pathname.startsWith(item.href);
+                const isActive = item.href === activeHref;
                 return (
                   <Link
                     key={item.label}

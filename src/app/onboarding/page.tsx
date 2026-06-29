@@ -6,9 +6,9 @@
  * Screens:
  *  0  Welcome
  *  1  Birth data capture + account creation
- *  2  Demographics (optional)
- *  3  Sect reveal
- *  4  Headline cards (chart ruler, sect light, lord of the year)
+ *  2  Sect reveal (immediately after chart — the payoff)
+ *  3  Headline cards (big three + chart ruler, sect light, lord of the year)
+ *  4  Demographics (optional)
  *  5  Meet Dolly
  *  6  Pick your free deck
  *  7  Notifications opt-in
@@ -81,6 +81,7 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState<LocationResult | null>(null);
   const [zodiacSystem, setZodiacSystem] = useState<"tropical" | "sidereal">("tropical");
   const [ayanamsa, setAyanamsa] = useState<"lahiri" | "krishnamurti" | "raman">("lahiri");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   /* ── account fields ── */
   const [email, setEmail] = useState("");
@@ -508,18 +509,18 @@ export default function OnboardingPage() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{
         background:
-          step === 3 && sectInfo
+          step === 2 && sectInfo
             ? sectInfo.sect === "day"
               ? "linear-gradient(180deg, #d4a853 0%, #c49234 100%)"
               : "linear-gradient(180deg, #1a2744 0%, #0f1a30 100%)"
             : step === 0
             ? `var(--cream)`
             : `radial-gradient(ellipse at top, ${PAPER} 0%, ${PAPER_DEEP} 100%)`,
-        color: step === 3 && sectInfo?.sect === "night" ? "#e8e0d4" : step === 0 ? "#3d3328" : INK,
+        color: step === 2 && sectInfo?.sect === "night" ? "#e8e0d4" : step === 0 ? "#3d3328" : INK,
       }}
     >
       {/* Paper grain (hidden on sect reveal) */}
-      {step !== 3 && (
+      {step !== 2 && (
         <div
           className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-multiply"
           style={{
@@ -549,7 +550,7 @@ export default function OnboardingPage() {
                     i < step
                       ? TERRACOTTA
                       : i === step
-                      ? step === 3 && sectInfo?.sect === "night"
+                      ? step === 2 && sectInfo?.sect === "night"
                         ? "#e8e0d4"
                         : INK
                       : "rgba(42,31,24,0.15)",
@@ -595,8 +596,11 @@ export default function OnboardingPage() {
               >
                 Your birth data
               </h1>
-              <p className="text-secondary text-xs mb-4">
-                The more accurate your info, the more accurate your chart.
+              <p className="text-secondary text-xs mb-1">
+                We&apos;ll map your whole chart — Sun, Moon, Rising, and more — not just your sun sign. The more accurate your details, the sharper it gets.
+              </p>
+              <p className="text-muted text-[11px] mb-4">
+                Private — your birth details are only used to build your chart, never shared.
               </p>
 
               <div className="flex flex-col gap-3">
@@ -772,45 +776,58 @@ export default function OnboardingPage() {
                   {location && <p className="text-[11px]" style={{ color: SAGE }}>&#10003; {location.display_name}</p>}
                 </div>
 
-                {/* Zodiac system */}
-                <div className="flex flex-col gap-1.5">
-                  <label className={labelClass}>Zodiac system</label>
-                  <div className="flex gap-2">
-                    {(["tropical", "sidereal"] as const).map((sys) => (
-                      <button
-                        key={sys}
-                        type="button"
-                        onClick={() => setZodiacSystem(sys)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                          zodiacSystem === sys
-                            ? "border-terracotta text-terracotta bg-terracotta/10"
-                            : "border-foreground/15 text-muted bg-card/40"
-                        }`}
-                      >
-                        {sys === "tropical" ? "Western" : "Vedic"}
-                        <span className="block text-[9px] mt-0.5 opacity-60 capitalize font-normal">{sys}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {zodiacSystem === "sidereal" && (
-                    <div className="flex gap-2 mt-1">
-                      {([{ v: "lahiri", l: "Lahiri" }, { v: "krishnamurti", l: "KP" }, { v: "raman", l: "Raman" }] as const).map((o) => (
+                {/* Advanced — zodiac system. Hidden by default; nearly everyone wants
+                    Western (tropical), so we don't make newcomers face the choice. */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  className="text-[11px] text-muted self-start hover:text-secondary transition-colors py-1"
+                >
+                  {showAdvanced ? "− Hide advanced options" : "+ Advanced options"}
+                </button>
+                {showAdvanced && (
+                  <div className="flex flex-col gap-1.5 -mt-1">
+                    <label className={labelClass}>Zodiac system</label>
+                    <div className="flex gap-2">
+                      {(["tropical", "sidereal"] as const).map((sys) => (
                         <button
-                          key={o.v}
+                          key={sys}
                           type="button"
-                          onClick={() => setAyanamsa(o.v as "lahiri" | "krishnamurti" | "raman")}
-                          className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${
-                            ayanamsa === o.v
-                              ? "border-terracotta/60 text-terracotta bg-terracotta/10"
+                          onClick={() => setZodiacSystem(sys)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                            zodiacSystem === sys
+                              ? "border-terracotta text-terracotta bg-terracotta/10"
                               : "border-foreground/15 text-muted bg-card/40"
                           }`}
                         >
-                          {o.l}
+                          {sys === "tropical" ? "Western" : "Vedic"}
+                          <span className="block text-[9px] mt-0.5 opacity-60 capitalize font-normal">{sys}</span>
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
+                    {zodiacSystem === "sidereal" && (
+                      <div className="flex gap-2 mt-1">
+                        {([{ v: "lahiri", l: "Lahiri" }, { v: "krishnamurti", l: "KP" }, { v: "raman", l: "Raman" }] as const).map((o) => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => setAyanamsa(o.v as "lahiri" | "krishnamurti" | "raman")}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${
+                              ayanamsa === o.v
+                                ? "border-terracotta/60 text-terracotta bg-terracotta/10"
+                                : "border-foreground/15 text-muted bg-card/40"
+                            }`}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted leading-relaxed">
+                      Most people use Western (tropical). Choose Vedic only if you specifically follow sidereal astrology.
+                    </p>
+                  </div>
+                )}
 
                 {/* Account */}
                 {existingUserId ? (
@@ -914,8 +931,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 2: Demographics ══════════ */}
-          {step === 2 && (
+          {/* ══════════ Screen 4: Demographics (after the reveal) ══════════ */}
+          {step === 4 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
@@ -1026,16 +1043,40 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 3: Sect Reveal ══════════ */}
-          {step === 3 && (
+          {/* ══════════ Screen 2: Sect Reveal (immediately after chart) ══════════ */}
+          {step === 2 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <h1
-                className="text-[38px] mb-4 tracking-tight leading-tight"
+                className="text-[38px] mb-1 tracking-tight leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 {name ? name.split(" ")[0] : "You"}
               </h1>
-              <p className="text-lg leading-relaxed max-w-xs mb-3 opacity-90">
+              <p className="text-xs uppercase tracking-widest opacity-60 mb-5">Here&apos;s your chart</p>
+
+              {/* Big three — the recognizable Sun / Moon / Rising reveal */}
+              <div className="flex flex-col gap-2 mb-6 w-full max-w-[280px]">
+                {([
+                  { label: "Sun", sign: chartData?.bigThree?.sun, glyph: "☉" },
+                  { label: "Moon", sign: chartData?.bigThree?.moon, glyph: "☾" },
+                  { label: "Rising", sign: chartData?.bigThree?.rising, glyph: "↑" },
+                ] as const).map((b) => (
+                  <div
+                    key={b.label}
+                    className="flex items-center justify-between px-4 py-3 rounded-2xl"
+                    style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
+                  >
+                    <span className="text-[11px] uppercase tracking-widest opacity-70 flex items-center gap-2">
+                      <span aria-hidden="true" className="text-[14px] opacity-90">{b.glyph}</span>{b.label}
+                    </span>
+                    <span className="text-[18px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                      {b.sign ? fullSign(b.sign) : "add birth time"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-base leading-relaxed max-w-xs mb-3 opacity-90">
                 {sectInfo?.sect === "day"
                   ? "You were born during the day."
                   : "You were born at night."}
@@ -1058,8 +1099,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 4: Headline Cards ══════════ */}
-          {step === 4 && (
+          {/* ══════════ Screen 3: Headline Cards ══════════ */}
+          {step === 3 && (
             <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
               <h1
                 className="text-[24px] text-foreground mb-5 tracking-tight text-center"

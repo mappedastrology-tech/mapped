@@ -71,7 +71,7 @@ export default function ReviewSession() {
           <div className="rounded-2xl p-6 text-center" style={{ background: "linear-gradient(140deg, rgba(201,169,97,0.16), var(--background-card) 70%)", border: "1px solid rgba(201,169,97,0.4)", boxShadow: "var(--card-shadow)" }}>
             <div className="mx-auto mb-3 w-20 h-20 rounded-full flex flex-col items-center justify-center" style={{ background: "linear-gradient(135deg, var(--plum), var(--plum-deep))", border: "3px solid var(--brass)" }}>
               <span className="text-[28px] font-bold leading-none" style={{ color: "var(--lib-on-plum)", fontFamily: "var(--font-display)" }}>{lessonCount}</span>
-              <span className="text-[8px] uppercase tracking-wider" style={{ color: "var(--brass-light)" }}>due</span>
+              <span className="text-[8px] uppercase tracking-wider" style={{ color: "var(--brass-light)" }}>lessons</span>
             </div>
             <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>Daily review</h2>
             <p className="text-[13px] leading-relaxed mb-1" style={{ color: "var(--foreground-secondary)" }}>
