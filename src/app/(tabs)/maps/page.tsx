@@ -1498,6 +1498,18 @@ function saveTimeline(entries: TimelineEntry[], uid?: string | null) {
   try { localStorage.setItem(getTimelineKey(uid), JSON.stringify(entries)); } catch { /* ignore */ }
 }
 
+/** Family analysis is persisted per user, keyed to a signature of the family
+ * members — so it's saved once and only regenerated when the family changes. */
+const familyKey = (uid?: string | null) => `mapped:familyAnalysis:${uid || "anon"}`;
+const familyMembers = (conns: Connection[]) => conns.filter((c) => c.category === "family");
+function familySignature(conns: Connection[]): string {
+  return familyMembers(conns)
+    .map((c) => `${c.id}:${c.relationship}:${c.birth_date}:${c.birth_time || ""}`)
+    .sort()
+    .join("|");
+}
+type SavedFamily = { sig: string; analysis: FamilyAnalysis };
+
 /* ═══════════════════════════════════════════
    Major Cities Database
    ═══════════════════════════════════════════ */
@@ -2365,6 +2377,7 @@ export default function MapsTab() {
         setShowCityPicker(false);
         setShowSelfView(false);
         setFamilyAnalysis(null);
+        setShowFamilyPanel(false);
       }
     };
     window.addEventListener("nav:tab-tap", handler);
@@ -2436,9 +2449,19 @@ export default function MapsTab() {
   // Synastry loading
   const [synastryLoading, setSynastryLoading] = useState(false);
 
-  // Family analysis — persisted in localStorage
+  // Family analysis — generated on demand, then persisted per user
   const [familyAnalysis, setFamilyAnalysis] = useState<FamilyAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [showFamilyPanel, setShowFamilyPanel] = useState(false);
+  const [savedFamily, setSavedFamily] = useState<SavedFamily | null>(null);
+
+  // Load any previously-saved family analysis for this user.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(familyKey(userId));
+      setSavedFamily(raw ? (JSON.parse(raw) as SavedFamily) : null);
+    } catch { setSavedFamily(null); }
+  }, [userId]);
 
   // Aspect accordion
   const [openAspect, setOpenAspect] = useState<string | null>(null);
@@ -3339,9 +3362,12 @@ export default function MapsTab() {
     setAnalysisLoading(true);
     setTimeout(() => {
       const analysis = generateFamilyAnalysis(userChart, connections);
+      const saved: SavedFamily = { sig: familySignature(connections), analysis };
+      setSavedFamily(saved);
+      try { localStorage.setItem(familyKey(userId), JSON.stringify(saved)); } catch { /* ignore */ }
       setFamilyAnalysis(analysis);
       setAnalysisLoading(false);
-      // Don't persist family analysis to localStorage — it's regenerated on demand
+      setShowFamilyPanel(false);
     }, 500);
   }
 
@@ -7403,7 +7429,7 @@ export default function MapsTab() {
         hasChart={!!userChart}
         onSelectPerson={(id) => { setSelectedId(id); setShowSelfView(false); }}
         onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
-        onSelectGroup={(g) => { if (g === "origin") handleFamilyAnalysis(); }}
+        onSelectGroup={(g) => { if (g === "origin") setShowFamilyPanel(true); }}
         onAdd={(category) => openAddForm(category)}
         onOpenPlaces={() => {
           if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
@@ -7422,6 +7448,69 @@ export default function MapsTab() {
           setShowAstroMap(true);
         }}
       />
+
+      {/* ═══ ORIGIN FAMILY PANEL — members + generate/view/regenerate ═══ */}
+      {showFamilyPanel && (() => {
+        const members = familyMembers(connections);
+        const currentSig = familySignature(connections);
+        const isStale = savedFamily ? savedFamily.sig !== currentSig : false;
+        const hasCurrent = !!savedFamily && !isStale;
+        const btnLabel = analysisLoading
+          ? "Generating…"
+          : hasCurrent ? "Traits & Curses"
+          : savedFamily ? "Regenerate traits & curses"
+          : "Generate traits & curses";
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm" style={{ backgroundColor: "var(--modal-overlay)" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowFamilyPanel(false); }}>
+            <div className="w-full max-w-lg max-h-[85vh] rounded-t-2xl border border-foreground/18 bg-background animate-slide-up flex flex-col">
+              <div className="flex items-center justify-between p-5 pb-2 flex-shrink-0">
+                <h3 className="text-lg text-foreground" style={{ fontFamily: "var(--font-display)" }}>Origin Family</h3>
+                <button onClick={() => setShowFamilyPanel(false)} aria-label="Close" className="text-muted hover:text-foreground transition-colors">
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="px-5 pb-6 overflow-y-auto">
+                <p className="text-muted text-[13px] mb-3">Your family&rsquo;s traits &amp; curses, cross-referenced across these members:</p>
+                {members.length === 0 ? (
+                  <p className="text-secondary text-sm py-6 text-center">Add your parents and siblings to your map first.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2 mb-5">
+                    {members.map((m) => (
+                      <li key={m.id} className="flex items-center gap-3 rounded-xl px-4 py-2.5" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0" style={{ background: "rgba(184,160,210,0.18)", color: "var(--lavender)" }}>{m.name.charAt(0).toUpperCase()}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground text-sm font-medium truncate">{m.name}</p>
+                          <p className="text-muted text-xs capitalize">{m.relationship}{m.big_three ? ` · ${SIGN_FULL[m.big_three.sun]} Sun` : ""}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {isStale && (
+                  <p className="text-[12px] mb-3" style={{ color: "var(--brass-light)" }}>Your family changed since this was generated — regenerate for an up-to-date reading.</p>
+                )}
+                {members.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (analysisLoading) return;
+                      if (hasCurrent && savedFamily) { setFamilyAnalysis(savedFamily.analysis); setShowFamilyPanel(false); }
+                      else { handleFamilyAnalysis(); }
+                    }}
+                    disabled={analysisLoading || !userChart}
+                    className="w-full py-3.5 rounded-full font-semibold text-sm tracking-wide active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+                  >
+                    {hasCurrent && <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" /></svg>}
+                    {btnLabel}{hasCurrent ? " ›" : ""}
+                  </button>
+                )}
+                {!userChart && <p className="text-muted text-xs text-center mt-3">Calculate your own chart first.</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showAddForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm" style={{ backgroundColor: "var(--modal-overlay)" }}

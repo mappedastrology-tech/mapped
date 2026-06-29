@@ -61,13 +61,15 @@ function layout(people: SkyPerson[]): { nodes: LaidNode[]; clusters: Cluster[] }
       ly: cy - 54,
     });
     const n = arr.length;
+    const cols = Math.min(n, 3);
     arr.forEach((p, i) => {
       let x = cx, y = cy;
       if (n > 1) {
-        // tidy downward fan below the centroid, so the label above stays clear
-        const off = i - (n - 1) / 2;
-        x = cx + off * 46;
-        y = cy + 24 + Math.abs(off) * 12;
+        const row = Math.floor(i / cols);
+        const colsInRow = Math.min(n - row * cols, cols);
+        const col = i % cols;
+        x = cx + (col - (colsInRow - 1) / 2) * 82; // wider gap so name labels never collide
+        y = cy + row * 76;
       }
       nodes.push({ ...p, x, y, color: meta.color });
     });
@@ -230,13 +232,23 @@ export default function NightSky({
             })}
           </svg>
 
-          {/* cluster labels (tap to open the group — Origin Family → gifts & curses) */}
+          {/* cluster labels — Origin Family is a tappable pill that opens the family panel */}
           {clusters.map((c) => (
-            <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup(c.group))} style={{
-              position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
-              fontFamily: "inherit", fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
-              textShadow: "0 1px 6px rgba(0,0,0,.9)", background: "none", border: "none", cursor: "pointer", padding: 4,
-            }}>{c.label}</button>
+            c.group === "origin" ? (
+              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} style={{
+                position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
+                display: "flex", alignItems: "center", gap: 5, fontFamily: "inherit",
+                fontSize: 10, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: c.color,
+                padding: "5px 11px", borderRadius: 999, background: "rgba(184,160,210,.16)", border: `1px solid ${c.color}88`,
+                cursor: "pointer", boxShadow: "0 3px 12px rgba(0,0,0,.5)",
+              }}>{c.label} <span aria-hidden="true" style={{ opacity: 0.7 }}>›</span></button>
+            ) : (
+              <span key={`l-${c.group}`} style={{
+                position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
+                fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
+                textShadow: "0 1px 6px rgba(0,0,0,.9)", pointerEvents: "none",
+              }}>{c.label}</span>
+            )
           ))}
 
           {/* You — centre */}
@@ -258,7 +270,7 @@ export default function NightSky({
                   {person.name.charAt(0).toUpperCase()}
                 </span>
               </span>
-              <span style={{ fontSize: 9.5, color: "#e8dfc4", maxWidth: 76, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name}</span>
+              <span style={{ fontSize: 9.5, color: "#e8dfc4", maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name.split(" ")[0]}</span>
             </button>
           ))}
 
