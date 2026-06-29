@@ -685,7 +685,7 @@ export default function HomeTab() {
           )}
           <p
             className="text-[12px] tracking-[0.08em] mt-2"
-            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)", opacity: 0.55 }}
+            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)", opacity: 0.72 }}
           >
             {moon.label.toLowerCase()} · moon in {currentMoonSign.full.toLowerCase()}
           </p>
