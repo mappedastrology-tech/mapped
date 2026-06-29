@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npx tsx --test \"tests/*.test.ts\"",
     "check": "npm run lint && npm run typecheck",
-    "predeploy": "npm run check",
+    "clean:dupes": "node scripts/clean-dupes.mjs",
+    "predeploy": "npm run clean:dupes && npm run check",
     "deploy": "npx vercel --prod"
   },
   "dependencies": {
