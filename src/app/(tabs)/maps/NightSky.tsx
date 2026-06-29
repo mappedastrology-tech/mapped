@@ -161,16 +161,35 @@ export default function NightSky({
         dragStart.current = null;
       }
     };
+    // Desktop: scroll wheel / trackpad-pinch zooms toward the cursor.
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = sky.getBoundingClientRect();
+      const px = e.clientX - (rect.left + rect.width / 2);
+      const py = e.clientY - (rect.top + rect.height / 2);
+      const s0 = scale.current;
+      const s1 = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s0 * Math.exp(-e.deltaY * 0.0015)));
+      if (s1 === s0) return;
+      const ratio = s1 / s0;
+      pan.current = {
+        x: Math.max(-CLAMP, Math.min(CLAMP, px - (px - pan.current.x) * ratio)),
+        y: Math.max(-CLAMP, Math.min(CLAMP, py - (py - pan.current.y) * ratio)),
+      };
+      scale.current = s1;
+      apply();
+    };
     sky.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
+    sky.addEventListener("wheel", onWheel, { passive: false });
     apply();
     return () => {
       sky.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      sky.removeEventListener("wheel", onWheel);
     };
   }, []);
 
