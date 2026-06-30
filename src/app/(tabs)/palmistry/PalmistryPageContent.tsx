@@ -534,7 +534,7 @@ export default function PalmistryTab() {
           <button onClick={() => openPerson(SELF_ID)} className="flex items-center gap-1.5 text-secondary text-[14px] -ml-1 mb-2">
             <span className="text-lg leading-none">‹</span> Your palms
           </button>
-          <h2 className="text-foreground text-[24px] font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>Palms</h2>
+          <h1 className="text-foreground text-[24px] font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>Palms</h1>
           {people.map((p, i) => (
             <PersonCard key={p.id} person={p} accent={personColor(i)} onOpen={() => openPerson(p.id)} />
           ))}

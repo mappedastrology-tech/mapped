@@ -668,21 +668,23 @@ export default function HomeTab() {
             <MoonPhaseIcon phase={moon.label} size={280} />
           </button>
 
-          {/* Greeting — overlaps moon slightly for cohesion */}
-          <h2
-            className="text-[32px] leading-[1.1] tracking-[0.14em] uppercase"
-            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)", fontWeight: 400 }}
-          >
-            {greeting}.
-          </h2>
-          {firstName && (
-            <p
-              className="text-[54px] leading-[1.0] -mt-1"
-              style={{ fontFamily: "var(--font-script)", color: "var(--foreground)", fontWeight: 400 }}
+          {/* Greeting — the page's single h1; name styled inline as a span */}
+          <h1 className="flex flex-col items-center" style={{ color: "var(--foreground)" }}>
+            <span
+              className="text-[32px] leading-[1.1] tracking-[0.14em] uppercase"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
             >
-              {firstName}
-            </p>
-          )}
+              {greeting}.
+            </span>
+            {firstName && (
+              <span
+                className="text-[54px] leading-[1.0] -mt-1"
+                style={{ fontFamily: "var(--font-script)", fontWeight: 400 }}
+              >
+                {firstName}
+              </span>
+            )}
+          </h1>
           <p
             className="text-[12px] tracking-[0.08em] mt-2"
             style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)", opacity: 0.72 }}
@@ -880,12 +882,12 @@ export default function HomeTab() {
 
           {horoscope && horoscopeStatus === "done" ? (
             <>
-              <h3
+              <h2
                 className="text-[20px] leading-[1.3] tracking-[0.04em] mb-4"
                 style={{ fontFamily: "var(--font-heading)", fontWeight: 500, color: "#f0e6d2" }}
               >
                 {horoscope.headline}
-              </h3>
+              </h2>
               <p
                 className="text-[14px] leading-[1.7] mb-5"
                 style={{ fontFamily: "var(--font-body)", color: "#f0e6d2", opacity: 0.85, textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}
@@ -1148,7 +1150,7 @@ export default function HomeTab() {
             )}
             {(() => {
               const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
-              const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.png";
+              const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.webp";
               const oracleImgSrc = oracleRevealed ? dailyOracle.image : ORACLE_BACK;
               return (
                 <button

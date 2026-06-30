@@ -549,9 +549,9 @@ function CustomRitualsSection({
 
   return (
     <div className="rounded-2xl bg-card/40 border border-foreground/10 p-4 mb-4">
-      <h3 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
+      <h2 className="text-muted text-[10px] uppercase tracking-[0.15em] font-semibold mb-3">
         Custom Rituals
-      </h3>
+      </h2>
       <div className="space-y-2">
         {rituals.map(r => {
           const isExpanded = expandedId === r.id;

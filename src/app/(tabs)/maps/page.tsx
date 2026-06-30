@@ -3707,9 +3707,9 @@ export default function MapsTab() {
         </button>
 
         <div className="text-center mb-4">
-          <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
             You
-          </h1>
+          </h2>
           {userChart?.bigThree && (
             <p className="text-muted text-sm">
               {SIGN_FULL[userChart.bigThree.sun] || userChart.bigThree.sun} Sun · {SIGN_FULL[userChart.bigThree.moon] || userChart.bigThree.moon} Moon
@@ -4505,9 +4505,9 @@ export default function MapsTab() {
           <p className="text-muted text-xs uppercase tracking-widest mb-2">
             {selected.relationship}
           </p>
-          <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
             {selected.name}
-          </h1>
+          </h2>
           {bt && (
             <p className="text-muted text-sm">
               {SIGN_FULL[bt.sun]} Sun · {SIGN_FULL[bt.moon]} Moon
@@ -6146,9 +6146,9 @@ export default function MapsTab() {
         </button>
 
         <div className="text-center mb-8">
-          <h1 className="text-2xl text-foreground mb-2" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-2xl text-foreground mb-2" style={{ fontFamily: "var(--font-display)" }}>
             Family Analysis
-          </h1>
+          </h2>
           <p className="text-muted text-sm">
             How your family&rsquo;s charts shaped who you are.
           </p>
@@ -6370,9 +6370,9 @@ export default function MapsTab() {
         </button>
 
         <div className="text-center mb-6">
-          <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-2xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
             Your Map
-          </h1>
+          </h2>
           <p className="text-muted text-sm">
             {advancedMode ? "All your planetary lines, crossings, and details" : "Where your planetary energy lands on Earth"}
           </p>

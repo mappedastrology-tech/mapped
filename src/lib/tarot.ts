@@ -579,10 +579,10 @@ const MISSING_IMAGES = new Set<string>([]);
 
 export function getCardImagePath(cardId: string): string | null {
   if (MISSING_IMAGES.has(cardId)) return null;
-  return `/tarot/classic/${cardId}.png`;
+  return `/tarot/classic/${cardId}.webp`;
 }
 
-export const CARD_BACK_IMAGE = "/tarot/classic/backside.png";
+export const CARD_BACK_IMAGE = "/tarot/classic/backside.webp";
 
 /* ═══════════════════════════════════════════
    Spreads

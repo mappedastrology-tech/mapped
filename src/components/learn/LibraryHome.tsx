@@ -124,6 +124,8 @@ export default function LibraryHome() {
 
       <TopBar />
 
+      <h1 className="sr-only">The Library — Learn</h1>
+
       <div className="max-w-lg mx-auto px-5 pb-24 relative">
         {/* Starfield (decorative) */}
         {!searching && (

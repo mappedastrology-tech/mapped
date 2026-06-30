@@ -60,8 +60,8 @@
 
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
-  --foreground-muted: #8a7d6b;
-  --foreground-faint: #5a5040;
+  --foreground-muted: #988b78;
+  --foreground-faint: #807460;
   --foreground-ghost: #3d3428;
 
   /* Text on dark card backgrounds (light) */
@@ -154,8 +154,8 @@
 
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
-  --foreground-muted: #8a7d6b;
-  --foreground-faint: #5a5040;
+  --foreground-muted: #988b78;
+  --foreground-faint: #807460;
   --foreground-ghost: #3d3428;
 
   --brass: #c9a961;
@@ -246,7 +246,7 @@
   --foreground: #1a1815;
   --foreground-secondary: #3a3528;
   --foreground-muted: #655e4e;
-  --foreground-faint: #8a8270;
+  --foreground-faint: #6f6857;
   --foreground-ghost: #b0a898;
 
   /* Text on card backgrounds — same as foreground in light mode */
@@ -254,7 +254,7 @@
   --foreground-on-card-muted: #655e4e;
   --foreground-on-card-faint: #8a8270;
 
-  --brass: #a88a40;
+  --brass: #7e6526;
   --brass-light: #c9a961;
   --brass-dark: #8a7030;
   --plum: #4a2540;

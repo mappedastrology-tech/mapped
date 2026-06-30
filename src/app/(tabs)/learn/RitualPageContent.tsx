@@ -1056,9 +1056,9 @@ export default function RitualPageContent() {
         </div>
 
         {/* Title — large editorial heading */}
-        <h2 className="text-[32px] font-semibold mb-3 leading-[1.15]" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+        <h1 className="text-[32px] font-semibold mb-3 leading-[1.15]" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
           {dailySuggestion.title}
-        </h2>
+        </h1>
 
         {/* Subtitle line: duration · tier */}
         <p className="text-[15px] mb-5" style={{ color: "var(--foreground-muted)" }}>
@@ -1130,9 +1130,9 @@ export default function RitualPageContent() {
           <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5 pr-10" style={{ color: "var(--foreground-secondary)" }}>
             Tonight&apos;s Moon
           </p>
-          <h3 className="text-[17px] font-bold leading-tight mb-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+          <h2 className="text-[17px] font-bold leading-tight mb-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
             {energy.moonPhase.label}
-          </h3>
+          </h2>
           <p className="text-[11px] leading-snug" style={{ color: "var(--foreground-muted)" }}>
             {energy.moonPhase.energy.split(".")[0]}.
           </p>
