@@ -301,7 +301,7 @@ export const runesFoundations: Course = {
             { kind: "sort", prompt: "Sort runes into their aett", instructions: "Tap a rune, then tap the aett it belongs to", groups: [
               { name: "Freyr's aett", accent: "#c9881f", items: ["ᚠ Fehu", "ᚢ Uruz", "ᚦ Thurisaz"] },
               { name: "Heimdall's aett", accent: "#2e86c1", items: ["ᚺ Hagalaz", "ᚾ Nauthiz", "ᛁ Isa"] },
-              { name: "Tyr's aett", accent: "#c0392b", items: ["ᛏ Tiwaz", "ᛒ Berkana", "ᛗ Mannaz"] },
+              { name: "Tyr's aett", accent: "#c0392b", items: ["ᛏ Tiwaz", "ᛒ Berkano", "ᛗ Mannaz"] },
             ] },
             { kind: "table", headers: ["Rune", "Sound", "Keyword"], rows: [
               ["Tiwaz (ᛏ)", "T", "Justice, honor, courage (the god Tyr)"],

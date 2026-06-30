@@ -715,7 +715,7 @@ function NotificationSettingsSection() {
   const categories = [
     { key: "moon_phases", label: "Moon phases", desc: "Full moons, new moons, and eclipses" },
     { key: "your_chart", label: "Your chart", desc: "Transits, retrogrades, and birthdays" },
-    { key: "daily_message", label: "Daily message", desc: "A short note each morning" },
+    { key: "daily_message", label: "Daily message", desc: "A short daily note" },
     { key: "learning_streak", label: "Learning streak", desc: "A nudge only when your streak is about to lapse" },
   ];
 

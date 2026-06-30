@@ -232,7 +232,7 @@ export function getRepromptCopy(day: number): { title: string; body: string; loc
 // ─── Voice Copy ──────────────────────────────────────────────────────────────
 
 export const BIRTH_TIME_COPY = {
-  onboarding_skip: `Don't know your birth time? It happens. We'll calculate everything we can without it — a lot, actually. The Rising sign and houses depend on the time, but most of your chart is still readable. You can add the time later, or try our rectification tool.`,
+  onboarding_skip: `Don't know your birth time? It happens. We'll build everything that doesn't depend on it — which is more than you'd think. The Rising sign and houses need the time, but most of your chart is still readable. You can add the time later, or try our rectification tool.`,
 
   feature_hidden_astrocartography: `Astrocartography needs your exact birth time. The map shows where your chart lights up the world — that calculation works to the minute. If you find it later, this will fill in.`,
 

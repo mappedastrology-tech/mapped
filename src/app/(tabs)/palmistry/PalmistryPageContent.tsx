@@ -503,7 +503,7 @@ export default function PalmistryTab() {
 
   const selectedPerson = people.find((p) => p.id === selectedPersonId) || null;
   const scanPerson = people.find((p) => p.id === scanPersonId) || null;
-  const scanName = scanPerson?.isSelf ? "your" : `${scanPerson?.name || "their"}’s`;
+  const scanName = scanPerson?.isSelf ? "your" : (scanPerson?.name ? `${scanPerson.name}’s` : "their");
   const stepLabel = guided ? (scanHand === "right" ? "Step 1 of 2" : "Step 2 of 2") : null;
 
   // Dashboard: the active hand drives the hero + top insights.
@@ -545,7 +545,7 @@ export default function PalmistryTab() {
             <span className="text-[18px] leading-none">+</span> Add a person&apos;s palm
           </button>
           <p className="text-muted text-[11px] text-center leading-relaxed pt-2">
-            For reflection &amp; entertainment. Photos are never saved — only the reading text.
+            Photos are read in the moment and never saved — only the reading text.
           </p>
         </div>
       )}
@@ -967,7 +967,7 @@ function ReadingPanel({
       )}
 
       <p className="text-muted text-[11px] text-center leading-relaxed">
-        Palmistry is a traditional practice shared for reflection and entertainment — not fact, prediction, or professional advice.
+        Palmistry is a centuries-old art of reading the hand — offered here for reflection and insight.
       </p>
 
       <button

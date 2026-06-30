@@ -669,7 +669,7 @@ export default function TarotTab() {
         <h1 className="text-2xl text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>
           Tarot & Oracle
         </h1>
-        <p className="text-muted text-xs text-center mb-6">Your decks. Your readings. Your guidance.</p>
+        <p className="text-muted text-xs text-center mb-6">Pull a card. See what surfaces.</p>
 
         {/* Decks */}
         <div className="space-y-4">

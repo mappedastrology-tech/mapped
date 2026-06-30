@@ -194,7 +194,7 @@ export default function SolarEventScreen({ event, onClose }: { event: TodaysSola
                     border: isCurrent ? `1px solid ${theme.accent}55` : "1px solid transparent",
                   }}
                 >
-                  <span className="text-[14px] shrink-0">{e.element === "fire" ? "🔥" : e.element === "earth" ? "🍂" : e.element === "air" ? "🌱" : "❄️"}</span>
+                  <span className="text-[14px] shrink-0">{e.element === "fire" ? "🔥" : e.element === "earth" ? "🍂" : e.element === "air" ? "🌬" : "❄️"}</span>
                   <div className="min-w-0">
                     <p className="text-[11px] truncate" style={{ opacity: isCurrent ? 0.95 : 0.55, color: isCurrent ? theme.accent : undefined }}>
                       {MONTH_NAMES[e.date.getMonth()]} {e.date.getDate()}

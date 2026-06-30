@@ -260,6 +260,7 @@
   --plum: #4a2540;
   --plum-deep: #3a1830;
   --plum-light: #6a3a60;
+  --lib-on-plum: #f0e6d2;                 /* text on always-dark plum surfaces (cream in both themes) */
   --oxblood: #5a1f1a;
   --oxblood-deep: #4a1a18;
   --oxblood-brick: #3a1a18;

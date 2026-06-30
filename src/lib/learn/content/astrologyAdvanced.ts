@@ -51,7 +51,7 @@ export const astrologyAdvanced: Course = {
               "Saturn return (~29) and Uranus opposition (~42) are landmark transits.",
               "Outer-planet transits often perfect three times via retrograde motion.",
             ] },
-            { kind: "callout", tone: "evidence", title: "What this is — and isn't", text: "Transits are a symbolic, interpretive language for timing, not a tested predictive science. Controlled studies have not shown that transits forecast specific events. Used honestly, they're a mirror for reflection on the season you're in, not a forecast you must obey." },
+            { kind: "callout", tone: "evidence", title: "What this is — and isn't", text: "Transits are a symbolic language for timing — a mirror for the season you're in, not a forecast you must obey." },
           ],
           quiz: [
             { id: "q1", type: "mcq", prompt: "A transit is…", options: [
@@ -97,7 +97,7 @@ export const astrologyAdvanced: Course = {
               ["Outer planets", "Almost not at all", "Rarely used in progressions"],
             ] },
             { kind: "callout", tone: "history", title: "Roots in Ptolemy", text: "The 'day for a year' idea is ancient; a version appears in Ptolemy's Tetrabiblos (2nd century CE). Secondary progressions as practiced today were formalized in the modern era, but the symbolic equation of one rotation with one revolution is very old." },
-            { kind: "callout", tone: "evidence", title: "Progressed vs. progressed-to-natal", text: "Astrologers read two layers: a progressed planet changing sign or house (an internal shift), and a progressed planet aspecting a natal planet (an internal development 'landing' on a birth theme). Both are symbolic overlays on the unchanging natal chart, not new physical positions in the sky." },
+            { kind: "callout", tone: "evidence", title: "Progressed vs. progressed-to-natal", text: "Astrologers read two layers: a progressed planet changing sign or house (an internal shift), and a progressed planet aspecting a natal planet (an internal development 'landing' on a birth theme). Both are symbolic overlays on the unchanging natal chart." },
             { kind: "keyfacts", items: [
               "Secondary progressions: 1 day after birth = 1 year of life.",
               "Built from birth data alone — no current sky needed.",

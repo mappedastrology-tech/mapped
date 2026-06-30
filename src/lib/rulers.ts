@@ -73,8 +73,8 @@ export function getSectLight(
 
   const signFull = SIGN_FULL[sectPlanet.sign] || sectPlanet.sign;
   const summary = isDayChart
-    ? `You were born during the day, making you a day chart. Your Sun is your sect light — the planet that leads your team. In ${signFull}, your Sun operates with full authority. Day charts tend to be more visible, externally driven, and action-oriented.`
-    : `You were born at night, making you a night chart. Your Moon is your sect light — the planet that leads your team. In ${signFull}, your Moon sets the emotional tone for everything. Night charts tend to be more internal, reflective, and emotionally driven.`;
+    ? `You were born during the day, making you a day chart. Your Sun is your sect light — the luminary your whole chart takes its lead from. In ${signFull}, your Sun operates with full authority. Day charts tend to be more visible, externally driven, and action-oriented.`
+    : `You were born at night, making you a night chart. Your Moon is your sect light — the luminary your whole chart takes its lead from. In ${signFull}, your Moon sets the emotional tone for everything. Night charts tend to be more internal, reflective, and emotionally driven.`;
 
   return {
     sect,

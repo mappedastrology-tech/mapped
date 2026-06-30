@@ -254,7 +254,7 @@ export const dreamReference: ReferenceEntry[] = [
     fields: [
       { label: "Often reflects", value: "New starts, creativity, innocence, or something tender and growing that you're responsible for nurturing." },
       { label: "Ask yourself", value: "What 'new life' am I bringing into being, and what does it need from me to thrive?" },
-      { label: "Variations", value: "A crying or neglected baby can point to a need of your own you've been overlooking; it rarely literally predicts pregnancy." },
+      { label: "Variations", value: "A crying or neglected baby can point to a need of your own you've been overlooking — something tender that's gone untended." },
     ],
     tags: ["baby", "new beginnings", "creativity", "innocence", "nurture"],
   }),
@@ -937,7 +937,7 @@ export const dreamReference: ReferenceEntry[] = [
     fields: [
       { label: "Often reflects", value: "Worry about something deteriorating, feeling unable to keep things together, or neglected self-care." },
       { label: "Ask yourself", value: "What feels like it's 'falling apart,' and where might I have been neglecting myself?" },
-      { label: "Variations", value: "Like falling-teeth dreams, this is extremely common and usually about stress and self-image, not a real dental omen." },
+      { label: "Variations", value: "Like falling-teeth dreams, this is extremely common and usually speaks to stress and self-image rather than the body itself." },
     ],
     tags: ["teeth", "crumbling", "decay", "stress", "self-image"],
   }),

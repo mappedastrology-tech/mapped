@@ -305,7 +305,7 @@ export const numerologyFoundations: Course = {
             { kind: "text", text: "Notice the pattern: 11 is a heightened 2, 22 a heightened 4, 33 a heightened 6 — always the even, receptive numbers doubled. Tradition frames master numbers as carrying both the everyday meaning of the reduced digit and a higher 'calling' that's harder to live up to." },
             { kind: "callout", tone: "tradition", title: "High potential, high pressure", text: "Numerologists often describe master numbers as 'high-voltage': more potential, but also more tension. An 11 is said to feel the pull of a 2 (partnership, sensitivity) amplified to the point of nervous intensity until it's channeled. The doubled digit and its single-digit root are both 'on' at once." },
             { kind: "callout", tone: "tip", title: "When NOT to keep them", text: "Only keep 11, 22, or 33 when they appear as a stage's result or a final total in a real chart. If a quiz or exercise asks you to 'reduce fully to one digit,' then 11 → 2, 22 → 4, 33 → 6. Context decides." },
-            { kind: "callout", tone: "evidence", title: "Some go further — be skeptical", text: "A few modern numerologists add 44, 55, and beyond as 'master numbers' too. There's no agreed-on tradition for this, and it's a good reminder that numerology is an evolving set of conventions, not a fixed law. Stick to 11/22/33 unless you have a reason not to." },
+            { kind: "callout", tone: "evidence", title: "Modern extensions of the master numbers", text: "A few modern numerologists add 44, 55, and beyond as 'master numbers' too. There's no agreed-on tradition for this, and it's a good reminder that numerology is an evolving set of conventions, not a fixed law. Stick to 11/22/33 unless you have a reason not to." },
             { kind: "keyfacts", items: [
               "Master numbers are 11, 22, and 33 — kept un-reduced in a chart.",
               "11 → 2, 22 → 4, 33 → 6 when you do reduce them.",
@@ -620,10 +620,11 @@ export const numerologyFoundations: Course = {
             ] },
           ],
           quiz: [
-            { id: "q1", type: "mcq", prompt: "A Personal Year of '1' traditionally signals…", options: [
-              { id: "a", text: "New beginnings", correct: true, explanation: "Yes — 1 starts the cycle." },
-              { id: "b", text: "Completion and release", correct: false, explanation: "That's a 9 year." },
-              { id: "c", text: "Nothing in particular", correct: false, explanation: "Each number carries a theme; 1 is beginnings." },
+            { id: "q1", type: "mcq", prompt: "To find your Personal Month, you add the calendar month number to your…", options: [
+              { id: "a", text: "Personal Year number", correct: true, explanation: "A Personal Month nests inside the Personal Year: add the current calendar month to your Personal Year number, then reduce." },
+              { id: "b", text: "Life Path number", correct: false, explanation: "The Life Path is fixed for life; the Personal Month is built from the Personal Year." },
+              { id: "c", text: "Birth Day number", correct: false, explanation: "The Personal Month uses the Personal Year, not the birth day on its own." },
+              { id: "d", text: "Destiny number", correct: false, explanation: "The Destiny (Expression) number comes from your name, not the monthly cycle." },
             ] },
             { id: "q2", type: "mcq", prompt: "The Personal cycles nest in which order, broadest to finest?", options: [
               { id: "a", text: "Year → Month → Day", correct: true, explanation: "Correct — each is a finer-grained theme inside the larger one." },

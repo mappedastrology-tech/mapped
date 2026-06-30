@@ -597,7 +597,7 @@ export default function OnboardingPage() {
                 Your birth data
               </h1>
               <p className="text-secondary text-xs mb-1">
-                We&apos;ll map your whole chart — Sun, Moon, Rising, and more — not just your sun sign. The more accurate your details, the sharper it gets.
+                We&apos;ll map your whole chart — Sun, Moon, Rising, and more — not just your sun sign. The more precise your details, the more precise your chart.
               </p>
               <p className="text-muted text-[11px] mb-4">
                 Private — your birth details are only used to build your chart, never shared.
@@ -716,7 +716,7 @@ export default function OnboardingPage() {
                   {timePrecision === "unknown" && (
                     <div className="rounded-xl border border-foreground/12 bg-foreground/3 p-3">
                       <p className="text-[11px] text-secondary mb-2">
-                        Don&apos;t know your birth time? We&apos;ll calculate everything we can without it — a lot, actually.
+                        Don&apos;t know your birth time? We&apos;ll build everything that doesn&apos;t depend on it — which is more than you&apos;d think.
                       </p>
                       <button
                         type="button"
@@ -1083,8 +1083,8 @@ export default function OnboardingPage() {
               </p>
               <p className="text-sm leading-relaxed max-w-xs opacity-75 mb-10">
                 {sectInfo?.sect === "day"
-                  ? "Your Sun leads the team. Day charts are externally driven, visible, action-oriented."
-                  : "Your Moon leads the team. Night charts are internal, reflective, emotionally driven."}
+                  ? "Your Sun is in charge. Day charts run outward — visible, driven, oriented toward action."
+                  : "Your Moon is in charge. Night charts run inward — reflective, intuitive, led by feeling."}
               </p>
               <button
                 onClick={goNext}
@@ -1200,10 +1200,10 @@ export default function OnboardingPage() {
                 Dolly is your AI astrology guide. She knows your chart, your transits, and the context you gave us.
               </p>
               <p className="text-secondary text-sm leading-relaxed max-w-xs mb-3">
-                She does not predict the future. She helps you think clearly about what is happening right now and what options you have.
+                She reads your chart in real time — your transits, your timing, the context you gave us. Less fortune-telling, more a sharp second opinion on what&apos;s actually in front of you.
               </p>
               <p className="text-secondary text-xs leading-relaxed max-w-xs mb-8">
-                Ask her anything about your chart, your relationships, your timing. She is specific, grounded, and won&apos;t waste your time.
+                Ask her anything — your chart, your relationships, your timing. She&apos;s specific, grounded, and tells you the truth.
               </p>
               <button
                 onClick={goNext}

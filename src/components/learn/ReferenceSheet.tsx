@@ -105,7 +105,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
           )}
 
           {/* Body */}
-          <p className="text-[9px] uppercase font-semibold mt-6" style={{ letterSpacing: "0.2em", color: accent }}>The tradition</p>
+          <p className="text-[9px] uppercase font-semibold mt-6" style={{ letterSpacing: "0.2em", color: accent }}>{(entry.domain === "almanac" || entry.domain === "meditation") ? "Overview" : "The tradition"}</p>
           <p className="text-[14px] leading-relaxed mt-2.5" style={{ color: "rgba(240,230,210,0.82)" }}>{entry.summary}</p>
 
           {/* Safety */}
