@@ -107,3 +107,41 @@ test("invalid birth dates return null", () => {
   assert.equal(computeNumerology("Jane Doe", "not-a-date"), null);
   assert.equal(computeNumerology("Jane Doe", "1990-13-40"), null);
 });
+
+test("reconciles with a published Cafe Astrology chart (full name incl. middle)", () => {
+  // Cafe Astrology, 11/12/1993, full name with middle: Destiny 6, Soul 6,
+  // Personality 9, Maturity 6, Balance 6, Life Path 9, Birthday 3,
+  // Pinnacles 5/7/3, Personal Year 6 (2026), Personal Month 3 (June).
+  const p = computeNumerology("Taylor James Corbett", "1993-11-12", { now: new Date("2026-06-30") })!;
+  assert.equal(p.lifePath.value, 9, "Life Path 9");
+  assert.equal(p.expression.value, 6, "Expression/Destiny 6");
+  assert.equal(p.soulUrge.value, 6, "Soul Urge 6");
+  assert.equal(p.personality.value, 9, "Personality 9");
+  assert.equal(p.maturity.value, 6, "Maturity 6");
+  assert.equal(p.balance, 6, "Balance 6");
+  assert.equal(p.birthday.value, 3, "Birthday 3");
+  assert.equal(p.personalYear, 6, "Personal Year 6 in 2026");
+  assert.equal(p.personalMonth, 3, "Personal Month 3 in June");
+  assert.deepEqual(
+    p.pinnacles.slice(0, 3).map((x) => x.value),
+    [5, 7, 3],
+    "first three pinnacles 5, 7, 3",
+  );
+  // Date-based numbers are identical across systems.
+  const ch = computeNumerology("Taylor James Corbett", "1993-11-12", { system: "chaldean", now: new Date("2026-06-30") })!;
+  assert.equal(ch.lifePath.value, 9);
+  assert.equal(ch.personalYear, 6);
+});
+
+test("omitting the middle name changes only the name-based numbers", () => {
+  const opts = { now: new Date("2026-06-30") } as const;
+  const withMid = computeNumerology("Taylor James Corbett", "1993-11-12", opts)!;
+  const noMid = computeNumerology("Taylor Corbett", "1993-11-12", opts)!;
+  // Date numbers unaffected by the name.
+  assert.equal(withMid.lifePath.value, noMid.lifePath.value);
+  assert.equal(withMid.birthday.value, noMid.birthday.value);
+  assert.equal(withMid.personalYear, noMid.personalYear);
+  // Name numbers DO change — confirming the middle name is the cause of a mismatch.
+  assert.notEqual(withMid.expression.value, noMid.expression.value);
+  assert.notEqual(withMid.balance, noMid.balance);
+});
