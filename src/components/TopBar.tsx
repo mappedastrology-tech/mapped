@@ -72,6 +72,20 @@ const MENU_ITEMS = [
     description: "Read your palm",
   },
   {
+    label: "Human Design",
+    href: "/human-design",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="5" r="2.5" />
+        <circle cx="12" cy="19" r="2.5" />
+        <rect x="9.5" y="10" width="5" height="4" rx="1" />
+        <path d="M12 7.5V10M12 14v2.5M7 12H4M20 12h-3" />
+      </svg>
+    ),
+    description: "Your BodyGraph, Type & Strategy",
+  },
+  {
     label: "Numerology",
     href: "/numerology",
     icon: (

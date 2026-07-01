@@ -35,7 +35,7 @@ interface ChartInput {
  * Uses a pure-JS timezone lookup (no filesystem dependencies) and Intl
  * to determine the offset at the specific date (correctly handling DST).
  */
-function getUtcOffsetHours(lat: number, lon: number, year: number, month: number, day: number): number {
+export function getUtcOffsetHours(lat: number, lon: number, year: number, month: number, day: number): number {
   const tzName = getTimezoneForCoords(lat, lon);
   if (!tzName) return 0;
 
