@@ -2984,6 +2984,34 @@ export default function AlmanacPageContent() {
 
         </div>{/* end stories drawers */}
 
+        {/* ━━━ The Moon's week — a bridge to the week view ━━━ */}
+        <button
+          onClick={() => setViewMode("week")}
+          className="w-full mt-5 rounded-2xl p-4 text-left active:scale-[0.99] transition-transform"
+          style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "var(--card-shadow)" }}
+        >
+          <div className="flex items-center justify-between mb-3.5">
+            <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--brass)" }}>The Moon&rsquo;s week</p>
+            <span className="text-[11px] font-medium" style={{ color: "var(--brass-light)" }}>The week ahead →</span>
+          </div>
+          <div className="flex justify-between">
+            {weekData.days.map((d, i) => {
+              const isToday = d.eventTag === "TODAY";
+              return (
+                <div key={i} className="flex flex-col items-center gap-1.5" style={{ opacity: isToday ? 1 : 0.68 }}>
+                  <span className="text-[9px] font-bold uppercase" style={{ color: isToday ? "var(--brass)" : "var(--foreground-muted)" }}>{d.dayLabel[0]}</span>
+                  <span className="text-[17px] leading-none">{d.moonIcon}</span>
+                  <span className="text-[12px] font-semibold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{d.dayNum}</span>
+                  <span className="w-1 h-1 rounded-full" style={{ background: isToday ? "var(--brass)" : "transparent" }} />
+                </div>
+              );
+            })}
+          </div>
+          {weekData.headline?.title && (
+            <p className="text-[11px] leading-relaxed mt-3.5" style={{ color: "var(--foreground-muted)" }}>{weekData.headline.title}</p>
+          )}
+        </button>
+
         </>}
       </div>
 
