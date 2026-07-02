@@ -150,12 +150,12 @@ export default function HomeTab() {
   const [showMoonEvent, setShowMoonEvent] = useState(false);
   const [showSolarBanner, setShowSolarBanner] = useState<boolean | null>(null);
   const [showSolarEvent, setShowSolarEvent] = useState(false);
+  const [pullDeck, setPullDeck] = useState<"tarot" | "oracle">("tarot");
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [tarotFlipping, setTarotFlipping] = useState(false);
   const [oracleFlipping, setOracleFlipping] = useState(false);
   const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
-  const [showDeckPicker, setShowDeckPicker] = useState(false);
 
   // Save pull state
   const [savingPull, setSavingPull] = useState<"tarot" | "oracle" | null>(null);
@@ -1046,164 +1046,138 @@ export default function HomeTab() {
           </p>
         </div>
 
-        {/* ─── Today's Pulls ─── */}
+        {/* ─── Today's Pull ─── */}
         <p
-          className="text-[9px] tracking-[0.25em] uppercase font-medium mb-4"
+          className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3.5"
           style={{ color: "var(--brass)" }}
         >
-          Today&apos;s pulls
+          Today&apos;s pull
         </p>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {/* Tarot */}
-          <div className={`rounded-2xl p-3 transition-all ${expandedCard === "tarot" ? "ring-1 ring-[#c9a961]/30" : ""}`} style={{ backgroundColor: "var(--plum)", opacity: 0.95 }}>
-            <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-2" style={{ color: "#c9a961" }}>
-              Tarot
-            </p>
-            {(() => {
-              const tarotImgSrc = tarotRevealed
-                ? (getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE)
-                : CARD_BACK_IMAGE;
+        <div
+          className="rounded-[22px] px-[18px] pt-[18px] pb-[22px] mb-4"
+          style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #15101c))", border: "0.5px solid rgba(201,169,97,0.16)" }}
+        >
+          {/* Deck chooser — Tarot / Oracle */}
+          <div className="flex gap-1.5 p-1 rounded-xl mb-[18px]" style={{ background: "rgba(0,0,0,0.22)" }}>
+            {(["tarot", "oracle"] as const).map((d) => {
+              const active = pullDeck === d;
               return (
                 <button
-                  onClick={() => {
-                    if (!tarotRevealed && !tarotFlipping) {
-                      if (tier === "free" && getPullUsageToday() >= 1) {
-                        if (gate("unlimited_pulls")) return;
-                      }
-                      incrementPullUsage();
-                      setTarotFlipping(true);
-                      setTimeout(() => {
-                        setTarotRevealed(true);
-                        setTarotFlipping(false);
-                        try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
-                      }, 800);
-                    } else if (tarotRevealed) {
-                      setExpandedCard(expandedCard === "tarot" ? null : "tarot");
-                    }
-                  }}
-                  className="w-full"
-                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                  key={d}
+                  onClick={() => setPullDeck(d)}
+                  className="flex-1 py-[9px] rounded-[9px] text-[10px] tracking-[0.22em] uppercase font-bold transition-colors"
+                  style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "rgba(240,230,210,0.55)" }}
                 >
-                  <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 10, overflow: "hidden" }}>
-                    <Image
-                      src={tarotImgSrc}
-                      alt={tarotRevealed ? dailyTarot.name : "Card back"}
-                      fill
-                      className="object-cover"
-                      draggable={false}
-                    />
-                  </div>
-                  <p className="text-center mt-2" style={{
-                    color: "#f0e6d2",
-                    fontSize: tarotRevealed ? 12 : 10,
-                    fontFamily: tarotRevealed ? "var(--font-heading)" : "var(--font-heading)",
-                    fontWeight: tarotRevealed ? 500 : 400,
-                    opacity: tarotRevealed ? 1 : 0.6,
-                  }}>
-                    {tarotRevealed ? dailyTarot.name : "Tap to pull"}
-                  </p>
-                  {tarotRevealed && (
-                    <p className="text-center mt-0.5" style={{ color: "#f0e6d2", opacity: 0.5, fontSize: 9 }}>
-                      {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
-                    </p>
-                  )}
+                  {d}
                 </button>
               );
-            })()}
+            })}
           </div>
 
-          {/* Oracle */}
-          <div className={`rounded-2xl p-3 transition-all ${expandedCard === "oracle" ? "ring-1 ring-[#c9a961]/30" : ""}`} style={{ backgroundColor: "var(--plum)", opacity: 0.95 }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] tracking-[0.25em] uppercase font-medium" style={{ color: "#c9a961" }}>
-                Oracle
-              </p>
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowDeckPicker(!showDeckPicker); }}
-                className="text-[9px] px-2 py-0.5 rounded-full transition-all"
-                style={{ color: "var(--foreground-muted)", border: "1px solid rgba(240,230,210,0.2)" }}
-              >
-                {ORACLE_DECKS.find(d => d.id === oracleDeckId)?.name || "Switch Deck"}
-              </button>
-            </div>
-            {showDeckPicker && (
-              <div className="mb-2 rounded-lg overflow-hidden" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(240,230,210,0.15)" }}>
-                {ORACLE_DECKS.map(deck => (
+          {/* Oracle deck sub-chooser */}
+          {pullDeck === "oracle" && (
+            <div className="flex gap-2 mb-4">
+              {ORACLE_DECKS.map((deck) => {
+                const active = oracleDeckId === deck.id;
+                return (
                   <button
                     key={deck.id}
                     onClick={() => {
                       setOracleDeckId(deck.id);
-                      setShowDeckPicker(false);
                       setOracleRevealed(false);
                       try { localStorage.setItem(ORACLE_DECK_KEY, deck.id); } catch {}
                     }}
-                    className="w-full text-left px-3 py-2 text-[11px] transition-colors"
+                    className="flex-1 py-[9px] px-1.5 rounded-[11px] text-center transition-all"
                     style={{
-                      color: oracleDeckId === deck.id ? "#c9a961" : "rgba(240,230,210,0.7)",
-                      background: oracleDeckId === deck.id ? "rgba(201,169,97,0.08)" : "transparent",
+                      background: active ? "rgba(201,169,97,0.12)" : "transparent",
+                      border: `0.5px solid ${active ? "var(--brass)" : "rgba(201,169,97,0.16)"}`,
+                      color: active ? "var(--brass)" : "rgba(240,230,210,0.6)",
                     }}
                   >
-                    {deck.name} <span style={{ opacity: 0.5 }}>({deck.cardCount} cards)</span>
+                    <span className="block text-[13px] leading-tight" style={{ fontFamily: "var(--font-heading)" }}>{deck.name}</span>
+                    <span className="block text-[8px] tracking-[0.14em] uppercase mt-[3px] opacity-60">{deck.cardCount} cards</span>
                   </button>
-                ))}
-              </div>
-            )}
-            {(() => {
-              const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
-              const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.webp";
-              const oracleImgSrc = oracleRevealed ? dailyOracle.image : ORACLE_BACK;
-              return (
-                <button
-                  onClick={() => {
-                    if (!oracleRevealed && !oracleFlipping) {
-                      if (tier === "free" && getPullUsageToday() >= 1) {
-                        if (gate("unlimited_pulls")) return;
-                      }
-                      incrementPullUsage();
-                      setOracleFlipping(true);
-                      setTimeout(() => {
-                        setOracleRevealed(true);
-                        setOracleFlipping(false);
-                        try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
-                      }, 800);
-                    } else if (oracleRevealed) {
-                      setExpandedCard(expandedCard === "oracle" ? null : "oracle");
-                    }
-                  }}
-                  className="w-full"
-                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                >
-                  <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 10, overflow: "hidden" }}>
-                    <Image
-                      src={oracleImgSrc}
-                      alt={oracleRevealed ? dailyOracle.animal : "Card back"}
-                      fill
-                      className="object-cover"
-                      draggable={false}
-                    />
-                  </div>
-                  <p className="text-center mt-2" style={{
-                    color: "#f0e6d2",
-                    fontSize: oracleRevealed ? 12 : 10,
-                    fontFamily: "var(--font-heading)",
-                    fontWeight: oracleRevealed ? 500 : 400,
-                    opacity: oracleRevealed ? 1 : 0.6,
-                  }}>
-                    {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
+                );
+              })}
+            </div>
+          )}
+
+          {/* Single card — the selected deck */}
+          {pullDeck === "tarot" ? (() => {
+            const tarotImgSrc = tarotRevealed ? (getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE) : CARD_BACK_IMAGE;
+            return (
+              <button
+                onClick={() => {
+                  if (!tarotRevealed && !tarotFlipping) {
+                    if (tier === "free" && getPullUsageToday() >= 1) { if (gate("unlimited_pulls")) return; }
+                    incrementPullUsage();
+                    setTarotFlipping(true);
+                    setTimeout(() => {
+                      setTarotRevealed(true);
+                      setTarotFlipping(false);
+                      try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
+                    }, 800);
+                  } else if (tarotRevealed) {
+                    setExpandedCard(expandedCard === "tarot" ? null : "tarot");
+                  }
+                }}
+                className="block mx-auto"
+                style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+              >
+                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)" }}>
+                  <Image src={tarotImgSrc} alt={tarotRevealed ? dailyTarot.name : "Card back"} fill className="object-cover" draggable={false} />
+                </div>
+                <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: tarotRevealed ? 15 : 12, opacity: tarotRevealed ? 1 : 0.65 }}>
+                  {tarotRevealed ? dailyTarot.name : "Tap to pull"}
+                </p>
+                {tarotRevealed && (
+                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
+                    {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
                   </p>
-                  {oracleRevealed && (
-                    <p className="text-center mt-0.5" style={{ color: "#f0e6d2", opacity: 0.5, fontSize: 9 }}>
-                      {dailyOracle.keyword}
-                    </p>
-                  )}
-                </button>
-              );
-            })()}
-          </div>
+                )}
+              </button>
+            );
+          })() : (() => {
+            const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
+            const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.webp";
+            const oracleImgSrc = oracleRevealed ? dailyOracle.image : ORACLE_BACK;
+            return (
+              <button
+                onClick={() => {
+                  if (!oracleRevealed && !oracleFlipping) {
+                    if (tier === "free" && getPullUsageToday() >= 1) { if (gate("unlimited_pulls")) return; }
+                    incrementPullUsage();
+                    setOracleFlipping(true);
+                    setTimeout(() => {
+                      setOracleRevealed(true);
+                      setOracleFlipping(false);
+                      try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
+                    }, 800);
+                  } else if (oracleRevealed) {
+                    setExpandedCard(expandedCard === "oracle" ? null : "oracle");
+                  }
+                }}
+                className="block mx-auto"
+                style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+              >
+                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)" }}>
+                  <Image src={oracleImgSrc} alt={oracleRevealed ? dailyOracle.animal : "Card back"} fill className="object-cover" draggable={false} />
+                </div>
+                <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: oracleRevealed ? 15 : 12, opacity: oracleRevealed ? 1 : 0.65 }}>
+                  {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
+                </p>
+                {oracleRevealed && (
+                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
+                    {dailyOracle.keyword}
+                  </p>
+                )}
+              </button>
+            );
+          })()}
         </div>
 
         {/* Expanded tarot reading */}
-        {expandedCard === "tarot" && tarotRevealed && (
+        {pullDeck === "tarot" && expandedCard === "tarot" && tarotRevealed && (
           <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
@@ -1354,7 +1328,7 @@ export default function HomeTab() {
         )}
 
         {/* Expanded oracle reading */}
-        {expandedCard === "oracle" && oracleRevealed && (
+        {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && (
           <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
