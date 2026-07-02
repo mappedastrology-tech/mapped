@@ -48,6 +48,13 @@ const CUSTOM_NAMES_KEY = "mapped:almanac-custom-names";
 const TRANSITS_KEY = "mapped:transits";
 const DEFAULT_CATEGORIES = ["communication", "love", "money", "body", "rest"];
 
+/** Decorative stars scattered behind the moon hero — [x%, y%, size, opacity]. */
+const HERO_STARS: [number, number, number, number][] = [
+  [12, 22, 1.6, 0.5], [28, 12, 2.1, 0.35], [48, 30, 1.4, 0.45], [68, 16, 1.9, 0.3],
+  [82, 34, 2.2, 0.4], [90, 20, 1.5, 0.28], [20, 62, 1.7, 0.32], [40, 78, 1.3, 0.4],
+  [72, 70, 2.0, 0.3], [88, 60, 1.6, 0.36],
+];
+
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
 /** Format void-of-course time for the status bar */
@@ -905,6 +912,10 @@ export default function AlmanacPageContent() {
   const dateLabel = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   const moonPhaseLabel = sky.moonPhase.label;
   const moonIllumination = sky.moonPhase.illumination;
+  // Moon-phase artwork lives at /public root; a few phase keys map to different filenames.
+  const moonImageSrc = `/moons/${(
+    { new: "new-moon", full: "full-moon", "last-quarter": "third-quarter" } as Record<string, string>
+  )[sky.moonPhase.phase] ?? sky.moonPhase.phase}.png`;
 
   // Generate astrological reason lines for good-for items
   const goodForReasons = useMemo(() => {
@@ -1706,147 +1717,154 @@ export default function AlmanacPageContent() {
             ALWAYS VISIBLE — the day's essential snapshot
            ════════════════════════════════════════════════════════════════════ */}
 
-        {/* ━━━ SABIAN SYMBOL — editorial centerpiece ━━━ */}
+        {/* ━━━ MOON HERO — the day led by the Moon ━━━ */}
         <div
-          className="rounded-xl px-5 py-5"
+          className="relative overflow-hidden"
           style={{
-            background: "var(--background-card)",
-            border: "1px solid var(--border-card)",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+            borderRadius: 22,
+            padding: "26px 22px 22px",
+            background: "linear-gradient(160deg, #221a33, #15101c 70%)",
+            border: "0.5px solid rgba(201,169,97,0.18)",
           }}
         >
-          <p className="text-[11px] uppercase tracking-[0.12em] font-bold mb-3" style={{ color: "var(--brass)" }}>
-            {sabianSymbol.degree}&deg; {sabianSymbol.sign}
+          {/* starfield */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            {HERO_STARS.map(([x, y, s, o], i) => (
+              <span key={i} className="absolute rounded-full" style={{ left: `${x}%`, top: `${y}%`, width: s, height: s, background: "#e8dfc4", opacity: o }} />
+            ))}
+          </div>
+
+          <div className="relative flex items-center gap-[18px]">
+            <div className="relative shrink-0" style={{ width: 98, height: 98 }}>
+              <div className="absolute rounded-full" style={{ inset: -12, background: "radial-gradient(circle, rgba(232,223,196,0.22), transparent 68%)" }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={moonImageSrc}
+                alt={`${moonPhaseLabel} moon`}
+                className="relative"
+                style={{ width: 98, height: 98, objectFit: "contain", filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.4))" }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase font-bold mb-[5px]" style={{ letterSpacing: "0.18em", color: "#d8c285" }}>
+                {moonPhaseLabel} · {moonIllumination}%
+              </p>
+              <h2 className="mb-2" style={{ fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 500, lineHeight: 1.15, color: "#f3ecd8" }}>
+                The Moon in {sky.moonSign}
+              </h2>
+              <p className="text-[13px] m-0" style={{ lineHeight: 1.5, color: "#cdc1a8", textWrap: "pretty" }}>
+                {transitInterpretation}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative flex mt-5 pt-4" style={{ borderTop: "0.5px solid rgba(201,169,97,0.2)" }}>
+            <div className="flex-1 text-center">
+              <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Sunrise</p>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunrise}</p>
+            </div>
+            <div style={{ width: "0.5px", background: "rgba(201,169,97,0.2)" }} />
+            <div className="flex-1 text-center">
+              <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Sunset</p>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunset}</p>
+            </div>
+            <div style={{ width: "0.5px", background: "rgba(201,169,97,0.2)" }} />
+            <div className="flex-1 text-center">
+              <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Daylight</p>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>
+                {Math.floor(celestial.dayLengthMinutes / 60)}h {Math.round(celestial.dayLengthMinutes % 60)}m
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ━━━ V/C NOTE ━━━ */}
+        {sky.voidOfCourseMoon && (
+          <div
+            className="flex items-center gap-[9px] px-[14px] py-[9px]"
+            style={{
+              borderRadius: 11,
+              background: "color-mix(in srgb, var(--oxblood-light) 10%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 24%, transparent)",
+            }}
+          >
+            <span
+              className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+              style={{ letterSpacing: "0.05em", borderRadius: 5, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}
+            >
+              V/C
+            </span>
+            <span className="text-[11.5px]" style={{ lineHeight: 1.4, color: "var(--foreground-muted)" }}>
+              Void of course from {formatVocTime(sky.voidOfCourseMoon.start)} — let new plans settle until tomorrow.
+              <InfoTip text="Void-of-Course Moon: the Moon has made its last major aspect before changing signs. Traditional astrology says avoid starting anything new during this window — plans may not stick." />
+            </span>
+          </div>
+        )}
+
+        {/* ━━━ SABIAN SYMBOL — today's image ━━━ */}
+        <div
+          className="px-[22px] py-[22px]"
+          style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
+        >
+          <p className="text-[10px] uppercase font-bold mb-3" style={{ letterSpacing: "0.14em", color: "var(--brass)" }}>
+            {sabianSymbol.sign} {sabianSymbol.degree}&deg; · Today&apos;s image
             <InfoTip text="The Sabian Symbol for today's Sun degree. Each of the 360 degrees of the zodiac has a symbolic image, channeled in 1925. Think of it as a daily meditation image based on where the Sun actually is." />
           </p>
           <p
-            className="text-[17px] leading-relaxed mb-3"
-            style={{
-              fontFamily: "var(--font-serif)",
-              fontStyle: "italic",
-              color: "var(--foreground-on-card)",
-            }}
+            className="text-[19px] mb-3"
+            style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", lineHeight: 1.4, color: "var(--foreground-on-card)" }}
           >
             &ldquo;{sabianSymbol.symbol}&rdquo;
           </p>
-          <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-on-card-muted)" }}>
+          <p className="text-[12.5px]" style={{ lineHeight: 1.6, color: "var(--foreground-on-card-muted)" }}>
             {sabianSymbol.keynote}
           </p>
         </div>
 
-        {/* ━━━ SUN & MOON — compact data row ━━━ */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-        >
-          {/* Sun row */}
-          <div className="flex items-stretch">
-            <div className="flex-1 px-3 py-2.5 text-center" style={{ borderRight: "1px solid var(--border-card)" }}>
-              <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "var(--foreground-on-card-faint)" }}>Rise</p>
-              <p className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground-on-card)" }}>{celestial.sunrise}</p>
-            </div>
-            <div className="flex-1 px-3 py-2.5 text-center" style={{ borderRight: "1px solid var(--border-card)" }}>
-              <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "var(--foreground-on-card-faint)" }}>Set</p>
-              <p className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground-on-card)" }}>{celestial.sunset}</p>
-            </div>
-            <div className="flex-1 px-3 py-2.5 text-center" style={{ borderRight: "1px solid var(--border-card)" }}>
-              <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "var(--foreground-on-card-faint)" }}>Moon</p>
-              <p className="text-[13px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground-on-card)" }}>
-                {moonPhaseLabel}
-              </p>
-            </div>
-            <div className="flex-1 px-3 py-2.5 text-center">
-              <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "var(--foreground-on-card-faint)" }}>Day <InfoTip text="Hours of daylight today, and how much it's changing day-to-day. Positive means days are getting longer." /></p>
-              <p className="text-[13px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground-on-card)" }}>
-                {Math.floor(celestial.dayLengthMinutes / 60)}h{Math.round(celestial.dayLengthMinutes % 60)}m
-              </p>
-              <p className="text-[9px] font-medium" style={{
-                color: celestial.dayLengthDelta > 0 ? "var(--sage)" : celestial.dayLengthDelta < 0 ? "var(--oxblood-light)" : "var(--foreground-on-card-faint)",
-              }}>
-                {celestial.dayLengthDelta > 0 ? "+" : ""}{celestial.dayLengthDelta.toFixed(1)}m {celestial.dayLengthDelta > 0 ? "longer" : celestial.dayLengthDelta < 0 ? "shorter" : ""}
-              </p>
-            </div>
-          </div>
-          {/* Void-of-course banner */}
-          {sky.voidOfCourseMoon && (
-            <div className="px-3 py-2 flex items-center gap-2" style={{ borderTop: "1px solid var(--border-card)" }}>
-              <span
-                className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                style={{ background: "color-mix(in srgb, var(--amber) 15%, transparent)", color: "var(--amber)" }}
-              >
-                V/C
-              </span>
-              <span className="text-[10px]" style={{ color: "var(--foreground-on-card-muted)" }}>
-                Void from {formatVocTime(sky.voidOfCourseMoon.start)} · {moonIllumination}% · {sky.moonSign}
-                <InfoTip text="Void-of-Course Moon: the Moon has made its last major aspect before changing signs. Traditional astrology says avoid starting anything new during this window — plans may not stick." />
-              </span>
-            </div>
-          )}
-          {!sky.voidOfCourseMoon && (
-            <div className="px-3 py-1.5 text-center" style={{ borderTop: "1px solid var(--border-card)" }}>
-              <span className="text-[10px]" style={{ color: "var(--foreground-on-card-faint)" }}>
-                {moonIllumination}% illuminated · Moon in {sky.moonSign}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* ━━━ GOOD FOR / SKIP ━━━ */}
-        <AlmanacSection title="Today Is Good For" color="var(--sage)">
-          <p className="text-[10px] leading-relaxed mb-3" style={{ color: "var(--foreground-muted)" }}>
-            Based on today&apos;s Moon sign, phase, and planetary day. Traditional almanacs use these rhythms to time activities — tap any item for details.
+        {/* ━━━ GOOD FOR TODAY ━━━ */}
+        <div>
+          <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: 0, color: "var(--foreground)" }}>
+            GOOD FOR TODAY
+          </h3>
+          <p className="text-[11.5px]" style={{ lineHeight: 1.5, color: "var(--foreground-faint)", margin: "4px 0 6px" }}>
+            Timed to the Moon&apos;s sign and phase. Tap any line for why.
           </p>
-          <div className="flex flex-col gap-2">
+          <div>
             {goodFor.activities.slice(0, 5).map((item, i) => (
               <button
                 key={i}
-                className="rounded-xl px-4 py-3 flex items-center gap-3 text-left w-full"
-                style={{
-                  background: "color-mix(in srgb, var(--sage) 8%, var(--background-card))",
-                  border: "1px solid color-mix(in srgb, var(--sage) 15%, transparent)",
-                }}
                 onClick={() => handleOpenDetail(item.activity, "good")}
+                className="flex items-center gap-[13px] w-full text-left px-1 py-[13px]"
+                style={{ background: "transparent", border: "none", borderBottom: "0.5px solid var(--border-card)" }}
               >
-                <span className="flex items-center gap-1.5 shrink-0">
-                  <span style={{ color: "var(--sage)" }}><CheckIcon /></span>
-                  <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: "var(--sage)" }}>Go</span>
-                </span>
-                <p className="text-[14px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                  {item.activity}
-                </p>
+                <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: "var(--sage)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--sage) 18%, transparent)" }} />
+                <span className="flex-1 min-w-0 text-[15px]" style={{ color: "var(--foreground)" }}>{item.activity}</span>
+                <span className="text-[13px] shrink-0" style={{ color: "var(--foreground-faint)" }}>→</span>
               </button>
             ))}
           </div>
-          <div className="mt-4">
-            <p
-              className="text-[10px] uppercase tracking-[0.15em] font-bold mb-2"
-              style={{ color: "var(--terracotta)" }}
-            >
-              Skip Today
-            </p>
-            <div className="flex flex-col gap-2">
-              {holdOff.items.slice(0, 3).map((item, i) => (
-                <button
-                  key={i}
-                  className="rounded-xl px-4 py-2.5 flex items-center gap-3 text-left w-full"
-                  style={{
-                    background: "color-mix(in srgb, var(--terracotta) 5%, var(--background-card))",
-                    border: "1px solid color-mix(in srgb, var(--terracotta) 10%, transparent)",
-                  }}
-                  onClick={() => handleOpenDetail(item.activity, "skip")}
-                >
-                  <span className="flex items-center gap-1.5 shrink-0">
-                    <span style={{ color: "var(--terracotta)" }}><XIcon /></span>
-                    <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: "var(--terracotta)" }}>Wait</span>
-                  </span>
-                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                    {item.activity}
-                  </p>
-                </button>
-              ))}
-            </div>
+        </div>
+
+        {/* ━━━ HOLD OFF ON ━━━ */}
+        <div>
+          <h3 className="mb-1.5" style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: "0 0 6px", color: "var(--foreground)" }}>
+            HOLD OFF ON
+          </h3>
+          <div>
+            {holdOff.items.slice(0, 3).map((item, i) => (
+              <button
+                key={i}
+                onClick={() => handleOpenDetail(item.activity, "skip")}
+                className="flex items-center gap-[13px] w-full text-left px-1 py-[13px]"
+                style={{ background: "transparent", border: "none", borderBottom: "0.5px solid var(--border-card)" }}
+              >
+                <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: "var(--terracotta)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--terracotta) 18%, transparent)" }} />
+                <span className="flex-1 min-w-0 text-[14px]" style={{ color: "var(--foreground-muted)" }}>{item.activity}</span>
+                <span className="text-[13px] shrink-0" style={{ color: "var(--foreground-faint)" }}>→</span>
+              </button>
+            ))}
           </div>
-        </AlmanacSection>
+        </div>
 
         {/* ════════════════════════════════════════════════════════════════════
             DRAWERS — tap-to-expand, grouped by theme
@@ -1854,9 +1872,8 @@ export default function AlmanacPageContent() {
 
         {/* Divider */}
         <div className="flex items-center gap-3 py-1">
-          <div className="flex-1 h-px" style={{ background: "var(--border-card)" }} />
           <span className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: "var(--foreground-faint)" }}>
-            Explore
+            Explore the day
           </span>
           <div className="flex-1 h-px" style={{ background: "var(--border-card)" }} />
         </div>
