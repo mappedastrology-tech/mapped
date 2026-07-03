@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Human Design — a personalized, digestible BodyGraph reading computed from the
- * user's birth date, exact time, and place. Shows the visual BodyGraph plus
- * broken-up cards for Type, Authority, Profile, Definition, Incarnation Cross,
- * Centers, Channels, Gates, and Variables — each with an info tooltip and
- * everyday application. Reached from the hamburger menu at /human-design.
+ * Human Design — a personalized BodyGraph reading computed from the user's
+ * birth date, exact time, and place. Follows the Claude Design "Human Design —
+ * You" layout: a script-name header + type strip, the BodyGraph with Design /
+ * Personality activation columns, then three tabs — Type, Centers, Gates.
+ * Reached from the hamburger menu at /human-design.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import BodyGraph from "@/components/humanDesign/BodyGraph";
 import { computeHumanDesign, type HumanDesignProfile, type Activation } from "@/lib/humanDesign/engine";
-import { CENTER_NAMES, LINE_NAMES, type CenterId } from "@/lib/humanDesign/data";
+import { CENTER_NAMES, CENTER_ORDER, GATE_TO_CENTER, type CenterId } from "@/lib/humanDesign/data";
 import {
   getGate,
   getChannel,
@@ -21,25 +21,7 @@ import {
   getTypeContent,
   getAuthorityContent,
   getProfileContent,
-  getVariableContent,
 } from "@/lib/humanDesign/content";
-import { getHdConcept } from "@/lib/humanDesign/concepts";
-
-const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉",
-  Earth: "⊕",
-  "North Node": "☊",
-  "South Node": "☋",
-  Moon: "☽",
-  Mercury: "☿",
-  Venus: "♀",
-  Mars: "♂",
-  Jupiter: "♃",
-  Saturn: "♄",
-  Uranus: "♅",
-  Neptune: "♆",
-  Pluto: "♇",
-};
 
 interface ChartRow {
   birthDate: string;
@@ -48,13 +30,31 @@ interface ChartRow {
   longitude: number | null;
   unknownTime: boolean;
   name: string;
+  place: string;
 }
+
+/** Astronomical glyphs for the Design / Personality activation columns. */
+const PLANET_GLYPH: Record<string, string> = {
+  Sun: "☉", Earth: "⊕", "North Node": "☊", "South Node": "☋", Moon: "☽",
+  Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄",
+  Uranus: "♅", Neptune: "♆", Pluto: "♇",
+};
+
+/** A little color per center so the Centers tab reads at a glance. */
+const CENTER_COLOR: Record<CenterId, string> = {
+  head: "#d4a13a", ajna: "#8aa055", throat: "var(--brass)", g: "#d4a13a",
+  heart: "#c07a52", sacral: "#c07a52", solarPlexus: "#9d8fd0", spleen: "#8aa055", root: "#8aa055",
+};
+
+type PageTab = "type" | "centers" | "gates";
 
 export default function HumanDesignPageContent() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [row, setRow] = useState<ChartRow | null>(null);
   const [name, setName] = useState("");
+  const [pageTab, setPageTab] = useState<PageTab>("type");
+  const [openCenter, setOpenCenter] = useState<CenterId | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -67,7 +67,7 @@ export default function HumanDesignPageContent() {
           "";
         const { data } = await supabase
           .from("charts")
-          .select("name, birth_date, birth_time, latitude, longitude, unknown_time")
+          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, city_name")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -80,6 +80,7 @@ export default function HumanDesignPageContent() {
             longitude: data.longitude,
             unknownTime: !!data.unknown_time,
             name: data.name,
+            place: (data.city_name as string) || "",
           });
           setName(metaName || data.name || "");
           setIsLoading(false);
@@ -97,6 +98,7 @@ export default function HumanDesignPageContent() {
             longitude: p.longitude,
             unknownTime: !!p.unknownTime,
             name: p.name,
+            place: p.cityName || p.city_name || p.place || "",
           });
           setName(metaName || p.name || "");
         }
@@ -148,190 +150,264 @@ export default function HumanDesignPageContent() {
     );
   }
 
+  const firstName = (name || row?.name || "").split(" ")[0];
+  const birthLine = formatBirthLine(row);
+  const authorityShort = hd.authorityName.replace(/\s*[—·-].*$/, "").replace(/\s*Authority$/i, "").trim();
+  const typeStrip = [hd.type, `${hd.profile} Profile`, `${authorityShort} Authority`];
+
+  const tc = getTypeContent(hd.type);
+  const ac = getAuthorityContent(hd.authority);
+  const pc = getProfileContent(hd.profile);
+
   return (
-    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+    <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full">
       {/* Header */}
-      <div className="text-center mb-4">
-        <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3" style={{ color: "var(--brass)" }}>
-          your bodygraph
+      <div className="text-center pb-1">
+        <p className="text-[9px] tracking-[0.28em] uppercase font-bold" style={{ color: "var(--brass)" }}>
+          Your design
         </p>
-        <h1
-          className="text-[26px] tracking-[0.18em] uppercase mb-1.5"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
-        >
-          Human Design
-        </h1>
-        <p className="text-[13px]" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-secondary)" }}>
-          {name} · {hd.type}
+        <p className="mt-1.5" style={{ fontFamily: "var(--font-script)", fontSize: 50, lineHeight: 1, color: "var(--foreground)" }}>
+          {firstName || "You"}
         </p>
+        {birthLine && (
+          <p className="text-[11.5px] mt-2" style={{ color: "var(--foreground-muted)" }}>
+            {birthLine}
+          </p>
+        )}
+      </div>
+
+      {/* Type strip */}
+      <div className="flex justify-center flex-wrap gap-[7px] mt-3.5 mb-1">
+        {typeStrip.map((t, i) => (
+          <span
+            key={i}
+            className="text-[9.5px] tracking-[0.14em] uppercase font-bold px-3 py-[5px] rounded-full"
+            style={{ color: "var(--brass)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
+          >
+            {t}
+          </span>
+        ))}
       </div>
 
       {row?.unknownTime && (
-        <Tooltip>
+        <div
+          className="rounded-xl px-4 py-3 mt-3 text-[12px] leading-relaxed"
+          style={{ backgroundColor: "var(--plum)", border: "0.5px solid rgba(201,169,97,0.25)", color: "var(--foreground-secondary)" }}
+        >
           Your birth time is marked unknown. Human Design is exquisitely time-sensitive — your Type, Authority, and
           Profile can shift with a few minutes, so treat this reading as approximate until you add an exact time.
-        </Tooltip>
+        </div>
       )}
 
-      {/* BodyGraph */}
-      <div className="mb-6">
-        <BodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} />
-      </div>
-
-      {/* Snapshot pills */}
-      <div className="grid grid-cols-2 gap-2.5 mb-7">
-        <Pill label="Type" value={hd.type} />
-        <Pill label="Strategy" value={hd.strategy} />
-        <Pill label="Authority" value={hd.authorityName.split(" — ")[0]} />
-        <Pill label="Profile" value={`${hd.profile} · ${hd.profileName.split(" / ")[0]}`} />
-      </div>
-
-      {/* TYPE */}
-      <SectionLabel>Your Type</SectionLabel>
-      {(() => {
-        const tc = getTypeContent(hd.type);
-        return (
-          <ExpandCard
-            id="type"
-            title={hd.type}
-            subtitle={`Aura: ${hd.aura}`}
-            conceptKey="type"
-            badge={hd.strategy}
-          >
-            {tc && <Body>{tc.description}</Body>}
-            <MiniRow label="Strategy" value={hd.strategy} note={tc?.strategyDetail} conceptKey="strategy" />
-            <MiniRow label="Signature" value={hd.signature} note={tc?.signatureDetail} conceptKey="signature" />
-            <MiniRow label="Not-Self" value={hd.notSelf} note={tc?.notSelfDetail} conceptKey="notSelf" />
-            {tc && <Application>{tc.application}</Application>}
-          </ExpandCard>
-        );
-      })()}
-
-      {/* AUTHORITY */}
-      <SectionLabel>Your Authority</SectionLabel>
-      {(() => {
-        const ac = getAuthorityContent(hd.authority);
-        return (
-          <ExpandCard id="authority" title={ac?.name ?? hd.authorityName} conceptKey="authority">
-            {ac && <Body>{ac.description}</Body>}
-            {ac && <Application label="How to decide">{ac.howToDecide}</Application>}
-          </ExpandCard>
-        );
-      })()}
-
-      {/* PROFILE */}
-      <SectionLabel>Your Profile</SectionLabel>
-      {(() => {
-        const pc = getProfileContent(hd.profile);
-        return (
-          <ExpandCard
-            id="profile"
-            title={`${hd.profile} — ${hd.profileName}`}
-            subtitle={`Conscious line ${hd.profileLines[0]} · Unconscious line ${hd.profileLines[1]}`}
-            conceptKey="profile"
-          >
-            {pc && <Body>{pc.description}</Body>}
-            {pc && <Application>{pc.application}</Application>}
-          </ExpandCard>
-        );
-      })()}
-
-      {/* DEFINITION + CROSS */}
-      <SectionLabel>Definition & Purpose</SectionLabel>
-      <div className="flex flex-col gap-2.5 mb-7">
-        <InfoBlock title={hd.definitionName} body={definitionBlurb(hd.definition)} conceptKey="definition" />
-        <InfoBlock
-          title={hd.incarnationCross.angle + " Incarnation Cross"}
-          body={crossBlurb(hd)}
-          conceptKey="incarnationCross"
-        />
-      </div>
-
-      {/* CENTERS */}
-      <SectionLabel>The 9 Centers</SectionLabel>
-      <div className="flex flex-col gap-2.5 mb-7">
-        {(Object.keys(CENTER_NAMES) as CenterId[]).map((id) => {
-          const defined = hd.definedCenters.includes(id);
-          const cc = getCenter(id);
-          return (
-            <ExpandCard
-              key={id}
-              id={`center-${id}`}
-              title={CENTER_NAMES[id]}
-              subtitle={cc?.role}
-              conceptKey="center"
-              badge={defined ? "Defined" : "Open"}
-              badgeTone={defined ? "gold" : "muted"}
-            >
-              {cc && <Body>{defined ? cc.defined : cc.open}</Body>}
-              {cc && <Application>{defined ? cc.whenDefinedApp : cc.whenOpenApp}</Application>}
-            </ExpandCard>
-          );
-        })}
-      </div>
-
-      {/* CHANNELS */}
-      <SectionLabel>Your Channels ({hd.definedChannels.length})</SectionLabel>
-      <div className="flex flex-col gap-2.5 mb-7">
-        {hd.definedChannels.length === 0 && (
-          <InfoBlock
-            title="No defined channels"
-            body="With no channels wired, you're a Reflector — a rare, sampling design that mirrors your community. Your consistency comes from the moon's cycle rather than fixed circuitry."
-            conceptKey="channel"
-          />
-        )}
-        {hd.definedChannels.map((ch) => {
-          const cc = getChannel(ch.gates[0], ch.gates[1]);
-          return (
-            <InfoBlock
-              key={`${ch.gates[0]}-${ch.gates[1]}`}
-              title={`${ch.gates[0]}–${ch.gates[1]}${cc ? " · " + cc.name : ""}`}
-              body={cc?.description ?? `Connects the ${CENTER_NAMES[ch.centers[0]]} and ${CENTER_NAMES[ch.centers[1]]}.`}
-              conceptKey={hd.definedChannels.length ? undefined : "channel"}
-            />
-          );
-        })}
-      </div>
-
-      {/* GATES */}
-      <SectionLabel>Your Gates</SectionLabel>
+      {/* BodyGraph + activation columns */}
       <div
-        className="rounded-2xl px-4 py-4 mb-2"
-        style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
+        className="rounded-[24px] px-3 pt-3 pb-4 mt-4 mb-1"
+        style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "0 6px 22px rgba(0,0,0,0.14)" }}
       >
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-            {getHdConcept("personalityDesign")}
-          </p>
+        <BodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} />
+
+        <div className="flex gap-2.5 mt-3">
+          <ActivationColumn title="Design" tone="design" activations={hd.design} />
+          <ActivationColumn title="Personality" tone="personality" activations={hd.personality} />
         </div>
-        <div className="grid grid-cols-2 gap-x-4">
-          <GateColumn title="Personality" hint="conscious" activations={hd.personality} />
-          <GateColumn title="Design" hint="unconscious" activations={hd.design} />
+
+        <div className="flex justify-center gap-5 mt-3.5">
+          <LegendDot label="Defined" filled />
+          <LegendDot label="Open" />
         </div>
       </div>
 
-      {/* VARIABLES */}
-      <SectionLabel>Variables</SectionLabel>
-      <div className="flex flex-col gap-2.5 mb-6">
-        {hd.variables.map((v) => {
-          const vc = getVariableContent(v.key);
-          return (
-            <InfoBlock
-              key={v.key}
-              title={`${vc?.name ?? v.label} · ${v.arrow === "left" ? "◀ Left" : "Right ▶"}`}
-              body={vc?.description ?? ""}
-              application={v.arrow === "left" ? vc?.leftMeaning : vc?.rightMeaning}
-              conceptKey="variables"
+      {/* Tabs */}
+      <div className="sticky top-0 z-[5] py-2 mt-4 mb-4" style={{ background: "var(--background)" }}>
+        <div className="flex gap-[5px] p-1 rounded-[13px]" style={{ background: "var(--background-card)" }}>
+          {(["type", "centers", "gates"] as PageTab[]).map((t) => {
+            const active = pageTab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => { setPageTab(t); setOpenCenter(null); }}
+                className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
+                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── TYPE TAB ── */}
+      {pageTab === "type" && (
+        <>
+          <div className="flex flex-col gap-3 mb-4">
+            <GradientCard glyph="⚙" kicker="Your type" title={hd.type} body={tc?.description ?? ""} chips={[`${hd.aura} aura`]} />
+            <GradientCard glyph="↻" kicker="Your strategy" title={hd.strategy} body={tc?.strategyDetail ?? ""} />
+            <GradientCard glyph="◑" kicker="Your authority" title={ac?.name ?? hd.authorityName} body={ac?.description ?? ""} />
+            <GradientCard glyph="✥" kicker="Your profile" title={`${hd.profile} · ${hd.profileName}`} body={pc?.description ?? ""} />
+          </div>
+          <div className="flex flex-col gap-[9px] mb-2">
+            <MechCard kicker="Signature" title={hd.signature} body={tc?.signatureDetail ?? ""} accent="#7ba055" />
+            <MechCard kicker="Not-self theme" title={hd.notSelf} body={tc?.notSelfDetail ?? ""} accent="#b5654a" />
+            <MechCard kicker="Definition" title={hd.definitionName} body={definitionBlurb(hd.definition)} accent="var(--brass)" />
+            <MechCard
+              kicker="Incarnation cross"
+              title={`${hd.incarnationCross.angle} Cross`}
+              meta={`Gates ${hd.incarnationCross.gates.join(" / ")}`}
+              body={crossBlurb(hd)}
+              accent="#d4a13a"
             />
-          );
-        })}
-      </div>
+          </div>
+        </>
+      )}
 
-      <p className="text-[11px] text-center mt-2 mb-2" style={{ color: "var(--foreground-faint)" }}>
-        Tap any card to open it · tap the ⓘ to learn what each piece means.
-      </p>
+      {/* ── CENTERS TAB ── */}
+      {pageTab === "centers" && (
+        <>
+          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+            Your nine centers
+          </p>
+          <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
+            Defined centers are fixed, reliable energy you can lean on. Open centers are where you take in the world —
+            wise, but easily overwhelmed.
+          </p>
+          <div className="flex flex-col gap-2 mb-2">
+            {CENTER_ORDER.map((id) => {
+              const defined = hd.definedCenters.includes(id);
+              const cc = getCenter(id);
+              const color = CENTER_COLOR[id];
+              return (
+                <CenterRow
+                  key={id}
+                  name={CENTER_NAMES[id]}
+                  meta={cc?.role ?? ""}
+                  defined={defined}
+                  color={color}
+                  open={openCenter === id}
+                  onToggle={() => setOpenCenter(openCenter === id ? null : id)}
+                  heroBody={cc ? (defined ? cc.defined : cc.open) : ""}
+                  sections={cc ? [
+                    { label: "What it governs", text: cc.role },
+                    { label: defined ? "Living it well" : "The gift", text: defined ? cc.whenDefinedApp : cc.whenOpenApp },
+                  ] : []}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── GATES TAB ── */}
+      {pageTab === "gates" && (
+        <>
+          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+            Your channels
+          </p>
+          <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
+            A channel forms when both its gates are active, wiring two centers together — the fixed circuitry of who you are.
+          </p>
+          <div className="flex flex-col gap-3 mb-7">
+            {hd.definedChannels.length === 0 && (
+              <div className="rounded-[15px] px-4 py-3.5" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                  With no channels wired, you&apos;re a Reflector — a rare, sampling design that mirrors your community.
+                </p>
+              </div>
+            )}
+            {hd.definedChannels.map((ch) => {
+              const cc = getChannel(ch.gates[0], ch.gates[1]);
+              return (
+                <div key={`${ch.gates[0]}-${ch.gates[1]}`} className="rounded-[15px] overflow-hidden" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+                  <div className="px-4 py-3" style={{ background: "rgba(201,169,97,0.06)", borderBottom: "0.5px solid var(--border-card)" }}>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[11px] font-bold tracking-[0.04em]" style={{ color: "var(--brass)" }}>{ch.gates[0]} — {ch.gates[1]}</span>
+                      {cc && <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)" }}>{cc.name}</span>}
+                    </div>
+                    <p className="text-[10.5px] mt-1" style={{ color: "var(--foreground-muted)" }}>
+                      {CENTER_NAMES[ch.centers[0]]} ↔ {CENTER_NAMES[ch.centers[1]]}
+                    </p>
+                  </div>
+                  <p className="text-[13px] leading-relaxed px-4 py-3.5" style={{ color: "var(--foreground-secondary)" }}>
+                    {cc?.description ?? `Connects the ${CENTER_NAMES[ch.centers[0]]} and ${CENTER_NAMES[ch.centers[1]]}.`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+            Signature gates
+          </p>
+          <p className="text-[12.5px] leading-relaxed mb-3.5" style={{ color: "var(--foreground-muted)" }}>
+            Standout active gates — specific gifts switched on in your design.
+          </p>
+          <div className="flex flex-col gap-2 mb-2">
+            {signatureGates(hd).map((num) => {
+              const g = getGate(num);
+              const center = GATE_TO_CENTER[num];
+              if (!g) return null;
+              return (
+                <div key={num} className="rounded-[14px] px-4 py-3.5" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <span
+                      className="shrink-0 w-[30px] h-[30px] rounded-full flex items-center justify-center text-[12px] font-bold"
+                      style={{ color: "var(--brass)", background: "rgba(201,169,97,0.08)", border: "0.5px solid var(--border-card)" }}
+                    >
+                      {num}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)" }}>
+                      {g.name.replace(/^Gate \d+ — /, "")}
+                    </span>
+                    {center && (
+                      <span className="ml-auto text-[9px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-faint)" }}>
+                        {CENTER_NAMES[center]}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    {g.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </main>
   );
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatBirthLine(row: ChartRow | null): string {
+  if (!row) return "";
+  const parts: string[] = [];
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(row.birthDate || "");
+  if (dm) {
+    const d = new Date(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3]));
+    parts.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+  }
+  if (row.birthTime && !row.unknownTime) {
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(row.birthTime);
+    if (tm) {
+      let h = Number(tm[1]);
+      const m = tm[2];
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
+      parts.push(`${h}:${m} ${ampm}`);
+    }
+  }
+  if (row.place) parts.push(row.place);
+  return parts.join(" · ");
+}
+
+/** The four defining incarnation-cross gates, de-duplicated in order. */
+function signatureGates(hd: HumanDesignProfile): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const g of hd.incarnationCross.gates) {
+    if (!seen.has(g)) { seen.add(g); out.push(g); }
+  }
+  return out;
 }
 
 function definitionBlurb(n: number): string {
@@ -355,313 +431,130 @@ function crossBlurb(hd: HumanDesignProfile): string {
   return `Built from your conscious Sun (Gate ${pS} — ${name(pS)}) and Earth (Gate ${pE}), and your unconscious Sun (Gate ${dS}) and Earth (Gate ${dE}). A ${hd.incarnationCross.angle} cross points to ${hd.incarnationCross.angle === "Right Angle" ? "a personal journey focused on your own unfolding" : hd.incarnationCross.angle === "Left Angle" ? "a transpersonal journey bound up with others" : "a fixed, singular fate all its own"}.`;
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────────
+// ── Sub-components ──────────────────────────────────────────────────────────
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function ActivationColumn({ title, tone, activations }: { title: string; tone: "design" | "personality"; activations: Activation[] }) {
+  const isDesign = tone === "design";
+  const accent = isDesign ? "#d4a13a" : "var(--foreground-muted)";
+  const rowBg = isDesign ? "rgba(212,161,58,0.10)" : "var(--background-card)";
+  const rowBd = isDesign ? "rgba(212,161,58,0.24)" : "var(--border-card)";
   return (
-    <h2 className="text-[10px] tracking-[0.22em] uppercase font-semibold mb-3" style={{ color: "var(--brass)" }}>
-      {children}
-    </h2>
-  );
-}
-
-function Pill({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className="rounded-2xl px-3.5 py-3"
-      style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-    >
-      <div className="text-[9px] tracking-[0.16em] uppercase mb-0.5" style={{ color: "var(--foreground-faint)" }}>
-        {label}
-      </div>
-      <div className="text-[14px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function InfoIconButton({ label, onClick, active }: { label: string; onClick: () => void; active?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      aria-pressed={active}
-      className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] shrink-0 italic"
-      style={
-        active
-          ? { backgroundColor: "var(--brass)", color: "#1a1420" }
-          : { border: "0.5px solid rgba(201,169,97,0.45)", color: "var(--brass)" }
-      }
-    >
-      i
-    </button>
-  );
-}
-
-function Tooltip({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-xl px-4 py-3 mb-5 text-[12px] leading-relaxed"
-      style={{
-        backgroundColor: "var(--plum)",
-        border: "0.5px solid rgba(201,169,97,0.25)",
-        color: "var(--foreground-secondary)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Body({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[13px] leading-relaxed mb-2" style={{ color: "var(--foreground-secondary)" }}>
-      {children}
-    </p>
-  );
-}
-
-function Application({ children, label = "In daily life" }: { children: React.ReactNode; label?: string }) {
-  return (
-    <div className="rounded-xl px-3.5 py-3 mt-2" style={{ backgroundColor: "rgba(201,169,97,0.08)" }}>
-      <div className="text-[9px] tracking-[0.18em] uppercase font-semibold mb-1" style={{ color: "var(--brass)" }}>
-        {label}
-      </div>
-      <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-        {children}
+    <div className="flex-1 min-w-0">
+      <p className="text-[8.5px] tracking-[0.22em] uppercase font-bold text-center mb-[7px]" style={{ color: accent }}>
+        {title}
       </p>
-    </div>
-  );
-}
-
-function MiniRow({
-  label,
-  value,
-  note,
-  conceptKey,
-}: {
-  label: string;
-  value: string;
-  note?: string;
-  conceptKey?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const concept = conceptKey ? getHdConcept(conceptKey) : "";
-  return (
-    <div className="border-t pt-2 mt-2" style={{ borderColor: "var(--border-card)" }}>
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] tracking-[0.12em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-          {label}
-        </span>
-        <span className="text-[13px] font-semibold flex-1" style={{ color: "var(--foreground)" }}>
-          {value}
-        </span>
-        {concept && <InfoIconButton label={`What is ${label}?`} onClick={() => setOpen((v) => !v)} active={open} />}
-      </div>
-      {open && concept && (
-        <p className="text-[11.5px] leading-relaxed mt-1" style={{ color: "var(--foreground-muted)" }}>
-          {concept}
-        </p>
-      )}
-      {note && (
-        <p className="text-[12px] leading-relaxed mt-1" style={{ color: "var(--foreground-secondary)" }}>
-          {note}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ExpandCard({
-  id,
-  title,
-  subtitle,
-  badge,
-  badgeTone = "gold",
-  conceptKey,
-  children,
-}: {
-  id: string;
-  title: string;
-  subtitle?: string;
-  badge?: string;
-  badgeTone?: "gold" | "muted";
-  conceptKey?: string;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
-  const concept = conceptKey ? getHdConcept(conceptKey) : "";
-  return (
-    <div
-      className="rounded-2xl overflow-hidden mb-2.5"
-      style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-    >
-      <div className="flex items-stretch">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-controls={`${id}-body`}
-          className="flex-1 flex items-center gap-3 pl-4 py-3.5 text-left"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                {title}
-              </span>
-              {badge && (
-                <span
-                  className="text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5 rounded-full font-semibold"
-                  style={
-                    badgeTone === "gold"
-                      ? { backgroundColor: "rgba(201,169,97,0.18)", color: "var(--brass)" }
-                      : { backgroundColor: "rgba(255,255,255,0.06)", color: "var(--foreground-faint)" }
-                  }
-                >
-                  {badge}
-                </span>
-              )}
-            </div>
-            {subtitle && (
-              <div className="text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                {subtitle}
-              </div>
-            )}
+      <div className="flex flex-col gap-[3px]">
+        {activations.map((a) => (
+          <div
+            key={a.body}
+            className="flex items-center gap-[7px] px-[9px] py-[3px] rounded-[7px]"
+            style={{ background: rowBg, border: `0.5px solid ${rowBd}` }}
+          >
+            <span className="text-[12px] w-[14px] text-center shrink-0" style={{ color: isDesign ? "#d4a13a" : "var(--foreground-muted)", fontFamily: "var(--font-glyph, serif)" }}>
+              {PLANET_GLYPH[a.body] ?? "•"}
+            </span>
+            <span className="text-[10.5px] font-semibold tabular-nums" style={{ color: "var(--foreground)" }}>
+              {a.gate}.{a.line}
+            </span>
           </div>
-          <span
-            className="text-[18px] shrink-0 pr-1 transition-transform"
-            style={{ color: "var(--foreground-faint)", transform: open ? "rotate(45deg)" : "none" }}
-            aria-hidden="true"
-          >
-            +
-          </span>
-        </button>
-        {concept && (
-          <button
-            onClick={() => setInfoOpen((v) => !v)}
-            aria-label={`What is ${title}?`}
-            aria-pressed={infoOpen}
-            className="px-3.5 flex items-center justify-center text-[12px] italic"
-            style={{ color: infoOpen ? "var(--brass)" : "var(--foreground-faint)", borderLeft: "0.5px solid var(--border-card)" }}
-          >
-            ⓘ
-          </button>
-        )}
+        ))}
       </div>
-      {infoOpen && concept && (
-        <p className="px-4 pb-3 -mt-1 text-[12px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-          {concept}
-        </p>
-      )}
-      {open && (
-        <div id={`${id}-body`} className="px-4 pb-4 pt-0">
-          {children}
+    </div>
+  );
+}
+
+function LegendDot({ label, filled }: { label: string; filled?: boolean }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[9.5px]" style={{ color: "var(--foreground-muted)" }}>
+      <span
+        className="w-2.5 h-2.5 rounded-[2px]"
+        style={filled ? { background: "var(--brass)" } : { border: "1.4px solid var(--foreground-faint)" }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function GradientCard({ glyph, kicker, title, body, chips }: { glyph: string; kicker: string; title: string; body: string; chips?: string[] }) {
+  return (
+    <div className="rounded-[20px] p-5" style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #15101c))", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+      <div className="flex items-center gap-[11px] mb-3">
+        <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: "var(--font-glyph, serif)" }}>{glyph}</span>
+        <span>
+          <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{kicker}</span>
+          <span className="block mt-0.5" style={{ fontFamily: "var(--font-display)", fontSize: 19, color: "#f0e6d2" }}>{title}</span>
+        </span>
+      </div>
+      <p className="text-[13px] leading-[1.7] m-0" style={{ color: "rgba(240,230,210,0.82)" }}>{body}</p>
+      {chips && chips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {chips.map((ch, i) => (
+            <span key={i} className="text-[10px] font-semibold px-[11px] py-[5px] rounded-full" style={{ color: "#f0e6d2", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+              {ch}
+            </span>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function InfoBlock({
-  title,
-  body,
-  application,
-  conceptKey,
-}: {
-  title: string;
-  body: string;
-  application?: string;
-  conceptKey?: string;
-}) {
-  const [infoOpen, setInfoOpen] = useState(false);
-  const concept = conceptKey ? getHdConcept(conceptKey) : "";
+function MechCard({ kicker, title, meta, body, accent }: { kicker: string; title: string; meta?: string; body: string; accent: string }) {
   return (
-    <div
-      className="rounded-2xl px-4 py-3.5"
-      style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[13px] font-semibold flex-1" style={{ color: "var(--foreground)" }}>
-          {title}
-        </span>
-        {concept && <InfoIconButton label={`What is this?`} onClick={() => setInfoOpen((v) => !v)} active={infoOpen} />}
+    <div className="rounded-[15px] px-[17px] py-[15px]" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)", borderLeft: `2.5px solid ${accent}` }}>
+      <span className="inline-block text-[8.5px] tracking-[0.16em] uppercase font-bold mb-[7px]" style={{ color: accent }}>{kicker}</span>
+      <div className="flex items-baseline gap-2.5 flex-wrap mb-1.5">
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.2 }}>{title}</span>
+        {meta && <span className="text-[11px]" style={{ color: "var(--foreground-muted)" }}>{meta}</span>}
       </div>
-      {infoOpen && concept && (
-        <p className="text-[12px] leading-relaxed mb-2" style={{ color: "var(--foreground-muted)" }}>
-          {concept}
-        </p>
-      )}
-      {body && (
-        <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-          {body}
-        </p>
-      )}
-      {application && (
-        <p className="text-[12px] leading-relaxed mt-2" style={{ color: "var(--foreground-secondary)" }}>
-          <span className="text-[9px] tracking-[0.16em] uppercase font-semibold mr-1.5" style={{ color: "var(--brass)" }}>
-            The gift
-          </span>
-          {application}
-        </p>
-      )}
+      <p className="text-[13px] leading-[1.65] m-0" style={{ color: "var(--foreground-secondary)" }}>{body}</p>
     </div>
   );
 }
 
-function GateColumn({ title, hint, activations }: { title: string; hint: string; activations: Activation[] }) {
-  const [openBody, setOpenBody] = useState<string | null>(null);
+function CenterRow({
+  name, meta, defined, color, open, onToggle, heroBody, sections,
+}: {
+  name: string; meta: string; defined: boolean; color: string; open: boolean;
+  onToggle: () => void; heroBody: string; sections: { label: string; text: string }[];
+}) {
   return (
-    <div>
-      <div className="mb-2">
-        <span className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>
-          {title}
+    <div className="rounded-[15px] overflow-hidden" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+      <button onClick={onToggle} aria-expanded={open} className="w-full flex items-center gap-[13px] px-4 py-3.5 text-left">
+        <span
+          className="shrink-0 w-[34px] h-[34px] rounded-[9px]"
+          style={defined ? { background: color, border: `1.4px solid ${color}` } : { background: "transparent", border: "1.4px solid var(--foreground-faint)" }}
+        />
+        <span className="flex-1 min-w-0">
+          <span className="block" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.15 }}>{name}</span>
+          <span className="block text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{meta}</span>
         </span>
-        <span className="text-[9px] ml-1.5 tracking-[0.1em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-          {hint}
+        <span
+          className="shrink-0 text-[8px] tracking-[0.1em] uppercase font-bold px-2 py-1 rounded-full"
+          style={{ color: defined ? color : "var(--foreground-muted)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}
+        >
+          {defined ? "Defined" : "Open"}
         </span>
-      </div>
-      <div className="flex flex-col">
-        {activations.map((a) => {
-          const gate = getGate(a.gate);
-          const key = `${title}-${a.body}`;
-          const open = openBody === key;
-          return (
-            <div key={key}>
-              <button
-                onClick={() => setOpenBody(open ? null : key)}
-                className="w-full flex items-center gap-2 py-1 text-left"
-              >
-                <span className="text-[13px] w-4 text-center" style={{ color: "var(--foreground-faint)" }} aria-hidden="true">
-                  {PLANET_GLYPH[a.body] ?? "•"}
-                </span>
-                <span className="text-[11px] flex-1 truncate" style={{ color: "var(--foreground-muted)" }}>
-                  {a.body}
-                </span>
-                <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--brass)" }}>
-                  {a.gate}.{a.line}
-                </span>
-              </button>
-              {open && gate && (
-                <div className="pl-6 pb-2">
-                  <p className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>
-                    {gate.name}
-                  </p>
-                  <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: "var(--foreground-secondary)" }}>
-                    {gate.description}
-                  </p>
-                  <p className="text-[11px] leading-relaxed mt-1" style={{ color: "var(--foreground-secondary)" }}>
-                    <span style={{ color: "var(--brass)" }}>
-                      Line {a.line} · {LINE_NAMES[a.line]}.{" "}
-                    </span>
-                    {gate.lines[a.line]}
-                  </p>
-                </div>
-              )}
+        <span className="shrink-0 text-[13px] transition-transform" style={{ color: "var(--brass)", transform: open ? "rotate(90deg)" : "none" }} aria-hidden="true">›</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-[18px]">
+          <div className="h-px mb-3.5" style={{ background: "var(--border-card)" }} />
+          <p className="text-[9px] tracking-[0.2em] uppercase font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>
+            {defined ? "A defined center" : "An open center"}
+          </p>
+          <p className="mb-[11px]" style={{ fontFamily: "var(--font-display)", fontSize: 21, color }}>
+            {defined ? "Defined" : "Open"} {name}
+          </p>
+          <p className="text-[14px] leading-[1.7]" style={{ color: "var(--foreground)" }}>{heroBody}</p>
+          {sections.map((s, i) => (
+            <div key={i} className="mt-4">
+              <p className="text-[10px] tracking-[0.12em] uppercase font-bold mb-1.5" style={{ color }}>{s.label}</p>
+              <p className="text-[13px] leading-[1.65]" style={{ color: "var(--foreground-secondary)" }}>{s.text}</p>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
