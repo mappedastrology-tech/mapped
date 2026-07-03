@@ -208,14 +208,14 @@ export default function HumanDesignPageContent() {
         </div>
       )}
 
-      {/* BodyGraph + activation columns */}
+      {/* BodyGraph with activation columns inside the plum card */}
       <div className="mt-4 mb-1">
-        <HdBodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} activeGates={hd.activeGates} />
-
-        <div className="flex gap-2.5 mt-3.5">
-          <ActivationColumn title="Design" tone="design" activations={hd.design} />
-          <ActivationColumn title="Personality" tone="personality" activations={hd.personality} />
-        </div>
+        <HdBodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} activeGates={hd.activeGates}>
+          <div className="flex gap-2.5 mt-3.5">
+            <ActivationColumn title="Design" tone="design" activations={hd.design} />
+            <ActivationColumn title="Personality" tone="personality" activations={hd.personality} />
+          </div>
+        </HdBodyGraph>
       </div>
 
       {/* Tabs */}
@@ -436,12 +436,15 @@ function crossBlurb(hd: HumanDesignProfile): string {
 
 function ActivationColumn({ title, tone, activations }: { title: string; tone: "design" | "personality"; activations: Activation[] }) {
   const isDesign = tone === "design";
-  const accent = isDesign ? "#d4a13a" : "var(--foreground-muted)";
-  const rowBg = isDesign ? "rgba(212,161,58,0.10)" : "var(--background-card)";
-  const rowBd = isDesign ? "rgba(212,161,58,0.24)" : "var(--border-card)";
+  // Fixed colors — these sit on the plum bodygraph card, so they don't follow the theme.
+  const header = isDesign ? "#d4a13a" : "rgba(232,236,251,0.75)";
+  const rowBg = isDesign ? "rgba(212,161,58,0.10)" : "rgba(232,236,251,0.06)";
+  const rowBd = isDesign ? "rgba(212,161,58,0.24)" : "rgba(232,236,251,0.14)";
+  const glyphColor = isDesign ? "#d4a13a" : "rgba(232,236,251,0.9)";
+  const valueColor = isDesign ? "#f0e6d2" : "rgba(240,244,255,0.92)";
   return (
     <div className="flex-1 min-w-0">
-      <p className="text-[8.5px] tracking-[0.22em] uppercase font-bold text-center mb-[7px]" style={{ color: accent }}>
+      <p className="text-[8.5px] tracking-[0.22em] uppercase font-bold text-center mb-[7px]" style={{ color: header }}>
         {title}
       </p>
       <div className="flex flex-col gap-[3px]">
@@ -451,10 +454,10 @@ function ActivationColumn({ title, tone, activations }: { title: string; tone: "
             className="flex items-center gap-[7px] px-[9px] py-[3px] rounded-[7px]"
             style={{ background: rowBg, border: `0.5px solid ${rowBd}` }}
           >
-            <span className="text-[12px] w-[14px] text-center shrink-0" style={{ color: isDesign ? "#d4a13a" : "var(--foreground-muted)", fontFamily: "var(--font-glyph, serif)" }}>
+            <span className="text-[12px] w-[14px] text-center shrink-0" style={{ color: glyphColor, fontFamily: "var(--font-glyph, serif)" }}>
               {PLANET_GLYPH[a.body] ?? "•"}
             </span>
-            <span className="text-[10.5px] font-semibold tabular-nums" style={{ color: "var(--foreground)" }}>
+            <span className="text-[10.5px] font-semibold tabular-nums" style={{ color: valueColor }}>
               {a.gate}.{a.line}
             </span>
           </div>
@@ -466,7 +469,7 @@ function ActivationColumn({ title, tone, activations }: { title: string; tone: "
 
 function GradientCard({ glyph, kicker, title, body, chips }: { glyph: string; kicker: string; title: string; body: string; chips?: string[] }) {
   return (
-    <div className="rounded-[20px] p-5" style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #15101c))", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+    <div className="rounded-[20px] p-5" style={{ background: "linear-gradient(165deg, #342440, #15101c)", border: "0.5px solid rgba(201,169,97,0.16)" }}>
       <div className="flex items-center gap-[11px] mb-3">
         <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: "var(--font-glyph, serif)" }}>{glyph}</span>
         <span>

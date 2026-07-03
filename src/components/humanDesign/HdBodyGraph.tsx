@@ -65,10 +65,12 @@ export default function HdBodyGraph({
   definedCenters,
   definedChannels,
   activeGates,
+  children,
 }: {
   definedCenters: CenterId[];
   definedChannels: { gates: [number, number] }[];
   activeGates: number[];
+  children?: React.ReactNode;
 }) {
   const defCenter = new Set(definedCenters);
   const active = new Set(activeGates);
@@ -81,7 +83,7 @@ export default function HdBodyGraph({
         maxWidth: "92vw",
         borderRadius: 26,
         padding: "14px 10px 18px",
-        background: "radial-gradient(ellipse at 50% 40%, #1d2a4c 0%, #17223d 55%, #101829 100%)",
+        background: "#342440",
         boxShadow: "0 8px 22px rgba(0,0,0,0.32), inset 0 0 60px rgba(6,10,22,0.5)",
       }}
     >
@@ -156,6 +158,9 @@ export default function HdBodyGraph({
           })}
         </g>
       </svg>
+
+      {/* Design / Personality activation columns (inside the card, per the design) */}
+      {children}
 
       {/* legend */}
       <div className="flex justify-center gap-[18px] mt-3">
