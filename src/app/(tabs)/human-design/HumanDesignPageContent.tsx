@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import BodyGraph from "@/components/humanDesign/BodyGraph";
+import HdBodyGraph from "@/components/humanDesign/HdBodyGraph";
 import { computeHumanDesign, type HumanDesignProfile, type Activation } from "@/lib/humanDesign/engine";
 import { CENTER_NAMES, CENTER_ORDER, GATE_TO_CENTER, type CenterId } from "@/lib/humanDesign/data";
 import {
@@ -200,20 +200,12 @@ export default function HumanDesignPageContent() {
       )}
 
       {/* BodyGraph + activation columns */}
-      <div
-        className="rounded-[24px] px-3 pt-3 pb-4 mt-4 mb-1"
-        style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "0 6px 22px rgba(0,0,0,0.14)" }}
-      >
-        <BodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} />
+      <div className="mt-4 mb-1">
+        <HdBodyGraph definedCenters={hd.definedCenters} definedChannels={hd.definedChannels} activeGates={hd.activeGates} />
 
-        <div className="flex gap-2.5 mt-3">
+        <div className="flex gap-2.5 mt-3.5">
           <ActivationColumn title="Design" tone="design" activations={hd.design} />
           <ActivationColumn title="Personality" tone="personality" activations={hd.personality} />
-        </div>
-
-        <div className="flex justify-center gap-5 mt-3.5">
-          <LegendDot label="Defined" filled />
-          <LegendDot label="Open" />
         </div>
       </div>
 
@@ -460,18 +452,6 @@ function ActivationColumn({ title, tone, activations }: { title: string; tone: "
         ))}
       </div>
     </div>
-  );
-}
-
-function LegendDot({ label, filled }: { label: string; filled?: boolean }) {
-  return (
-    <span className="flex items-center gap-1.5 text-[9.5px]" style={{ color: "var(--foreground-muted)" }}>
-      <span
-        className="w-2.5 h-2.5 rounded-[2px]"
-        style={filled ? { background: "var(--brass)" } : { border: "1.4px solid var(--foreground-faint)" }}
-      />
-      {label}
-    </span>
   );
 }
 
