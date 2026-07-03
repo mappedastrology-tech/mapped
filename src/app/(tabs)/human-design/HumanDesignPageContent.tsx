@@ -46,6 +46,15 @@ const CENTER_COLOR: Record<CenterId, string> = {
   heart: "#c07a52", sacral: "#c07a52", solarPlexus: "#9d8fd0", spleen: "#8aa055", root: "#8aa055",
 };
 
+/** Population + energy descriptor chips per type, matching the design. */
+const TYPE_CHIPS: Record<string, string[]> = {
+  Generator: ["70% of people", "Sacral being"],
+  "Manifesting Generator": ["70% of people", "Sacral being"],
+  Projector: ["20% of people", "Non-energy being"],
+  Manifestor: ["9% of people", "Initiating being"],
+  Reflector: ["1% of people", "Lunar being"],
+};
+
 type PageTab = "type" | "centers" | "gates";
 
 export default function HumanDesignPageContent() {
@@ -232,10 +241,10 @@ export default function HumanDesignPageContent() {
       {pageTab === "type" && (
         <>
           <div className="flex flex-col gap-3 mb-4">
-            <GradientCard glyph="⚙" kicker="Your type" title={hd.type} body={tc?.description ?? ""} chips={[`${hd.aura} aura`]} />
-            <GradientCard glyph="↻" kicker="Your strategy" title={hd.strategy} body={tc?.strategyDetail ?? ""} />
-            <GradientCard glyph="◑" kicker="Your authority" title={ac?.name ?? hd.authorityName} body={ac?.description ?? ""} />
-            <GradientCard glyph="✥" kicker="Your profile" title={`${hd.profile} · ${hd.profileName}`} body={pc?.description ?? ""} />
+            <GradientCard glyph="⚙" kicker="Your type" title={hd.type} body={tc?.description ?? ""} chips={TYPE_CHIPS[hd.type] ?? [`${hd.aura} aura`]} />
+            <GradientCard glyph="↻" kicker="Your strategy" title={hd.strategy} body={tc?.strategyDetail ?? ""} chips={[hd.strategy]} />
+            <GradientCard glyph="◑" kicker="Your authority" title={ac?.name ?? hd.authorityName} body={ac?.description ?? ""} chips={[`${authorityShort} authority`]} />
+            <GradientCard glyph="✥" kicker="Your profile" title={`${hd.profile} · ${hd.profileName}`} body={pc?.description ?? ""} chips={hd.profileName.split(" / ")} />
           </div>
           <div className="flex flex-col gap-[9px] mb-2">
             <MechCard kicker="Signature" title={hd.signature} body={tc?.signatureDetail ?? ""} accent="#7ba055" />
@@ -255,7 +264,7 @@ export default function HumanDesignPageContent() {
       {/* ── CENTERS TAB ── */}
       {pageTab === "centers" && (
         <>
-          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+          <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>
             Your nine centers
           </p>
           <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
@@ -291,7 +300,7 @@ export default function HumanDesignPageContent() {
       {/* ── GATES TAB ── */}
       {pageTab === "gates" && (
         <>
-          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+          <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>
             Your channels
           </p>
           <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
@@ -312,7 +321,7 @@ export default function HumanDesignPageContent() {
                   <div className="px-4 py-3" style={{ background: "rgba(201,169,97,0.06)", borderBottom: "0.5px solid var(--border-card)" }}>
                     <div className="flex items-center gap-2.5">
                       <span className="text-[11px] font-bold tracking-[0.04em]" style={{ color: "var(--brass)" }}>{ch.gates[0]} — {ch.gates[1]}</span>
-                      {cc && <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)" }}>{cc.name}</span>}
+                      {cc && <span style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>{cc.name}</span>}
                     </div>
                     <p className="text-[10.5px] mt-1" style={{ color: "var(--foreground-muted)" }}>
                       {CENTER_NAMES[ch.centers[0]]} ↔ {CENTER_NAMES[ch.centers[1]]}
@@ -326,7 +335,7 @@ export default function HumanDesignPageContent() {
             })}
           </div>
 
-          <p className="mb-1" style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--foreground)" }}>
+          <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>
             Signature gates
           </p>
           <p className="text-[12.5px] leading-relaxed mb-3.5" style={{ color: "var(--foreground-muted)" }}>
@@ -346,7 +355,7 @@ export default function HumanDesignPageContent() {
                     >
                       {num}
                     </span>
-                    <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)" }}>
+                    <span style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>
                       {g.name.replace(/^Gate \d+ — /, "")}
                     </span>
                     {center && (
@@ -462,7 +471,7 @@ function GradientCard({ glyph, kicker, title, body, chips }: { glyph: string; ki
         <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: "var(--font-glyph, serif)" }}>{glyph}</span>
         <span>
           <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{kicker}</span>
-          <span className="block mt-0.5" style={{ fontFamily: "var(--font-display)", fontSize: 19, color: "#f0e6d2" }}>{title}</span>
+          <span className="block mt-0.5" style={{ fontFamily: "var(--font-heading)", fontSize: 19, color: "#f0e6d2" }}>{title}</span>
         </span>
       </div>
       <p className="text-[13px] leading-[1.7] m-0" style={{ color: "rgba(240,230,210,0.82)" }}>{body}</p>
@@ -484,7 +493,7 @@ function MechCard({ kicker, title, meta, body, accent }: { kicker: string; title
     <div className="rounded-[15px] px-[17px] py-[15px]" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)", borderLeft: `2.5px solid ${accent}` }}>
       <span className="inline-block text-[8.5px] tracking-[0.16em] uppercase font-bold mb-[7px]" style={{ color: accent }}>{kicker}</span>
       <div className="flex items-baseline gap-2.5 flex-wrap mb-1.5">
-        <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.2 }}>{title}</span>
+        <span style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.2 }}>{title}</span>
         {meta && <span className="text-[11px]" style={{ color: "var(--foreground-muted)" }}>{meta}</span>}
       </div>
       <p className="text-[13px] leading-[1.65] m-0" style={{ color: "var(--foreground-secondary)" }}>{body}</p>
@@ -506,7 +515,7 @@ function CenterRow({
           style={defined ? { background: color, border: `1.4px solid ${color}` } : { background: "transparent", border: "1.4px solid var(--foreground-faint)" }}
         />
         <span className="flex-1 min-w-0">
-          <span className="block" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.15 }}>{name}</span>
+          <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.15 }}>{name}</span>
           <span className="block text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{meta}</span>
         </span>
         <span
@@ -523,7 +532,7 @@ function CenterRow({
           <p className="text-[9px] tracking-[0.2em] uppercase font-semibold mb-1.5" style={{ color: "var(--foreground-faint)" }}>
             {defined ? "A defined center" : "An open center"}
           </p>
-          <p className="mb-[11px]" style={{ fontFamily: "var(--font-display)", fontSize: 21, color }}>
+          <p className="mb-[11px]" style={{ fontFamily: "var(--font-heading)", fontSize: 21, color }}>
             {defined ? "Defined" : "Open"} {name}
           </p>
           <p className="text-[14px] leading-[1.7]" style={{ color: "var(--foreground)" }}>{heroBody}</p>

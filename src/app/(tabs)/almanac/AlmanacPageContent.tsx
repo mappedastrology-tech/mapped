@@ -1823,7 +1823,7 @@ export default function AlmanacPageContent() {
 
         {/* ━━━ GOOD FOR TODAY ━━━ */}
         <div>
-          <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: 0, color: "var(--foreground)" }}>
+          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: 0, color: "var(--foreground)" }}>
             GOOD FOR TODAY
           </h3>
           <p className="text-[11.5px]" style={{ lineHeight: 1.5, color: "var(--foreground-faint)", margin: "4px 0 6px" }}>
@@ -1847,7 +1847,7 @@ export default function AlmanacPageContent() {
 
         {/* ━━━ HOLD OFF ON ━━━ */}
         <div>
-          <h3 className="mb-1.5" style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: "0 0 6px", color: "var(--foreground)" }}>
+          <h3 className="mb-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: "0 0 6px", color: "var(--foreground)" }}>
             HOLD OFF ON
           </h3>
           <div>
