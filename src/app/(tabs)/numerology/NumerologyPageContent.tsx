@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Numerology — a personalized readout of the user's core numbers, cycles, and
- * karmic layers, computed from their full birth name + birth date. Supports both
- * the Pythagorean and Chaldean letter systems via a toggle. Every concept has an
- * info tooltip (what it is) and value-specific "in daily life" application copy.
- * Reachable from the hamburger menu at /numerology.
+ * Numerology — a personalized set of numbers computed from the user's full
+ * birth name and birth date. Follows the Claude Design "Numerology — You"
+ * layout: a script-name header + number strip, an animated orbit hero (Life
+ * Path at the centre, the other core numbers orbiting), then three tabs —
+ * Core, Cycles, and Name. Reached from the hamburger menu at /numerology.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,23 +13,39 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   computeNumerology,
+  pythagoreanValue,
   type NumerologyProfile,
   type NumerologySystem,
 } from "@/lib/numerology";
 import {
   getArchetype,
   getMeaning,
-  masterLabel,
   KARMIC_DEBT,
-  SYSTEM_NOTES,
+  type PositionKey,
 } from "@/lib/numerologyMeanings";
 import { getConceptInfo } from "@/lib/numerologyConcepts";
 import { getApplication } from "@/lib/numerologyApplications";
+import NmOrbit from "@/components/numerology/NmOrbit";
 
 const NAME_KEY = "mapped:numerology-fullname";
 const SYSTEM_KEY = "mapped:numerology-system";
 
-const ORDINALS = ["First", "Second", "Third", "Fourth"];
+const NUM_WORD: Record<number, string> = {
+  11: "Eleven", 22: "Twenty-Two", 33: "Thirty-Three",
+  13: "Thirteen", 14: "Fourteen", 16: "Sixteen", 19: "Nineteen",
+};
+function numWord(n: number): string {
+  return NUM_WORD[n] ?? String(n);
+}
+function formatNmDate(iso: string | null): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+type PageTab = "core" | "cycles" | "name";
 
 export default function NumerologyPageContent() {
   const router = useRouter();
@@ -41,8 +57,8 @@ export default function NumerologyPageContent() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [system, setSystem] = useState<NumerologySystem>("pythagorean");
-  const [openCard, setOpenCard] = useState<string | null>(null);
-  const [systemInfoOpen, setSystemInfoOpen] = useState(false);
+  const [openCard, setOpenCard] = useState<string | null>("lifepath");
+  const [pageTab, setPageTab] = useState<PageTab>("core");
   const [now] = useState(() => new Date());
 
   useEffect(() => {
@@ -111,15 +127,6 @@ export default function NumerologyPageContent() {
     return computeNumerology(fullName, birthDate, { system, now });
   }, [birthDate, fullName, system, now]);
 
-  function chooseSystem(next: NumerologySystem) {
-    setSystem(next);
-    try {
-      localStorage.setItem(SYSTEM_KEY, next);
-    } catch {
-      /* ignore */
-    }
-  }
-
   function saveName() {
     const cleaned = nameDraft.trim();
     if (!cleaned) return;
@@ -164,382 +171,289 @@ export default function NumerologyPageContent() {
     );
   }
 
+  const firstName = ((profileName || fullName).trim().split(/\s+/)[0]) || "You";
+  const birthLine = formatNmDate(birthDate);
+  const badgeFor = (n: { isMaster: boolean; karmicDebt: number | null }) =>
+    n.isMaster ? "Master" : n.karmicDebt ? `Karmic ${n.karmicDebt}` : null;
+  const keywordsOf = (n: number) => (getArchetype(n)?.keyword || "").split(/,\s*/).filter(Boolean);
+
   return (
-    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+    <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full">
       {/* Header */}
-      <div className="text-center mb-5">
-        <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3" style={{ color: "var(--brass)" }}>
-          your numbers
+      <div className="text-center pb-1">
+        <p className="text-[9px] tracking-[0.28em] uppercase font-bold" style={{ color: "var(--brass)" }}>
+          Your numbers
         </p>
-        <h1
-          className="text-[26px] tracking-[0.18em] uppercase mb-1.5"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
-        >
-          Numerology
-        </h1>
-        <p className="text-[13px]" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-secondary)" }}>
-          {fullName || profileName} · {birthDate}
+        <p className="mt-1.5" style={{ fontFamily: "var(--font-script)", fontSize: 50, lineHeight: 1, color: "var(--foreground)" }}>
+          {firstName}
         </p>
+        {birthLine && (
+          <p className="text-[11.5px] mt-2" style={{ color: "var(--foreground-muted)" }}>{birthLine}</p>
+        )}
       </div>
-
-      {/* System toggle */}
-      <div className="flex items-center justify-center gap-2 mb-5">
-        <div
-          className="inline-flex rounded-full p-0.5"
-          style={{ border: "0.5px solid rgba(201,169,97,0.3)" }}
-          role="group"
-          aria-label="Numerology system"
-        >
-          {(["pythagorean", "chaldean"] as NumerologySystem[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => chooseSystem(s)}
-              aria-pressed={system === s}
-              className="px-4 py-1.5 rounded-full text-[11px] tracking-[0.12em] uppercase font-medium transition-all"
-              style={
-                system === s
-                  ? { backgroundColor: "var(--brass)", color: "#1a1420" }
-                  : { color: "var(--foreground-secondary)" }
-              }
-            >
-              {s === "pythagorean" ? "Pythagorean" : "Chaldean"}
-            </button>
-          ))}
-        </div>
-        <InfoIconButton label="About the two systems" onClick={() => setSystemInfoOpen((v) => !v)} active={systemInfoOpen} />
-      </div>
-      {systemInfoOpen && <Tooltip>{SYSTEM_NOTES.pythagoreanVsChaldean}</Tooltip>}
-
-      {/* Name confirmation */}
-      {!nameConfirmed && !editingName && (
-        <div
-          className="rounded-2xl px-4 py-4 mb-5"
-          style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-        >
-          <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-            Your name numbers use your <strong style={{ color: "var(--foreground)" }}>full birth name — first, middle,
-            and last</strong>, exactly as it appears on your birth certificate. Leaving out a middle name will change
-            your Expression, Soul Urge, and Personality numbers, so include it.
-          </p>
-          <NameInput value={nameDraft} onChange={setNameDraft} onSave={saveName} label="Confirm" />
-        </div>
-      )}
-
-      {editingName && (
-        <div
-          className="rounded-2xl px-4 py-4 mb-5"
-          style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-        >
-          <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-            Enter your <strong style={{ color: "var(--foreground)" }}>full birth name</strong> — first, middle, and
-            last. Spelling and middle names both affect the result.
-          </p>
-          <NameInput value={nameDraft} onChange={setNameDraft} onSave={saveName} label="Save" />
-        </div>
-      )}
-
-      {nameConfirmed && !editingName && (() => {
-        const parts = fullName.trim().split(/\s+/).filter(Boolean);
-        return (
-          <div className="mb-5">
-            <div className="flex items-center justify-center gap-2 text-[11px]" style={{ color: "var(--foreground-faint)" }}>
-              <span>Name numbers from: {fullName}</span>
-              <button
-                onClick={() => {
-                  setNameDraft(fullName);
-                  setEditingName(true);
-                }}
-                className="underline"
-                style={{ color: "var(--brass)" }}
-              >
-                edit
-              </button>
-            </div>
-            {parts.length < 3 && (
-              <p className="text-[11px] text-center mt-1.5 leading-relaxed" style={{ color: "var(--brass)" }}>
-                {parts.length < 2
-                  ? "Add your last name for accurate name numbers."
-                  : "Looks like no middle name — add it if you have one, or these numbers won't match other calculators."}
-              </p>
-            )}
-          </div>
-        );
-      })()}
 
       {profile && (
-        <>
-          {/* Core numbers */}
-          <SectionLabel>Core numbers</SectionLabel>
-          <div className="flex flex-col gap-2.5 mb-7">
-            {[
-              { key: "lifePath", label: "Life Path", value: profile.lifePath.value, master: profile.lifePath.isMaster, karmic: profile.lifePath.karmicDebt, position: "lifePath" as const, sub: "From your birth date — your central journey" },
-              { key: "expression", label: "Expression", value: profile.expression.value, master: profile.expression.isMaster, karmic: profile.expression.karmicDebt, position: "expression" as const, sub: "From your full name — your talents & purpose" },
-              { key: "soulUrge", label: "Soul Urge", value: profile.soulUrge.value, master: profile.soulUrge.isMaster, karmic: profile.soulUrge.karmicDebt, position: "soulUrge" as const, sub: "The vowels — what your heart wants" },
-              { key: "personality", label: "Personality", value: profile.personality.value, master: profile.personality.isMaster, karmic: profile.personality.karmicDebt, position: "personality" as const, sub: "The consonants — how you come across" },
-              { key: "birthday", label: "Birthday", value: profile.birthday.value, master: profile.birthday.isMaster, karmic: profile.birthday.karmicDebt, position: "birthday" as const, sub: `Day ${profile.birthday.day} — a specific gift` },
-              { key: "maturity", label: "Maturity", value: profile.maturity.value, master: profile.maturity.isMaster, karmic: profile.maturity.karmicDebt, position: "maturity" as const, sub: "Ripens in the second half of life" },
-            ].map((c) => (
-              <NumberCard
-                key={c.key}
-                label={c.label}
-                value={c.value}
-                isMaster={c.master}
-                karmic={c.karmic}
-                sub={c.sub}
-                conceptKey={c.position}
-                meaning={getMeaning(c.position, c.value)}
-                application={getApplication(c.position, c.value)}
-                open={openCard === c.key}
-                onToggle={() => setOpenCard(openCard === c.key ? null : c.key)}
-              />
-            ))}
-          </div>
+        <div className="flex justify-center flex-wrap gap-[7px] mt-3.5 mb-1">
+          {[`Life Path ${profile.lifePath.value}`, `Expression ${profile.expression.value}`, `Personal Year ${profile.personalYear}`].map((t, i) => (
+            <span
+              key={i}
+              className="text-[9.5px] tracking-[0.14em] uppercase font-bold px-3 py-[5px] rounded-full"
+              style={{ color: "var(--brass)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
-          {/* Live cycles */}
-          <SectionLabel>Where you are now</SectionLabel>
-          <div className="grid grid-cols-3 gap-2.5 mb-3">
-            {[
-              { label: "Year", value: profile.personalYear },
-              { label: "Month", value: profile.personalMonth },
-              { label: "Day", value: profile.personalDay },
-            ].map((t) => (
-              <div
-                key={t.label}
-                className="rounded-2xl px-3 py-4 text-center"
-                style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
-              >
-                <div className="text-[32px] leading-none mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--brass)" }}>
-                  {t.value}
-                </div>
-                <div className="text-[9px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-                  Personal {t.label}
-                </div>
+      {/* Name entry — needed to compute name numbers */}
+      {!profile && (
+        <div className="rounded-2xl px-4 py-4 mt-5" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+          <p className="text-[12px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+            Your name numbers use your <strong style={{ color: "var(--foreground)" }}>full birth name — first, middle, and last</strong>, exactly as on your birth certificate. Add it to see your numbers.
+          </p>
+          <NameInput value={nameDraft} onChange={setNameDraft} onSave={saveName} label="See my numbers" />
+        </div>
+      )}
+
+      {profile && (() => {
+        const lp = profile.lifePath, ex = profile.expression, su = profile.soulUrge, pe = profile.personality;
+        const lpArch = getArchetype(lp.value);
+
+        const coreDefs: { id: string; kicker: string; value: number; badge: string | null; position: PositionKey; meta: string }[] = [
+          { id: "lifepath", kicker: "Life Path", value: lp.value, badge: badgeFor(lp), position: "lifePath", meta: "Reduced from your full birth date" },
+          { id: "expression", kicker: "Expression", value: ex.value, badge: badgeFor(ex), position: "expression", meta: "From every letter of your full name" },
+          { id: "soul", kicker: "Soul Urge", value: su.value, badge: badgeFor(su), position: "soulUrge", meta: "From the vowels in your name" },
+          { id: "personality", kicker: "Personality", value: pe.value, badge: badgeFor(pe), position: "personality", meta: "From the consonants in your name" },
+          { id: "birthday", kicker: "Birthday", value: profile.birthday.value, badge: badgeFor(profile.birthday), position: "birthday", meta: "The day of the month you were born" },
+        ];
+
+        const callouts: { num: number; kicker: string; title: string; body: string }[] = [];
+        coreDefs.forEach((d) => {
+          if ([11, 22, 33].includes(d.value)) {
+            callouts.push({ num: d.value, kicker: "Master Number", title: `${numWord(d.value)}, in your ${d.kicker}`, body: getArchetype(d.value)?.essence || "" });
+          }
+        });
+        profile.karmicDebts.forEach((kd) => {
+          const m = KARMIC_DEBT[kd.debt];
+          if (m) callouts.push({ num: kd.debt, kicker: "Karmic Debt", title: `${numWord(kd.debt)}, in your ${kd.position}`, body: m.text });
+        });
+
+        // Name letters
+        const V = new Set(["A", "E", "I", "O", "U"]);
+        const words = fullName.toUpperCase().split(/\s+/).filter(Boolean).map((w) => {
+          const letters = w.split("").filter((ch) => /[A-Z]/.test(ch)).map((ch) => ({ c: ch, n: pythagoreanValue(ch), vowel: V.has(ch) }));
+          const sum = letters.reduce((s, l) => s + l.n, 0);
+          return { word: w, letters, red: `sums to ${sum}` };
+        });
+        const sumSet = (pick: (l: { vowel: boolean }) => boolean) => words.flatMap((w) => w.letters).filter(pick).reduce((s, l) => s + l.n, 0);
+        const nameResults: { id: string; num: number; title: string; from: string; math: string; position: PositionKey }[] = [
+          { id: "r-expr", num: ex.value, title: "Expression", from: "All letters", math: `${sumSet(() => true)} → ${ex.value}`, position: "expression" },
+          { id: "r-soul", num: su.value, title: "Soul Urge", from: "Vowels only", math: `${sumSet((l) => l.vowel)} → ${su.value}`, position: "soulUrge" },
+          { id: "r-pers", num: pe.value, title: "Personality", from: "Consonants only", math: `${sumSet((l) => !l.vowel)} → ${pe.value}`, position: "personality" },
+        ];
+
+        const stages = profile.pinnacles.map((p, i) => {
+          const ch = profile.challenges[i];
+          return {
+            id: `st-${p.index}`,
+            age: p.endAge === null ? `Age ${p.startAge}+` : `${p.startAge} – ${p.endAge}`,
+            pinnacle: String(p.value),
+            challenge: ch ? String(ch.value) : "—",
+            current: p.active,
+            body: getMeaning("pinnacle", p.value),
+            theme: ch ? getMeaning("challenge", ch.value) : "",
+            lesson: getApplication("pinnacle", p.value),
+          };
+        });
+
+        return (
+          <>
+            {/* Hero orbit */}
+            <div className="mt-4">
+              <NmOrbit
+                lifePath={lp.value}
+                title={lpArch?.title || `Life Path ${lp.value}`}
+                subtitle={`Life Path ${lp.value} · ${(lpArch?.keyword || "").toLowerCase()}`}
+                top={{ num: ex.value, label: "EXPRESSION", master: ex.isMaster }}
+                right={{ num: su.value, label: "SOUL URGE", master: su.isMaster }}
+                bottom={{ num: pe.value, label: "PERSONALITY", master: pe.isMaster }}
+                left={{ num: profile.birthday.value, label: "BIRTHDAY" }}
+              />
+            </div>
+
+            {/* Tabs */}
+            <div className="sticky top-0 z-[5] py-2 mt-5 mb-4" style={{ background: "var(--background)" }}>
+              <div className="flex gap-[5px] p-1 rounded-[13px]" style={{ background: "var(--background-card)" }}>
+                {(["core", "cycles", "name"] as PageTab[]).map((t) => {
+                  const active = pageTab === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setPageTab(t); setOpenCard(null); }}
+                      className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
+                      style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="flex flex-col gap-2.5 mb-7">
-            <CycleBlock
-              title={`Today — Personal Day ${profile.personalDay}`}
-              conceptKey="personalDay"
-              application={getApplication("personalDay", profile.personalDay)}
-              highlight
-            />
-            <CycleBlock
-              title={`This month — Personal Month ${profile.personalMonth}`}
-              conceptKey="personalMonth"
-              application={getApplication("personalMonth", profile.personalMonth)}
-            />
-            <CycleBlock
-              title={`This year — Personal Year ${profile.personalYear}`}
-              conceptKey="personalYear"
-              meaning={getMeaning("personalYear", profile.personalYear)}
-              application={getApplication("personalYear", profile.personalYear)}
-            />
-          </div>
+            {/* CORE TAB */}
+            {pageTab === "core" && (
+              <>
+                <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>Your core numbers</p>
+                <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
+                  Five numbers do most of the work in a chart — two from your birth date, three from the letters of your name. Tap any one to read it.
+                </p>
+                <div className="flex flex-col gap-2 mb-6">
+                  {coreDefs.map((d) => (
+                    <NmCoreCard
+                      key={d.id}
+                      num={d.value}
+                      kicker={d.kicker}
+                      title={getArchetype(d.value)?.title || ""}
+                      meta={d.meta}
+                      badge={d.badge}
+                      def={getConceptInfo(d.position)}
+                      body={getMeaning(d.position, d.value)}
+                      best={getArchetype(d.value)?.strengths || ""}
+                      growth={getArchetype(d.value)?.shadow || ""}
+                      keywords={keywordsOf(d.value)}
+                      open={openCard === d.id}
+                      onToggle={() => setOpenCard(openCard === d.id ? null : d.id)}
+                      tipOpen={openCard === `tip-${d.id}`}
+                      onTip={() => setOpenCard(openCard === `tip-${d.id}` ? null : `tip-${d.id}`)}
+                    />
+                  ))}
+                </div>
 
-          {/* Pinnacles */}
-          <SectionLabel>Pinnacles — your life chapters</SectionLabel>
-          <div className="flex flex-col gap-2.5 mb-7">
-            {profile.pinnacles.map((p, i) => (
-              <NumberCard
-                key={`pin-${p.index}`}
-                label={`${ORDINALS[i]} Pinnacle`}
-                value={p.value}
-                isMaster={p.isMaster}
-                karmic={null}
-                sub={
-                  p.endAge === null
-                    ? `Age ${p.startAge}+${p.active ? " · happening now" : ""}`
-                    : `Ages ${p.startAge}–${p.endAge}${p.active ? " · happening now" : ""}`
-                }
-                highlight={p.active}
-                conceptKey="pinnacle"
-                meaning={getMeaning("pinnacle", p.value)}
-                application={getApplication("pinnacle", p.value)}
-                open={openCard === `pin-${p.index}`}
-                onToggle={() => setOpenCard(openCard === `pin-${p.index}` ? null : `pin-${p.index}`)}
-              />
-            ))}
-          </div>
-
-          {/* Challenges */}
-          <SectionLabel>Challenges — your growth edges</SectionLabel>
-          <div className="flex flex-col gap-2.5 mb-7">
-            {profile.challenges.map((c) => (
-              <NumberCard
-                key={`ch-${c.index}`}
-                label={c.label}
-                value={c.value}
-                isMaster={false}
-                karmic={null}
-                sub="A recurring lesson to work through"
-                conceptKey="challenge"
-                meaning={getMeaning("challenge", c.value)}
-                application={getApplication("challenge", c.value)}
-                open={openCard === `ch-${c.index}`}
-                onToggle={() => setOpenCard(openCard === `ch-${c.index}` ? null : `ch-${c.index}`)}
-              />
-            ))}
-          </div>
-
-          {/* Karmic & hidden layers */}
-          <SectionLabel>Karmic & hidden layers</SectionLabel>
-          <div className="flex flex-col gap-2.5 mb-4">
-            {profile.karmicDebts.length > 0 &&
-              profile.karmicDebts.map((kd) => {
-                const m = KARMIC_DEBT[kd.debt];
-                if (!m) return null;
-                return (
-                  <InfoBlock
-                    key={`kd-${kd.position}`}
-                    title={`${m.title} · ${kd.position}`}
-                    body={m.text}
-                    application={getApplication("karmicDebt", kd.debt)}
-                    conceptKey="karmicDebt"
-                    tone="debt"
-                  />
-                );
-              })}
-
-            {profile.karmicLessons.length > 0 ? (
-              profile.karmicLessons.map((d) => (
-                <InfoBlock
-                  key={`kl-${d}`}
-                  title={`Karmic Lesson ${d}`}
-                  body={getMeaning("karmicLesson", d)}
-                  application={getApplication("karmicLesson", d)}
-                  conceptKey="karmicLesson"
-                />
-              ))
-            ) : (
-              <InfoBlock
-                title="No karmic lessons"
-                body="Every number from 1 to 9 appears in your name — you arrive with a full set of tools, none conspicuously missing."
-                conceptKey="karmicLesson"
-              />
+                {callouts.length > 0 && (
+                  <>
+                    <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>Debts &amp; master numbers</p>
+                    <p className="text-[12.5px] leading-relaxed mb-3.5" style={{ color: "var(--foreground-muted)" }}>
+                      Special numbers that surface as your figures reduce — each raises the stakes of the number it sits inside.
+                    </p>
+                    <div className="flex flex-col gap-[9px] mb-2">
+                      {callouts.map((c, i) => <NmCallout key={i} num={c.num} kicker={c.kicker} title={c.title} body={c.body} />)}
+                    </div>
+                  </>
+                )}
+              </>
             )}
 
-            {profile.hiddenPassion.map((d) => (
-              <InfoBlock
-                key={`hp-${d}`}
-                title={`Hidden Passion ${d}`}
-                body={getMeaning("hiddenPassion", d)}
-                application={getApplication("hiddenPassion", d)}
-                conceptKey="hiddenPassion"
-              />
-            ))}
+            {/* CYCLES TAB */}
+            {pageTab === "cycles" && (
+              <>
+                <div className="rounded-[20px] p-5 mb-5" style={{ background: "linear-gradient(165deg, #4a2540, #15101c)", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+                  <div className="flex items-center gap-3.5">
+                    <span
+                      className="shrink-0 flex items-center justify-center"
+                      style={{ width: 58, height: 58, borderRadius: "50%", fontFamily: "var(--font-heading)", fontSize: 30, color: "var(--brass)", background: "rgba(201,169,97,0.1)", border: "1px solid rgba(201,169,97,0.4)" }}
+                    >
+                      {profile.personalYear}
+                    </span>
+                    <span>
+                      <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>Personal Year · {now.getFullYear()}</span>
+                      <span className="block mt-0.5" style={{ fontFamily: "var(--font-heading)", fontSize: 20, color: "#f0e6d2" }}>{getArchetype(profile.personalYear)?.title || `Year ${profile.personalYear}`}</span>
+                    </span>
+                  </div>
+                  <p className="text-[13px] mt-3.5" style={{ lineHeight: 1.7, color: "rgba(240,230,210,0.82)" }}>{getMeaning("personalYear", profile.personalYear)}</p>
+                </div>
 
-            <InfoBlock
-              title={`Balance Number ${profile.balance}`}
-              body={getMeaning("balance", profile.balance)}
-              application={getApplication("balance", profile.balance)}
-              conceptKey="balance"
-            />
-            <InfoBlock
-              title={`Subconscious Self ${profile.subconsciousSelf}`}
-              body={getMeaning("subconsciousSelf", profile.subconsciousSelf)}
-              application={getApplication("subconsciousSelf", profile.subconsciousSelf)}
-              conceptKey="subconsciousSelf"
-            />
-            <InfoBlock
-              title={`Bridge · Life Path & Expression (${profile.bridges.lifePathExpression})`}
-              body={getMeaning("bridge", profile.bridges.lifePathExpression)}
-              application={getApplication("bridge", profile.bridges.lifePathExpression)}
-              conceptKey="bridge"
-            />
-            <InfoBlock
-              title={`Bridge · Soul Urge & Personality (${profile.bridges.soulUrgePersonality})`}
-              body={getMeaning("bridge", profile.bridges.soulUrgePersonality)}
-              application={getApplication("bridge", profile.bridges.soulUrgePersonality)}
-              conceptKey="bridge"
-            />
-          </div>
+                <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>Pinnacles &amp; challenges</p>
+                <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
+                  Your life divides into four long chapters, each ruled by a pinnacle — its opportunity — and shadowed by a challenge.
+                </p>
+                <div className="relative flex flex-col gap-2.5">
+                  <div aria-hidden="true" className="absolute" style={{ left: 9, top: 16, bottom: 16, width: 1.5, background: "var(--border-card)" }} />
+                  {stages.map((s) => (
+                    <NmStage key={s.id} stage={s} open={openCard === s.id} onToggle={() => setOpenCard(openCard === s.id ? null : s.id)} />
+                  ))}
+                </div>
+              </>
+            )}
 
-          <p className="text-[11px] text-center mt-2 mb-2" style={{ color: "var(--foreground-faint)" }}>
-            Tap any number to read more · tap the ⓘ to learn what each one means.
-          </p>
-        </>
-      )}
+            {/* NAME TAB */}
+            {pageTab === "name" && (
+              <>
+                <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>Your name in numbers</p>
+                <p className="text-[12.5px] leading-relaxed mb-3.5" style={{ color: "var(--foreground-muted)" }}>
+                  Each letter carries a number, 1 through 9. Add the vowels for your Soul Urge, the consonants for your Personality, and all of them for your Expression.
+                </p>
+                <div className="flex items-center justify-center gap-2 text-[11px] mb-4" style={{ color: "var(--foreground-faint)" }}>
+                  <span>From: {fullName}</span>
+                  <button onClick={() => { setNameDraft(fullName); setEditingName(true); }} className="underline" style={{ color: "var(--brass)" }}>edit</button>
+                </div>
+                {editingName && (
+                  <div className="mb-4">
+                    <NameInput value={nameDraft} onChange={setNameDraft} onSave={saveName} label="Save" />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-4 mb-5">
+                  {words.map((w, wi) => (
+                    <div key={wi}>
+                      <div className="flex flex-wrap gap-1.5 justify-center">
+                        {w.letters.map((l, li) => (
+                          <span
+                            key={li}
+                            className="flex flex-col items-center"
+                            style={{ width: 38, padding: "7px 0 5px", borderRadius: 9, background: l.vowel ? "rgba(212,161,58,0.18)" : "var(--background-card)", border: `0.5px solid ${l.vowel ? "rgba(212,161,58,0.4)" : "var(--border-card)"}` }}
+                          >
+                            <span style={{ fontFamily: "var(--font-heading)", fontSize: 19, lineHeight: 1, color: "var(--foreground)" }}>{l.c}</span>
+                            <span className="mt-1 text-[11px] font-bold" style={{ color: l.vowel ? "var(--brass)" : "var(--foreground-muted)" }}>{l.n}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-center text-[10.5px] mt-1.5" style={{ color: "var(--foreground-muted)" }}>{w.word} · {w.red}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-4 mb-5">
+                  <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "var(--foreground-secondary)" }}>
+                    <span style={{ width: 11, height: 11, borderRadius: 3, background: "rgba(212,161,58,0.22)", border: "0.5px solid var(--brass)" }} />Vowel
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "var(--foreground-secondary)" }}>
+                    <span style={{ width: 11, height: 11, borderRadius: 3, background: "var(--background-card)", border: "0.5px solid var(--border-card)" }} />Consonant
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-[9px]">
+                  {nameResults.map((r) => (
+                    <NmNameResult
+                      key={r.id}
+                      num={r.num}
+                      title={r.title}
+                      from={r.from}
+                      math={r.math}
+                      body={getMeaning(r.position, r.num)}
+                      open={openCard === r.id}
+                      onToggle={() => setOpenCard(openCard === r.id ? null : r.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
     </main>
   );
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────────
+// ── Sub-components ──────────────────────────────────────────────────────────
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-[10px] tracking-[0.22em] uppercase font-semibold mb-3" style={{ color: "var(--brass)" }}>
-      {children}
-    </h2>
-  );
-}
-
-function InfoIconButton({ label, onClick, active }: { label: string; onClick: () => void; active?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      aria-pressed={active}
-      className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] shrink-0 italic"
-      style={
-        active
-          ? { backgroundColor: "var(--brass)", color: "#1a1420" }
-          : { border: "0.5px solid rgba(201,169,97,0.45)", color: "var(--brass)" }
-      }
-    >
-      i
-    </button>
-  );
-}
-
-function Tooltip({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-xl px-4 py-3 mb-5 text-[12px] leading-relaxed"
-      style={{
-        backgroundColor: "var(--plum)",
-        border: "0.5px solid rgba(201,169,97,0.25)",
-        color: "var(--foreground-secondary)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ApplicationBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl px-3.5 py-3 mt-3" style={{ backgroundColor: "rgba(201,169,97,0.08)" }}>
-      <div className="text-[9px] tracking-[0.18em] uppercase font-semibold mb-1" style={{ color: "var(--brass)" }}>
-        In daily life
-      </div>
-      <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-        {children}
-      </p>
-    </div>
-  );
-}
-
-function NameInput({
-  value,
-  onChange,
-  onSave,
-  label,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSave: () => void;
-  label: string;
-}) {
+function NameInput({ value, onChange, onSave, label }: { value: string; onChange: (v: string) => void; onSave: () => void; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSave();
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter") onSave(); }}
         placeholder="First Middle Last"
         className="flex-1 px-3 py-2 rounded-lg text-[14px] outline-none"
         style={{ backgroundColor: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--foreground)" }}
@@ -555,233 +469,174 @@ function NameInput({
   );
 }
 
-function NumberCard({
-  label,
-  value,
-  isMaster,
-  karmic,
-  sub,
-  conceptKey,
-  meaning,
-  application,
-  open,
-  onToggle,
-  highlight,
+function NmCoreCard({
+  num, kicker, title, meta, badge, def, body, best, growth, keywords, open, onToggle, tipOpen, onTip,
 }: {
-  label: string;
-  value: number;
-  isMaster: boolean;
-  karmic: number | null;
-  sub: string;
-  conceptKey: string;
-  meaning: string;
-  application: string;
-  open: boolean;
-  onToggle: () => void;
-  highlight?: boolean;
+  num: number; kicker: string; title: string; meta: string; badge: string | null; def: string;
+  body: string; best: string; growth: string; keywords: string[]; open: boolean; onToggle: () => void; tipOpen: boolean; onTip: () => void;
 }) {
-  const [infoOpen, setInfoOpen] = useState(false);
-  const archetype = getArchetype(value);
-  const conceptInfo = getConceptInfo(conceptKey);
   return (
-    <div
-      className="rounded-2xl overflow-hidden transition-all"
-      style={{
-        backgroundColor: "var(--background-card)",
-        border: highlight ? "1px solid var(--brass)" : "1px solid var(--border-card)",
-      }}
-    >
-      <div className="flex items-stretch">
-        <button onClick={onToggle} aria-expanded={open} className="flex-1 flex items-center gap-4 pl-4 py-3.5 text-left">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-[24px]"
-            style={{ backgroundColor: "rgba(201,169,97,0.12)", fontFamily: "var(--font-display)", color: "var(--brass)" }}
-          >
-            {value}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>
-                {label}
-              </span>
-              <span className="text-[12px]" style={{ color: "var(--foreground-faint)" }}>
-                {masterLabel(value)}
-              </span>
-              {isMaster && <Tag>master</Tag>}
-              {karmic != null && <Tag tone="debt">karmic {karmic}</Tag>}
-            </div>
-            <div className="text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-              {sub}
-            </div>
-          </div>
-          <span
-            className="text-[18px] shrink-0 pr-1 transition-transform"
-            style={{ color: "var(--foreground-faint)", transform: open ? "rotate(45deg)" : "none" }}
-            aria-hidden="true"
-          >
-            +
-          </span>
-        </button>
-        <button
-          onClick={() => setInfoOpen((v) => !v)}
-          aria-label={`What is ${label}?`}
-          aria-pressed={infoOpen}
-          className="px-3.5 flex items-center justify-center text-[12px] italic"
-          style={{ color: infoOpen ? "var(--brass)" : "var(--foreground-faint)", borderLeft: "0.5px solid var(--border-card)" }}
+    <div className="relative rounded-[15px]" style={{ zIndex: tipOpen ? 50 : "auto", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}>
+      <div className="flex items-center gap-[13px] px-4 py-[13px] cursor-pointer" onClick={onToggle}>
+        <span
+          className="shrink-0 flex items-center justify-center"
+          style={{ width: 40, height: 40, borderRadius: "50%", fontFamily: "var(--font-heading)", fontSize: 20, color: "var(--brass)", background: "var(--background)", border: "1px solid var(--border-card)" }}
         >
-          ⓘ
-        </button>
+          {num}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="flex items-center text-[8.5px] tracking-[0.18em] uppercase font-bold" style={{ color: "var(--brass)" }}>
+            {kicker}
+            <span
+              role="button"
+              aria-label="What is this?"
+              onClick={(e) => { e.stopPropagation(); onTip(); }}
+              className="ml-1.5 inline-flex items-center justify-center cursor-pointer"
+              style={{ width: 15, height: 15, borderRadius: "50%", fontSize: 9, fontWeight: 700, letterSpacing: 0, textTransform: "none", color: "var(--foreground-muted)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}
+            >
+              i
+            </span>
+          </span>
+          <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.2, marginTop: 1 }}>{title}</span>
+        </span>
+        {badge && (
+          <span className="shrink-0 text-[8px] tracking-[0.08em] uppercase font-bold px-2 py-1 rounded-full" style={{ color: "var(--amber, #d4a13a)", background: "rgba(212,161,58,0.12)", border: "0.5px solid rgba(212,161,58,0.3)" }}>{badge}</span>
+        )}
+        <span className="shrink-0 text-[13px] transition-transform" style={{ color: "var(--brass)", transform: open ? "rotate(90deg)" : "none" }}>›</span>
       </div>
-
-      {infoOpen && conceptInfo && (
-        <p className="px-4 pb-3 -mt-1 text-[12px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-          {conceptInfo}
-        </p>
+      {tipOpen && def && (
+        <div className="px-4 pb-3 -mt-1">
+          <p className="text-[11.5px] leading-relaxed rounded-[11px] px-3 py-2.5" style={{ color: "var(--foreground-secondary)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}>{def}</p>
+        </div>
       )}
-
       {open && (
-        <div className="px-4 pb-4 pt-0">
-          {archetype && (
-            <p className="text-[12px] mb-2" style={{ color: "var(--brass)" }}>
-              {archetype.title} · {archetype.keyword}
-            </p>
-          )}
-          {meaning && (
-            <p className="text-[13px] leading-relaxed mb-2" style={{ color: "var(--foreground-secondary)" }}>
-              {meaning}
-            </p>
-          )}
-          {archetype && (
-            <div className="flex flex-col gap-1.5 text-[12px]">
-              <div style={{ color: "var(--foreground-secondary)" }}>
-                <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-                  Strengths.{" "}
-                </span>
-                {archetype.strengths}
-              </div>
-              <div style={{ color: "var(--foreground-secondary)" }}>
-                <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-                  Shadow.{" "}
-                </span>
-                {archetype.shadow}
-              </div>
+        <div className="px-4 pb-[18px]">
+          <div className="h-px mb-3.5" style={{ background: "var(--border-card)" }} />
+          <p className="text-[10.5px] mb-2.5" style={{ color: "var(--foreground-faint)" }}>{meta}</p>
+          <p className="text-[14px] leading-[1.7]" style={{ color: "var(--foreground)" }}>{body}</p>
+          <div className="flex gap-3 mt-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] tracking-[0.16em] uppercase font-bold mb-1.5" style={{ color: "var(--brass)" }}>At its best</p>
+              <p className="text-[12px] leading-[1.55]" style={{ color: "var(--foreground-secondary)" }}>{best}</p>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] tracking-[0.16em] uppercase font-bold mb-1.5" style={{ color: "var(--amber, #d4a13a)" }}>Growth edge</p>
+              <p className="text-[12px] leading-[1.55]" style={{ color: "var(--foreground-secondary)" }}>{growth}</p>
+            </div>
+          </div>
+          {keywords.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {keywords.map((k, i) => (
+                <span key={i} className="text-[10px] font-semibold px-[11px] py-[5px] rounded-full" style={{ color: "var(--foreground-secondary)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}>{k}</span>
+              ))}
             </div>
           )}
-          {application && <ApplicationBlock>{application}</ApplicationBlock>}
         </div>
       )}
     </div>
   );
 }
 
-function CycleBlock({
-  title,
-  conceptKey,
-  meaning,
-  application,
-  highlight,
-}: {
-  title: string;
-  conceptKey: string;
-  meaning?: string;
-  application: string;
-  highlight?: boolean;
-}) {
-  const [infoOpen, setInfoOpen] = useState(false);
-  const conceptInfo = getConceptInfo(conceptKey);
+function NmCallout({ num, kicker, title, body }: { num: number; kicker: string; title: string; body: string }) {
   return (
-    <div
-      className="rounded-2xl px-4 py-3.5"
-      style={{
-        backgroundColor: "var(--background-card)",
-        border: highlight ? "1px solid var(--brass)" : "1px solid var(--border-card)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[13px] font-semibold flex-1" style={{ color: "var(--foreground)" }}>
-          {title}
+    <div className="rounded-[15px] px-[17px] py-[15px]" style={{ border: "0.5px solid rgba(212,161,58,0.28)", background: "linear-gradient(165deg, rgba(212,161,58,0.10), var(--background-card))", borderLeft: "2.5px solid var(--amber, #d4a13a)" }}>
+      <div className="flex items-center gap-2.5 mb-1.5">
+        <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: "50%", fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--amber, #d4a13a)", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>{num}</span>
+        <span>
+          <span className="block text-[8.5px] tracking-[0.16em] uppercase font-bold" style={{ color: "var(--amber, #d4a13a)" }}>{kicker}</span>
+          <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", marginTop: 1 }}>{title}</span>
         </span>
-        <InfoIconButton label={`What is a ${conceptKey} number?`} onClick={() => setInfoOpen((v) => !v)} active={infoOpen} />
       </div>
-      {infoOpen && conceptInfo && (
-        <p className="text-[12px] leading-relaxed mb-2" style={{ color: "var(--foreground-muted)" }}>
-          {conceptInfo}
-        </p>
-      )}
-      {meaning && (
-        <p className="text-[12.5px] leading-relaxed mb-1" style={{ color: "var(--foreground-secondary)" }}>
-          {meaning}
-        </p>
-      )}
-      <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-        {application}
-      </p>
+      <p className="text-[13px] leading-[1.65]" style={{ color: "var(--foreground-secondary)" }}>{body}</p>
     </div>
   );
 }
 
-function InfoBlock({
-  title,
-  body,
-  application,
-  conceptKey,
-  tone,
+function NmStage({
+  stage, open, onToggle,
 }: {
-  title: string;
-  body: string;
-  application?: string;
-  conceptKey?: string;
-  tone?: "debt";
+  stage: { age: string; pinnacle: string; challenge: string; current: boolean; body: string; theme: string; lesson: string };
+  open: boolean; onToggle: () => void;
 }) {
-  const [infoOpen, setInfoOpen] = useState(false);
-  const conceptInfo = conceptKey ? getConceptInfo(conceptKey) : "";
   return (
-    <div
-      className="rounded-2xl px-4 py-3.5"
-      style={{
-        backgroundColor: "var(--background-card)",
-        border: tone === "debt" ? "1px solid rgba(201,169,97,0.4)" : "1px solid var(--border-card)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[13px] font-semibold flex-1" style={{ color: "var(--foreground)" }}>
-          {title}
-        </span>
-        {conceptInfo && (
-          <InfoIconButton label={`What is this?`} onClick={() => setInfoOpen((v) => !v)} active={infoOpen} />
+    <div className="relative z-[1] flex gap-3.5 items-start">
+      <div className="flex justify-center pt-4" style={{ flex: "0 0 20px" }}>
+        <span
+          style={{
+            width: stage.current ? 15 : 12,
+            height: stage.current ? 15 : 12,
+            borderRadius: "50%",
+            background: stage.current ? "var(--amber, #d4a13a)" : "var(--background)",
+            border: `1.5px solid ${stage.current ? "var(--amber, #d4a13a)" : "var(--brass)"}`,
+            boxShadow: stage.current ? "0 0 0 4px rgba(212,161,58,0.16), 0 0 10px rgba(212,161,58,0.6)" : "none",
+          }}
+        />
+      </div>
+      <div
+        className="flex-1 min-w-0 rounded-[15px] overflow-hidden"
+        style={{ border: `0.5px solid ${stage.current ? "rgba(212,161,58,0.32)" : "var(--border-card)"}`, background: stage.current ? "linear-gradient(165deg, rgba(212,161,58,0.10), var(--background-card))" : "var(--background-card)" }}
+      >
+        <button onClick={onToggle} className="w-full text-left px-4 py-3.5" style={{ border: "none", background: "none", cursor: "pointer" }}>
+          <div className="flex items-center gap-2.5 mb-[11px]">
+            <span className="text-[9px] tracking-[0.18em] uppercase font-bold" style={{ color: stage.current ? "var(--amber, #d4a13a)" : "var(--foreground-faint)" }}>{stage.age}</span>
+            {stage.current && <span className="text-[8px] tracking-[0.12em] uppercase font-bold" style={{ color: "var(--amber, #d4a13a)" }}>• Now</span>}
+            <span className="ml-auto text-[13px] transition-transform" style={{ color: "var(--brass)", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+          </div>
+          <div className="flex gap-5">
+            <span className="flex items-baseline gap-1.5">
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 26, color: "var(--brass)", lineHeight: 1 }}>{stage.pinnacle}</span>
+              <span className="text-[9px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-muted)" }}>Pinnacle</span>
+            </span>
+            <span className="flex items-baseline gap-1.5">
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 26, color: "var(--foreground-secondary)", lineHeight: 1 }}>{stage.challenge}</span>
+              <span className="text-[9px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-muted)" }}>Challenge</span>
+            </span>
+          </div>
+        </button>
+        {open && (
+          <div className="px-4 pb-4">
+            <p className="text-[13px] leading-[1.65] mb-3.5" style={{ color: "var(--foreground-secondary)" }}>{stage.body}</p>
+            {stage.theme && (
+              <>
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold mb-1" style={{ color: "var(--amber, #d4a13a)" }}>Watch out for</p>
+                <p className="text-[12.5px] leading-[1.6] mb-3" style={{ color: "var(--foreground)" }}>{stage.theme}</p>
+              </>
+            )}
+            {stage.lesson && (
+              <>
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold mb-1" style={{ color: "var(--brass)" }}>The lesson</p>
+                <p className="text-[12.5px] leading-[1.6]" style={{ color: "var(--foreground)" }}>{stage.lesson}</p>
+              </>
+            )}
+          </div>
         )}
       </div>
-      {infoOpen && conceptInfo && (
-        <p className="text-[12px] leading-relaxed mb-2" style={{ color: "var(--foreground-muted)" }}>
-          {conceptInfo}
-        </p>
-      )}
-      <p className="text-[12px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-        {body}
-      </p>
-      {application && (
-        <p className="text-[12px] leading-relaxed mt-2" style={{ color: "var(--foreground-secondary)" }}>
-          <span className="text-[9px] tracking-[0.16em] uppercase font-semibold mr-1.5" style={{ color: "var(--brass)" }}>
-            Try this
-          </span>
-          {application}
-        </p>
-      )}
     </div>
   );
 }
 
-function Tag({ children, tone }: { children: React.ReactNode; tone?: "debt" }) {
+function NmNameResult({
+  num, title, from, math, body, open, onToggle,
+}: {
+  num: number; title: string; from: string; math: string; body: string; open: boolean; onToggle: () => void;
+}) {
   return (
-    <span
-      className="text-[9px] tracking-[0.08em] uppercase px-1.5 py-0.5 rounded-full font-semibold"
-      style={
-        tone === "debt"
-          ? { backgroundColor: "rgba(122,48,40,0.25)", color: "var(--brass-light)" }
-          : { backgroundColor: "rgba(201,169,97,0.18)", color: "var(--brass)" }
-      }
-    >
-      {children}
-    </span>
+    <div className="rounded-[14px] overflow-hidden" style={{ border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}>
+      <button onClick={onToggle} className="w-full flex items-center gap-[13px] px-4 py-[13px] text-left" style={{ border: "none", background: "none", cursor: "pointer" }}>
+        <span className="shrink-0 flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: "50%", fontFamily: "var(--font-heading)", fontSize: 20, color: "var(--brass)", background: "var(--background)", border: "1px solid var(--border-card)" }}>{num}</span>
+        <span className="flex-1 min-w-0">
+          <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.15 }}>{title}</span>
+          <span className="block text-[10.5px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{from}</span>
+        </span>
+        <span className="shrink-0 text-[11px]" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>{math}</span>
+        <span className="shrink-0 text-[13px] transition-transform" style={{ color: "var(--brass)", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <div className="h-px mb-3.5" style={{ background: "var(--border-card)" }} />
+          <p className="text-[13px] leading-[1.7]" style={{ color: "var(--foreground)" }}>{body}</p>
+        </div>
+      )}
+    </div>
   );
 }
