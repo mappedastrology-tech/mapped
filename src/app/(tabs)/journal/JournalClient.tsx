@@ -472,6 +472,17 @@ function JournalPage() {
     }) || null;
   }, [entries]);
 
+  const composeDate = useMemo(() => {
+    const d = new Date();
+    return {
+      day: d.getDate(),
+      month: d.toLocaleDateString("en-US", { month: "long" }),
+      weekday: d.toLocaleDateString("en-US", { weekday: "long" }),
+      year: d.getFullYear(),
+    };
+  }, []);
+  const composeMoonLabel = useMemo(() => getMoonPhase(new Date())?.label || "", []);
+
   if (loading) {
     return <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" /></div>;
   }
@@ -505,13 +516,29 @@ function JournalPage() {
         )}
 
         <div className="flex-1 px-5 pb-6 flex flex-col overflow-y-auto">
-          {/* Prompt card */}
+          {/* Date header */}
+          <div className="flex items-baseline gap-2.5 mb-1.5">
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 54, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{composeDate.day}</span>
+            <div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)" }}>{composeDate.month}</div>
+              <div className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{composeDate.weekday} · {composeDate.year}</div>
+            </div>
+          </div>
+          {composeMoonLabel && (
+            <div className="inline-flex items-center gap-1.5 self-start mb-5 mt-1 px-3 py-1.5 rounded-full" style={{ background: "rgba(184,160,210,0.12)", border: "0.5px solid rgba(184,160,210,0.28)" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+              <span className="text-[11px]" style={{ color: "var(--foreground-secondary)" }}>{composeMoonLabel}</span>
+            </div>
+          )}
+
+          {/* Prompt — left-bordered accent */}
           {currentPrompt && (
-            <div className="rounded-2xl border border-foreground/10 bg-foreground/3 p-5 mb-4 animate-in fade-in duration-300">
-              <p className="text-sm text-foreground leading-relaxed italic mb-3">{currentPrompt.text}</p>
-              <div className="flex gap-3">
+            <div className="mb-6" style={{ borderLeft: "2px solid var(--lavender)", padding: "2px 0 2px 16px" }}>
+              <p className="text-[10px] uppercase font-bold mb-1.5" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</p>
+              <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.45, color: "var(--foreground)" }}>{currentPrompt.text}</p>
+              <div className="flex gap-3 mt-2.5">
                 {promptCycleCount < 2 && (
-                  <button onClick={cyclePrompt} className="text-[11px] text-terracotta/70 hover:text-terracotta transition-colors">
+                  <button onClick={cyclePrompt} className="text-[11px] transition-colors" style={{ color: "var(--lavender)" }}>
                     Different prompt
                   </button>
                 )}
@@ -519,9 +546,6 @@ function JournalPage() {
                   Write something else
                 </button>
               </div>
-              {promptCycleCount >= 2 && (
-                <p className="text-[10px] text-muted mt-2">Run out of prompts? Just write something.</p>
-              )}
             </div>
           )}
 
@@ -541,7 +565,7 @@ function JournalPage() {
 
           {/* Mood picker */}
           <div className="mb-4">
-            <p className="text-[11px] text-muted uppercase tracking-widest mb-2">How are you feeling?</p>
+            <p className="text-[11px] text-muted uppercase tracking-widest mb-2">How the night felt</p>
             <div className="flex flex-wrap gap-1.5">
               {MOOD_PALETTE.map((m) => (
                 <button
