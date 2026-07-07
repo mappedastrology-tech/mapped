@@ -831,10 +831,13 @@ function JournalPage() {
     <main className="min-h-full bg-background">
       <div className="max-w-lg mx-auto px-5 py-6 pb-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>Journal</h1>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1, color: "var(--lavender)", margin: "0 0 2px" }}>Your reflections,</p>
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 36, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1, color: "var(--foreground)" }}>Journal</h1>
+          </div>
           {remaining !== null && activeTab === "calendar" && (
-            <span className="text-[10px] text-muted bg-foreground/5 px-2 py-1 rounded-full">
+            <span className="text-[10px] text-muted bg-foreground/5 px-2 py-1 rounded-full mt-1">
               {remaining} left this month
             </span>
           )}
@@ -1123,46 +1126,36 @@ function JournalPage() {
           <>
             <JournalCalendar entries={entries} onSelectEntry={openEntry} />
 
-            {/* Today's Prompt Card */}
-            <div className="rounded-2xl border border-foreground/12 bg-foreground/3 p-5 mb-5 mt-6">
-              <p className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-2">Today</p>
+            {/* Tonight's Prompt Card */}
+            <div
+              className="relative overflow-hidden p-5 mb-5 mt-6"
+              style={{ borderRadius: 20, background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.18)" }}
+            >
+              <div aria-hidden="true" className="absolute pointer-events-none" style={{ top: -30, right: -24, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,206,232,0.12), transparent 68%)" }} />
+              <div className="relative flex items-center gap-1.5 mb-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /><circle cx="12" cy="12" r="3.4" /></svg>
+                <span className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</span>
+              </div>
               {todayEntry ? (
-                <>
+                <div className="relative">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(123,160,85,0.25)" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
-                    <span className="text-sm font-medium text-foreground">Complete</span>
-                    {todayEntry.mood && (
-                      <span className="px-2 py-0.5 rounded-full bg-terracotta/15 text-[10px] text-terracotta font-medium">{todayEntry.mood}</span>
-                    )}
+                    <span className="text-sm font-medium" style={{ color: "#f0e6d2" }}>Complete for today</span>
                   </div>
-                  <p className="text-sm text-secondary leading-relaxed mb-3 line-clamp-2">{(todayEntry.text || todayEntry.content || "").slice(0, 120)}</p>
-                  <button
-                    onClick={() => openEntry(todayEntry)}
-                    className="px-4 py-2 rounded-full border border-foreground/15 text-muted text-xs font-medium"
-                  >
-                    Edit entry
+                  <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: "rgba(240,230,210,0.75)" }}>{(todayEntry.text || todayEntry.content || "").slice(0, 120)}</p>
+                  <button onClick={() => openEntry(todayEntry)} className="w-full py-3.5 rounded-full text-xs font-bold uppercase tracking-[0.1em]" style={{ background: "var(--lavender)", color: "#161022" }}>
+                    Edit tonight&rsquo;s entry
                   </button>
-                </>
+                </div>
               ) : (
-                <>
-                  <p className="text-sm text-secondary italic leading-relaxed mb-4">{todayPrompt.text}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={startCompose}
-                      className="px-4 py-2 rounded-full bg-terracotta text-cream text-xs font-medium"
-                    >
-                      Begin entry
-                    </button>
-                    <button
-                      onClick={startCompose}
-                      className="px-4 py-2 rounded-full border border-foreground/15 text-muted text-xs"
-                    >
-                      Write something else
-                    </button>
-                  </div>
-                </>
+                <div className="relative">
+                  <p className="mb-4" style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 22, lineHeight: 1.4, color: "#f0e6d2" }}>{todayPrompt.text}</p>
+                  <button onClick={startCompose} className="w-full py-3.5 rounded-full text-xs font-bold uppercase tracking-[0.1em]" style={{ background: "var(--lavender)", color: "#161022" }}>
+                    Begin writing
+                  </button>
+                </div>
               )}
             </div>
 
