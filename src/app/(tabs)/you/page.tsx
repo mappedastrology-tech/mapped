@@ -1163,7 +1163,7 @@ export default function YouTab() {
   const [cuspDismissed, setCuspDismissed] = useState(false);
   const [openAspect, setOpenAspect] = useState<string | null>(null);
   const [aspectTab, setAspectTab] = useState<"strong" | "medium" | "mild">("strong");
-  const [pageTab, setPageTab] = useState<"placements" | "insights">("placements");
+  const [pageTab, setPageTab] = useState<"placements" | "aspects" | "insights">("placements");
   const [accountName, setAccountName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1505,27 +1505,26 @@ export default function YouTab() {
       </div>
 
       {/* ═══ PAGE TAB SWITCHER ═══ */}
-      <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ backgroundColor: "rgba(201, 169, 97, 0.08)" }}>
-        {([
-          { key: "placements" as const, label: "Placements" },
-          { key: "insights" as const, label: "Insights" },
-        ]).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setPageTab(tab.key)}
-            className={`flex-1 py-2.5 rounded-lg text-[11px] font-semibold tracking-[0.12em] uppercase transition-all ${
-              pageTab === tab.key
-                ? "shadow-sm"
-                : "hover:opacity-80"
-            }`}
-            style={pageTab === tab.key
-              ? { backgroundColor: "var(--plum)", color: "var(--brass)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }
-              : { color: "var(--foreground-secondary)" }
-            }
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="sticky top-0 z-[5] py-2 mb-4" style={{ background: "var(--background)" }}>
+        <div className="flex gap-[5px] p-1 rounded-[13px]" style={{ background: "var(--background-card)" }}>
+          {([
+            { key: "placements" as const, label: "Placements" },
+            { key: "aspects" as const, label: "Aspects" },
+            { key: "insights" as const, label: "Insights" },
+          ]).map((tab) => {
+            const active = pageTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setPageTab(tab.key)}
+                className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
+                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ═══ INSIGHTS TAB ═══ */}
@@ -2107,6 +2106,10 @@ export default function YouTab() {
           );
         })()}
       </div>
+      </>)}
+
+      {/* ═══ ASPECTS TAB (tensions + aspects) ═══ */}
+      {pageTab === "aspects" && (<>
 
       {/* ═══ TENSIONS ═══ */}
       {contradictions.length > 0 && (
