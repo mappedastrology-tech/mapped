@@ -14,6 +14,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel, { SIGN_NAMES } from "@/components/ChartWheel";
+import ChartWheelStar from "@/components/ChartWheelStar";
 // Interpretations removed — Big 3 section no longer shown
 import PlacementAccordion from "@/components/PlacementAccordion";
 import InfoTip from "@/components/InfoTip";
@@ -1402,19 +1403,19 @@ export default function YouTab() {
   return (
     <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
       {/* Header */}
-      <div className="text-center mb-6">
-        <p className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3" style={{ color: "var(--brass)" }}>
-          your chart
+      <div className="text-center mb-1 pt-1">
+        <p className="text-[9px] tracking-[0.28em] uppercase font-bold mb-1.5" style={{ color: "var(--brass)" }}>
+          Your chart
         </p>
         <h1
-          className="text-[26px] tracking-[0.18em] uppercase mb-1.5"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
+          style={{ fontFamily: "var(--font-script)", fontSize: 50, lineHeight: 1, fontWeight: 400, color: "var(--foreground)" }}
         >
-          {name}
+          {name.split(" ")[0]}
         </h1>
-        <p className="text-[13px]" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-secondary)" }}>
+        <p className="text-[11.5px] mt-2" style={{ color: "var(--foreground-muted)" }}>
           {chartData.birthDate} · {chartData.birthTime}
           {unknownTime && " (approx)"}
+          {chartData.cityName ? ` · ${chartData.cityName}` : ""}
         </p>
         <button
           onClick={() => router.push("/chart/new?edit=true")}
@@ -1430,27 +1431,39 @@ export default function YouTab() {
         </button>
       </div>
 
-      {/* Chart Wheel */}
-      <div className="mb-8 relative">
-        <div className="absolute inset-0 bg-lavender/5 rounded-full blur-2xl" />
-        <ChartWheel planets={planets} houses={unknownTime ? [] : effectiveHouses} />
+      {/* Chart Wheel — plum star-map */}
+      <div className="mt-4 mb-2">
+        <ChartWheelStar planets={planets} houses={unknownTime ? [] : effectiveHouses} aspects={chartData.aspects || []} />
       </div>
 
-      {/* Big 3 pills (Rising hidden when birth time is unknown) */}
-      <div className="flex flex-wrap justify-center gap-2 mb-4">
+      {/* Aspect legend */}
+      <div className="flex justify-center items-center flex-wrap gap-4 mt-2.5 mb-1">
+        <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
+          <span style={{ width: 16, borderTop: "2px solid #79aee0" }} />Harmonious
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
+          <span style={{ width: 16, borderTop: "2px dashed #e08c7a" }} />Challenging
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
+          <span style={{ width: 16, borderTop: "2px solid #e6cf8c" }} />Conjunction
+        </span>
+      </div>
+
+      {/* Big 3 — Sun / Moon / Rising (Rising hidden when birth time is unknown) */}
+      <div className="flex justify-center mt-3.5 mb-4">
         {[
-          { label: "Sun", sign: effectiveBigThree.sun },
-          { label: "Moon", sign: effectiveBigThree.moon },
-          ...(unknownTime ? [] : [{ label: "Rising", sign: effectiveBigThree.rising }]),
-        ].map(({ label, sign }) => (
+          { label: "Sun", sign: effectiveBigThree.sun, glyph: "☉" },
+          { label: "Moon", sign: effectiveBigThree.moon, glyph: "☽" },
+          ...(unknownTime ? [] : [{ label: "Rising", sign: effectiveBigThree.rising, glyph: "↑" }]),
+        ].map(({ label, sign, glyph }, i) => (
           <div
             key={label}
-            className="px-4 py-2 rounded-full text-sm font-medium"
-            style={{ backgroundColor: "var(--brass)", color: "#1a1420" }}
+            className="flex-1 text-center px-1.5"
+            style={{ borderLeft: i === 0 ? "none" : "1px solid var(--border-card)", maxWidth: 130 }}
           >
-            <span style={{ opacity: 0.7 }}>{label}</span>
-            <span className="mx-1.5">·</span>
-            <span className="font-semibold">{SIGN_NAMES[sign] || sign}</span>
+            <span className="block leading-none" style={{ fontFamily: "var(--font-glyph, serif)", fontSize: 19, color: "var(--brass)" }}>{glyph}</span>
+            <span className="block mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 20, letterSpacing: "0.03em", color: "var(--foreground)" }}>{SIGN_NAMES[sign] || sign}</span>
+            <span className="block mt-1 text-[8.5px] tracking-[0.2em] uppercase font-semibold" style={{ color: "var(--foreground-faint)" }}>{label}</span>
           </div>
         ))}
       </div>
