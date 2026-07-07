@@ -777,40 +777,35 @@ export default function DollyTab() {
   // ═══════════════════════════════════════════
   return (
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-foreground/15">
-        <div className="flex items-center gap-3">
-          {/* Back to chats */}
-          <button
-            onClick={openHistory}
-            aria-label="Back to conversations"
-            className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center text-muted hover:text-foreground transition-colors active:scale-95"
-          >
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div>
-            <h1
-              className="text-lg text-foreground"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Dolly
-            </h1>
-            <p className="text-muted text-[10px] uppercase tracking-widest">
-              {viewingDay && viewingDay !== new Date().toISOString().split("T")[0]
-                ? formatConvoDate(viewingDay)
-                : chart?.bigThree
-                  ? `Reading for ${userName || "you"}`
-                  : "No chart loaded"
-              }
-            </p>
+      {/* Header — moon-orb avatar + DOLLY */}
+      <style>{`@keyframes dl-orb{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes dl-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.06)}}`}</style>
+      <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--border-card)" }}>
+        <button
+          onClick={openHistory}
+          aria-label="Back to conversations"
+          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors active:scale-95"
+          style={{ color: "var(--foreground-muted)" }}
+        >
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
+          <div aria-hidden="true" className="absolute rounded-full" style={{ inset: -5, background: "radial-gradient(circle, var(--lavender), transparent 68%)", opacity: 0.4, animation: "dl-glow 4s ease-in-out infinite" }} />
+          <div className="relative rounded-full" style={{ width: 44, height: 44, background: "radial-gradient(circle at 34% 30%, #e9ecfa 0%, #b9bfe0 32%, #6d6aa0 74%, #3c3564 100%)", boxShadow: "inset -4px -5px 10px rgba(30,20,50,0.5)", animation: "dl-orb 5s ease-in-out infinite" }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>DOLLY</h1>
+            <span className="rounded-full" style={{ width: 6, height: 6, background: "var(--sage)", boxShadow: "0 0 7px var(--sage)" }} />
           </div>
+          <p style={{ fontFamily: "var(--font-script)", fontSize: 18, lineHeight: 1, color: "var(--lavender)", marginTop: 1 }}>your cosmic guide</p>
         </div>
         {messages.length > 0 && (
           <button
             onClick={handleNewChat}
-            className="text-muted text-xs px-3 py-1.5 rounded-lg border border-foreground/15 hover:text-foreground hover:border-foreground/15 transition-colors"
+            className="shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
           >
             New chat
           </button>
@@ -830,8 +825,8 @@ export default function DollyTab() {
               </svg>
             </div>
             <p
-              className="text-foreground text-lg mb-1"
-              style={{ fontFamily: "var(--font-display)" }}
+              className="text-foreground mb-1"
+              style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}
             >
               Ask Dolly anything
             </p>
@@ -857,35 +852,24 @@ export default function DollyTab() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`mb-4 ${msg.role === "user" ? "flex justify-end" : ""}`}
+            className={`mb-[18px] flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "user" ? (
-              <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-br-sm bg-terracotta/15 border border-terracotta/20">
-                <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                  {msg.content}
-                </p>
+              <div
+                className="max-w-[82%] px-4 py-3"
+                style={{ background: "var(--lavender)", color: "#161022", borderRadius: "20px 6px 20px 20px" }}
+              >
+                <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p>
               </div>
             ) : (
-              <div className="max-w-[92%]">
-                {/* Dolly label */}
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-5 h-5 rounded-full bg-terracotta/10 border border-terracotta/15 flex items-center justify-center">
-                    <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" strokeWidth="2"
-                         stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round"
-                         className="opacity-50">
-                      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                    </svg>
-                  </div>
-                  <span className="text-muted text-[10px] uppercase tracking-widest">Dolly</span>
-                </div>
-                {/* Message content */}
-                <div className="text-secondary text-sm leading-relaxed whitespace-pre-wrap pl-7">
+              <div
+                className="max-w-[88%] px-[19px] py-[17px]"
+                style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
+              >
+                <div className="text-sm leading-[1.7] whitespace-pre-wrap" style={{ color: "rgba(240,230,210,0.9)" }}>
                   {msg.content}
-                  {isStreaming && msg === messages[messages.length - 1] && !msg.content && (
-                    <span className="inline-block w-2 h-4 bg-terracotta/40 animate-pulse ml-0.5" />
-                  )}
-                  {isStreaming && msg === messages[messages.length - 1] && msg.content && (
-                    <span className="inline-block w-1.5 h-4 bg-terracotta/30 animate-pulse ml-0.5" />
+                  {isStreaming && msg === messages[messages.length - 1] && (
+                    <span className="inline-block w-1.5 h-4 animate-pulse ml-0.5 align-middle" style={{ background: "var(--lavender)" }} />
                   )}
                 </div>
               </div>
@@ -897,14 +881,14 @@ export default function DollyTab() {
       </div>
 
       {/* Input area */}
-      <div className="px-4 pb-4 pt-2 border-t border-foreground/15">
-        <div className="flex items-end gap-2 bg-card/50 border border-foreground/18 rounded-2xl px-4 py-2 focus-within:border-terracotta/30 focus-within:ring-1 focus-within:ring-terracotta/15 transition-all">
+      <div className="px-4 pb-4 pt-2">
+        <div className="flex items-end gap-2 pl-[18px] pr-2 py-2 transition-all" style={{ background: "var(--soft, rgba(255,255,255,0.05))", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isStreaming ? "Reading the stars..." : "Ask Dolly anything..."}
+            placeholder={isStreaming ? "Reading the stars..." : "Ask Dolly anything…"}
             aria-label="Chat message"
             disabled={isStreaming}
             rows={1}
@@ -919,15 +903,12 @@ export default function DollyTab() {
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
-            className="flex-shrink-0 w-8 h-8 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
             aria-label="Send message"
-            style={{ backgroundColor: input.trim() && !isStreaming ? "var(--terracotta)" : "transparent" }}
+            style={{ backgroundColor: "var(--lavender)" }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke={input.trim() && !isStreaming ? "var(--btn-primary-text)" : "var(--foreground)"}
-                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#161022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M7 12h11M13 6l6 6-6 6" />
             </svg>
           </button>
         </div>
