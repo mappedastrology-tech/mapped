@@ -44,6 +44,13 @@ import { getCachedLocation, fetchUserLocation, type UserLocation } from "@/lib/u
 
 const RITUAL_PREFS_KEY = "mapped:ritual-modalities";
 
+/** Decorative stars behind the Today hero moon — [x%, y%, size, opacity]. */
+const RITUAL_HERO_STARS: [number, number, number, number][] = [
+  [12, 14, 1.6, 0.5], [30, 8, 1.3, 0.4], [52, 18, 1.5, 0.45], [70, 10, 1.7, 0.32],
+  [86, 22, 1.3, 0.4], [20, 30, 1.2, 0.35], [62, 32, 1.5, 0.3], [42, 40, 1.2, 0.4],
+  [80, 40, 1.4, 0.36], [16, 46, 1.3, 0.3], [92, 12, 1.2, 0.42], [50, 6, 1.4, 0.3],
+];
+
 const RITUAL_MODALITIES = [
   { id: "crystals", icon: "💎", label: "Crystals" },
   { id: "candle", icon: "🕯", label: "Candles" },
@@ -971,25 +978,35 @@ export default function RitualPageContent() {
     return `${weekday} · ${phaseWord} ${moonSign} MOON`;
   }, [today, energy.moonPhase.label, almanacMoonSign]);
 
+  const ritualGreeting = useMemo(() => {
+    const h = today.getHours();
+    return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  }, [today]);
+
   // Calendar expanded state
   const [showCalendar, setShowCalendar] = useState(false);
 
   return (
     <main className="flex-1 flex flex-col max-w-lg mx-auto w-full pb-6 px-5">
 
-      {/* ═══ DATE CONTEXT LINE + CUSTOMIZE ═══ */}
-      <div className="pt-5" />
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] uppercase tracking-[0.15em] font-semibold" style={{ color: "var(--foreground-muted)" }}>
-          {contextLine}
-        </p>
+      {/* ═══ GREETING HEADER ═══ */}
+      <div className="relative pt-5 pb-4">
         <button
           onClick={() => setShowCustomize(true)}
-          className="text-[11px] font-medium transition-colors"
-          style={{ color: "var(--foreground-faint)" }}
+          className="absolute right-0 text-[11px] font-medium px-3 py-1.5 rounded-full transition-colors"
+          style={{ top: 20, color: "var(--foreground-faint)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
         >
           Customize
         </button>
+        <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1, color: "var(--brass)", margin: "0 0 2px" }}>
+          {ritualGreeting},
+        </p>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 40, fontWeight: 400, letterSpacing: "0.04em", lineHeight: 1, margin: "0 0 9px", color: "var(--foreground)" }}>
+          Seeker <span style={{ fontFamily: "var(--font-script)", fontSize: 24, color: "var(--brass)" }}>☾</span>
+        </h1>
+        <p className="text-[13.5px] leading-[1.5]" style={{ color: "var(--foreground-muted)" }}>
+          Small rituals for whatever you&rsquo;re calling in — matched to tonight&rsquo;s moon.
+        </p>
       </div>
 
       {/* ═══ ACTIVE RITUAL (pinned multi-day practice — shown above today's ritual when active) ═══ */}
@@ -1048,46 +1065,46 @@ export default function RitualPageContent() {
         );
       })()}
 
-      {/* ═══ TODAY'S RITUAL (Editorial hero — no card border) ═══ */}
-      <div className="mb-6">
-        {/* Element icon */}
-        <div className="mb-3">
-          <RitualIcon name={dailySuggestion.element} size={64} />
+      {/* ═══ TODAY HERO CARD (moon + tonight's ritual) ═══ */}
+      <div
+        className="relative overflow-hidden mb-3"
+        style={{ height: 344, borderRadius: 26, background: "linear-gradient(178deg,#43213c 0%,#2a1530 62%,#1d0f24 100%)", border: "0.5px solid rgba(201,169,97,0.18)", boxShadow: "0 16px 38px rgba(0,0,0,0.4)" }}
+      >
+        {/* starfield + glow */}
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+          {RITUAL_HERO_STARS.map(([x, y, s, o], i) => (
+            <span key={i} className="absolute rounded-full" style={{ left: `${x}%`, top: `${y}%`, width: s, height: s, background: "#e8dfc4", opacity: o }} />
+          ))}
         </div>
+        <div aria-hidden="true" className="absolute pointer-events-none" style={{ top: 22, left: "50%", transform: "translateX(-50%)", width: 172, height: 172, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.22), transparent 66%)" }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} style={{ position: "absolute", top: 28, left: "50%", transform: "translateX(-50%)", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.5))" }} />
 
-        {/* Title — large editorial heading */}
-        <h1 className="text-[32px] font-semibold mb-3 leading-[1.15]" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
-          {dailySuggestion.title}
-        </h1>
-
-        {/* Subtitle line: duration · tier */}
-        <p className="text-[15px] mb-5" style={{ color: "var(--foreground-muted)" }}>
-          {dailySuggestion.duration || "5 min"} · {dailySuggestion.tier === 0 ? "No tools" : dailySuggestion.tier === 1 ? "Household" : dailySuggestion.tier === 2 ? "Crystals" : dailySuggestion.tier === 3 ? "Full Practice" : "Advanced"}
-        </p>
-
-        {/* Tagline — short italic description */}
-        <p className="text-[17px] leading-relaxed mb-8 italic opacity-70" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
-          {dailySuggestion.description.split(".")[0]}.
-        </p>
-
-        {/* Begin button */}
-        <button
-          onClick={() => setExpandedRitual(expandedRitual === dailySuggestion.id ? null : dailySuggestion.id)}
-          className="w-full py-4 rounded-2xl text-[15px] font-bold uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-          style={{ letterSpacing: "0.15em", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-        >
-          Begin
-        </button>
-
-        {/* Something else */}
-        <button
-          onClick={() => setShowRefresh(true)}
-          className="w-full py-3 mt-1 text-[14px] font-medium transition-colors"
-          style={{ color: "var(--foreground-faint)" }}
-        >
-          Something else
-        </button>
+        <div className="absolute left-0 right-0 bottom-0" style={{ padding: "22px 24px 24px", background: "linear-gradient(180deg,transparent 0%,rgba(20,10,26,0.5) 32%,rgba(20,10,26,0.92) 100%)" }}>
+          <p className="text-[9.5px] uppercase font-bold mb-2" style={{ letterSpacing: "0.2em", color: "#e0c488" }}>{contextLine}</p>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 30, fontWeight: 500, lineHeight: 1.05, letterSpacing: "-0.01em", margin: "0 0 6px", color: "#f6efdc" }}>
+            {dailySuggestion.title}
+          </h2>
+          <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: 14.5, lineHeight: 1.45, color: "#cbbf9e", margin: "0 0 16px" }}>
+            {dailySuggestion.description.split(".")[0]}.
+          </p>
+          <button
+            onClick={() => setExpandedRitual(expandedRitual === dailySuggestion.id ? null : dailySuggestion.id)}
+            className="w-full active:scale-[0.98] transition-transform"
+            style={{ padding: 15, borderRadius: 99, border: "none", cursor: "pointer", background: "#e0c488", color: "#1a1420", fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}
+          >
+            Begin tonight&rsquo;s ritual
+          </button>
+        </div>
       </div>
+      {/* Something else */}
+      <button
+        onClick={() => setShowRefresh(true)}
+        className="w-full py-3 mb-4 text-[14px] font-medium transition-colors"
+        style={{ color: "var(--foreground-faint)" }}
+      >
+        Something else
+      </button>
 
       {/* Expanded today's ritual detail */}
       {expandedRitual === dailySuggestion.id && (
