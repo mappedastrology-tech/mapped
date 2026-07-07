@@ -665,58 +665,48 @@ export default function TarotTab() {
      ═══════════════════════════════════════════ */
   if (view === "decks") {
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
-        <h1 className="text-2xl text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>
-          Tarot & Oracle
-        </h1>
-        <p className="text-muted text-xs text-center mb-6">Pull a card. See what surfaces.</p>
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+        <div className="text-center pt-1 pb-1">
+          <p style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 400, letterSpacing: "0.16em", textTransform: "uppercase", lineHeight: 1.1, color: "var(--foreground)" }}>Tarot</p>
+          <p style={{ fontFamily: "var(--font-script)", fontSize: 38, lineHeight: 1, marginTop: -2, color: "var(--brass)" }}>choose your deck</p>
+          <p className="text-[11.5px] leading-relaxed mx-auto mt-3" style={{ maxWidth: 300, color: "var(--foreground-muted)" }}>
+            Pick a deck to read from. Each carries its own voice — then you&rsquo;ll choose how to lay the cards.
+          </p>
+        </div>
 
-        {/* Decks */}
-        <div className="space-y-4">
-            {/* Classic Tarot */}
-            <button onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }} className="w-full text-left">
-              <div className="rounded-2xl overflow-hidden border border-foreground/18 active:scale-[0.98] transition-transform">
-                <div className="h-28 flex items-center justify-center relative gap-2" style={{ background: "linear-gradient(135deg, #f0e6d2, #e8dcc4, #f0e6d2)" }}>
-                  {["major-0", "major-8", "major-13", "cups-1", "wands-14"].map((id, idx) => (
-                    <Image key={id} src={getCardImagePath(id)!} alt="" width={48} height={77}
-                      className="h-20 w-auto rounded-md shadow-md border border-foreground/15 object-cover"
-                      style={{ transform: `rotate(${(idx - 2) * 4}deg)` }} draggable={false} />
-                  ))}
-                </div>
-                <div className="p-4 bg-foreground/3">
-                  <h3 className="text-foreground text-sm font-medium mb-0.5">Classic Tarot</h3>
-                  <p className="text-muted text-xs">78 cards · Major & Minor Arcana</p>
-                </div>
-              </div>
-            </button>
-
-            {/* AstroTarot removed */}
-
-            {/* Oracle Decks from registry */}
-            {ORACLE_DECK_REGISTRY.map((deck) => (
-              <button key={deck.id} onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }} className="w-full text-left">
-                <div className="rounded-2xl overflow-hidden border border-foreground/18 active:scale-[0.98] transition-transform">
-                  <div className="h-28 flex items-center justify-center relative gap-2" style={{ background: "linear-gradient(135deg, #f0e6d2, #e8dcc4, #f0e6d2)" }}>
-                    {[1, 6, 11, 22, 28].slice(0, Math.min(5, deck.cardCount)).map((n, idx) => (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img key={n} src={deck.cards[Math.min(n - 1, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${n}.png`} alt=""
-                        className="h-20 rounded-md shadow-md border border-foreground/15 object-cover"
-                        style={{ transform: `rotate(${(idx - 2) * 4}deg)` }} />
-                    ))}
-                  </div>
-                  <div className="p-4 bg-foreground/3">
-                    <h3 className="text-foreground text-sm font-medium mb-0.5">{deck.name}</h3>
-                    <p className="text-muted text-xs">{deck.cardCount} cards · {deck.description}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-
-            {/* Other purchased oracle decks */}
-            {oracleDecks.filter(d => d.purchased).map(deck => (
-              <DeckCard key={deck.id} title={deck.name} subtitle={`${deck.cardCount} cards`}
-                gradient={deck.coverColor} onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }} />
-            ))}
+        {/* Decks — plum horizontal cards with fanned cover */}
+        <div className="flex flex-col gap-4 mt-7">
+          <DeckRow
+            tag="Tarot · 78 cards"
+            name="Classic Tarot"
+            sub="The full Major & Minor Arcana — the traditional voice."
+            count="78 cards"
+            covers={["major-0", "major-8", "major-13"].map((id) => getCardImagePath(id)!).filter(Boolean)}
+            onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }}
+          />
+          {ORACLE_DECK_REGISTRY.map((deck) => (
+            <DeckRow
+              key={deck.id}
+              tag={`Oracle · ${deck.cardCount} cards`}
+              name={deck.name}
+              sub={deck.description}
+              count={`${deck.cardCount} cards`}
+              covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.png`)}
+              onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }}
+            />
+          ))}
+          {oracleDecks.filter((d) => d.purchased).map((deck) => (
+            <DeckRow
+              key={deck.id}
+              tag={`Oracle · ${deck.cardCount} cards`}
+              name={deck.name}
+              sub={deck.description || ""}
+              count={`${deck.cardCount} cards`}
+              covers={[]}
+              gradient={deck.coverColor}
+              onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }}
+            />
+          ))}
         </div>
 
         {/* ─── Past Readings ─── */}
@@ -1685,6 +1675,41 @@ function DeckCard({ title, subtitle, gradient, onClick }: {
           <p className="text-muted text-xs">{subtitle}</p>
         </div>
       </div>
+    </button>
+  );
+}
+
+/* ─── Design deck row — plum card with fanned cover (Choose your deck) ─── */
+function DeckRow({ tag, name, sub, count, covers, gradient, onClick }: {
+  tag: string; name: string; sub: string; count: string; covers: string[]; gradient?: string; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left active:scale-[0.99] transition-transform"
+      style={{ border: "0.5px solid rgba(201,169,97,0.16)", borderRadius: 22, background: "#4a2540", padding: "18px 18px 18px 16px", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 6px 22px rgba(0,0,0,0.34)" }}
+    >
+      <span className="shrink-0 relative block" style={{ width: 118, height: 150 }}>
+        {covers.length > 0 ? (
+          covers.slice(0, 3).map((img, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={img}
+              alt=""
+              style={{ position: "absolute", top: 8, left: 12 + i * 20, width: 74, height: 118, objectFit: "cover", borderRadius: 8, transform: `rotate(${(i - 1) * 8}deg)`, boxShadow: "0 6px 14px -6px rgba(0,0,0,0.7)", border: "0.5px solid rgba(154,115,34,0.4)", zIndex: i }}
+            />
+          ))
+        ) : (
+          <span style={{ position: "absolute", inset: 8, borderRadius: 10, background: gradient || "#2a1e3d", border: "0.5px solid rgba(154,115,34,0.4)" }} />
+        )}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{tag}</span>
+        <span className="block mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 21, lineHeight: 1.1, color: "#f0e6d2" }}>{name}</span>
+        <span className="block text-[12.5px] italic mt-1" style={{ lineHeight: 1.45, color: "rgba(240,230,210,0.6)" }}>{sub}</span>
+        <span className="inline-flex items-center gap-1.5 mt-3 text-[9px] tracking-[0.14em] uppercase font-semibold" style={{ color: "var(--brass)" }}>{count} <span style={{ fontSize: 15 }}>→</span></span>
+      </span>
     </button>
   );
 }
