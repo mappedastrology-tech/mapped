@@ -21,7 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         "/almanac",
         "/tarot",
         "/dolly",
-        "/practice",
         "/palmistry",
         "/account",
         "/onboarding",

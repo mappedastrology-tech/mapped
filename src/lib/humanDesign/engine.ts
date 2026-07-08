@@ -30,6 +30,7 @@ import {
   type AuthorityId,
   type HdBody,
 } from "./data";
+import { VARIABLE_TABLE } from "./variableTypes";
 
 // ── Wheel math ──────────────────────────────────────────────────────────────
 
@@ -183,7 +184,16 @@ export interface HumanDesignProfile {
     gates: [number, number, number, number]; // persSun, persEarth, designSun, designEarth
     label: string;
   };
-  variables: { key: string; label: string; arrow: "left" | "right"; tone: number; color: number }[];
+  variables: {
+    key: string;
+    label: string;
+    arrow: "left" | "right";
+    tone: number;
+    color: number;
+    name: string;
+    subTone: string;
+    description: string;
+  }[];
   birthJd: number;
   designJd: number;
 }
@@ -270,13 +280,29 @@ export function computeHumanDesign(input: HdInput): HumanDesignProfile | null {
     label: `${angle} Cross (${persSun.gate}/${persEarth.gate} | ${desSun.gate}/${desEarth.gate})`,
   };
 
-  // Variables (arrow: tone 1–3 → left, 4–6 → right).
+  // Variables (arrow: tone 1–3 → left, 4–6 → right). The COLOR selects the
+  // specific determination (e.g. Environment colour 6 → Shores); the arrow
+  // selects its sub-variant.
   const arrow = (t: number): "left" | "right" => (t <= 3 ? "left" : "right");
+  const buildVar = (key: string, label: string, act: Activation) => {
+    const t = VARIABLE_TABLE[key][act.color];
+    const dir = arrow(act.tone);
+    return {
+      key,
+      label,
+      arrow: dir,
+      tone: act.tone,
+      color: act.color,
+      name: t.name,
+      subTone: dir === "left" ? t.left : t.right,
+      description: t.description,
+    };
+  };
   const variables = [
-    { key: "determination", label: "Digestion", arrow: arrow(desSun.tone), tone: desSun.tone, color: desSun.color },
-    { key: "environment", label: "Environment", arrow: arrow(desNode.tone), tone: desNode.tone, color: desNode.color },
-    { key: "motivation", label: "Motivation", arrow: arrow(persSun.tone), tone: persSun.tone, color: persSun.color },
-    { key: "perspective", label: "Perspective", arrow: arrow(persNode.tone), tone: persNode.tone, color: persNode.color },
+    buildVar("determination", "Digestion", desSun),
+    buildVar("environment", "Environment", desNode),
+    buildVar("motivation", "Motivation", persSun),
+    buildVar("perspective", "Perspective", persNode),
   ];
 
   const info = TYPE_INFO[type];

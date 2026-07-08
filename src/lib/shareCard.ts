@@ -176,6 +176,23 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number,
   return lines;
 }
 
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number, r: number,
@@ -206,7 +223,17 @@ function drawRoundedRect(
 interface ReadingShareCardData {
   spreadName: string;
   date: string;
-  cards: { name: string; reversed?: boolean; keywords?: string[]; position?: string }[];
+  cards: { name: string; reversed?: boolean; keywords?: string[]; position?: string; meaning?: string; image?: string }[];
+}
+
+/** Load an image for canvas drawing; resolves null on failure (never throws). */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 }
 
 /**
@@ -215,9 +242,12 @@ interface ReadingShareCardData {
  */
 export async function generateReadingShareCard(data: ReadingShareCardData): Promise<Blob> {
   const W = 1080;
-  // Dynamic height based on card count — min 1200, grows with more cards
+  const single = data.cards.length === 1;
+  // Preload the single card's artwork so we can feature it.
+  const heroImg = single && data.cards[0].image ? await loadImage(data.cards[0].image) : null;
+  // Dynamic height: taller hero layout for a single card, list layout otherwise.
   const cardBlockHeight = Math.max(data.cards.length * 110, 200);
-  const H = Math.min(1920, Math.max(1200, 480 + cardBlockHeight + 200));
+  const H = single ? 1500 : Math.min(1920, Math.max(1200, 480 + cardBlockHeight + 200));
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -335,7 +365,78 @@ export async function generateReadingShareCard(data: ReadingShareCardData): Prom
   ctx.fill();
   y += 50;
 
-  // ─── Cards ───
+  // ─── Single-card hero (daily pull): artwork + name + keywords + meaning ───
+  if (single) {
+    const card = data.cards[0];
+    if (heroImg) {
+      const cardW = 300;
+      const cardH = cardW * (heroImg.height / heroImg.width || 1.6);
+      const cardX = (W - cardW) / 2;
+      // Crop a hair off the edges so any printed border doesn't show.
+      const inset = Math.min(heroImg.width, heroImg.height) * 0.05;
+      ctx.save();
+      drawRoundedRectPath(ctx, cardX, y, cardW, cardH, 16);
+      ctx.clip();
+      ctx.drawImage(
+        heroImg,
+        inset, inset, heroImg.width - inset * 2, heroImg.height - inset * 2,
+        cardX, y, cardW, cardH,
+      );
+      ctx.restore();
+      ctx.strokeStyle = "rgba(201,169,97,0.4)";
+      ctx.lineWidth = 2;
+      drawRoundedRectPath(ctx, cardX, y, cardW, cardH, 16);
+      ctx.stroke();
+      y += cardH + 46;
+    }
+
+    ctx.textAlign = "center";
+    ctx.font = "400 46px Georgia, 'Times New Roman', serif";
+    ctx.fillStyle = "rgba(232, 223, 196, 0.96)";
+    ctx.fillText(card.reversed ? `${card.name}  ↓` : card.name, cx, y);
+    y += 44;
+
+    if (card.keywords && card.keywords.length > 0) {
+      ctx.font = "400 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(201, 169, 97, 0.75)";
+      ctx.letterSpacing = "1px";
+      ctx.fillText(card.keywords.slice(0, 4).join("  ·  "), cx, y);
+      ctx.letterSpacing = "0px";
+      y += 44;
+    }
+
+    if (card.meaning) {
+      ctx.font = "400 27px Georgia, 'Times New Roman', serif";
+      ctx.fillStyle = "rgba(232, 223, 196, 0.72)";
+      ctx.textAlign = "left";
+      const lines = wrapText(ctx, card.meaning, W - PAD * 2, 27).slice(0, 8);
+      for (const line of lines) {
+        ctx.fillText(line, PAD, y);
+        y += 40;
+      }
+    }
+
+    // Branding
+    ctx.textAlign = "center";
+    ctx.font = "700 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(201, 169, 97, 0.4)";
+    ctx.letterSpacing = "8px";
+    ctx.fillText("MAPPED", cx, H - 60);
+    ctx.letterSpacing = "0px";
+    ctx.font = "400 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(232, 223, 196, 0.2)";
+    ctx.fillText("astrology", cx, H - 38);
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+        "image/png",
+        1.0,
+      );
+    });
+  }
+
+  // ─── Cards (multi-card list) ───
   ctx.textAlign = "left";
   const maxCards = Math.min(data.cards.length, 12);
   for (let i = 0; i < maxCards; i++) {

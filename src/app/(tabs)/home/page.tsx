@@ -355,6 +355,16 @@ export default function HomeTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailySeed, oracleDeckId]);
 
+  // Preload today's card faces so the reveal is instant (no post-flip image load lag).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const t = getCardImagePath(dailyTarot.id);
+      if (t) { const im = new window.Image(); im.src = t; }
+      if (dailyOracle?.image) { const io = new window.Image(); io.src = dailyOracle.image; }
+    } catch { /* ignore */ }
+  }, [dailyTarot, dailyOracle]);
+
   // Upcoming celestial events (next 30 days, skip raw moon events since we show those separately)
   const upcomingEvents = useMemo(() => {
     const energy = getDailyEnergy(today);
@@ -1089,35 +1099,7 @@ export default function HomeTab() {
             })}
           </div>
 
-          {/* Oracle deck sub-chooser */}
-          {pullDeck === "oracle" && (
-            <div className="flex gap-2 mb-4">
-              {ORACLE_DECKS.map((deck) => {
-                const active = oracleDeckId === deck.id;
-                return (
-                  <button
-                    key={deck.id}
-                    onClick={() => {
-                      setOracleDeckId(deck.id);
-                      setOracleRevealed(false);
-                      try { localStorage.setItem(ORACLE_DECK_KEY, deck.id); } catch {}
-                    }}
-                    className="flex-1 py-[9px] px-1.5 rounded-[11px] text-center transition-all"
-                    style={{
-                      background: active ? "rgba(201,169,97,0.12)" : "transparent",
-                      border: `0.5px solid ${active ? "var(--brass)" : "rgba(201,169,97,0.16)"}`,
-                      color: active ? "var(--brass)" : "rgba(240,230,210,0.6)",
-                    }}
-                  >
-                    <span className="block text-[13px] leading-tight" style={{ fontFamily: "var(--font-heading)" }}>{deck.name}</span>
-                    <span className="block text-[8px] tracking-[0.14em] uppercase mt-[3px] opacity-60">{deck.cardCount} cards</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Single card — the selected deck */}
+          {/* Single card — the selected deck (chosen in Settings → Oracle deck) */}
           {pullDeck === "tarot" ? (() => {
             const tarotImgSrc = tarotRevealed ? (getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE) : CARD_BACK_IMAGE;
             return (
@@ -1131,7 +1113,7 @@ export default function HomeTab() {
                       setTarotRevealed(true);
                       setTarotFlipping(false);
                       try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
-                    }, 800);
+                    }, 500);
                   } else if (tarotRevealed) {
                     setExpandedCard(expandedCard === "tarot" ? null : "tarot");
                   }
@@ -1139,8 +1121,8 @@ export default function HomeTab() {
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)" }}>
-                  <Image src={tarotImgSrc} alt={tarotRevealed ? dailyTarot.name : "Card back"} fill className="object-cover" draggable={false} />
+                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)", transform: tarotFlipping ? "scale(0.93) rotateY(8deg)" : "scale(1)", transition: "transform 0.3s ease", opacity: tarotFlipping ? 0.75 : 1 }}>
+                  <Image src={tarotImgSrc} alt={tarotRevealed ? dailyTarot.name : "Card back"} fill className={`object-cover ${tarotRevealed ? "scale-[1.09]" : ""}`} draggable={false} />
                 </div>
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: tarotRevealed ? 15 : 12, opacity: tarotRevealed ? 1 : 0.65 }}>
                   {tarotRevealed ? dailyTarot.name : "Tap to pull"}
@@ -1167,7 +1149,7 @@ export default function HomeTab() {
                       setOracleRevealed(true);
                       setOracleFlipping(false);
                       try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
-                    }, 800);
+                    }, 500);
                   } else if (oracleRevealed) {
                     setExpandedCard(expandedCard === "oracle" ? null : "oracle");
                   }
@@ -1175,8 +1157,8 @@ export default function HomeTab() {
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)" }}>
-                  <Image src={oracleImgSrc} alt={oracleRevealed ? dailyOracle.animal : "Card back"} fill className="object-cover" draggable={false} />
+                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)", transform: oracleFlipping ? "scale(0.93) rotateY(8deg)" : "scale(1)", transition: "transform 0.3s ease", opacity: oracleFlipping ? 0.75 : 1 }}>
+                  <Image src={oracleImgSrc} alt={oracleRevealed ? dailyOracle.animal : "Card back"} fill className={`object-cover ${oracleRevealed ? "scale-[1.09]" : ""}`} draggable={false} />
                 </div>
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: oracleRevealed ? 15 : 12, opacity: oracleRevealed ? 1 : 0.65 }}>
                   {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
@@ -1216,7 +1198,8 @@ export default function HomeTab() {
               <button
                 onClick={() => {
                   const cardContext = `Tarot: ${dailyTarot.name} — ${dailyTarot.uprightKeywords.slice(0, 3).join(", ")}. ${dailyTarot.uprightMeaning}`;
-                  router.push(`/journal?tab=pull&card=tarot&cardName=${encodeURIComponent(dailyTarot.name)}&cardMeaning=${encodeURIComponent(cardContext)}`);
+                  const prompt = `You pulled ${dailyTarot.name} today — ${dailyTarot.uprightKeywords.slice(0, 3).join(", ")}. ${dailyTarot.uprightMeaning} Where does this card meet your life right now?`;
+                  router.push(`/journal?prompt=${encodeURIComponent(prompt)}&context=${encodeURIComponent(cardContext)}`);
                 }}
                 className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
                 style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
@@ -1327,7 +1310,7 @@ export default function HomeTab() {
                 const { shareReadingAsImage } = await import("@/lib/shareCard");
                 setCopiedShare("tarot");
                 await shareReadingAsImage(
-                  { spreadName: "Daily Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyTarot.name, keywords: dailyTarot.uprightKeywords.slice(0, 4) }] },
+                  { spreadName: "Daily Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyTarot.name, keywords: dailyTarot.uprightKeywords.slice(0, 4), meaning: dailyTarot.uprightMeaning, image: getCardImagePath(dailyTarot.id) || undefined }] },
                   shareText
                 );
                 setTimeout(() => setCopiedShare(null), 2000);
@@ -1362,7 +1345,8 @@ export default function HomeTab() {
               <button
                 onClick={() => {
                   const cardContext = `Oracle: ${dailyOracle.animal} — ${dailyOracle.keyword}. ${dailyOracle.meaning}`;
-                  router.push(`/journal?tab=pull&card=oracle&cardName=${encodeURIComponent(dailyOracle.animal)}&cardMeaning=${encodeURIComponent(cardContext)}`);
+                  const prompt = `You drew ${dailyOracle.animal} today — ${dailyOracle.keyword}. ${dailyOracle.meaning} What is this bringing up for you right now?`;
+                  router.push(`/journal?prompt=${encodeURIComponent(prompt)}&context=${encodeURIComponent(cardContext)}`);
                 }}
                 className="flex-1 rounded-full py-2 flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all"
                 style={{ backgroundColor: "#c9a961", color: "#1a1815" }}
@@ -1472,7 +1456,7 @@ export default function HomeTab() {
                 const { shareReadingAsImage } = await import("@/lib/shareCard");
                 setCopiedShare("oracle");
                 await shareReadingAsImage(
-                  { spreadName: "Daily Oracle Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyOracle.animal, keywords: [dailyOracle.keyword] }] },
+                  { spreadName: "Daily Oracle Pull", date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }), cards: [{ name: dailyOracle.animal, keywords: [dailyOracle.keyword], meaning: dailyOracle.meaning, image: dailyOracle.image }] },
                   shareText
                 );
                 setTimeout(() => setCopiedShare(null), 2000);

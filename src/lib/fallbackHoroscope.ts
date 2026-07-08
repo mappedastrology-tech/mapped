@@ -151,24 +151,100 @@ function phaseFor(moonPhase: string): PhaseCopy {
   return DEFAULT_PHASE;
 }
 
-export function buildFallbackHoroscope(c: CelestialLike, _bigThree?: BigThree): FallbackHoroscope {
-  const phase = phaseFor(c.moonPhase || "");
-  const sentences = [phase.opener];
+// ─── Chart-based personalization ─────────────────────────────────────────────
 
-  if (c.zodiacSeason) {
-    const mood = ELEMENT_MOOD[(c.seasonElement || "").toLowerCase()] || "a distinct";
-    sentences.push(`${c.zodiacSeason} season lends ${mood} undertone to everything right now.`);
+const SIGN_ORDER = [
+  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+];
+
+const SIGN_ELEMENT: Record<string, "fire" | "earth" | "air" | "water"> = {
+  Aries: "fire", Leo: "fire", Sagittarius: "fire",
+  Taurus: "earth", Virgo: "earth", Capricorn: "earth",
+  Gemini: "air", Libra: "air", Aquarius: "air",
+  Cancer: "water", Scorpio: "water", Pisces: "water",
+};
+
+/** A short "lean into this today" vibe tuned to the user's Sun sign. */
+const SUN_VIBE: Record<string, string> = {
+  Aries: "Act on your first instinct",
+  Taurus: "Move at your own steady pace",
+  Gemini: "Say yes to the conversation",
+  Cancer: "Tend to home and heart",
+  Leo: "Let yourself be seen",
+  Virgo: "Sort out one small thing",
+  Libra: "Choose beauty and balance",
+  Scorpio: "Trust your gut read",
+  Sagittarius: "Follow the bigger question",
+  Capricorn: "Take one real step on a goal",
+  Aquarius: "Do it your own way",
+  Pisces: "Make room for the dream",
+};
+
+/** How today's Sun (current zodiac season) relates to the user's natal Sun. */
+function sunSeasonLine(seasonSign?: string, natalSun?: string): string | null {
+  if (!seasonSign || !natalSun) return null;
+  const si = SIGN_ORDER.indexOf(seasonSign);
+  const ni = SIGN_ORDER.indexOf(natalSun);
+  if (si < 0 || ni < 0) return null;
+  const diff = ((ni - si) + 12) % 12;
+  const el = SIGN_ELEMENT[natalSun] || "";
+  switch (diff) {
+    case 0:
+      return `The Sun is moving through your own sign of ${natalSun} — your yearly reset, the month you're meant to be seen. Lead with it.`;
+    case 6:
+      return `With the Sun opposite your ${natalSun} Sun, your focus swings toward other people and partnership; balance is the quiet work of these weeks.`;
+    case 4:
+    case 8:
+      return `The Sun is in fellow ${el} sign ${seasonSign}, moving in step with your ${natalSun} Sun — momentum is on your side right now.`;
+    case 3:
+    case 9:
+      return `The Sun is squaring your ${natalSun} Sun — a little friction that's really an invitation to grow. Meet it head-on.`;
+    case 2:
+    case 10:
+      return `The Sun is sextiling your ${natalSun} Sun — a supportive stretch where doors open if you actually knock.`;
+    default:
+      return `The Sun sits at an offbeat angle to your ${natalSun} Sun — a subtle recalibration; trust small adjustments over sweeping moves.`;
   }
-  if (c.planetaryDay && c.planetaryDayPlanet) {
-    const focus = DAY_FOCUS[c.planetaryDayPlanet] || "tending to what matters to you";
-    sentences.push(`It's ${c.planetaryDay}, a good day for ${focus}.`);
+}
+
+export function buildFallbackHoroscope(c: CelestialLike, bigThree?: BigThree): FallbackHoroscope {
+  const phase = phaseFor(c.moonPhase || "");
+  const personalized = !!(bigThree?.sun && SIGN_ORDER.includes(bigThree.sun));
+
+  const sentences = [phase.opener];
+  const vibes = [...phase.vibes];
+
+  if (personalized && bigThree) {
+    const sunLine = sunSeasonLine(c.zodiacSeason, bigThree.sun);
+    if (sunLine) sentences.push(sunLine);
+    if (bigThree.moon && SIGN_ELEMENT[bigThree.moon]) {
+      const mood = ELEMENT_MOOD[SIGN_ELEMENT[bigThree.moon]] || "a distinct";
+      sentences.push(`Your Moon in ${bigThree.moon} gives today ${mood} emotional undertone.`);
+    }
+    if (c.planetaryDay && c.planetaryDayPlanet) {
+      const focus = DAY_FOCUS[c.planetaryDayPlanet] || "tending to what matters to you";
+      sentences.push(`It's ${c.planetaryDay}, a good day for ${focus}.`);
+    }
+    const sv = SUN_VIBE[bigThree.sun];
+    if (sv) vibes.unshift(sv);
+  } else {
+    if (c.zodiacSeason) {
+      const mood = ELEMENT_MOOD[(c.seasonElement || "").toLowerCase()] || "a distinct";
+      sentences.push(`${c.zodiacSeason} season lends ${mood} undertone to everything right now.`);
+    }
+    if (c.planetaryDay && c.planetaryDayPlanet) {
+      const focus = DAY_FOCUS[c.planetaryDayPlanet] || "tending to what matters to you";
+      sentences.push(`It's ${c.planetaryDay}, a good day for ${focus}.`);
+    }
   }
+
   sentences.push("Take it one moment at a time — the rest will follow.");
 
   return {
     headline: phase.headline,
     horoscope: sentences.join(" "),
-    vibes: phase.vibes,
+    vibes: vibes.slice(0, 4),
     avoid: phase.avoid,
     generatedAt: new Date().toISOString(),
   };

@@ -17,6 +17,7 @@ import { PlansPage } from "@/components/Paywall";
 import CitySearch from "@/components/CitySearch";
 import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
+import { ORACLE_DECKS, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
 import {
   getCachedLocation,
   fetchUserLocation,
@@ -1034,6 +1035,44 @@ function ThemeSection() {
   );
 }
 
+/* ─── Oracle Deck section ─── */
+
+function OracleDeckSection() {
+  const [deckId, setDeckId] = useState<string>(DEFAULT_ORACLE_DECK);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ORACLE_DECK_KEY);
+      if (saved && ORACLE_DECKS.some((d) => d.id === saved)) setDeckId(saved);
+    } catch { /* ignore */ }
+  }, []);
+  const choose = (id: string) => {
+    setDeckId(id);
+    try { localStorage.setItem(ORACLE_DECK_KEY, id); } catch { /* ignore */ }
+  };
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <p className="text-xs uppercase tracking-widest text-muted mb-1">Oracle Deck</p>
+      <p className="text-muted text-[11px] mb-3">The oracle deck used for your daily pull on the home screen.</p>
+      <div className="flex gap-2">
+        {ORACLE_DECKS.map((deck) => (
+          <button
+            key={deck.id}
+            onClick={() => choose(deck.id)}
+            className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl text-sm font-medium transition-all border ${
+              deckId === deck.id
+                ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
+                : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
+            }`}
+          >
+            <span>{deck.name}</span>
+            <span className="text-[10px] opacity-60">{deck.cardCount} cards</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Report a Bug section ─── */
 
 function ReportBugSection() {
@@ -1696,6 +1735,9 @@ function AccountPage() {
 
           {/* ─── Almanac Preferences ─── */}
           <AlmanacPrefsSection />
+
+          {/* ─── Oracle Deck ─── */}
+          <OracleDeckSection />
 
           {/* ─── Notifications ─── */}
           <NotificationSettingsSection />
