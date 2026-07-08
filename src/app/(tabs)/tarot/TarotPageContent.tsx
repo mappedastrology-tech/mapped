@@ -866,35 +866,57 @@ export default function TarotTab() {
      ═══════════════════════════════════════════ */
   if (view === "spreads") {
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
-        <button onClick={() => setView("decks")} className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary">
-          <span className="text-lg">‹</span> Back to decks
-        </button>
-        <h1 className="text-xl text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>Choose Your Spread</h1>
-        <p className="text-muted text-xs text-center mb-6">Or go freestyle — no rules, just intuition.</p>
-
-        <div className="space-y-3 mb-8">
-          {SPREADS.map(spread => (
-            <button key={spread.id} onClick={() => handleStartSpread(spread)}
-              className="w-full text-left p-4 rounded-xl border border-foreground/15 bg-foreground/3 active:bg-foreground/6 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-foreground text-sm font-medium">{spread.name}</h3>
-                <span className="text-muted text-xs">{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"}</span>
-              </div>
-              <p className="text-muted text-xs leading-relaxed">{spread.description}</p>
-            </button>
-          ))}
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+        {/* Selected-deck hero */}
+        <div className="flex flex-col items-center pt-2 pb-1">
+          <span className="text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>
+            {isOracleDeck ? "Oracle" : "Tarot"} deck
+          </span>
+          <p className="mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 26, color: "var(--foreground)" }}>
+            {isOracleDeck ? (activeOracleDeck?.name || getOracleDeck(selectedDeck)?.name || "Oracle") : "Classic Tarot"}
+          </p>
+          <button onClick={() => setView("decks")} className="mt-2 text-[11px] underline underline-offset-2" style={{ color: "var(--foreground-faint)" }}>
+            Change deck
+          </button>
         </div>
 
-        <h2 className="text-muted text-[10px] tracking-widest uppercase mb-3">Freestyle</h2>
-        <button onClick={() => handleStartFreestyle()}
-          className="w-full p-4 rounded-xl border border-foreground/15 bg-foreground/3 active:bg-foreground/6 transition-colors text-left"
-        >
-          <div className="text-2xl mb-2 opacity-40">🃏</div>
-          <h3 className="text-foreground text-sm font-medium mb-1">Fanned</h3>
-          <p className="text-muted text-xs">Cards fanned in an arc. Swipe through and pick the ones that call to you.</p>
-        </button>
+        <p className="text-[9px] tracking-[0.25em] uppercase font-bold mt-8 mb-4" style={{ color: "var(--brass)" }}>How would you like to read?</p>
+        <div className="flex flex-col gap-3 mb-3">
+          {SPREADS.map((spread) => (
+            <button
+              key={spread.id}
+              onClick={() => handleStartSpread(spread)}
+              className="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-transform"
+              style={{ borderRadius: 18, background: "#4a2540", border: "0.5px solid rgba(201,169,97,0.16)", padding: "16px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)" }}
+            >
+              {/* position diagram */}
+              <span className="shrink-0 flex items-center justify-center gap-1" style={{ width: 62, height: 44 }}>
+                {Array.from({ length: Math.min(spread.cardCount, 5) }).map((_, i) => (
+                  <span key={i} style={{ width: 10, height: 15, borderRadius: 2.5, background: "rgba(201,169,97,0.2)", border: "0.5px solid rgba(201,169,97,0.4)" }} />
+                ))}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>{spread.name}</span>
+                <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"} · {spread.description}</span>
+              </span>
+              <span className="shrink-0 text-[15px]" style={{ color: "var(--brass)" }}>›</span>
+            </button>
+          ))}
+
+          {/* Freestyle */}
+          <button
+            onClick={() => handleStartFreestyle()}
+            className="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-transform"
+            style={{ borderRadius: 18, background: "#4a2540", border: "0.5px solid rgba(201,169,97,0.16)", padding: "16px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)" }}
+          >
+            <span className="shrink-0 flex items-center justify-center text-[22px]" style={{ width: 62, height: 44, opacity: 0.5 }}>🃏</span>
+            <span className="flex-1 min-w-0">
+              <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>Fanned</span>
+              <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>No rules — swipe the arc and pick the cards that call to you.</span>
+            </span>
+            <span className="shrink-0 text-[15px]" style={{ color: "var(--brass)" }}>›</span>
+          </button>
+        </div>
       </main>
     );
   }
