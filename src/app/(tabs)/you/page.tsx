@@ -1625,7 +1625,7 @@ export default function YouTab() {
             <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--border-card)" }}>
               <h3
                 className="text-lg placement-card-text mt-3 mb-2"
-                style={{ fontFamily: "var(--font-display)" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 {sectLight.sect === "day" ? "Day" : "Night"} chart · {sectLight.sectLight} in {SIGN_FULL[sectLight.sectLightSign] || sectLight.sectLightSign}
               </h3>
@@ -1673,7 +1673,7 @@ export default function YouTab() {
             <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--border-card)" }}>
               <h3
                 className="text-lg placement-card-text mt-3 mb-2"
-                style={{ fontFamily: "var(--font-display)" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 {lordOfTheYear.lordPlanet} · {ORDINAL[lordOfTheYear.profectionHouse] || lordOfTheYear.profectionHouse + "th"} house year
               </h3>
@@ -1698,7 +1698,7 @@ export default function YouTab() {
       {/* Planetary placements — accordion style */}
       <h2
         className="text-xl text-foreground mb-4"
-        style={{ fontFamily: "var(--font-display)" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         Your placements
       </h2>
@@ -1764,7 +1764,7 @@ export default function YouTab() {
                         <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">Your Rising Sign</span>
                         <InfoTip term="Rising Sign" explanation="Your Rising sign (or Ascendant) is the sign that was on the eastern horizon when you were born. It's your first impression, your physical energy, and the lens through which you experience life. It's arguably the most personal point in your chart." />
                       </div>
-                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-heading)" }}>
                         {SIGN_FULL[effectiveBigThree.rising] || effectiveBigThree.rising} Rising
                       </h3>
                       <p className="placement-card-text text-[15px] leading-relaxed mb-5">{r.summary}</p>
@@ -1827,7 +1827,7 @@ export default function YouTab() {
                         <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">Your Midheaven</span>
                         <InfoTip term="Midheaven" explanation="Your Midheaven (MC) is the highest point in your chart — it represents your career path, public reputation, and what you're known for in the world." />
                       </div>
-                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                      <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-heading)" }}>
                         Midheaven in {SIGN_FULL[midheaven.sign] || midheaven.sign}
                       </h3>
                       <p className="placement-card-text text-[15px] leading-relaxed mb-5">{mc.summary}</p>
@@ -1895,7 +1895,7 @@ export default function YouTab() {
                           <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">The Wounded Healer</span>
                           <InfoTip term="Chiron" explanation="Chiron is the 'wounded healer' — it shows your deepest wound and, paradoxically, the area where you become the greatest healer for others. It's not something to fix; it's something to work with." />
                         </div>
-                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-heading)" }}>
                           Chiron in {SIGN_FULL[chiron.sign] || chiron.sign}
                         </h3>
                         <p className="placement-card-text text-[15px] leading-relaxed mb-5">{ch.wound}</p>
@@ -2058,7 +2058,7 @@ export default function YouTab() {
                           <span className="placement-card-text-secondary text-[10px] uppercase tracking-widest">The Dark Feminine</span>
                           <InfoTip term="Black Moon Lilith" explanation="Lilith represents your wild, untamed energy — the parts of you that society tried to suppress. It shows where you were shamed, what you buried, and the raw power you reclaim when you stop apologizing for who you are." />
                         </div>
-                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-display)" }}>
+                        <h3 className={`text-xl ${color} mb-3`} style={{ fontFamily: "var(--font-heading)" }}>
                           Lilith in {SIGN_FULL[lilith.sign] || lilith.sign}
                         </h3>
                         <p className="placement-card-text text-[15px] leading-relaxed mb-5">{li.shadow}</p>
@@ -2117,7 +2117,7 @@ export default function YouTab() {
           <div className="flex items-center gap-3 mb-2">
             <h2
               className="text-xl text-foreground"
-              style={{ fontFamily: "var(--font-display)" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               Your tensions
             </h2>
@@ -2140,7 +2140,7 @@ export default function YouTab() {
                 <div className="px-4 py-3 bg-foreground/[0.03] border-b border-foreground/15">
                   <p
                     className="text-foreground text-base font-medium"
-                    style={{ fontFamily: "var(--font-display)" }}
+                    style={{ fontFamily: "var(--font-heading)" }}
                   >
                     {c.theme}
                   </p>
@@ -2187,7 +2187,7 @@ export default function YouTab() {
             <div className="flex items-center gap-3 mb-2">
               <h2
                 className="text-xl text-foreground"
-                style={{ fontFamily: "var(--font-display)" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 Your aspects
               </h2>

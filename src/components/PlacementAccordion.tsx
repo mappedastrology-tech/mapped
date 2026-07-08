@@ -171,7 +171,7 @@ export default function PlacementAccordion({
           <span className={`text-lg ${color}`} style={{ fontFamily: "var(--font-heading)" }}>
             {planetSymbol}
           </span>
-          <span className="text-sm font-medium placement-card-text">
+          <span className="text-[16px] placement-card-text" style={{ fontFamily: "var(--font-heading)" }}>
             {planetName}
             {retrograde && (
               <span className="text-lavender text-xs ml-1">R</span>
@@ -253,7 +253,7 @@ export default function PlacementAccordion({
                   </span>
                   <h3
                     className={`text-xl ${color} mb-3`}
-                    style={{ fontFamily: "var(--font-display)" }}
+                    style={{ fontFamily: "var(--font-heading)" }}
                   >
                     {planetName} in {signFull}
                   </h3>
