@@ -737,6 +737,7 @@ export default function RitualPageContent() {
 
   // Catalog state
   const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
+  const [expandedQuick, setExpandedQuick] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<RitualCategory | null>(null);
   const [expandedCatalogRitual, setExpandedCatalogRitual] = useState<string | null>(null);
   const [catalogPage, setCatalogPage] = useState(0);
@@ -983,6 +984,12 @@ export default function RitualPageContent() {
     return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   }, [today]);
 
+  // Quick, no-tools rituals for the "For right now" shelf.
+  const quickRituals = useMemo(
+    () => toolFilteredCatalog.filter((r) => r.tier === 0 && r.id !== dailySuggestion.id).slice(0, 3),
+    [toolFilteredCatalog, dailySuggestion.id],
+  );
+
   // Calendar expanded state
   const [showCalendar, setShowCalendar] = useState(false);
 
@@ -1116,6 +1123,40 @@ export default function RitualPageContent() {
             onComplete={handleRitualComplete}
             variant="featured"
           />
+        </div>
+      )}
+
+      {/* ═══ FOR RIGHT NOW (quick rituals) ═══ */}
+      {quickRituals.length > 0 && (
+        <div className="mb-8">
+          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 20, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>For right now</h3>
+          <p className="text-[12.5px] mb-3.5 mt-0.5" style={{ color: "var(--foreground-muted)" }}>The fastest way back to yourself.</p>
+          <div className="flex flex-col gap-3">
+            {quickRituals.map((r) => (
+              <div key={r.id}>
+                <button
+                  onClick={() => setExpandedQuick(expandedQuick === r.id ? null : r.id)}
+                  className="w-full text-left flex items-stretch overflow-hidden active:scale-[0.99] transition-transform"
+                  style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)", minHeight: 84, boxShadow: cardShadow }}
+                >
+                  <span className="shrink-0 flex flex-col items-center justify-center gap-1.5" style={{ width: 74, background: "color-mix(in srgb, var(--terracotta) 8%, transparent)" }}>
+                    <RitualIcon name={r.element} size={26} />
+                    <span className="text-[10px] font-bold tracking-[0.02em]" style={{ color: "var(--terracotta)" }}>{r.duration || "5 min"}</span>
+                  </span>
+                  <span className="flex-1 min-w-0 px-4 py-3.5 flex flex-col justify-center">
+                    <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.15, color: "var(--foreground)" }}>{r.title}</span>
+                    <span className="block text-[12.5px] mt-0.5" style={{ lineHeight: 1.4, color: "var(--foreground-muted)" }}>{r.description.split(".")[0]}.</span>
+                  </span>
+                  <span className="self-center text-[20px] px-4 shrink-0" style={{ color: "var(--foreground-faint)", transform: expandedQuick === r.id ? "rotate(90deg)" : "none", transition: "transform .2s" }}>›</span>
+                </button>
+                {expandedQuick === r.id && (
+                  <div className="mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+                    <RitualDetailCard ritual={r} isExpanded={true} onToggle={() => setExpandedQuick(null)} onComplete={handleRitualComplete} variant="featured" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
