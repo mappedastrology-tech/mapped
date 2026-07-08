@@ -1043,7 +1043,10 @@ export default function TarotTab() {
             <span className="text-lg">‹</span> Back to spreads
           </button>
 
-          <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <p className="text-[8.5px] tracking-[0.2em] uppercase font-bold text-center" style={{ color: "var(--brass)" }}>
+            {activeOracleDeck?.name || "Oracle"}
+          </p>
+          <h1 className="text-center mt-1 mb-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 24, color: "var(--foreground)" }}>
             {selectedSpread.name}
           </h1>
           <p className="text-muted text-xs text-center mb-4">
@@ -1113,7 +1116,7 @@ export default function TarotTab() {
 
           {allRevealed && (
             <div className="mt-8 pt-6 border-t border-foreground/10">
-              <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-display)" }}>
+              <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-heading)" }}>
                 Your Reading
               </h2>
               <div className="space-y-4">
@@ -1136,7 +1139,7 @@ export default function TarotTab() {
                           <p className="text-muted text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5">
                             {pos?.name || `Card ${i + 1}`}
                           </p>
-                          <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                          <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                             {oc.card.animal}
                           </p>
                           <p className="text-muted text-[11px] mt-1">{oc.card.keyword}</p>
@@ -1250,7 +1253,10 @@ export default function TarotTab() {
           <span className="text-lg">‹</span> Back to spreads
         </button>
 
-        <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>
+        <p className="text-[8.5px] tracking-[0.2em] uppercase font-bold text-center" style={{ color: "var(--brass)" }}>
+          Classic Tarot
+        </p>
+        <h1 className="text-center mt-1 mb-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 24, color: "var(--foreground)" }}>
           {selectedSpread.name}
         </h1>
         <p className="text-muted text-xs text-center mb-4">
@@ -1331,7 +1337,7 @@ export default function TarotTab() {
 
         {allRevealed && (
           <div className="mt-8 pt-6 border-t border-foreground/10">
-            <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-foreground text-base mb-4" style={{ fontFamily: "var(--font-heading)" }}>
               Your Reading
             </h2>
             <div className="space-y-4">
@@ -1367,7 +1373,7 @@ export default function TarotTab() {
                         <p className="text-muted text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5">
                           {pos?.name || `Card ${i + 1}`}
                         </p>
-                        <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
+                        <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                           {dc.card.name}{dc.reversed ? " (Reversed)" : ""}
                         </p>
                         <p className="text-muted text-[11px] mt-1">
