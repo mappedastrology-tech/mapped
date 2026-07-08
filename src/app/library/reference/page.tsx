@@ -11,7 +11,7 @@ export default function LibraryLookupPage() {
   return (
     <main className="min-h-screen lib-felt">
       <TopBar />
-      <div className="max-w-lg mx-auto px-5 pb-24">
+      <div className="max-w-lg lg:max-w-2xl mx-auto px-5 pb-24 lg:pt-6">
         <ReferenceList />
       </div>
     </main>

@@ -267,7 +267,7 @@ function ActivityDetailView({
       }}
     >
 
-      <div className="max-w-lg mx-auto w-full px-5 py-5 pb-10 flex flex-col gap-6">
+      <div className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 py-5 lg:pt-8 pb-10 flex flex-col gap-6">
         {/* Header */}
         <header className="flex items-center justify-between">
           <button
@@ -1027,7 +1027,7 @@ export default function AlmanacPageContent() {
       className="flex-1 flex flex-col"
       style={{ color: "var(--foreground)" }}
     >
-      <div className="max-w-lg mx-auto w-full px-5 py-5 pb-4 flex flex-col gap-5">
+      <div className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 py-5 lg:pt-8 pb-4 flex flex-col gap-5">
         {/* ━━━ Header ━━━ */}
         <header className="pt-1">
           <p
@@ -3050,7 +3050,7 @@ export default function AlmanacPageContent() {
             overflowY: "auto",
           }}
         >
-          <div className="max-w-lg mx-auto w-full px-5 py-5 pb-10 flex flex-col gap-6">
+          <div className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 py-5 lg:pt-8 pb-10 flex flex-col gap-6">
             {/* Header */}
             <header className="flex items-center gap-3">
               <button

@@ -628,7 +628,7 @@ export default function DollyTab() {
   // ═══════════════════════════════════════════
   if (showHistory) {
     return (
-      <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+      <main className="flex-1 flex flex-col max-w-lg lg:max-w-3xl mx-auto w-full">
         {/* History header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-foreground/15">
           <h1
@@ -776,7 +776,7 @@ export default function DollyTab() {
   // VIEW: Active Chat
   // ═══════════════════════════════════════════
   return (
-    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+    <main className="flex-1 flex flex-col max-w-lg lg:max-w-3xl mx-auto w-full">
       {/* Header — moon-orb avatar + DOLLY */}
       <style>{`@keyframes dl-orb{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes dl-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.06)}}`}</style>
       <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--border-card)" }}>

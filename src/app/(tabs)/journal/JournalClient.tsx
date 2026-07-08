@@ -492,7 +492,7 @@ function JournalPage() {
   if (view === "compose") {
     return (
       <main className="min-h-full bg-background flex flex-col">
-        <div className="max-w-lg mx-auto w-full flex flex-col flex-1">
+        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <button onClick={() => setView("home")} className="text-muted text-sm">Cancel</button>
@@ -734,7 +734,7 @@ function JournalPage() {
 
     return (
       <main className="min-h-full bg-background flex flex-col">
-        <div className="max-w-lg mx-auto w-full flex flex-col flex-1">
+        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <button onClick={() => { setConfirmingDelete(false); setView("home"); }} className="text-muted">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -813,7 +813,7 @@ function JournalPage() {
   if (view === "patterns") {
     return (
       <main className="min-h-full bg-background flex flex-col">
-        <div className="max-w-lg mx-auto w-full flex flex-col flex-1">
+        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         <div className="flex items-center gap-3 px-5 pt-5 pb-3">
           <button onClick={() => setView("home")} className="text-muted">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>

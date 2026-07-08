@@ -527,7 +527,7 @@ export default function PalmistryTab() {
 
   /* ════════════════ RENDER ════════════════ */
   return (
-    <div className="max-w-lg mx-auto px-5 py-6 pb-28">
+    <div className="max-w-lg lg:max-w-2xl mx-auto px-5 py-6 lg:pt-8 pb-28">
       {/* ─── PEOPLE (friends list) ─── */}
       {view === "people" && (
         <div className="space-y-3">
