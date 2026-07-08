@@ -1401,7 +1401,9 @@ export default function YouTab() {
     : specialPointsBuilt;
 
   return (
-    <main className="flex-1 flex flex-col px-5 py-6 lg:pt-8 max-w-lg lg:max-w-2xl mx-auto w-full">
+    <main className="flex-1 flex flex-col lg:flex-row lg:gap-8 lg:items-start px-5 py-6 lg:pt-8 max-w-lg lg:max-w-6xl mx-auto w-full">
+      {/* ── Desktop left column: chart hero (wheel + Big 3) ── */}
+      <div className="w-full lg:w-[380px] lg:shrink-0 lg:sticky lg:top-8">
       {/* Header */}
       <div className="text-center mb-1 pt-1">
         <p className="text-[9px] tracking-[0.28em] uppercase font-bold mb-1.5" style={{ color: "var(--brass)" }}>
@@ -1504,6 +1506,10 @@ export default function YouTab() {
         />
       </div>
 
+      </div>{/* ── end desktop left column ── */}
+
+      {/* ── Desktop right column: tabs + content ── */}
+      <div className="w-full lg:flex-1 lg:min-w-0">
       {/* ═══ PAGE TAB SWITCHER ═══ */}
       <div className="sticky top-0 z-[5] py-2 mb-4" style={{ background: "var(--background)" }}>
         <div className="flex gap-[5px] p-1 rounded-[13px]" style={{ background: "var(--background-card)" }}>
@@ -2318,6 +2324,7 @@ export default function YouTab() {
       </>)}
 
       <div className="h-8" />
+      </div>{/* ── end desktop right column ── */}
     </main>
   );
 }
