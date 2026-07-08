@@ -494,17 +494,32 @@ export default function HomeTab() {
       nakshatraQuality: nakshatra.quality,
     };
 
-    // Populate INSTANTLY with a real reading from today's sky, then upgrade to
-    // the personalized AI version in the background (generation can take ~10s).
+    // Best-effort: read the user's own signs from any cache so even the instant
+    // (and offline) reading is personalized to THEIR chart — not identical for
+    // everyone on the same day.
+    let cachedBigThree: { sun: string; moon: string; rising: string } | undefined;
+    try {
+      const cr = sessionStorage.getItem("chartResult");
+      if (cr) { const p = JSON.parse(cr); if (p?.bigThree?.sun) cachedBigThree = p.bigThree; }
+      if (!cachedBigThree) {
+        const cd = sessionStorage.getItem("mapped:chartData");
+        if (cd) { const p = JSON.parse(cd); if (p?.bigThree?.sun) cachedBigThree = p.bigThree; }
+      }
+    } catch { /* ignore */ }
+
+    // Populate INSTANTLY with a real reading from today's sky + their chart, then
+    // upgrade to the fuller AI version in the background (generation can take ~10s).
     // This avoids a long spinner on the first open of the day. Status is "done"
     // so the section renders immediately; the upgrading flag drives a subtle hint.
-    setHoroscope(buildFallbackHoroscope(celestial));
+    setHoroscope(buildFallbackHoroscope(celestial, cachedBigThree));
     setHoroscopeStatus("done");
     setHoroscopeUpgrading(true);
 
-    // On any AI failure we simply keep the instant fallback already on screen.
-    const showFallback = () => {
-      console.warn("[horoscope] AI unavailable — keeping local fallback reading");
+    // On any AI failure we keep a chart-personalized fallback (rebuilt with the
+    // real big three once it loads), never a one-size-fits-all reading.
+    const showFallback = (bigThree?: { sun: string; moon: string; rising: string }) => {
+      console.warn("[horoscope] AI unavailable — using personalized local reading");
+      setHoroscope(buildFallbackHoroscope(celestial, bigThree ?? cachedBigThree));
       setHoroscopeUpgrading(false);
     };
 
@@ -587,7 +602,7 @@ export default function HomeTab() {
         });
 
         if (!res.ok) {
-          showFallback();
+          showFallback(chartData.big_three as { sun: string; moon: string; rising: string });
           return;
         }
 
@@ -651,7 +666,7 @@ export default function HomeTab() {
   return (
     <>
       <style>{`@keyframes cardFlip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }`}</style>
-      <main className="w-full max-w-lg mx-auto px-5 pt-2 pb-32">
+      <main className="w-full max-w-lg lg:max-w-2xl mx-auto px-5 pt-2 pb-32 lg:pt-8">
 
         {/* ─── Birth time re-prompt banner ─── */}
         <BirthTimeRepromptBanner />

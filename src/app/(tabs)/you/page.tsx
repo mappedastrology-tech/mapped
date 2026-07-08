@@ -1401,7 +1401,7 @@ export default function YouTab() {
     : specialPointsBuilt;
 
   return (
-    <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+    <main className="flex-1 flex flex-col px-5 py-6 lg:pt-8 max-w-lg lg:max-w-2xl mx-auto w-full">
       {/* Header */}
       <div className="text-center mb-1 pt-1">
         <p className="text-[9px] tracking-[0.28em] uppercase font-bold mb-1.5" style={{ color: "var(--brass)" }}>

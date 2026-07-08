@@ -994,7 +994,7 @@ export default function RitualPageContent() {
   const [showCalendar, setShowCalendar] = useState(false);
 
   return (
-    <main className="flex-1 flex flex-col max-w-lg mx-auto w-full pb-6 px-5">
+    <main className="flex-1 flex flex-col max-w-lg lg:max-w-2xl mx-auto w-full pb-6 px-5 lg:pt-6">
 
       {/* ═══ GREETING HEADER ═══ */}
       <div className="relative pt-5 pb-4">
