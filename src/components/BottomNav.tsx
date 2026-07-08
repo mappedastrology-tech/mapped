@@ -3,12 +3,12 @@
 /**
  * BottomNav — dark forest green constant navigation bar.
  *
- * 6 tabs: Home, Almanac, Chart, Ritual, Maps, Dolly.
+ * 6 tabs: Home, Almanac, Chart, Tarot, Maps, Dolly.
  * Background is #1a2818 in both day and night modes — it's a constant.
  * Active item in brass with brass icon, inactive in muted cream.
  *
- * "Ritual" (the old "Practice" tab) is the moon-work + tarot hub. The stats
- * page in the hamburger keeps the name "My Practice" — no more name collision.
+ * Tarot lives here in the bottom nav. Ritual (the moon-work hub at /learn)
+ * lives on its own in the hamburger menu — the two are separate.
  * On first run, a one-time tooltip introduces Dolly (the AI guide).
  */
 
@@ -29,7 +29,7 @@ const tabs: NavTab[] = [
   { name: "Home", href: "/home", glyph: "☉" },
   { name: "Almanac", href: "/almanac", glyph: "◇" },
   { name: "Chart", href: "/you", glyph: "◉" },
-  { name: "Ritual", href: "/learn", glyph: "☽", also: ["/tarot"] },
+  { name: "Tarot", href: "/tarot", glyph: "✸" },
   { name: "Maps", href: "/maps", glyph: "✦" },
   { name: "Dolly", href: "/dolly", glyph: "✺" },
 ];
@@ -55,7 +55,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="flex-shrink-0 relative"
+      className="lg:hidden flex-shrink-0 relative"
       aria-label="Main navigation"
       style={{ backgroundColor: "#1a2818" }}
     >

@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
+import SideNav from "@/components/SideNav";
 import AppTour from "@/components/AppTour";
 import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
@@ -97,16 +98,19 @@ export default function TabsLayout({
   return (
     <TierProvider>
       <BirthTimeProvider>
-        {/* App shell: viewport-height flex column so the body never scrolls.
-            Only the content area scrolls → BottomNav stays put on mobile. */}
-        <div className="flex flex-col h-dvh">
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <TopBar />
-            <div className="pb-4">
-              {children}
+        {/* App shell. Mobile: TopBar + scrolling content + BottomNav (column).
+            Desktop (lg+): a left SideNav rail beside the scrolling content. */}
+        <div className="flex flex-col lg:flex-row h-dvh">
+          <SideNav />
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              <TopBar />
+              <div className="pb-4 lg:pb-10">
+                {children}
+              </div>
             </div>
+            <BottomNav />
           </div>
-          <BottomNav />
         </div>
         <BugReportButton />
         {showTour && <AppTour onComplete={handleTourComplete} />}

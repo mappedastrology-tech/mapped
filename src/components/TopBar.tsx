@@ -49,15 +49,15 @@ const MENU_ITEMS = [
     description: "Daily pulls & reflections",
   },
   {
-    label: "My Practice",
-    href: "/practice",
+    label: "Ritual",
+    href: "/learn",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        <path d="M13.5 3a7 7 0 1 0 7.5 10.5A6 6 0 0 1 13.5 3z" />
       </svg>
     ),
-    description: "Streaks, stats & patterns",
+    description: "Daily rituals & moon work",
   },
   {
     label: "Palmistry",
@@ -126,6 +126,21 @@ export default function TopBar() {
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
+  // Profile photo (base64 in localStorage) — kept in sync with the profile page.
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      try { setPhoto(localStorage.getItem("mapped:profile-photo")); } catch { /* ignore */ }
+    };
+    read();
+    window.addEventListener("mapped:profile-photo", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("mapped:profile-photo", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
+
   // Close menu on navigation
   useEffect(() => {
     setMenuOpen(false);
@@ -165,7 +180,7 @@ export default function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm
+      <header className="lg:hidden sticky top-0 z-40 bg-background/90 backdrop-blur-sm
                          border-b border-foreground/15">
         <div className="flex items-center justify-between max-w-lg mx-auto px-5 py-3">
           {/* Hamburger menu button */}
@@ -190,32 +205,57 @@ export default function TopBar() {
             <Logo size="sm" />
           </Link>
 
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              const html = document.documentElement;
-              const current = html.getAttribute("data-theme");
-              const next = current === "light" ? "dark" : "light";
-              html.setAttribute("data-theme", next);
-              try { localStorage.setItem("mapped:theme", next); } catch {}
-            }}
-            className="w-9 h-9 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full
-                       active:scale-90 transition-transform"
-            aria-label="Toggle theme"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" />
-              <line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-          </button>
+          {/* Theme toggle + profile avatar */}
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                const html = document.documentElement;
+                const current = html.getAttribute("data-theme");
+                const next = current === "light" ? "dark" : "light";
+                html.setAttribute("data-theme", next);
+                try { localStorage.setItem("mapped:theme", next); } catch {}
+              }}
+              className="w-9 h-9 min-w-[40px] min-h-[44px] flex items-center justify-center rounded-full
+                         active:scale-90 transition-transform"
+              aria-label="Toggle theme"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            </button>
+
+            {/* Profile avatar */}
+            <Link
+              href="/profile"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95 transition-transform"
+              aria-label="Your profile"
+            >
+              <span
+                className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center"
+                style={{ border: "1.5px solid var(--brass)", backgroundColor: "var(--card)" }}
+              >
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photo} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)"
+                       strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+                  </svg>
+                )}
+              </span>
+            </Link>
+          </div>
         </div>
       </header>
 
