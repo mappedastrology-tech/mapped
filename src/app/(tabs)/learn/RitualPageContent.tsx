@@ -1233,45 +1233,41 @@ export default function RitualPageContent() {
           ))}
         </div>
       </Link>
-      {/* ═══ BROWSE ALL RITUALS ═══ */}
+      {/* ═══ WHAT ARE YOU CALLING IN? (intention tiles) ═══ */}
       <div className="mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[13px] uppercase tracking-[0.12em] font-bold" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
-            Browse All Rituals
+        <div className="flex items-baseline justify-between mb-0.5">
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 20, fontWeight: 500, color: "var(--foreground)" }}>
+            What are you calling in?
           </h2>
-          <span className="text-[12px] font-medium" style={{ color: "var(--foreground-muted)" }}>
-            {filteredRituals.length}
-          </span>
+          <span className="text-[11.5px]" style={{ color: "var(--foreground-faint)" }}>{RITUAL_CATEGORIES.length} intentions</span>
         </div>
+        <p className="text-[12.5px] mb-4" style={{ color: "var(--foreground-muted)" }}>Browse the library by intention.</p>
 
-        {/* Category filter pills */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 mb-4 pb-1">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className="shrink-0 px-4 py-2.5 rounded-full text-[11px] font-semibold transition-all"
-            style={{
-              backgroundColor: selectedCategory === null ? "var(--terracotta)" : "var(--background-card)",
-              color: selectedCategory === null ? "var(--btn-primary-text)" : "var(--foreground-muted)",
-              boxShadow: selectedCategory === null ? "0 2px 8px rgba(196,149,106,0.3)" : cardShadow,
-            }}
-          >
-            All
-          </button>
-          {RITUAL_CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => setSelectedCategory(selectedCategory === cat.key ? null : cat.key)}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[11px] font-semibold transition-all"
-              style={{
-                backgroundColor: selectedCategory === cat.key ? "var(--terracotta)" : "var(--background-card)",
-                color: selectedCategory === cat.key ? "var(--btn-primary-text)" : "var(--foreground-muted)",
-                boxShadow: selectedCategory === cat.key ? "0 2px 8px rgba(196,149,106,0.3)" : cardShadow,
-              }}
-            >
-              <RitualIcon name={cat.key} size={16} />
-              {cat.label}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-2.5 mb-4">
+          {([{ key: null as string | null, label: "All rituals" }, ...RITUAL_CATEGORIES.map((c) => ({ key: c.key as string | null, label: c.label }))]).map((cat) => {
+            const active = selectedCategory === cat.key;
+            const count = cat.key === null ? filteredRituals.length : toolFilteredCatalog.filter((r) => r.category === cat.key).length;
+            return (
+              <button
+                key={cat.key ?? "all"}
+                onClick={() => setSelectedCategory(cat.key === selectedCategory ? null : (cat.key as RitualCategory | null))}
+                className="flex items-center gap-3 px-3.5 py-3.5 rounded-[16px] text-left transition-all"
+                style={{
+                  background: active ? "color-mix(in srgb, var(--terracotta) 12%, var(--background-card))" : "var(--background-card)",
+                  border: `0.5px solid ${active ? "var(--terracotta)" : "var(--border-card)"}`,
+                  boxShadow: cardShadow,
+                }}
+              >
+                <span className="shrink-0 w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: active ? "color-mix(in srgb, var(--terracotta) 18%, transparent)" : "var(--icon-thumb-love, rgba(196,149,106,0.12))" }}>
+                  {cat.key === null ? <span style={{ color: "var(--brass)", fontSize: 16 }}>✦</span> : <RitualIcon name={cat.key} size={20} />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 15, lineHeight: 1.1, color: active ? "var(--terracotta)" : "var(--foreground)" }}>{cat.label}</span>
+                  <span className="block text-[10.5px] mt-0.5" style={{ color: "var(--foreground-faint)" }}>{count} {count === 1 ? "ritual" : "rituals"}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search bar */}
