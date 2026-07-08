@@ -462,6 +462,11 @@ body {
   outline-offset: 2px;
 }
 
+/* Dolly user chat bubble — the lavender bubble is light in dark mode and deep
+   purple in light mode, so the text color must flip to stay readable. */
+.dl-user-bubble { color: #161022; }
+[data-theme="light"] .dl-user-bubble { color: #f5f0e1; }
+
 /* Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -88,6 +88,7 @@ import { generateShareCard } from "@/lib/shareCard";
 import { getDailyQuote } from "@/lib/dailyQuote";
 import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
+import FlipCard from "@/components/FlipCard";
 import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
@@ -153,8 +154,6 @@ export default function HomeTab() {
   const [pullDeck, setPullDeck] = useState<"tarot" | "oracle">("tarot");
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
-  const [tarotFlipping, setTarotFlipping] = useState(false);
-  const [oracleFlipping, setOracleFlipping] = useState(false);
   const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
 
   // Save pull state
@@ -676,8 +675,10 @@ export default function HomeTab() {
   return (
     <>
       <style>{`@keyframes cardFlip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }`}</style>
-      <main className="w-full max-w-lg lg:max-w-2xl mx-auto px-5 pt-2 pb-32 lg:pt-8">
+      <main className="w-full max-w-lg lg:max-w-5xl mx-auto px-5 pt-2 pb-32 lg:pt-8">
 
+        {/* ── Intro: hero + banners (full-width, centered on desktop) ── */}
+        <div className="lg:max-w-2xl lg:mx-auto">
         {/* ─── Birth time re-prompt banner ─── */}
         <BirthTimeRepromptBanner />
 
@@ -893,6 +894,12 @@ export default function HomeTab() {
           );
         })()}
 
+        </div>{/* ── end intro ── */}
+
+        {/* ── Desktop two-column feed ── */}
+        <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+        {/* ── Left column: the daily digest ── */}
+        <div className="lg:min-w-0">
         {/* ─── Reading card ─── */}
         <div
           className="rounded-2xl px-6 py-7 mb-8"
@@ -1071,6 +1078,9 @@ export default function HomeTab() {
           </p>
         </div>
 
+        </div>{/* ── end left column ── */}
+        {/* ── Right column: pull + energy + horizon ── */}
+        <div className="lg:min-w-0">
         {/* ─── Today's Pull ─── */}
         <p
           className="text-[9px] tracking-[0.25em] uppercase font-medium mb-3.5"
@@ -1101,29 +1111,23 @@ export default function HomeTab() {
 
           {/* Single card — the selected deck (chosen in Settings → Oracle deck) */}
           {pullDeck === "tarot" ? (() => {
-            const tarotImgSrc = tarotRevealed ? (getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE) : CARD_BACK_IMAGE;
+            const tarotFaceSrc = getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE;
             return (
               <button
                 onClick={() => {
-                  if (!tarotRevealed && !tarotFlipping) {
+                  if (!tarotRevealed) {
                     if (tier === "free" && getPullUsageToday() >= 1) { if (gate("unlimited_pulls")) return; }
                     incrementPullUsage();
-                    setTarotFlipping(true);
-                    setTimeout(() => {
-                      setTarotRevealed(true);
-                      setTarotFlipping(false);
-                      try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
-                    }, 500);
-                  } else if (tarotRevealed) {
+                    setTarotRevealed(true);
+                    try { localStorage.setItem(`mapped:tarot-revealed-${todayLocal}`, "1"); } catch {}
+                  } else {
                     setExpandedCard(expandedCard === "tarot" ? null : "tarot");
                   }
                 }}
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)", transform: tarotFlipping ? "scale(0.93) rotateY(8deg)" : "scale(1)", transition: "transform 0.3s ease", opacity: tarotFlipping ? 0.75 : 1 }}>
-                  <Image src={tarotImgSrc} alt={tarotRevealed ? dailyTarot.name : "Card back"} fill className={`object-cover ${tarotRevealed ? "scale-[1.09]" : ""}`} draggable={false} />
-                </div>
+                <FlipCard revealed={tarotRevealed} back={CARD_BACK_IMAGE} face={tarotFaceSrc} faceAlt={dailyTarot.name} />
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: tarotRevealed ? 15 : 12, opacity: tarotRevealed ? 1 : 0.65 }}>
                   {tarotRevealed ? dailyTarot.name : "Tap to pull"}
                 </p>
@@ -1137,29 +1141,22 @@ export default function HomeTab() {
           })() : (() => {
             const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
             const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.webp";
-            const oracleImgSrc = oracleRevealed ? dailyOracle.image : ORACLE_BACK;
             return (
               <button
                 onClick={() => {
-                  if (!oracleRevealed && !oracleFlipping) {
+                  if (!oracleRevealed) {
                     if (tier === "free" && getPullUsageToday() >= 1) { if (gate("unlimited_pulls")) return; }
                     incrementPullUsage();
-                    setOracleFlipping(true);
-                    setTimeout(() => {
-                      setOracleRevealed(true);
-                      setOracleFlipping(false);
-                      try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
-                    }, 500);
-                  } else if (oracleRevealed) {
+                    setOracleRevealed(true);
+                    try { localStorage.setItem(`mapped:oracle-revealed-${todayLocal}`, "1"); } catch {}
+                  } else {
                     setExpandedCard(expandedCard === "oracle" ? null : "oracle");
                   }
                 }}
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "941/1672", borderRadius: 13, overflow: "hidden", boxShadow: "0 8px 22px rgba(0,0,0,0.4)", transform: oracleFlipping ? "scale(0.93) rotateY(8deg)" : "scale(1)", transition: "transform 0.3s ease", opacity: oracleFlipping ? 0.75 : 1 }}>
-                  <Image src={oracleImgSrc} alt={oracleRevealed ? dailyOracle.animal : "Card back"} fill className={`object-cover ${oracleRevealed ? "scale-[1.09]" : ""}`} draggable={false} />
-                </div>
+                <FlipCard revealed={oracleRevealed} back={ORACLE_BACK} face={dailyOracle.image} faceAlt={dailyOracle.animal} />
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: oracleRevealed ? 15 : 12, opacity: oracleRevealed ? 1 : 0.65 }}>
                   {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
                 </p>
@@ -1738,6 +1735,8 @@ export default function HomeTab() {
           })}
         </div>
 
+        </div>{/* ── end right column ── */}
+        </div>{/* ── end two-column feed ── */}
         <div className="h-8" />
       </main>
 

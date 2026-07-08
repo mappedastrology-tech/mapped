@@ -856,8 +856,8 @@ export default function DollyTab() {
           >
             {msg.role === "user" ? (
               <div
-                className="max-w-[82%] px-4 py-3"
-                style={{ background: "var(--lavender)", color: "#161022", borderRadius: "20px 6px 20px 20px" }}
+                className="max-w-[82%] px-4 py-3 dl-user-bubble"
+                style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p>
               </div>
