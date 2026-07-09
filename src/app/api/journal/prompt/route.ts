@@ -71,13 +71,29 @@ Return ONLY the JSON object, no other text.`,
     let prompt = "What's alive in you right now that you haven't given words to yet?";
     let context = `Inspired by the ${moonPhase} and ${zodiacSeason} season energy.`;
 
+    // The model sometimes wraps its JSON in a ```json … ``` markdown fence, or
+    // includes prose around it — strip the fence and pull out the first {…}
+    // object before parsing so we never surface raw JSON to the reader.
+    const cleaned = raw
+      .replace(/^\s*```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+
+    let parsedOk = false;
     try {
-      const parsed = JSON.parse(raw);
-      if (parsed.prompt) prompt = parsed.prompt;
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+      if (parsed.prompt) { prompt = parsed.prompt; parsedOk = true; }
       if (parsed.context) context = parsed.context;
     } catch {
-      // If JSON parse fails, use the raw text as the prompt
-      if (raw.length > 10) prompt = raw;
+      /* fall through to the plain-text fallback below */
+    }
+
+    // Only fall back to the raw text if it isn't itself JSON/fence noise —
+    // otherwise keep the safe default prompt above.
+    if (!parsedOk) {
+      const looksLikeJson = /```|"prompt"\s*:|^\s*\{/.test(cleaned);
+      if (cleaned.length > 10 && !looksLikeJson) prompt = cleaned;
     }
 
     return NextResponse.json({ prompt, context });
