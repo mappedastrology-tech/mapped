@@ -491,7 +491,7 @@ function JournalPage() {
   // ─── Compose View ──────────────────────────────────────────────────────────
   if (view === "compose") {
     return (
-      <main className="min-h-full bg-background flex flex-col">
+      <main className="min-h-full flex flex-col">
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -733,7 +733,7 @@ function JournalPage() {
     const tags = selectedEntry.tags;
 
     return (
-      <main className="min-h-full bg-background flex flex-col">
+      <main className="min-h-full flex flex-col">
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <button onClick={() => { setConfirmingDelete(false); setView("home"); }} className="text-muted">
@@ -812,7 +812,7 @@ function JournalPage() {
   // ─── Patterns View ─────────────────────────────────────────────────────────
   if (view === "patterns") {
     return (
-      <main className="min-h-full bg-background flex flex-col">
+      <main className="min-h-full flex flex-col">
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         <div className="flex items-center gap-3 px-5 pt-5 pb-3">
           <button onClick={() => setView("home")} className="text-muted">
@@ -852,7 +852,7 @@ function JournalPage() {
 
   // ─── Home View (default) ───────────────────────────────────────────────────
   return (
-    <main className="min-h-full bg-background">
+    <main className="min-h-full">
       <div className="max-w-lg mx-auto px-5 py-6 pb-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">

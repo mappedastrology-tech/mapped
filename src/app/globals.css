@@ -327,9 +327,13 @@
   --lib-orb-text: #3a1830;               /* number on the bright gold orb */
 }
 
-/* Day mode body — no dark texture */
+/* Day mode body — soft celestial parchment behind the whole app */
 [data-theme="light"] body {
-  background-image: none;
+  background-image: url('/backgrounds/parchment-bg.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* Day mode placement cards — plum identity on cream */
