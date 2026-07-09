@@ -106,7 +106,8 @@
       "Bash(git -c commit.gpgsign=false commit -q -m 'Almanac: grouped '\\\\''Explore the day'\\\\'' accordion card \\(Claude Design\\) *)",
       "Bash(awk '/interface MoonPhaseInfo/{f=1} f{print NR\": \"$0} f&&/\\\\}/{c++} f&&c>0{exit}' src/lib/almanacData.ts)",
       "Bash(awk 'NR>=1433 && NR<=2100 && /^        \\\\\\)\\\\}/{print NR\": \"$0}' \"src/app/\\(tabs\\)/almanac/AlmanacPageContent.tsx\")",
-      "Bash(awk -F: '$1>=1433 && $1<=2200')"
+      "Bash(awk -F: '$1>=1433 && $1<=2200')",
+      "Bash(awk 'NR>=1000 && NR<=1101' src/app/onboarding/page.tsx)"
     ]
   }
 }

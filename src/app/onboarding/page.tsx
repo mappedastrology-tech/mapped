@@ -506,6 +506,12 @@ export default function OnboardingPage() {
 
   return (
     <main
+      // The onboarding is a fixed light/paper experience (INK = var(--foreground),
+      // text-foreground on cream). Pin the light theme so it stays legible even when
+      // the app's saved theme is dark — otherwise --foreground flips to cream and the
+      // copy disappears against the parchment. The step-2 sect reveal sets its own
+      // explicit colors, so pinning light doesn't affect it.
+      data-theme="light"
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{
         background:
