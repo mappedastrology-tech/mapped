@@ -1377,6 +1377,31 @@ export interface WeekDaySummary {
   eventTag?: string;        // "TODAY", "EVENT", etc.
   eventNote?: string;       // Extra note on event days
   moonIcon: string;         // Moon phase emoji
+  signGlyph: string;        // Moon-sign Unicode glyph (♈…♓)
+  illumination: number;     // 0-100 lit fraction
+  waning: boolean;          // losing light?
+  phaseName: string;        // "Waxing Gibbous"
+}
+
+/** A single celestial event row in the "Mark your week" / "month's moments" lists. */
+export interface AlmanacMoment {
+  day: string;              // "Tue"
+  date: string;             // "Jun 30"
+  title: string;            // "Moon enters Scorpio"
+  desc: string;             // one-sentence translation
+  tone: "brass" | "go" | "muted"; // accent color
+  icon: "enter" | "pause" | "heart" | "moon" | "full" | "new" | "fq" | "lq"; // glyph selector
+}
+
+/** The plum "reading" card + brightest/gentle summary for the week view. */
+export interface WeekReading {
+  eyebrow: string;          // "Waxing to full"
+  title: string;            // deco headline, e.g. "A SLOW BUILD TOWARD ONE BRIGHT NIGHT"
+  body: string;
+}
+export interface WeekHighlight {
+  label: string;            // "Saturday" / "Wed – Thu"
+  note: string;             // "Full Moon · harvest & release"
 }
 
 export interface WeekHeadline {
@@ -1401,6 +1426,10 @@ export interface WeekData {
   days: WeekDaySummary[];
   windows: WeekWindow[];
   personal: WeekPersonal;
+  reading: WeekReading;     // plum "week ahead" card
+  brightest: WeekHighlight; // "Brightest day"
+  gentle: WeekHighlight;    // "Go gently"
+  moments: AlmanacMoment[]; // "Mark your week"
 }
 
 // ─── MONTH VIEW TYPES ─────────────────────────────────────────────────────────
@@ -1414,6 +1443,19 @@ export interface MonthDayCell {
   isCurrentMonth: boolean;
   hasEvent: boolean;
   eventDotColor?: "amber" | "red" | "neutral";
+  illumination: number;     // 0-100 lit fraction
+  waning: boolean;          // losing light?
+  isKeyPhase: boolean;      // principal phase (new / first-qtr / full / last-qtr)
+}
+
+/** The plum "at a glance" overview card for the month view. */
+export interface MonthOverview {
+  eyebrow: string;          // "July at a glance"
+  title: string;            // deco headline
+  body: string;
+  fullMoon: string;         // "Jul 4"
+  newMoon: string;          // "Jul 18"
+  bestWindow: string;       // "Jul 2–4"
 }
 
 export interface MonthEvent {
@@ -1445,6 +1487,8 @@ export interface MonthData {
   lowDay: MonthPeakLow;
   events: MonthEvent[];
   personal: MonthPersonal;
+  overview: MonthOverview;   // plum "at a glance" card
+  moments: AlmanacMoment[];  // "month's moments" list
 }
 
 const BASE_CATEGORIES: CategoryDefinition[] = [
@@ -2247,6 +2291,33 @@ function moonPhaseEmoji(phase: string): string {
   return "🌙";
 }
 
+/** Zodiac sign glyphs (Unicode) for the moon-strip and calendar */
+const SIGN_GLYPHS: Record<string, string> = {
+  Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋",
+  Leo: "♌", Virgo: "♍", Libra: "♎", Scorpio: "♏",
+  Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
+};
+
+/** True when the Moon is losing light (waning gibbous → last quarter → waning crescent). */
+function isWaningPhase(phase: string): boolean {
+  return phase.includes("waning") || phase.includes("last") || phase.includes("third");
+}
+
+/** Full display label for a moon phase enum value. */
+function phaseDisplayLabel(phase: string): string {
+  const map: Record<string, string> = {
+    "new": "New Moon",
+    "waxing-crescent": "Waxing Crescent",
+    "first-quarter": "First Quarter",
+    "waxing-gibbous": "Waxing Gibbous",
+    "full": "Full Moon",
+    "waning-gibbous": "Waning Gibbous",
+    "last-quarter": "Last Quarter",
+    "waning-crescent": "Waning Crescent",
+  };
+  return map[phase] || phase.replace(/-/g, " ");
+}
+
 /** Day-of-week short label */
 const DOW_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
@@ -2422,6 +2493,11 @@ export function getWeekData(anchorDate: Date): WeekData {
       eventTag,
       eventNote,
       moonIcon: moonPhaseEmoji(sky.moonPhase.phase),
+      // U+FE0E (variation selector) forces monochrome text, not color-emoji, rendering
+      signGlyph: SIGN_GLYPHS[moonSign] ? SIGN_GLYPHS[moonSign] + "\uFE0E" : "",
+      illumination: sky.moonPhase.illumination,
+      waning: isWaningPhase(sky.moonPhase.phase),
+      phaseName: phaseDisplayLabel(sky.moonPhase.phase),
     });
   }
 
@@ -2501,7 +2577,125 @@ export function getWeekData(anchorDate: Date): WeekData {
       : `This week's ${getTodaySky(days[3].date).moonSign} Moon activates your emotional houses. Pay attention to what surfaces mid-week.`,
   };
 
-  return { rangeLabel, headline, days, windows, personal };
+  // ── The plum "week ahead" reading card ──
+  const startIllum = days[0].illumination;
+  const endIllum = days[6].illumination;
+  const crossesFull = days.some(d => d.phaseName === "Full Moon");
+  const crossesNew = days.some(d => d.phaseName === "New Moon");
+  const netWaxing = endIllum >= startIllum;
+  const midSky = getTodaySky(days[3].date);
+  let readingEyebrow: string;
+  let readingTitle: string;
+  if (crossesFull) { readingEyebrow = "Around the Full Moon"; readingTitle = "A SLOW BUILD TOWARD ONE BRIGHT NIGHT"; }
+  else if (crossesNew) { readingEyebrow = "Around the New Moon"; readingTitle = "A QUIET RESET, THEN A FRESH START"; }
+  else if (netWaxing && endIllum > 55) { readingEyebrow = "Waxing to full"; readingTitle = "LIGHT GATHERING TOWARD SOMETHING"; }
+  else if (netWaxing) { readingEyebrow = "Waxing from dark"; readingTitle = "SMALL BEGINNINGS, GAINING GROUND"; }
+  else if (endIllum < 45) { readingEyebrow = "Waning to dark"; readingTitle = "A LONG EXHALE TOWARD THE DARK"; }
+  else { readingEyebrow = "Waning from full"; readingTitle = "RELEASING WHAT THE FULL MOON REVEALED"; }
+  const reading: WeekReading = {
+    eyebrow: readingEyebrow,
+    title: readingTitle,
+    body: `The Moon moves from ${days[0].phaseName.toLowerCase()} to ${days[6].phaseName.toLowerCase()} this week, deepening as it travels through ${days[0].signGlyph ? getTodaySky(days[0].date).moonSign : "the signs"} into ${midSky.moonSign}. ${midSky.sunSignTheme}`,
+  };
+
+  // ── Brightest day + gentle stretch ──
+  const bright = bestDay || days[0];
+  const brightest: WeekHighlight = {
+    label: capitalize(fullDow(bright.date.getDay())),
+    note: `${bright.phaseName} · ${bright.phaseName === "Full Moon" ? "harvest & release" : brightNote(getTodaySky(bright.date).moonSignElement)}`,
+  };
+  // Gentle stretch: two lowest-scoring consecutive days
+  let gentleStart = worstDay || days[0];
+  const gi = days.indexOf(gentleStart);
+  const gentleEnd = days[Math.min(gi + 1, 6)];
+  const gentleSky = getTodaySky(gentleStart.date);
+  const gentle: WeekHighlight = {
+    label: gi < 6 && gentleEnd !== gentleStart
+      ? `${abbrevDow(gentleStart.date.getDay())} – ${abbrevDow(gentleEnd.date.getDay())}`
+      : capitalize(fullDow(gentleStart.date.getDay())),
+    note: `${gentleSky.moonSign} depths · rest & reflect`,
+  };
+
+  // ── "Mark your week" moments ──
+  const moments: AlmanacMoment[] = buildWeekMoments(days, sunday);
+
+  return { rangeLabel, headline, days, windows, personal, reading, brightest, gentle, moments };
+}
+
+/** Full weekday name from getDay() index. */
+function fullDow(i: number): string {
+  return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i];
+}
+/** Three-letter weekday. */
+function abbrevDow(i: number): string {
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i];
+}
+function capitalize(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
+function brightNote(element: string): string {
+  return element === "fire" ? "momentum & courage"
+    : element === "earth" ? "build & consolidate"
+    : element === "air" ? "connect & communicate"
+    : "feel & create";
+}
+
+/** Derive up to five notable moments across a 7-day window (sign ingresses, phases, VOC, major events). */
+function buildWeekMoments(days: WeekDaySummary[], sunday: Date): AlmanacMoment[] {
+  const out: AlmanacMoment[] = [];
+  const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmt = (d: Date) => `${monthShort[d.getMonth()]} ${d.getDate()}`;
+
+  // Major events in the week
+  for (const evt of MAJOR_EVENTS_2026) {
+    const evtDate = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
+    const diff = (evtDate.getTime() - sunday.getTime()) / 86400000;
+    if (diff >= 0 && diff < 7) {
+      out.push({
+        day: abbrevDow(evtDate.getDay()), date: fmt(evtDate),
+        title: evt.headline, desc: evt.body.split(".")[0] + ".",
+        tone: evt.type === "station" ? "muted" : "go",
+        icon: evt.headline.toLowerCase().includes("venus") ? "heart" : "enter",
+      });
+    }
+  }
+
+  // Moon sign ingresses + principal phases across the week
+  let prevSign: string | null = null;
+  for (const day of days) {
+    const sky = getTodaySky(day.date);
+    if (prevSign !== null && sky.moonSign !== prevSign) {
+      out.push({
+        day: abbrevDow(day.date.getDay()), date: fmt(day.date),
+        title: `Moon enters ${sky.moonSign}`,
+        desc: `The mood shifts toward ${(SIGN_VERDICTS[sky.moonSign] || "a new register").toLowerCase()}.`,
+        tone: "brass", icon: "enter",
+      });
+    }
+    prevSign = sky.moonSign;
+    if (day.phaseName === "Full Moon" || day.phaseName === "New Moon") {
+      const isFull = day.phaseName === "Full Moon";
+      out.push({
+        day: abbrevDow(day.date.getDay()), date: fmt(day.date),
+        title: `${day.phaseName} in ${sky.moonSign}`,
+        desc: isFull ? "A culmination — something you've built comes to light." : "A fresh reset — plant a quiet intention.",
+        tone: "brass", icon: isFull ? "full" : "new",
+      });
+    }
+    // Void-of-course
+    if (sky.voidOfCourseMoon && !out.some(m => m.date === fmt(day.date) && m.icon === "pause")) {
+      out.push({
+        day: abbrevDow(day.date.getDay()), date: fmt(day.date),
+        title: `Void of course · ${sky.voidOfCourseMoon.start}–${sky.voidOfCourseMoon.end}`,
+        desc: "Let the hours coast; start nothing new.",
+        tone: "muted", icon: "pause",
+      });
+    }
+  }
+
+  // De-dup by title+date, keep chronological, cap at 5
+  const seen = new Set<string>();
+  return out
+    .filter(m => { const k = m.title + m.date; if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 5);
 }
 
 // ─── MONTH VIEW DATA ──────────────────────────────────────────────────────────
@@ -2606,6 +2800,9 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
         isCurrentMonth,
         hasEvent,
         eventDotColor,
+        illumination: sky.moonPhase.illumination,
+        waning: isWaningPhase(sky.moonPhase.phase),
+        isKeyPhase: false, // set in post-pass below
       });
 
       // Track peak/low within current month
@@ -2619,6 +2816,21 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
       }
     }
     weeks.push(week);
+  }
+
+  // ── Mark principal-phase days (New / First Qtr / Full / Last Qtr) ──
+  // Scan the current-month cells in date order and flag local extremes / 50% crossings.
+  const flat = weeks.flat().filter(c => c.isCurrentMonth);
+  for (let i = 0; i < flat.length; i++) {
+    const c = flat[i];
+    const prev = flat[i - 1];
+    const next = flat[i + 1];
+    // Full: local maximum of illumination near 100
+    if (c.illumination >= 97 && (!next || next.illumination <= c.illumination) && (!prev || prev.illumination <= c.illumination)) c.isKeyPhase = true;
+    // New: local minimum near 0
+    else if (c.illumination <= 3 && (!next || next.illumination >= c.illumination) && (!prev || prev.illumination >= c.illumination)) c.isKeyPhase = true;
+    // Quarters: first day at/above 50% after being below (either direction)
+    else if (prev && ((prev.illumination < 50 && c.illumination >= 50) || (prev.illumination >= 50 && c.illumination < 50))) c.isKeyPhase = true;
   }
 
   // Gather events for this month
@@ -2662,6 +2874,60 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
       : `A relatively quiet month celestially. Focus on the rhythm of the Moon through the signs for daily guidance.`,
   };
 
+  // ── Plum "at a glance" overview card ──
+  const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtMd = (d: Date) => `${monthShort[d.getMonth()]} ${d.getDate()}`;
+  const fullMoonCell = flat.find(c => c.illumination >= 97 && c.isKeyPhase);
+  const newMoonCell = flat.find(c => c.illumination <= 3 && c.isKeyPhase);
+  const fullMoonStr = fullMoonCell ? fmtMd(fullMoonCell.date) : "—";
+  const newMoonStr = newMoonCell ? fmtMd(newMoonCell.date) : "—";
+  // Best window: peak day ± 1 (clamped to the month)
+  const peakCell = flat.reduce<MonthDayCell | null>((best, c) => (!best || c.score > best.score ? c : best), null);
+  let bestWindowStr = peakDay.dateStr;
+  if (peakCell) {
+    const lo = new Date(peakCell.date); lo.setDate(lo.getDate() - 1);
+    const hi = new Date(peakCell.date); hi.setDate(hi.getDate() + 1);
+    bestWindowStr = lo.getMonth() === hi.getMonth()
+      ? `${monthShort[lo.getMonth()]} ${lo.getDate()}–${hi.getDate()}`
+      : `${fmtMd(lo)} – ${fmtMd(hi)}`;
+  }
+  const firstIllum = (flat[0]?.illumination) ?? 50;
+  const firstWaning = flat[0]?.waning ?? false;
+  let overviewTitle: string;
+  if (firstIllum > 80 && !firstWaning) overviewTitle = "OPENS FULL, THEN ASKS YOU TO RELEASE";
+  else if (firstIllum < 20 && !firstWaning) overviewTitle = "BEGINS IN THE DARK, THEN GATHERS LIGHT";
+  else if (firstWaning) overviewTitle = "A MONTH OF LETTING GO AND CLEARING ROOM";
+  else overviewTitle = "A STEADY CLIMB TOWARD FULLNESS";
+  const overview: MonthOverview = {
+    eyebrow: `${MONTH_NAMES[month]} at a glance`,
+    title: overviewTitle,
+    body: newMoonCell
+      ? `${MONTH_NAMES[month]} carries the Moon toward ${firstWaning || firstIllum > 80 ? "the dark" : "fullness"} — a season for ${firstWaning || firstIllum > 80 ? "finishing, clearing, and making room" : "building and reaching"} before the new cycle begins on the ${newMoonCell.date.getDate()}${ordinal(newMoonCell.date.getDate())}.`
+      : `${MONTH_NAMES[month]} unfolds through the Moon's signs — follow the daily rhythm for its quieter turns.`,
+    fullMoon: fullMoonStr,
+    newMoon: newMoonStr,
+    bestWindow: bestWindowStr,
+  };
+
+  // ── "Month's moments" list (from the gathered events) ──
+  const moments: AlmanacMoment[] = events.slice(0, 6).map(e => {
+    const lower = e.name.toLowerCase();
+    let icon: AlmanacMoment["icon"] = "enter";
+    let tone: AlmanacMoment["tone"] = "muted";
+    if (lower.includes("full moon")) { icon = "full"; tone = "brass"; }
+    else if (lower.includes("new moon")) { icon = "new"; tone = "brass"; }
+    else if (lower.includes("last quarter")) { icon = "lq"; tone = "muted"; }
+    else if (lower.includes("first quarter")) { icon = "fq"; tone = "muted"; }
+    else if (lower.includes("enters") || lower.includes("season")) { icon = "enter"; tone = "go"; }
+    return {
+      day: abbrevDow(e.date.getDay()),
+      date: fmtMd(e.date),
+      title: e.name,
+      desc: e.detail,
+      tone, icon,
+    };
+  });
+
   return {
     monthLabel: `${MONTH_NAMES[month]} ${year}`,
     year,
@@ -2671,7 +2937,15 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
     lowDay,
     events,
     personal,
+    overview,
+    moments,
   };
+}
+
+/** Ordinal suffix for a day number (1→st, 2→nd, 3→rd, else th). */
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 /** Helper to get moon sign for a specific date (for moon event descriptions) */

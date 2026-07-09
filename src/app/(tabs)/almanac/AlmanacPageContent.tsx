@@ -22,7 +22,6 @@ import {
   type ActivityFactor,
   type CategoryDefinition,
   type MonthData,
-  type MonthDayCell,
 } from "@/lib/almanacData";
 import { getCelestialData, DEFAULT_COORDS } from "@/lib/celestialMechanics";
 import { supabase } from "@/lib/supabase";
@@ -141,6 +140,58 @@ function StarIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
+/**
+ * Themed moon-phase disk. `illum` 0–100 lit fraction; `waning` = losing light.
+ * Ported from the Almanac design's _phaseSvg — a lit crescent/gibbous over a
+ * shadow disk, colored by the --moon-* CSS variables so it flips with the theme.
+ */
+function MoonPhaseGlyph({ illum, waning, size = 22 }: { illum: number; waning: boolean; size?: number }) {
+  const k = Math.max(0, Math.min(1, illum / 100));
+  let path: string | null = null;
+  if (k > 0.015 && k < 0.985) {
+    const rx = Math.abs(10 * (1 - 2 * k)).toFixed(2);
+    if (!waning) {
+      const sweep = k < 0.5 ? 1 : 0;
+      path = `M11 1 A 10 10 0 0 1 11 21 A ${rx} 10 0 0 ${sweep} 11 1 Z`;
+    } else {
+      const sweep = k < 0.5 ? 0 : 1;
+      path = `M11 1 A 10 10 0 0 0 11 21 A ${rx} 10 0 0 ${sweep} 11 1 Z`;
+    }
+  }
+  return (
+    <svg viewBox="0 0 22 22" width={size} height={size} style={{ display: "block", flex: "0 0 auto" }} aria-hidden="true">
+      <circle cx="11" cy="11" r="10" fill="var(--moon-shadow)" />
+      {k >= 0.985 && <circle cx="11" cy="11" r="10" fill="var(--moon-lit)" />}
+      {path && <path d={path} fill="var(--moon-lit)" />}
+      <circle cx="11" cy="11" r="10" fill="none" stroke="var(--moon-ring)" strokeWidth="0.6" />
+    </svg>
+  );
+}
+
+/** Map a moment accent tone to a themed CSS color var. */
+function momentToneColor(tone: string): string {
+  return tone === "brass" ? "var(--brass)" : tone === "go" ? "var(--sage)" : "var(--foreground-muted)";
+}
+
+/** Small line/phase glyph for the "mark your week" / "month's moments" event rows. */
+function MomentIcon({ icon, color }: { icon: string; color: string }) {
+  if (icon === "full") return <MoonPhaseGlyph illum={100} waning={false} size={18} />;
+  if (icon === "new") return <MoonPhaseGlyph illum={0} waning={false} size={18} />;
+  if (icon === "fq") return <MoonPhaseGlyph illum={50} waning={false} size={18} />;
+  if (icon === "lq") return <MoonPhaseGlyph illum={50} waning={true} size={18} />;
+  const paths: Record<string, string> = {
+    enter: "M5 12h14M13 6l6 6-6 6",
+    pause: "M10 4v16M14 4v16",
+    heart: "M20.8 7.6a4.7 4.7 0 0 0-8.8-1.6A4.7 4.7 0 0 0 3.2 7.6c0 4.4 8.8 10 8.8 10s8.8-5.6 8.8-10z",
+    moon: "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z",
+  };
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d={paths[icon] || paths.enter} />
     </svg>
   );
 }
@@ -784,10 +835,7 @@ export default function AlmanacPageContent() {
   // ── State ─────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [monthOffset, setMonthOffset] = useState(0); // 0 = current month
-  const [monthCategoryFilter, setMonthCategoryFilter] = useState<string | null>(null);
-  const [monthFilterOpen, setMonthFilterOpen] = useState(false);
-  const [monthSelectedDay, setMonthSelectedDay] = useState<MonthDayCell | null>(null);
-  const [expandedStrengthDay, setExpandedStrengthDay] = useState<number | null>(null); // dayNum of expanded row
+  const [monthCategoryFilter] = useState<string | null>(null);
   const [showTwilightDetail, setShowTwilightDetail] = useState(false);
   const [showMoonDetail, setShowMoonDetail] = useState(false);
   const [showGardeningTasks, setShowGardeningTasks] = useState(false);
@@ -798,7 +846,6 @@ export default function AlmanacPageContent() {
     const d = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     return getMonthData(d.getFullYear(), d.getMonth(), monthCategoryFilter || undefined);
   }, [today, monthOffset, monthCategoryFilter]);
-  const [whyExpanded, setWhyExpanded] = useState(false);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
   const [showCategoryLibrary, setShowCategoryLibrary] = useState(false);
@@ -1040,16 +1087,35 @@ export default function AlmanacPageContent() {
         {/* ━━━ Header ━━━ */}
         <header className="pt-1">
           <p
-            className="text-[11px] uppercase tracking-[0.18em] font-bold mb-1"
-            style={{ color: "var(--foreground-muted)" }}
+            className="mb-0.5"
+            style={{
+              fontFamily: "var(--font-script)",
+              fontSize: 30,
+              lineHeight: 1,
+              color: "var(--brass)",
+            }}
           >
-            {viewMode === "month" ? "THIS MONTH" : viewMode === "week" ? "THIS WEEK" : dayOfWeek}
+            {viewMode === "month"
+              ? "This month"
+              : viewMode === "week"
+              ? "This week"
+              : today.toLocaleDateString("en-US", { weekday: "long" })}
           </p>
           <h1
-            className="text-[32px] leading-tight"
-            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: 40,
+              fontWeight: 400,
+              letterSpacing: "0.04em",
+              lineHeight: 1.02,
+              color: "var(--foreground)",
+            }}
           >
-            {viewMode === "month" ? monthData.monthLabel : viewMode === "week" ? weekData.rangeLabel : dateLabel}
+            {viewMode === "month"
+              ? monthData.monthLabel.split(" ")[0].toUpperCase()
+              : viewMode === "week"
+              ? weekData.rangeLabel.toUpperCase()
+              : dateLabel.toUpperCase()}
           </h1>
         </header>
 
@@ -1082,276 +1148,277 @@ export default function AlmanacPageContent() {
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {viewMode === "week" && (
           <>
-            {/* Headline event card */}
+            {/* ── The Moon's week strip ── */}
             <div
-              className="rounded-xl px-4 py-4 flex items-start gap-3"
               style={{
-                background: "color-mix(in srgb, var(--sage) 8%, var(--background-card))",
-                border: "1px solid color-mix(in srgb, var(--sage) 18%, transparent)",
+                borderRadius: 20,
+                background: "var(--background-card)",
+                border: "0.5px solid var(--border-card)",
+                padding: "16px 12px 14px",
+                boxShadow: "0 2px 14px rgba(0,0,0,0.08)",
               }}
             >
-              <span className="text-[16px] mt-0.5" style={{ color: "var(--sage)" }}>◉</span>
-              <div>
+              <p
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: "var(--foreground-muted)",
+                  margin: "0 0 13px",
+                  padding: "0 4px",
+                }}
+              >
+                The Moon&rsquo;s week &middot; {weekData.reading.eyebrow}
+              </p>
+              <div style={{ display: "flex", alignItems: "stretch", gap: 2 }}>
+                {weekData.days.map((wd, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 7,
+                      padding: "11px 2px 12px",
+                      borderRadius: 13,
+                      background: wd.isToday
+                        ? "color-mix(in srgb, var(--brass) 14%, transparent)"
+                        : "transparent",
+                      border: wd.isToday
+                        ? "0.5px solid color-mix(in srgb, var(--brass) 38%, transparent)"
+                        : "0.5px solid transparent",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        color: wd.isToday ? "var(--brass)" : "var(--foreground-muted)",
+                      }}
+                    >
+                      {wd.dayLabel.charAt(0)}
+                    </span>
+                    <MoonPhaseGlyph illum={wd.illumination} waning={wd.waning} size={30} />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        lineHeight: 1,
+                        color: wd.isToday ? "var(--brass)" : "var(--foreground-secondary)",
+                      }}
+                    >
+                      {wd.signGlyph}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        color: wd.isToday ? "var(--foreground)" : "var(--foreground-faint)",
+                        fontWeight: wd.isToday ? 700 : 400,
+                      }}
+                    >
+                      {wd.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Week reading (plum card) ── */}
+            <div
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                padding: 20,
+                borderRadius: 20,
+                background: "var(--plum)",
+                border: "0.5px solid color-mix(in srgb, var(--brass) 18%, transparent)",
+                boxShadow: "0 4px 22px rgba(0,0,0,0.14)",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: "var(--brass-light)",
+                  margin: "0 0 10px",
+                }}
+              >
+                The week ahead
+              </p>
+              <p
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: 21,
+                  fontWeight: 400,
+                  letterSpacing: "0.02em",
+                  lineHeight: 1.25,
+                  color: "var(--lib-on-plum)",
+                  margin: "0 0 12px",
+                }}
+              >
+                {weekData.reading.title}
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.65,
+                  color: "color-mix(in srgb, var(--lib-on-plum) 82%, transparent)",
+                  margin: 0,
+                  textWrap: "pretty",
+                }}
+              >
+                {weekData.reading.body}
+              </p>
+            </div>
+
+            {/* ── Brightest day / go gently ── */}
+            <div style={{ display: "flex", gap: 11 }}>
+              <div
+                style={{
+                  flex: 1,
+                  padding: "14px 15px",
+                  borderRadius: 15,
+                  background: "color-mix(in srgb, var(--sage) 9%, var(--background-card))",
+                  border: "0.5px solid color-mix(in srgb, var(--sage) 20%, transparent)",
+                }}
+              >
                 <p
-                  className="text-[10px] uppercase tracking-[0.15em] font-bold mb-1.5"
-                  style={{ color: "var(--sage)" }}
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    color: "var(--sage)",
+                    margin: "0 0 5px",
+                  }}
                 >
-                  {weekData.headline.title}
+                  Brightest day
                 </p>
+                <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 17, color: "var(--foreground)", margin: 0 }}>
+                  {weekData.brightest.label}
+                </p>
+                <p style={{ fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
+                  {weekData.brightest.note}
+                </p>
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  padding: "14px 15px",
+                  borderRadius: 15,
+                  background: "color-mix(in srgb, var(--brass) 9%, var(--background-card))",
+                  border: "0.5px solid color-mix(in srgb, var(--brass) 20%, transparent)",
+                }}
+              >
                 <p
-                  className="text-[13px] leading-relaxed"
-                  style={{ color: "var(--foreground-on-card)" }}
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    color: "var(--brass)",
+                    margin: "0 0 5px",
+                  }}
                 >
-                  {weekData.headline.body}
+                  Go gently
+                </p>
+                <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 17, color: "var(--foreground)", margin: 0 }}>
+                  {weekData.gentle.label}
+                </p>
+                <p style={{ fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
+                  {weekData.gentle.note}
                 </p>
               </div>
             </div>
 
-            {/* Daily Strength section */}
-            <section>
-              <p
-                className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3"
-                style={{ color: "var(--foreground-muted)" }}
-              >
-                Daily Strength
-              </p>
-
-              <div className="flex flex-col">
-                {weekData.days.map((day, i) => {
-                  const barWidth = Math.max(15, (day.score / 10) * 100);
-                  const barColor = day.score >= 7 ? "var(--sage)" : day.score >= 5 ? "var(--sage)" : "var(--terracotta)";
-                  const isEvent = day.isEventDay;
-
-                  const isExpanded = expandedStrengthDay === day.dayNum;
-
-                  return (
-                    <div key={i}>
-                      <button
-                        onClick={() => setExpandedStrengthDay(isExpanded ? null : day.dayNum)}
-                        className="flex items-center gap-3 py-3.5 text-left w-full"
+            {/* ── Mark your week ── */}
+            {weekData.moments.length > 0 && (
+              <>
+                <h3
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 21,
+                    fontWeight: 400,
+                    letterSpacing: "0.06em",
+                    margin: "10px 0 0",
+                    color: "var(--foreground)",
+                  }}
+                >
+                  MARK YOUR WEEK
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                  {weekData.moments.map((ev, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 13,
+                        padding: "13px 15px",
+                        borderRadius: 15,
+                        background: "var(--background-card)",
+                        border: "0.5px solid var(--border-card)",
+                      }}
+                    >
+                      <span
                         style={{
-                          borderBottom: !isExpanded && i < 6 ? "1px solid var(--border-card)" : "none",
-                          background: isEvent ? "color-mix(in srgb, var(--amber) 6%, transparent)" : "transparent",
-                          borderRadius: isEvent || isExpanded ? "8px 8px 0 0" : "0",
-                          paddingLeft: isEvent ? "8px" : "0",
-                          paddingRight: isEvent ? "8px" : "0",
-                          marginTop: isEvent ? "4px" : "0",
+                          flex: "0 0 auto",
+                          width: 38,
+                          height: 38,
+                          borderRadius: 11,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: `color-mix(in srgb, ${momentToneColor(ev.tone)} 12%, var(--background-card))`,
+                          border: `0.5px solid color-mix(in srgb, ${momentToneColor(ev.tone)} 24%, transparent)`,
                         }}
                       >
-                        {/* Day label + number */}
-                        <div className="w-[48px] shrink-0">
-                          <p
-                            className="text-[11px] font-bold uppercase"
-                            style={{ color: isEvent ? "var(--amber)" : "var(--foreground-muted)" }}
-                          >
-                            {day.dayLabel}
-                          </p>
-                          <p
-                            className="text-[20px] font-bold leading-tight"
-                            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-                          >
-                            {day.dayNum}
-                          </p>
-                        </div>
-
-                        {/* Moon icon */}
-                        <span className="text-[14px] shrink-0" style={{ opacity: 0.5 }}>
-                          {day.moonIcon}
+                        <MomentIcon icon={ev.icon} color={momentToneColor(ev.tone)} />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--foreground)" }}>
+                          {ev.title}
                         </span>
-
-                        {/* Verdict + bar */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p
-                              className="text-[13px] font-medium truncate flex-1"
-                              style={{ color: "var(--foreground)" }}
-                            >
-                              {day.verdict}
-                            </p>
-                            {day.eventTag && (
-                              <span
-                                className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
-                                style={{
-                                  background: day.eventTag === "TODAY"
-                                    ? "color-mix(in srgb, var(--sage) 15%, transparent)"
-                                    : "color-mix(in srgb, var(--amber) 15%, transparent)",
-                                  color: day.eventTag === "TODAY" ? "var(--sage)" : "var(--amber)",
-                                }}
-                              >
-                                {day.eventTag}
-                              </span>
-                            )}
-                          </div>
-                          {day.eventNote && (
-                            <p
-                              className="text-[11px] mb-1"
-                              style={{ color: "var(--foreground-muted)" }}
-                            >
-                              {day.eventNote}
-                            </p>
-                          )}
-                          {/* Score bar */}
-                          <div
-                            className="h-[4px] rounded-full overflow-hidden"
-                            style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)" }}
-                          >
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${barWidth}%`,
-                                background: barColor,
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Score number + chevron */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span
-                            className="text-[16px] font-bold tabular-nums w-[32px] text-right"
-                            style={{
-                              fontFamily: "var(--font-display)",
-                              color: day.score >= 7 ? "var(--sage)" : day.score >= 5 ? "var(--foreground)" : "var(--terracotta)",
-                            }}
-                      >
-                            {day.score.toFixed(1)}
-                          </span>
-                          <svg
-                            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                            className="transition-transform duration-200"
-                            style={{
-                              color: "var(--foreground-muted)",
-                              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                            }}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </button>
-
-                      {/* Expanded score factors */}
-                      {isExpanded && day.scoreFactors && (
-                        <div
-                          className="px-3 pb-3 pt-1"
+                        <span
                           style={{
-                            background: "color-mix(in srgb, var(--foreground) 3%, transparent)",
-                            borderRadius: "0 0 8px 8px",
-                            borderBottom: i < 6 ? "1px solid var(--border-card)" : "none",
-                            marginBottom: isEvent ? "4px" : "0",
+                            display: "block",
+                            fontSize: 11.5,
+                            lineHeight: 1.45,
+                            marginTop: 2,
+                            color: "var(--foreground-muted)",
+                            textWrap: "pretty",
                           }}
                         >
-                          <p
-                            className="text-[10px] uppercase tracking-[0.12em] font-bold mb-2"
-                            style={{ color: "var(--foreground-muted)" }}
-                          >
-                            Why {day.score.toFixed(1)}?
-                          </p>
-                          <div className="flex flex-col gap-2">
-                            {day.scoreFactors.map((f, fi) => (
-                              <div key={fi} className="flex items-start gap-2">
-                                <span
-                                  className="shrink-0 text-[8px] font-bold uppercase tracking-wider mt-[3px] px-1 py-0.5 rounded"
-                                  style={{
-                                    background: f.effect === "boost"
-                                      ? "color-mix(in srgb, var(--sage) 15%, transparent)"
-                                      : f.effect === "drag"
-                                      ? "color-mix(in srgb, var(--terracotta) 15%, transparent)"
-                                      : "color-mix(in srgb, var(--foreground) 8%, transparent)",
-                                    color: f.effect === "boost" ? "var(--sage)"
-                                      : f.effect === "drag" ? "var(--terracotta)"
-                                      : "var(--foreground-muted)",
-                                  }}
-                                >
-                                  {f.effect === "boost" ? "↑" : f.effect === "drag" ? "↓" : "·"}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>
-                                    {f.label}
-                                  </p>
-                                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                                    {f.detail}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Windows to Catch */}
-            {weekData.windows.length > 0 && (
-              <section>
-                <p
-                  className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3"
-                  style={{ color: "var(--foreground-muted)" }}
-                >
-                  Windows to Catch
-                </p>
-                <div className="flex flex-col gap-3">
-                  {weekData.windows.map((w, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span
-                        className="shrink-0 text-[8px] font-bold uppercase tracking-wider mt-[5px] px-1.5 py-0.5 rounded"
-                        style={{
-                          background: w.color === "green"
-                            ? "color-mix(in srgb, var(--sage) 15%, transparent)"
-                            : w.color === "amber"
-                            ? "color-mix(in srgb, var(--amber) 15%, transparent)"
-                            : "color-mix(in srgb, var(--terracotta) 15%, transparent)",
-                          color: w.color === "green" ? "var(--sage)"
-                            : w.color === "amber" ? "var(--amber)"
-                            : "var(--terracotta)",
-                        }}
-                      >
-                        {w.color === "green" ? "Good" : w.color === "amber" ? "Mixed" : "Avoid"}
+                          {ev.desc}
+                        </span>
                       </span>
-                      <div>
-                        <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>
-                          {w.label}
-                        </p>
-                        <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                          {w.detail}
-                        </p>
-                      </div>
+                      <span style={{ flex: "0 0 auto", textAlign: "right" }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 9,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                            color: "var(--foreground-faint)",
+                          }}
+                        >
+                          {ev.day}
+                        </span>
+                        <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
+                          {ev.date}
+                        </span>
+                      </span>
                     </div>
                   ))}
                 </div>
-              </section>
+              </>
             )}
-
-            {/* Personal Lookahead */}
-            <div
-              className="rounded-xl px-4 py-4"
-              style={{
-                background: "color-mix(in srgb, var(--sage) 6%, var(--background-card))",
-                border: "1px solid color-mix(in srgb, var(--sage) 12%, transparent)",
-              }}
-            >
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5" style={{ color: "var(--sage)" }}>
-                  <StarIcon />
-                </span>
-                <div>
-                  <p
-                    className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5"
-                    style={{ color: "var(--sage)" }}
-                  >
-                    {weekData.personal.title}
-                  </p>
-                  <p
-                    className="text-[13px] leading-relaxed"
-                    style={{ color: "var(--foreground-on-card)" }}
-                  >
-                    {weekData.personal.body}
-                  </p>
-                </div>
-              </div>
-            </div>
           </>
         )}
 
@@ -1359,362 +1426,290 @@ export default function AlmanacPageContent() {
         {/* ━━━ MONTH VIEW ━━━ */}
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {viewMode === "month" && (
-          <div className="flex flex-col gap-4">
-            {/* ── Month Navigation ── */}
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setMonthOffset(o => o - 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-full"
-                style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-                aria-label="Previous month"
-              >
-                <span style={{ color: "var(--foreground)" }}>‹</span>
-              </button>
-              <h2
-                className="text-[18px] font-semibold"
-                style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}
-              >
-                {monthData.monthLabel}
-              </h2>
-              <button
-                onClick={() => setMonthOffset(o => o + 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-full"
-                style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-                aria-label="Next month"
-              >
-                <span style={{ color: "var(--foreground)" }}>›</span>
-              </button>
-            </div>
-
-            {/* ── Category Filter Dropdown ── */}
-            <div className="relative">
-              <button
-                onClick={() => setMonthFilterOpen(!monthFilterOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[12px] font-semibold transition-all"
+          <>
+            {/* ── Month overview (plum "at a glance" card) ── */}
+            <div
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                padding: 20,
+                borderRadius: 20,
+                background: "var(--plum)",
+                border: "0.5px solid color-mix(in srgb, var(--brass) 18%, transparent)",
+                boxShadow: "0 4px 22px rgba(0,0,0,0.14)",
+              }}
+            >
+              <p
                 style={{
-                  background: "var(--background-card)",
-                  border: "1px solid var(--border-card)",
-                  color: "var(--foreground)",
+                  fontSize: 9,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: "var(--brass-light)",
+                  margin: "0 0 10px",
                 }}
               >
-                <span style={{ color: "var(--foreground-muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  Showing
-                </span>
-                <span style={{ color: "var(--accent-brass)" }}>
-                  {monthCategoryFilter
-                    ? (() => {
-                        const allDefs = getCategoryDefinitions();
-                        const def = allDefs.find(d => d.id === monthCategoryFilter);
-                        return def?.name || customNames[monthCategoryFilter] || unslugify(monthCategoryFilter);
-                      })()
-                    : "Overall Energy"}
-                </span>
-                <span style={{ color: "var(--foreground-muted)", fontSize: 14 }}>
-                  {monthFilterOpen ? "▴" : "▾"}
-                </span>
-              </button>
-              {monthFilterOpen && (
-                <div
-                  className="absolute top-full left-0 right-0 z-20 mt-1 rounded-lg overflow-hidden shadow-lg"
-                  style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-                >
-                  <button
-                    onClick={() => { setMonthCategoryFilter(null); setMonthFilterOpen(false); }}
-                    className="w-full text-left px-3 py-2.5 text-[12px] font-medium transition-colors"
-                    style={{
-                      color: !monthCategoryFilter ? "var(--accent-brass)" : "var(--foreground)",
-                      background: !monthCategoryFilter ? "rgba(201, 169, 97, 0.08)" : "transparent",
-                    }}
-                  >
-                    Overall Energy
-                  </button>
-                  {categories.map(catId => {
-                    const allDefs = getCategoryDefinitions();
-                    const def = allDefs.find(d => d.id === catId);
-                    const name = def?.name || customNames[catId] || unslugify(catId);
-                    const isActive = monthCategoryFilter === catId;
-                    return (
-                      <button
-                        key={catId}
-                        onClick={() => { setMonthCategoryFilter(catId); setMonthFilterOpen(false); }}
-                        className="w-full text-left px-3 py-2.5 text-[12px] font-medium transition-colors"
-                        style={{
-                          color: isActive ? "var(--accent-brass)" : "var(--foreground)",
-                          background: isActive ? "rgba(201, 169, 97, 0.08)" : "transparent",
-                        }}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* ── Heatmap Calendar ── */}
-            <div
-              className="rounded-xl p-3"
-              style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-            >
-              {/* Day-of-week headers */}
-              <div className="grid grid-cols-7 mb-1">
-                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                {monthData.overview.eyebrow}
+              </p>
+              <p
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: 21,
+                  fontWeight: 400,
+                  letterSpacing: "0.02em",
+                  lineHeight: 1.25,
+                  color: "var(--lib-on-plum)",
+                  margin: "0 0 12px",
+                }}
+              >
+                {monthData.overview.title}
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.65,
+                  color: "color-mix(in srgb, var(--lib-on-plum) 82%, transparent)",
+                  margin: "0 0 16px",
+                  textWrap: "pretty",
+                }}
+              >
+                {monthData.overview.body}
+              </p>
+              <div style={{ display: "flex", gap: 9 }}>
+                {[
+                  { label: "Full Moon", value: monthData.overview.fullMoon },
+                  { label: "New Moon", value: monthData.overview.newMoon },
+                  { label: "Best window", value: monthData.overview.bestWindow },
+                ].map((chip, i) => (
                   <div
                     key={i}
-                    className="text-center text-[10px] font-semibold py-1"
-                    style={{ color: "var(--foreground-muted)" }}
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      padding: "11px 6px",
+                      borderRadius: 12,
+                      background: "rgba(201,169,97,0.10)",
+                      border: "0.5px solid rgba(201,169,97,0.2)",
+                    }}
                   >
-                    {d}
+                    <p
+                      style={{
+                        fontSize: 8.5,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "color-mix(in srgb, var(--lib-on-plum) 62%, transparent)",
+                        margin: "0 0 3px",
+                      }}
+                    >
+                      {chip.label}
+                    </p>
+                    <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 15, color: "var(--lib-on-plum)", margin: 0 }}>
+                      {chip.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Lunar calendar ── */}
+            <div
+              style={{
+                padding: "16px 14px 18px",
+                borderRadius: 20,
+                background: "var(--background-card)",
+                border: "0.5px solid var(--border-card)",
+                boxShadow: "0 2px 14px rgba(0,0,0,0.08)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 2px 14px" }}>
+                <p
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    color: "var(--foreground-muted)",
+                    margin: 0,
+                  }}
+                >
+                  Lunar calendar
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => setMonthOffset((o) => o - 1)}
+                    aria-label="Previous month"
+                    style={{ color: "var(--foreground-muted)", fontSize: 16, lineHeight: 1, padding: "0 2px", background: "transparent", border: "none", cursor: "pointer" }}
+                  >
+                    ‹
+                  </button>
+                  <p style={{ fontFamily: "var(--font-heading)", fontSize: 15, letterSpacing: "0.05em", color: "var(--foreground-secondary)", margin: 0, minWidth: 96, textAlign: "center" }}>
+                    {monthData.monthLabel.toUpperCase()}
+                  </p>
+                  <button
+                    onClick={() => setMonthOffset((o) => o + 1)}
+                    aria-label="Next month"
+                    style={{ color: "var(--foreground-muted)", fontSize: 16, lineHeight: 1, padding: "0 2px", background: "transparent", border: "none", cursor: "pointer" }}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 1, marginBottom: 6 }}>
+                {["S", "M", "T", "W", "T", "F", "S"].map((dl, i) => (
+                  <span key={i} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--foreground-faint)" }}>
+                    {dl}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+                {monthData.weeks.flat().map((cell, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 3,
+                      padding: "6px 2px",
+                      borderRadius: 11,
+                      minHeight: 50,
+                      justifyContent: "center",
+                      opacity: cell.isCurrentMonth ? 1 : 0.34,
+                      background: cell.isToday
+                        ? "color-mix(in srgb, var(--brass) 16%, transparent)"
+                        : cell.isKeyPhase && cell.isCurrentMonth
+                        ? "color-mix(in srgb, var(--foreground) 4%, transparent)"
+                        : "transparent",
+                      border: cell.isToday
+                        ? "0.5px solid color-mix(in srgb, var(--brass) 42%, transparent)"
+                        : cell.isKeyPhase && cell.isCurrentMonth
+                        ? "0.5px solid var(--border-card)"
+                        : "0.5px solid transparent",
+                    }}
+                  >
+                    {cell.isCurrentMonth && (
+                      <MoonPhaseGlyph illum={cell.illumination} waning={cell.waning} size={cell.isToday ? 21 : 19} />
+                    )}
+                    <span
+                      style={{
+                        fontSize: 10,
+                        lineHeight: 1,
+                        color: cell.isToday
+                          ? "var(--brass)"
+                          : cell.isKeyPhase && cell.isCurrentMonth
+                          ? "var(--foreground-secondary)"
+                          : "var(--foreground-muted)",
+                        fontWeight: cell.isToday || (cell.isKeyPhase && cell.isCurrentMonth) ? 700 : 400,
+                      }}
+                    >
+                      {cell.dayNum}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              {/* Calendar grid */}
-              {monthData.weeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-[2px]">
-                  {week.map((cell, di) => {
-                    const HEATMAP_COLORS = [
-                      "rgba(90, 31, 26, 0.65)",    // 0: oxblood/low
-                      "rgba(74, 37, 64, 0.45)",    // 1: plum muted
-                      "rgba(201, 169, 97, 0.22)",  // 2: brass neutral
-                      "rgba(45, 64, 41, 0.50)",    // 3: forest
-                      "rgba(90, 122, 58, 0.65)",   // 4: sage/high
-                    ];
-                    return (
-                      <button
-                        key={di}
-                        onClick={() => {
-                          if (cell.isCurrentMonth) {
-                            setMonthSelectedDay(monthSelectedDay?.dayNum === cell.dayNum ? null : cell);
-                          }
-                        }}
-                        className="relative aspect-square flex items-center justify-center rounded-md transition-all"
-                        style={{
-                          background: cell.isCurrentMonth ? HEATMAP_COLORS[cell.colorLevel] : "transparent",
-                          opacity: cell.isCurrentMonth ? 1 : 0.3,
-                          border: monthSelectedDay?.dayNum === cell.dayNum && cell.isCurrentMonth
-                            ? "2px solid var(--foreground)"
-                            : cell.isToday ? "2px solid var(--accent-brass)" : "1px solid transparent",
-                        }}
-                        aria-label={`${cell.dayNum}, score ${cell.score}`}
-                      >
-                        <span
-                          className="text-[12px] font-medium"
-                          style={{ color: cell.isCurrentMonth ? "var(--foreground)" : "var(--foreground-muted)" }}
-                        >
-                          {cell.dayNum}
-                        </span>
-                        {/* Event dot */}
-                        {cell.hasEvent && cell.isCurrentMonth && (
-                          <span
-                            className="absolute bottom-[3px] right-[3px] w-[5px] h-[5px] rounded-full"
-                            style={{
-                              background: cell.eventDotColor === "red" ? "var(--oxblood-light)" :
-                                cell.eventDotColor === "amber" ? "var(--accent-brass)" : "var(--foreground-muted)",
-                            }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-
-              {/* Legend */}
-              <div className="flex items-center justify-center gap-1 mt-3 pt-2" style={{ borderTop: "1px solid var(--border-card)" }}>
-                <span className="text-[9px] mr-1" style={{ color: "var(--foreground-muted)" }}>Low</span>
-                {[0, 1, 2, 3, 4].map(level => (
-                  <span
-                    key={level}
-                    className="w-3 h-3 rounded-sm"
-                    style={{
-                      background: [
-                        "rgba(90, 31, 26, 0.65)",
-                        "rgba(74, 37, 64, 0.45)",
-                        "rgba(201, 169, 97, 0.22)",
-                        "rgba(45, 64, 41, 0.50)",
-                        "rgba(90, 122, 58, 0.65)",
-                      ][level],
-                    }}
-                  />
-                ))}
-                <span className="text-[9px] ml-1" style={{ color: "var(--foreground-muted)" }}>High</span>
-              </div>
-            </div>
-
-            {/* ── Selected Day Detail ── */}
-            {monthSelectedDay && (
-              <div
-                className="rounded-xl p-4 transition-all"
-                style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>
-                    {monthSelectedDay.date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-                  </h3>
-                  <span
-                    className="text-[12px] font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      background: monthSelectedDay.colorLevel >= 3
-                        ? "color-mix(in srgb, var(--sage) 15%, transparent)"
-                        : monthSelectedDay.colorLevel <= 1
-                        ? "color-mix(in srgb, var(--terracotta) 15%, transparent)"
-                        : "color-mix(in srgb, var(--foreground) 8%, transparent)",
-                      color: monthSelectedDay.colorLevel >= 3 ? "var(--sage-light)" : monthSelectedDay.colorLevel <= 1 ? "var(--oxblood-light)" : "var(--foreground-muted)",
-                    }}
-                  >
-                    {monthSelectedDay.colorLevel >= 3 ? "Strong" : monthSelectedDay.colorLevel <= 1 ? "Low" : "Neutral"} {monthSelectedDay.score}
+              {/* legend */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginTop: 15, paddingTop: 14, borderTop: "0.5px solid var(--border-card)" }}>
+                {[
+                  { label: "New", illum: 0, waning: false },
+                  { label: "First ¼", illum: 50, waning: false },
+                  { label: "Full", illum: 100, waning: false },
+                  { label: "Last ¼", illum: 50, waning: true },
+                ].map((pl, i) => (
+                  <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <MoonPhaseGlyph illum={pl.illum} waning={pl.waning} size={14} />
+                    <span style={{ fontSize: 9.5, lineHeight: 1.1, color: "var(--foreground-muted)" }}>{pl.label}</span>
                   </span>
-                </div>
-                <p className="text-[12px] mb-2" style={{ color: "var(--foreground-muted)" }}>
-                  {(() => {
-                    const sky = getTodaySky(monthSelectedDay.date, coords);
-                    return `Moon in ${sky.moonSign} · ${sky.planetaryRuler.planet} day · ${sky.moonPhase.phase.replace("-", " ")}`;
-                  })()}
-                </p>
-                {monthSelectedDay.hasEvent && (
-                  <p className="text-[11px] px-2 py-1 rounded-md inline-block" style={{ background: "rgba(90, 31, 26, 0.2)", color: "var(--oxblood-light)" }}>
-                    {monthData.events.find(e => e.date.getDate() === monthSelectedDay!.dayNum)?.name || "Celestial event"}
-                  </p>
-                )}
-                <button
-                  onClick={() => setMonthSelectedDay(null)}
-                  className="mt-2 text-[10px] uppercase tracking-wide"
-                  style={{ color: "var(--foreground-muted)" }}
-                >
-                  Dismiss
-                </button>
+                ))}
               </div>
-            )}
-
-            {/* ── Peak & Low Cards ── */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Peak */}
-              <button
-                onClick={() => {
-                  // Find peak day cell and select it
-                  for (const week of monthData.weeks) {
-                    const found = week.find(c => c.isCurrentMonth && c.score === monthData.peakDay.score);
-                    if (found) { setMonthSelectedDay(found); break; }
-                  }
-                }}
-                className="rounded-xl p-3 text-left transition-all active:scale-[0.98]"
-                style={{ background: "rgba(45, 64, 41, 0.3)", border: "1px solid rgba(90, 122, 58, 0.35)" }}
-              >
-                <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: "var(--sage-light)" }}>
-                  {monthData.peakDay.label}
-                </p>
-                <p className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                  {monthData.peakDay.dateStr}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                  {monthData.peakDay.reason}
-                </p>
-                <p className="text-[18px] font-bold mt-1" style={{ color: "var(--sage-light)" }}>
-                  {monthData.peakDay.score}
-                </p>
-              </button>
-              {/* Low */}
-              <button
-                onClick={() => {
-                  for (const week of monthData.weeks) {
-                    const found = week.find(c => c.isCurrentMonth && c.score === monthData.lowDay.score);
-                    if (found) { setMonthSelectedDay(found); break; }
-                  }
-                }}
-                className="rounded-xl p-3 text-left transition-all active:scale-[0.98]"
-                style={{ background: "rgba(90, 31, 26, 0.2)", border: "1px solid rgba(122, 48, 40, 0.35)" }}
-              >
-                <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: "var(--oxblood-light)" }}>
-                  {monthData.lowDay.label}
-                </p>
-                <p className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                  {monthData.lowDay.dateStr}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>
-                  {monthData.lowDay.reason}
-                </p>
-                <p className="text-[18px] font-bold mt-1" style={{ color: "var(--oxblood-light)" }}>
-                  {monthData.lowDay.score}
-                </p>
-              </button>
             </div>
 
-            {/* ── Mark Your Calendar (Events Timeline) ── */}
-            {monthData.events.length > 0 && (
-              <div
-                className="rounded-xl p-4"
-                style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-              >
+            {/* ── Month's moments ── */}
+            {monthData.moments.length > 0 && (
+              <>
                 <h3
-                  className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3"
-                  style={{ color: "var(--foreground-muted)" }}
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 21,
+                    fontWeight: 400,
+                    letterSpacing: "0.06em",
+                    margin: "10px 0 0",
+                    color: "var(--foreground)",
+                  }}
                 >
-                  Mark Your Calendar
+                  {monthData.monthLabel.split(" ")[0].toUpperCase()}&rsquo;S MOMENTS
                 </h3>
-                <div className="flex flex-col gap-3">
-                  {monthData.events.map((evt, i) => (
-                    <button
+                <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                  {monthData.moments.map((ev, i) => (
+                    <div
                       key={i}
-                      onClick={() => {
-                        // Find and select the day cell for this event
-                        const evtDay = evt.date.getDate();
-                        for (const week of monthData.weeks) {
-                          const found = week.find(c => c.isCurrentMonth && c.dayNum === evtDay);
-                          if (found) { setMonthSelectedDay(found); break; }
-                        }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 13,
+                        padding: "13px 15px",
+                        borderRadius: 15,
+                        background: "var(--background-card)",
+                        border: "0.5px solid var(--border-card)",
                       }}
-                      className="flex items-start gap-3 text-left transition-all active:scale-[0.98]"
                     >
-                      {/* Date badge */}
-                      <div
-                        className="shrink-0 w-10 text-center rounded-md py-1"
+                      <span
                         style={{
-                          background: evt.isMajor ? "rgba(90, 31, 26, 0.25)" : "rgba(201, 169, 97, 0.12)",
-                          border: `1px solid ${evt.isMajor ? "rgba(122, 48, 40, 0.4)" : "rgba(201, 169, 97, 0.25)"}`,
+                          flex: "0 0 auto",
+                          width: 38,
+                          height: 38,
+                          borderRadius: 11,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: `color-mix(in srgb, ${momentToneColor(ev.tone)} 12%, var(--background-card))`,
+                          border: `0.5px solid color-mix(in srgb, ${momentToneColor(ev.tone)} 24%, transparent)`,
                         }}
                       >
-                        <p className="text-[9px] font-bold" style={{ color: evt.isMajor ? "var(--oxblood-light)" : "var(--accent-brass)" }}>
-                          {evt.dateLabel.split(" ")[0]}
-                        </p>
-                        <p className="text-[14px] font-bold" style={{ color: "var(--foreground)" }}>
-                          {evt.dateLabel.split(" ")[1]}
-                        </p>
-                      </div>
-                      {/* Event info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
-                          {evt.name}
-                        </p>
-                        <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: "var(--foreground-muted)" }}>
-                          {evt.detail}
-                        </p>
-                      </div>
-                    </button>
+                        <MomentIcon icon={ev.icon} color={momentToneColor(ev.tone)} />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--foreground)" }}>
+                          {ev.title}
+                        </span>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 11.5,
+                            lineHeight: 1.45,
+                            marginTop: 2,
+                            color: "var(--foreground-muted)",
+                            textWrap: "pretty",
+                          }}
+                        >
+                          {ev.desc}
+                        </span>
+                      </span>
+                      <span style={{ flex: "0 0 auto", textAlign: "right" }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 9,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                            color: "var(--foreground-faint)",
+                          }}
+                        >
+                          {ev.day}
+                        </span>
+                        <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
+                          {ev.date}
+                        </span>
+                      </span>
+                    </div>
                   ))}
                 </div>
-              </div>
+              </>
             )}
-
-            {/* ── Personal Callout ── */}
-            <div
-              className="rounded-xl p-4"
-              style={{
-                background: "linear-gradient(135deg, rgba(201, 169, 97, 0.08), rgba(201, 169, 97, 0.02))",
-                border: "1px solid rgba(201, 169, 97, 0.2)",
-              }}
-            >
-              <p
-                className="text-[10px] uppercase tracking-[0.15em] font-bold mb-2"
-                style={{ color: "var(--accent-brass)" }}
-              >
-                {monthData.personal.title}
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground)" }}>
-                {monthData.personal.body}
-              </p>
-            </div>
-          </div>
+          </>
         )}
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
