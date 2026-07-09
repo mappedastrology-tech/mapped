@@ -1727,8 +1727,8 @@ export default function AlmanacPageContent() {
           style={{
             borderRadius: 22,
             padding: "26px 22px 22px",
-            background: "linear-gradient(160deg, #221a33, #15101c 70%)",
-            border: "0.5px solid rgba(201,169,97,0.18)",
+            background: "var(--plum)",
+            border: "0.5px solid rgba(201,169,97,0.28)",
           }}
         >
           {/* starfield */}
@@ -1753,7 +1753,7 @@ export default function AlmanacPageContent() {
               <p className="text-[10px] uppercase font-bold mb-[5px]" style={{ letterSpacing: "0.18em", color: "#d8c285" }}>
                 {moonPhaseLabel} · {moonIllumination}%
               </p>
-              <h2 className="mb-2" style={{ fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 500, lineHeight: 1.15, color: "#f3ecd8" }}>
+              <h2 className="mb-2" style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 23, fontWeight: 500, lineHeight: 1.15, color: "#f3ecd8" }}>
                 The Moon in {sky.moonSign}
               </h2>
               <p className="text-[13px] m-0" style={{ lineHeight: 1.5, color: "#cdc1a8", textWrap: "pretty" }}>
@@ -1765,17 +1765,17 @@ export default function AlmanacPageContent() {
           <div className="relative flex mt-5 pt-4" style={{ borderTop: "0.5px solid rgba(201,169,97,0.2)" }}>
             <div className="flex-1 text-center">
               <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Sunrise</p>
-              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunrise}</p>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunrise}</p>
             </div>
             <div style={{ width: "0.5px", background: "rgba(201,169,97,0.2)" }} />
             <div className="flex-1 text-center">
               <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Sunset</p>
-              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunset}</p>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 16, color: "#f3ecd8" }}>{celestial.sunset}</p>
             </div>
             <div style={{ width: "0.5px", background: "rgba(201,169,97,0.2)" }} />
             <div className="flex-1 text-center">
               <p className="text-[9px] uppercase mb-[3px]" style={{ letterSpacing: "0.12em", color: "#a89a7e" }}>Daylight</p>
-              <p className="m-0 tabular-nums" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#f3ecd8" }}>
+              <p className="m-0 tabular-nums" style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 16, color: "#f3ecd8" }}>
                 {Math.floor(celestial.dayLengthMinutes / 60)}h {Math.round(celestial.dayLengthMinutes % 60)}m
               </p>
             </div>
