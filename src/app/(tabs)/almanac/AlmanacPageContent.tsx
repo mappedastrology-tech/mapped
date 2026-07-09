@@ -598,6 +598,11 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
+/**
+ * A single "Explore the day" accordion row — an icon tile, a Le Jour Serif
+ * title, a one-line subtitle, and expandable content. Designed to sit inside
+ * the grouped Explore card (rows separated by hairlines), matching the design.
+ */
 function AlmanacDrawer({
   title,
   icon,
@@ -605,44 +610,40 @@ function AlmanacDrawer({
   children,
 }: {
   title: string;
-  icon?: string;
+  icon?: React.ReactNode;
   preview?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div
-      className="rounded-xl overflow-hidden transition-all duration-200"
-      style={{
-        background: "var(--background-card)",
-        border: open
-          ? "1px solid color-mix(in srgb, var(--brass) 25%, transparent)"
-          : "1px solid var(--border-card)",
-      }}
-    >
+    <div style={{ borderBottom: "0.5px solid var(--border-card)" }}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+        className="w-full flex items-center gap-[14px] px-4 py-4 text-left"
         aria-expanded={open}
       >
-        {icon && <span className="text-[16px] shrink-0">{icon}</span>}
+        {icon && (
+          <span
+            className="shrink-0 flex items-center justify-center"
+            style={{ width: 34, height: 34, borderRadius: 9, background: "color-mix(in srgb, var(--brass) 8%, var(--background-card))", border: "0.5px solid var(--border-card)", color: "var(--brass)" }}
+          >
+            {icon}
+          </span>
+        )}
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
+          <p style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.15, color: "var(--foreground-on-card)" }}>
             {title}
           </p>
-          {!open && preview && (
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--foreground-on-card-faint)" }}>
+          {preview && (
+            <p className="text-[11px] mt-[1px] truncate" style={{ color: "var(--foreground-on-card-faint)" }}>
               {preview}
             </p>
           )}
         </div>
         <svg
-          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           className="shrink-0 transition-transform duration-200"
-          style={{
-            color: "var(--foreground-muted)",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-          }}
+          style={{ color: "var(--brass)", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -652,14 +653,22 @@ function AlmanacDrawer({
         style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
       >
         <div className="overflow-hidden">
-          <div className="px-4 pb-4 pt-1" style={{ borderTop: "1px solid var(--border-card)" }}>
-            {children}
-          </div>
+          <div className="px-4 pb-4 pt-1 pl-[52px]">{children}</div>
         </div>
       </div>
     </div>
   );
 }
+
+/** SVG icons for the Explore rows, matching the design's line-art tiles. */
+const ALMANAC_ICONS: Record<string, React.ReactNode> = {
+  garden: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 18 4h3v3a7 7 0 0 1-10 13z" /><path d="M8 21c0-5 3-9 8-12" /></svg>),
+  water: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0" /><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0" /></svg>),
+  body: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l2-6 4 12 2-6h4" /></svg>),
+  visible: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.2 6.6H21l-5.4 4 2 6.6L12 16.2 6.4 20.2l2-6.6L3 9.6h6.8z" /></svg>),
+  history: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h13a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2z" /><path d="M8 9h7M8 13h5" /></svg>),
+  upcoming: (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v4M16 3v4" /></svg>),
+};
 
 /** Always-visible section wrapper (no collapse) */
 function AlmanacSection({
@@ -1878,13 +1887,13 @@ export default function AlmanacPageContent() {
           <div className="flex-1 h-px" style={{ background: "var(--border-card)" }} />
         </div>
 
-        {/* ── PRACTICAL ── */}
-        <div className="flex flex-col gap-2.5">
+        {/* ── Explore the day — one grouped accordion card ── */}
+        <div className="overflow-hidden" style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)", boxShadow: "0 2px 14px rgba(0,0,0,0.08)" }}>
 
         {/* Planting Calendar */}
         <AlmanacDrawer
-          title="In the Garden"
-          icon="🌱"
+          title="In the garden"
+          icon={ALMANAC_ICONS.garden}
           preview={`${plantingCal.todayVerdict.crop} · Score ${plantingCal.todayVerdict.score}/10`}
         >
           {/* Zone lookup by zip */}
@@ -2209,8 +2218,8 @@ export default function AlmanacPageContent() {
 
         {/* Fishing Forecast */}
         <AlmanacDrawer
-          title="Fishing Forecast"
-          icon="🎣"
+          title="On the water"
+          icon={ALMANAC_ICONS.water}
           preview={fishingForecast ? `${fishingForecast.ratingLabel} · ${fishingForecast.rating.toFixed(1)} · ${fishingForecast.waterBody.name}` : "Set your location"}
         >
           <div className="flex flex-col gap-4">
@@ -2660,8 +2669,8 @@ export default function AlmanacPageContent() {
 
         {/* Body Timing */}
         <AlmanacDrawer
-          title="Body Timing"
-          icon="⚕️"
+          title="In your body"
+          icon={ALMANAC_ICONS.body}
           preview={`${bodyTiming.summaryLabel} — Moon in ${bodyTiming.moonSign}`}
         >
           <div className="flex flex-col gap-4">
@@ -2884,8 +2893,8 @@ export default function AlmanacPageContent() {
         {/* Visible Tonight */}
         {(celestial.visiblePlanets.length > 0 || celestial.meteorShower) && (
           <AlmanacDrawer
-            title="Visible Tonight"
-            icon="✦"
+            title="Visible tonight"
+            icon={ALMANAC_ICONS.visible}
             preview={celestial.visiblePlanets.map(p => p.name).join(", ") || "Meteor shower active"}
           >
             <p className="text-[10px] leading-relaxed mb-3" style={{ color: "var(--foreground-muted)" }}>
@@ -2920,16 +2929,11 @@ export default function AlmanacPageContent() {
           </AlmanacDrawer>
         )}
 
-        </div>{/* end practical drawers */}
-
-        {/* ── STORIES & WISDOM ── */}
-        <div className="flex flex-col gap-2.5">
-
         {/* On This Day */}
         {onThisDay.length > 0 && (
           <AlmanacDrawer
-            title="On This Day"
-            icon="📜"
+            title="On this day"
+            icon={ALMANAC_ICONS.history}
             preview={`${onThisDay.length} events — ${onThisDay[0]?.year}`}
           >
             <div>
@@ -2970,8 +2974,8 @@ export default function AlmanacPageContent() {
         {/* Coming Up */}
         {dailyEnergy.upcomingEvents.length > 0 && (
           <AlmanacDrawer
-            title="Coming Up"
-            icon="📅"
+            title="Coming up"
+            icon={ALMANAC_ICONS.upcoming}
             preview={`${dailyEnergy.upcomingEvents[0]?.name} — ${dailyEnergy.upcomingEvents[0]?.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
           >
             <div>
@@ -2999,7 +3003,7 @@ export default function AlmanacPageContent() {
           </AlmanacDrawer>
         )}
 
-        </div>{/* end stories drawers */}
+        </div>{/* end Explore the day card */}
 
         {/* ━━━ The Moon's week — a bridge to the week view ━━━ */}
         <button
