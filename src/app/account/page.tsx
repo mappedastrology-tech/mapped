@@ -18,6 +18,7 @@ import CitySearch from "@/components/CitySearch";
 import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
 import { ORACLE_DECKS, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
+import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import {
   getCachedLocation,
   fetchUserLocation,
@@ -1039,15 +1040,32 @@ function ThemeSection() {
 
 function OracleDeckSection() {
   const [deckId, setDeckId] = useState<string>(DEFAULT_ORACLE_DECK);
+  const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(ORACLE_DECK_KEY);
       if (saved && ORACLE_DECKS.some((d) => d.id === saved)) setDeckId(saved);
     } catch { /* ignore */ }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid || cancelled) return;
+        setUserId(uid);
+        const acct = await fetchSetting(uid, "oracle-deck");
+        if (acct && ORACLE_DECKS.some((d) => d.id === acct) && !cancelled) {
+          setDeckId(acct);
+          try { localStorage.setItem(ORACLE_DECK_KEY, acct); } catch { /* ignore */ }
+        }
+      } catch { /* signed out / offline */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
   const choose = (id: string) => {
     setDeckId(id);
     try { localStorage.setItem(ORACLE_DECK_KEY, id); } catch { /* ignore */ }
+    if (userId) saveSetting(userId, "oracle-deck", id);
   };
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">

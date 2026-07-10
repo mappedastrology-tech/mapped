@@ -137,6 +137,80 @@ export async function saveUserLocation(
   return null;
 }
 
+// ─── Garden settings (account-synced) ────────────────────────────────────────
+//
+// The planting calendar's zip/zone are saved to the user's profile so they
+// follow the account across devices. localStorage is kept as a synchronous
+// cache and as the fallback when signed out.
+
+export interface GardenSettings {
+  zip: string;
+  zone: string;
+}
+
+const gardenCacheKey = (userId: string) => `mapped:garden:${userId}`;
+
+export function getCachedGarden(userId: string): GardenSettings | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(gardenCacheKey(userId));
+    if (!raw) return null;
+    return JSON.parse(raw) as GardenSettings;
+  } catch {
+    return null;
+  }
+}
+
+/** Read the account's saved garden zip/zone (null if none set yet). */
+export async function fetchGardenSettings(userId: string): Promise<GardenSettings | null> {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("garden_zip, garden_zone")
+      .eq("id", userId)
+      .maybeSingle();
+    if (data && (data.garden_zip || data.garden_zone)) {
+      const g: GardenSettings = {
+        zip: data.garden_zip || "",
+        zone: data.garden_zone || "",
+      };
+      try {
+        localStorage.setItem(gardenCacheKey(userId), JSON.stringify(g));
+      } catch {
+        // cache unavailable — non-fatal
+      }
+      return g;
+    }
+  } catch {
+    // column missing / offline — caller falls back to localStorage/estimate
+  }
+  return null;
+}
+
+/** Persist part or all of the garden settings to the account (and cache). */
+export async function saveGardenSettings(
+  userId: string,
+  patch: Partial<GardenSettings>
+): Promise<void> {
+  const current = getCachedGarden(userId) || { zip: "", zone: "" };
+  const next: GardenSettings = { ...current, ...patch };
+  try {
+    localStorage.setItem(gardenCacheKey(userId), JSON.stringify(next));
+  } catch {
+    // non-fatal
+  }
+  try {
+    const payload: Record<string, string> = {};
+    if (patch.zip !== undefined) payload.garden_zip = patch.zip;
+    if (patch.zone !== undefined) payload.garden_zone = patch.zone;
+    if (Object.keys(payload).length > 0) {
+      await supabase.from("profiles").update(payload).eq("id", userId);
+    }
+  } catch {
+    // offline — the cache holds the value until next sync
+  }
+}
+
 // ─── Garden zone estimation ──────────────────────────────────────────────────
 
 /**

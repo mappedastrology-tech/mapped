@@ -90,6 +90,7 @@ import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
 import FlipCard from "@/components/FlipCard";
 import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
+import { fetchSetting } from "@/lib/syncedSettings";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
 import StartHereCard from "@/components/StartHereCard";
@@ -196,6 +197,25 @@ export default function HomeTab() {
       }
     } catch { /* SSR or localStorage unavailable */ }
     setCardStateHydrated(true);
+  }, []);
+
+  // Account-synced oracle deck — overrides the local value if the user picked
+  // a deck on another device.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid || cancelled) return;
+        const acct = await fetchSetting(uid, "oracle-deck");
+        if (acct && ORACLE_DECKS.some((d2) => d2.id === acct) && !cancelled) {
+          setOracleDeckId(acct);
+          try { localStorage.setItem(ORACLE_DECK_KEY, acct); } catch { /* ignore */ }
+        }
+      } catch { /* signed out / offline */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Save a daily pull with optional notes

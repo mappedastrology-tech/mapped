@@ -88,9 +88,9 @@ const TRANSIT_VERB: Record<string, string> = {
 };
 const TRANSIT_FLAVOR: Record<string, string> = {
   conjunction: "A new cycle starts here.",
-  opposition: "Something comes to a head today.",
+  opposition: "A push-pull kind of day. Something's asking for balance.",
   square: "Friction you can put to work.",
-  trine: "A door opens — walk through it.",
+  trine: "Things flow a little easier here, if you want to use it.",
 };
 
 /**

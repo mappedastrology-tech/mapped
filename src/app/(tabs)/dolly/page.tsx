@@ -14,6 +14,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
+import DollyAvatar from "@/components/DollyAvatar";
 
 /* ═══════════════════════════════════════════
    Types
@@ -701,18 +702,7 @@ export default function DollyTab() {
                         className="flex-1 text-left px-5 py-3.5 flex gap-3 items-start active:bg-foreground/5 min-w-0"
                       >
                         {/* Dolly avatar */}
-                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                          isActive
-                            ? "bg-terracotta/20 border border-terracotta/30"
-                            : "bg-surface/60 border border-foreground/15"
-                        }`}>
-                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
-                               stroke={isActive ? "var(--terracotta)" : "var(--foreground)"}
-                               strokeLinecap="round" strokeLinejoin="round"
-                               className={isActive ? "opacity-70" : "opacity-25"}>
-                            <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                          </svg>
-                        </div>
+                        <DollyAvatar size={40} className="mt-0.5" />
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
@@ -792,7 +782,7 @@ export default function DollyTab() {
         </button>
         <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
           <div aria-hidden="true" className="absolute rounded-full" style={{ inset: -5, background: "radial-gradient(circle, var(--lavender), transparent 68%)", opacity: 0.4, animation: "dl-glow 4s ease-in-out infinite" }} />
-          <div className="relative rounded-full" style={{ width: 44, height: 44, background: "radial-gradient(circle at 34% 30%, #e9ecfa 0%, #b9bfe0 32%, #6d6aa0 74%, #3c3564 100%)", boxShadow: "inset -4px -5px 10px rgba(30,20,50,0.5)", animation: "dl-orb 5s ease-in-out infinite" }} />
+          <DollyAvatar size={44} float className="relative" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -817,13 +807,7 @@ export default function DollyTab() {
         {/* Empty state — starter prompts */}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
-            <div className="w-14 h-14 rounded-full bg-terracotta/10 border border-terracotta/20 flex items-center justify-center mb-4">
-              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.5"
-                   stroke="var(--terracotta)" strokeLinecap="round" strokeLinejoin="round"
-                   className="opacity-60">
-                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-              </svg>
-            </div>
+            <DollyAvatar size={72} className="mb-4" />
             <p
               className="text-foreground mb-1"
               style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}

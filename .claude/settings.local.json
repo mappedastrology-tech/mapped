@@ -112,7 +112,8 @@
       "Bash(mkdir -p webversion)",
       "Bash(unzip -o \"/Users/taylorcorbett/Downloads/webversion.zip\" -d webversion)",
       "Bash(sed -n '/<main /,/<\\\\/main>/p' \"Web - Dolly.dc.html\")",
-      "Bash(sed -n '/<style>/,/<\\\\/style>/p' \"Web - Dolly.dc.html\")"
+      "Bash(sed -n '/<style>/,/<\\\\/style>/p' \"Web - Dolly.dc.html\")",
+      "Bash(echo \"BUILD EXIT: $?\")"
     ]
   }
 }

@@ -286,31 +286,31 @@ export interface NotificationCopy {
 
 export const SAMPLE_COPY: NotificationCopy[] = [
   // Daily content
-  { category: "daily_content", body: "Today: more reading smut, less working overtime.", hasVariables: false },
-  { category: "daily_content", body: "You are not behind. You are exactly on time, which is to say, late.", hasVariables: false },
-  { category: "daily_content", body: "Saying 'I'm fine' is not the same as being fine. They rhyme.", hasVariables: false },
-  { category: "daily_content", body: "Pop the champagne. Cancel the situationship.", hasVariables: false },
+  { category: "daily_content", body: "Today's notes: guard your own time a little. The overtime can wait.", hasVariables: false },
+  { category: "daily_content", body: "Quiet skies today. No cosmic homework — just catch your breath.", hasVariables: false },
+  { category: "daily_content", body: "The moon's in a tender sign tonight. Be a little gentler with yourself.", hasVariables: false },
+  { category: "daily_content", body: "Venus is up to something today. Your chart has notes — worth a look.", hasVariables: false },
 
   // Full moon
-  { category: "full_moon", body: "Full moon in [sign] tonight. The most expansive moon of the year.", hasVariables: true },
+  { category: "full_moon", body: "Full moon in [sign] tonight — the month's culmination point. A good night to finish something or let it go. Ritual inside.", hasVariables: true },
   { category: "full_moon", body: "Full moon in [sign] tomorrow. The one that lets you cry.", hasVariables: true },
-  { category: "full_moon", body: "Full moon in [sign] tonight. The reckoning kind.", hasVariables: true },
+  { category: "full_moon", body: "Full moon in [sign] tonight. A good night to put something down. Two-minute ritual inside.", hasVariables: true },
 
   // New moon
   { category: "new_moon", body: "New moon in [sign] tonight. The slow start. Plant something you'll watch grow.", hasVariables: true },
   { category: "new_moon", body: "New moon in [sign] tomorrow. The kindling. What do you want to set on fire?", hasVariables: true },
-  { category: "new_moon", body: "New moon in [sign]. Decide what you actually want — for once.", hasVariables: true },
+  { category: "new_moon", body: "New moon in [sign]. A clean page, if you want one.", hasVariables: true },
 
   // Personal chart events
   { category: "major_transits", body: "Saturn squares your Sun [timing]. The lesson kind of week.", hasVariables: true },
   { category: "major_transits", body: "Jupiter just trined your [planet]. Two-month window of openings. Ask for things.", hasVariables: true },
   { category: "major_transits", body: "Mars enters your [house] house tomorrow. [Theme] gets active for the next 6 weeks.", hasVariables: true },
-  { category: "major_transits", body: "Pluto is conjunct your [planet] today, exact. The biggest transit you'll have for a decade.", hasVariables: true },
+  { category: "major_transits", body: "Pluto meets your natal [planet] today, exact — the biggest transit you'll have for a decade. Here's what it's actually about.", hasVariables: true },
 
   // Retrograde
-  { category: "retrograde_stations", body: "Mercury just turned retrograde in your [house] house. Communication gets weird for 3 weeks.", hasVariables: true },
+  { category: "retrograde_stations", body: "Mercury's retrograde in your [house] house for three weeks. Read it as: review, don't restart.", hasVariables: true },
   { category: "retrograde_stations", body: "Mars just stationed direct. The thing that was stuck is moving again.", hasVariables: false },
-  { category: "retrograde_stations", body: "Venus retrograde starts tomorrow. Six weeks of revisiting. Don't fight it.", hasVariables: false },
+  { category: "retrograde_stations", body: "Venus goes retrograde tomorrow — six weeks to revisit what (and who) matters. Here's the read.", hasVariables: false },
 
   // Birthday
   { category: "birthday_week", body: "Your year is about to change. [current lord] hands off to [next lord] on your birthday.", hasVariables: true },
@@ -333,15 +333,15 @@ export const SAMPLE_COPY: NotificationCopy[] = [
   { category: "practice_reminders", body: "Your new moon practice happens at [time] tonight.", hasVariables: true },
 
   // Mercury retrograde
-  { category: "mercury_retrograde", body: "Mercury retrograde starts Friday. Three weeks. You know the drill.", hasVariables: false },
+  { category: "mercury_retrograde", body: "Mercury's retrograde Friday, for three weeks. Here's what's actually worth adjusting.", hasVariables: false },
 
   // Learning streak (sent only when a streak is about to lapse)
-  { category: "learning_reminder", body: "Your [streak]-day streak is still lit. One lesson keeps it going.", hasVariables: true },
-  { category: "learning_reminder", body: "Two minutes keeps your streak alive. A quick review is waiting in the Library.", hasVariables: false },
-  { category: "learning_reminder", body: "You're on a roll — don't let today be the gap. One lesson, that's all.", hasVariables: false },
+  { category: "learning_reminder", body: "A two-minute lesson's waiting whenever you want it. No pressure — your progress is saved.", hasVariables: false },
+  { category: "learning_reminder", body: "Got two minutes? There's a quick review in Learn. If not, it'll keep.", hasVariables: false },
+  { category: "learning_reminder", body: "One short lesson's ready when you are. A rest day is on us.", hasVariables: false },
 
   // Re-engagement (Day 7, 21, 60)
-  { category: "re_engagement", body: "Mercury is doing something interesting today. Want to look at your chart?", hasVariables: false },
+  { category: "re_engagement", body: "Mercury changes signs today. Want to see what it touches in your chart?", hasVariables: false },
   { category: "re_engagement", body: "Your chart didn't go anywhere. Whenever you're ready.", hasVariables: false },
   { category: "re_engagement", body: "We won't keep checking in. You can come back anytime — your data is here.", hasVariables: false },
 ];

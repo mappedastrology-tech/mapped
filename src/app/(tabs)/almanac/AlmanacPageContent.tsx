@@ -29,10 +29,14 @@ import {
   getCachedLocation,
   fetchUserLocation,
   estimateGardenZone,
+  getCachedGarden,
+  fetchGardenSettings,
+  saveGardenSettings,
   type UserLocation,
 } from "@/lib/userLocation";
 import { getGardeningData, getPlantingCalendar, USDA_ZONES } from "@/lib/gardeningAlmanac";
 import { getZoneFromZip } from "@/lib/zipToZone";
+import { fetchSetting, saveSetting, clearSetting } from "@/lib/syncedSettings";
 import { getSabianSymbolForDate } from "@/lib/sabianSymbols";
 import { getOnThisDay } from "@/lib/onThisDay";
 // weatherLore removed — kept in celestialCalendar only
@@ -761,6 +765,7 @@ export default function AlmanacPageContent() {
 
   // ── User location (profile → birth chart fallback; DEFAULT_COORDS last) ───
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -769,6 +774,7 @@ export default function AlmanacPageContent() {
         const { data: { session } } = await supabase.auth.getSession();
         const uid = session?.user?.id;
         if (!uid || cancelled) return;
+        setUserId(uid);
         const cached = getCachedLocation(uid);
         if (cached && !cancelled) setUserLocation(cached);
         const fresh = await fetchUserLocation(uid);
@@ -816,12 +822,47 @@ export default function AlmanacPageContent() {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("mapped:garden-zip") || "";
   });
+
+  // Account-synced garden zip/zone: once we know the user, apply their saved
+  // settings (cache-first, then the profile) so the calendar follows them
+  // across devices. Account values win over the location-based estimate.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const cached = getCachedGarden(userId);
+    if (cached) {
+      if (cached.zone) setGardenZone(cached.zone);
+      if (cached.zip) setGardenZip(cached.zip);
+    }
+    (async () => {
+      const garden = await fetchGardenSettings(userId);
+      if (garden && !cancelled) {
+        if (garden.zone) setGardenZone(garden.zone);
+        setGardenZip(garden.zip);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
   const [fishingLocation, setFishingLocation] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("mapped:fishing-location") || "";
   });
   const [fishingSearch, setFishingSearch] = useState("");
   const [fishingSearchOpen, setFishingSearchOpen] = useState(false);
+
+  // Account-synced fishing spot — apply the saved value once the user is known.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const spot = await fetchSetting(userId, "fishing-location");
+      if (spot != null && !cancelled) {
+        setFishingLocation(spot);
+        try { localStorage.setItem("mapped:fishing-location", spot); } catch { /* ignore */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
   const plantingCal = useMemo(() => {
     const vocEnd = sky.voidOfCourseMoon?.end;
     return getPlantingCalendar(today, sky.moonSign, sky.moonPhase.phase, vocEnd, gardenZone, isSouthernHemisphere);
@@ -1911,7 +1952,11 @@ export default function AlmanacPageContent() {
               </svg>
             </span>
             <span className="flex-1 min-w-0 truncate text-[14px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-              {userLocation ? userLocation.label.split(",").slice(0, 2).join(", ").trim() : `Zone ${gardenZone} garden`}
+              {gardenZip.length === 5 && getZoneFromZip(gardenZip)
+                ? `ZIP ${gardenZip}`
+                : userLocation
+                  ? userLocation.label.split(",").slice(0, 2).join(", ").trim()
+                  : `Zone ${gardenZone} garden`}
             </span>
             <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "color-mix(in srgb, var(--sage) 14%, transparent)", color: "var(--sage)" }}>
               Zone {gardenZone}
@@ -1939,7 +1984,10 @@ export default function AlmanacPageContent() {
                     if (zone) {
                       setGardenZone(zone);
                       try { localStorage.setItem("mapped:garden-zone", zone); } catch { /* ignore */ }
+                      if (userId) saveGardenSettings(userId, { zip: val, zone });
                       setShowZonePicker(false);
+                    } else if (userId) {
+                      saveGardenSettings(userId, { zip: val });
                     }
                   }
                 }}
@@ -1964,6 +2012,7 @@ export default function AlmanacPageContent() {
                         onClick={() => {
                           setGardenZone(z.zone);
                           try { localStorage.setItem("mapped:garden-zone", z.zone); } catch { /* ignore */ }
+                          if (userId) saveGardenSettings(userId, { zone: z.zone });
                           setShowZonePicker(false);
                         }}
                         className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium active:scale-[0.96]"
@@ -1991,10 +2040,10 @@ export default function AlmanacPageContent() {
           >
             <div className="min-w-0 pr-3">
               <p className="text-[9px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--sage)" }}>
-                Your region
+                Frost calendar
               </p>
               <p className="text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>
-                {plantingCal.region || `Zone ${plantingCal.zone}`}
+                Zone {plantingCal.zone}
               </p>
             </div>
             <div className="text-right">
@@ -2300,6 +2349,7 @@ export default function AlmanacPageContent() {
                               setFishingSearch(wb.name);
                               setFishingSearchOpen(false);
                               localStorage.setItem("mapped:fishing-location", wb.name);
+                              if (userId) saveSetting(userId, "fishing-location", wb.name);
                             }}
                           >
                             <div>
@@ -2328,6 +2378,7 @@ export default function AlmanacPageContent() {
                       setFishingLocation("");
                       setFishingSearch("");
                       localStorage.removeItem("mapped:fishing-location");
+                      if (userId) clearSetting(userId, "fishing-location");
                     }}
                   >
                     Reset

@@ -5,13 +5,15 @@
  * Sticky top-nav header, background texture + starfield, and footer
  * (full four-column on the marketing Home, compact one-row on feature pages).
  *
- * Theme is night|day, toggled in the header and persisted to
- * localStorage['mapped:web-theme']. All colors come from the .mp-web scoped
- * tokens in globals.css, so children just use var(--fg), var(--brass), etc.
+ * Theme (night|day) is unified with the app's single light/dark ThemeProvider:
+ * app "dark" → web "night", "light" → "day". So the header toggle, the .mp-web
+ * web tokens, and any wrapped mobile page (which reads the app's --background/
+ * --foreground via the html data-theme) all stay in lockstep — one preference.
  */
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 
 export type WebNavKey =
   | "home" | "today" | "almanac" | "maps" | "library" | "journal" | "tarot" | "dolly";
@@ -51,21 +53,10 @@ function makeStars(n: number, seed: number) {
   });
 }
 
+/** Web night/day derived from the app's single light/dark theme. */
 export function useWebTheme() {
-  const [theme, setTheme] = useState<"night" | "day">("night");
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem("mapped:web-theme");
-      if (s === "night" || s === "day") setTheme(s);
-      else if (window.matchMedia?.("(prefers-color-scheme: light)").matches) setTheme("day");
-    } catch { /* ignore */ }
-  }, []);
-  const toggle = () => setTheme((t) => {
-    const next = t === "night" ? "day" : "night";
-    try { localStorage.setItem("mapped:web-theme", next); } catch { /* ignore */ }
-    return next;
-  });
-  return { theme, toggle };
+  const { theme: appTheme, toggleTheme } = useTheme();
+  return { theme: appTheme === "light" ? ("day" as const) : ("night" as const), toggle: toggleTheme };
 }
 
 function ThemeToggle({ theme, onToggle }: { theme: "night" | "day"; onToggle: () => void }) {
@@ -90,6 +81,48 @@ function ThemeToggle({ theme, onToggle }: { theme: "night" | "day"; onToggle: ()
         </svg>
       )}
     </button>
+  );
+}
+
+// The extra "self" tools that aren't part of the seven-item top nav live under
+// the profile avatar's dropdown.
+const PROFILE_LINKS = [
+  { label: "Your chart", href: "/you" },
+  { label: "Numerology", href: "/numerology" },
+  { label: "Human Design", href: "/human-design" },
+  { label: "Palmistry", href: "/palmistry" },
+  { label: "Rituals", href: "/learn" },
+];
+
+function ProfileMenu() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative", flex: "0 0 auto" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Your profile & tools"
+        aria-expanded={open}
+        style={{ width: 42, height: 42, borderRadius: "50%", border: "1px solid var(--hair)", background: "var(--soft)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)" }}
+      >
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" /></svg>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 70 }} aria-hidden="true" />
+          <div style={{ position: "absolute", right: 0, top: 50, zIndex: 71, minWidth: 200, padding: 8, borderRadius: 14, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 16px 40px var(--shadow)" }}>
+            {PROFILE_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} style={{ display: "block", padding: "10px 12px", borderRadius: 9, fontSize: 14, fontWeight: 500, color: "var(--fg2)" }}>
+                {l.label}
+              </Link>
+            ))}
+            <div style={{ height: 1, background: "var(--line)", margin: "6px 4px" }} />
+            <Link href="/profile" onClick={() => setOpen(false)} style={{ display: "block", padding: "10px 12px", borderRadius: 9, fontSize: 14, fontWeight: 600, color: "var(--fg)" }}>
+              Profile &amp; settings
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -154,9 +187,7 @@ export default function WebShell({
               <Link href="/onboarding" style={{ flex: "0 0 auto", fontSize: 14, fontWeight: 700, letterSpacing: "0.01em", padding: "11px 20px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Start free</Link>
             </>
           ) : (
-            <Link href="/profile" aria-label="Your profile" style={{ width: 42, height: 42, flex: "0 0 auto", borderRadius: "50%", border: "1px solid var(--hair)", background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)" }}>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" /></svg>
-            </Link>
+            <ProfileMenu />
           )}
         </div>
       </header>

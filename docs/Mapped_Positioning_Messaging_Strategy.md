@@ -39,6 +39,9 @@ psychic upsells. Mapped is the only one that lets *you* set the temperature — 
 with real depth (full natal chart, transits, astrocartography, a Duolingo-style learning
 library) and a trust-first, anti-manipulation voice.
 
+**The line that leads everything:** *Your chart called. It has notes.* (The north star — see §6
+and §8.1. Everything else in this doc serves it.)
+
 **One line for the world:** *Mapped — astrology for your actual life.*
 
 **One line for the skeptic:** *You don't have to believe in it for it to be useful.*
@@ -157,7 +160,33 @@ going on."*
 
 ## 6. Voice & tone rules
 
-**Brand voice in five words:** *grounded, specific, knowledgeable, warm, adjustable.*
+**Brand voice in six words:** *grounded, specific, knowledgeable, warm, witty, adjustable.*
+
+### The north-star line — the voice, distilled
+
+> **Your chart called. It has notes.**
+
+This is the tagline, and it's also the tuning fork for the entire brand. Every other line
+should feel like it could sit next to it without clashing. Read what it's actually doing,
+because it *is* the voice:
+
+- **It's witty and deadpan.** A small, dry joke — no exclamation point, no wink emoji, and
+  funnier for it. Humor is a first-class part of Mapped's voice, not a garnish.
+- **It personifies the chart.** Your chart is a slightly-too-perceptive friend who *called* —
+  familiar, a little sassy, on your side. Warmth with an edge, never breathy or worshipful.
+- **It's texting-era casual, but sharp.** Short. Conversational. Zero mysticism required to get
+  the joke — which is exactly why the skeptic and the witch both smile at it.
+- **It reframes astrology as *notes*, not prophecy.** "Notes" = observations, feedback, things
+  worth knowing — never predictions or warnings. The tagline and Pillar 4 ("a lens, not a
+  prediction") are the *same idea*. This is why the line can be funny and trustworthy at once.
+
+**The tagline test:** before any headline or marketing line ships, ask — *could this live next
+to "Your chart called. It has notes." and feel like the same brand wrote it?* If it's
+humorless, stiff, breathy, or preachy, it fails, even if it's "correct." Wit is not optional.
+
+> **Signature device — "notes."** Lean on this word as a through-line. Your daily read is
+> *today's notes.* Dolly leaves *notes.* The chart *has notes.* It's warm, it's ownable, and
+> it quietly encodes the anti-prediction promise every time we use it.
 
 Mapped's product already ships a full tone system for ritual content (see
 `Mapped_Cowork_Master_Prompt.md`). That system governs *in-app generated content*. This
@@ -165,15 +194,22 @@ section governs **marketing and UI copy** — the website, App Store, onboarding
 empty states, notifications.
 
 **We are:**
-- **Literate, not breathy.** Editorial, like a beautifully-printed almanac. Confident sentences.
+- **Witty, not zany.** Dry, clever, deadpan — the "it has notes" register. We'll make you
+  smirk, never mug for the camera. Humor earns trust here; it signals we don't take the woo too
+  seriously either.
+- **Literate, but never stiff.** Editorial craft, like a beautifully-printed almanac written by
+  someone genuinely funny. Confident sentences — with a pulse, not a lecture.
 - **Specific over sweeping.** "Your Saturn return is a three-year renovation, not a curse,"
   not "big changes are coming."
-- **Warm, not saccharine.** Kind and human. Never infantilizing, never "beautiful soul."
+- **Warm with an edge, not saccharine.** Kind and human, like a sharp friend. Never
+  infantilizing, never "beautiful soul," never fawning.
 - **Plain-spoken about belief.** We name the skepticism in the room and make it welcome.
 - **Calm about money.** No fake scarcity, no countdown-timer pressure, no doom.
 
 **We are not:**
-- Cold or cryptic for its own sake (that's Co-Star's lane).
+- Cold or cryptic for its own sake (that's Co-Star's lane — the wit there is hostile; ours is
+  affectionate).
+- Humorless, stiff, or over-earnest (if a line couldn't sit beside the tagline, rewrite it).
 - Preachy or fully-woo by default (that assumes belief we haven't earned).
 - Hype-y or manipulative (no "manifest your dream life," no "limited spots").
 
@@ -238,11 +274,17 @@ default.** All of it passes the rubric in §10; swap freely within a section.
 
 **Wordmark:** `mapped.` (italic serif "mapp" + bold sans "ed." — keep the period.)
 
-**Primary tagline (keep — it's working):**
+**Primary tagline — the north star. This line is protected. It leads the site, the App Store,
+and anywhere we get one shot at a first impression. It also sets the voice (see §6):**
 > **Your chart called. It has notes.**
 
-**Positioning tagline (for App Store, meta, hero subhead):**
+**Positioning tagline (the plain-spoken companion — for meta descriptions, subheads, and places
+that need the literal promise rather than the joke):**
 > Astrology for your actual life.
+
+*Pairing note: lead with the joke, land with the promise. "Your chart called. It has notes." as
+the headline; "Astrology for your actual life." as the line beneath it. The wit earns
+attention; the promise explains what they're smiling at.*
 
 **Alternate hero lines (A/B pool):**
 - A. Your chart called. It has notes.
@@ -549,8 +591,12 @@ Dial helper (shown near both): **Change either anytime.** Nothing here is locked
 
 ## 10. Copy audit rubric
 
-Run any piece of copy against this. A line ships only if it's **yes** on all of 1–7.
+Run any piece of copy against this. A line ships only if it's **yes** on all of 1–8.
 
+0. **The tagline test (the first gate).** Could this line sit next to *"Your chart called. It
+   has notes."* and feel like the same brand wrote it? If it's humorless, stiff, breathy, or
+   preachy, it fails — rewrite for wit and warmth before checking anything else. (Trust/safety
+   copy is allowed to be sincere rather than funny, but never stiff or cold.)
 1. **Traceable.** Does it clearly express one of the four pillars (§5)? If you can't name the
    pillar, rewrite.
 2. **A lens, not a prediction.** Does it avoid promising outcomes, predicting events, or issuing
@@ -568,7 +614,8 @@ Run any piece of copy against this. A line ships only if it's **yes** on all of 
 
 **Scoring shorthand for an audit pass:**
 - 🟢 Ships as-is.
-- 🟡 Right idea, wrong words — rewrite to fix a specific rubric line.
+- 🟡 Right idea, wrong words — rewrite to fix a specific rubric line (including "correct but
+  humorless" — a line can be strategically fine and still fail the tagline test).
 - 🔴 Off-strategy (predicts, manipulates, assumes belief, or is generic) — replace.
 
 **When auditing a full screen, also check:**
@@ -582,13 +629,17 @@ Run any piece of copy against this. A line ships only if it's **yes** on all of 
 ## 11. Do / Don't cheat sheet
 
 **Do**
+- Write to the tagline. "Your chart called. It has notes." is the tuning fork — be witty,
+  warm, and dry.
+- Personify the chart as a sharp, affectionate friend. Frame insight as *notes*.
 - Name the skepticism and make it welcome.
 - Be specific about the chart and the timing.
 - Keep money talk calm and honest.
 - Use the dials as the signature story.
-- Write like an editor, not a mystic-for-hire.
+- Write like a genuinely funny editor, not a mystic-for-hire and not a lecturer.
 
 **Don't**
+- Ship a line that couldn't sit next to the tagline — stiff, breathy, humorless, or preachy.
 - Predict, warn, or promise outcomes.
 - Assume the reader already believes.
 - Use pet names, woo clichés, or urgency/fear.

@@ -29,6 +29,12 @@ import WebTarot from "@/components/web/WebTarot";
 import WebJournal from "@/components/web/WebJournal";
 import WebMaps from "@/components/web/WebMaps";
 import WebDolly from "@/components/web/WebDolly";
+import WebNumerology from "@/components/web/WebNumerology";
+import WebChart from "@/components/web/WebChart";
+import WebHumanDesign from "@/components/web/WebHumanDesign";
+import WebPalmistry from "@/components/web/WebPalmistry";
+import WebRitual from "@/components/web/WebRitual";
+import WebProfile from "@/components/web/WebProfile";
 
 // Routes (inside this group) with a desktop "web" experience
 // (design_handoff_mapped_web). On lg+ these render the web page and the mobile
@@ -41,6 +47,13 @@ const WEB_PAGES: Record<string, React.ComponentType> = {
   "/journal": WebJournal,
   "/maps": WebMaps,
   "/dolly": WebDolly,
+  // "Fill-in" routes: the shared web shell wrapping each page's real content.
+  "/numerology": WebNumerology,
+  "/you": WebChart,
+  "/human-design": WebHumanDesign,
+  "/palmistry": WebPalmistry,
+  "/learn": WebRitual,
+  "/profile": WebProfile,
 };
 
 export default function TabsLayout({

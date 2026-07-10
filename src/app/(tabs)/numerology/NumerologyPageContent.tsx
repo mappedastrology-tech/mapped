@@ -24,6 +24,7 @@ import {
   type PositionKey,
 } from "@/lib/numerologyMeanings";
 import { getConceptInfo } from "@/lib/numerologyConcepts";
+import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { getApplication } from "@/lib/numerologyApplications";
 import NmOrbit from "@/components/numerology/NmOrbit";
 
@@ -60,6 +61,7 @@ export default function NumerologyPageContent() {
   const [openCard, setOpenCard] = useState<string | null>("lifepath");
   const [pageTab, setPageTab] = useState<PageTab>("core");
   const [now] = useState(() => new Date());
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -77,6 +79,7 @@ export default function NumerologyPageContent() {
       let date: string | null = null;
 
       if (session?.user) {
+        setUserId(session.user.id);
         metaName =
           (session.user.user_metadata?.full_name as string | undefined) ||
           (session.user.user_metadata?.name as string | undefined) ||
@@ -91,6 +94,12 @@ export default function NumerologyPageContent() {
         if (data) {
           date = data.birth_date;
           if (!metaName && data.name) metaName = data.name;
+        }
+        // Account-synced numerology name wins over the local value / metadata.
+        const acctName = await fetchSetting(session.user.id, "numerology-fullname");
+        if (acctName) {
+          storedName = acctName;
+          try { localStorage.setItem(NAME_KEY, acctName); } catch { /* ignore */ }
         }
       }
 
@@ -138,6 +147,7 @@ export default function NumerologyPageContent() {
     } catch {
       /* ignore */
     }
+    if (userId) saveSetting(userId, "numerology-fullname", cleaned);
   }
 
   // ── Gated states ────────────────────────────────────────────────────────────
