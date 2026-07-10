@@ -885,3 +885,51 @@ input, select, textarea {
   font-style: normal;
   font-display: swap;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEB (desktop) design system — from design_handoff_mapped_web.
+   Scoped under .mp-web so the generic token names (--bg, --fg, --brass, …)
+   never collide with the mobile app's :root/[data-theme] tokens. The web
+   pages carry their own data-theme="night|day" on the .mp-web container and
+   persist it to localStorage['mapped:web-theme'].
+   ═══════════════════════════════════════════════════════════════════════════ */
+.mp-web {
+  --deco: 'Bodoni Moda', Georgia, serif;
+  --wbody: 'DM Sans', system-ui, sans-serif;
+  --script: 'Le Jour Script', cursive;
+}
+.mp-web[data-theme="night"] {
+  --bg:#0b0712; --bg2:#120c1b; --topbar:rgba(15,10,22,0.82); --card:#15101c; --card2:#1a1426;
+  --fg:#e8dfc4; --fg2:#c4b8a0; --muted:#988b78; --faint:#7a6f5c;
+  --brass:#c9a961; --brass-hi:#e2c785; --terra:#b5654a; --go:#7ba055;
+  --hair:rgba(201,169,97,0.14); --line:rgba(255,255,255,0.06); --soft:rgba(255,255,255,0.035);
+  --felt:url('/backgrounds/dark-felt.png'); --felt-op:1; --hero-plum:#3a2233;
+  --btn-ink:#1a1420; --shadow:rgba(0,0,0,0.5); --bubble-you:#3a2233;
+}
+.mp-web[data-theme="day"] {
+  --bg:#f1e6d0; --bg2:#ece0c7; --topbar:rgba(245,236,214,0.85); --card:#fdf8ec; --card2:#f7efdc;
+  --fg:#2c2216; --fg2:#4a3e29; --muted:#5f5138; --faint:#7d6c4c;
+  --brass:#9a7322; --brass-hi:#7d5c16; --terra:#a4502f; --go:#5d7d3c;
+  --hair:rgba(150,115,55,0.24); --line:rgba(80,60,30,0.10); --soft:rgba(80,60,30,0.035);
+  --felt:url('/backgrounds/parchment-bg.png'); --felt-op:0.55; --hero-plum:#3a2036;
+  --btn-ink:#f7efdc; --shadow:rgba(120,90,40,0.14); --bubble-you:#efe1c4;
+}
+.mp-web a { color: var(--brass); text-decoration: none; }
+.mp-web a:hover { color: var(--brass-hi); }
+
+@keyframes mp-tw { 0%,100%{opacity:.2} 50%{opacity:.85} }
+@keyframes mp-floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+@keyframes mp-fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+
+.mp-nav-link { position:relative; }
+.mp-nav-link::after { content:''; position:absolute; left:0; right:0; bottom:-4px; height:1.5px; background:var(--brass); transform:scaleX(0); transform-origin:left; transition:transform .22s ease; }
+.mp-nav-link:hover::after { transform:scaleX(1); }
+.mp-card-lift { transition:transform .3s ease, box-shadow .3s ease; }
+.mp-card-lift:hover { transform:translateY(-4px); }
+.mp-widget { transition:box-shadow .2s ease, opacity .2s ease, transform .12s ease; }
+.mp-widget.dragging { opacity:0.4; }
+.mp-widget.over { box-shadow:0 0 0 2px var(--brass); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-web [style*="animation"] { animation: none !important; }
+}

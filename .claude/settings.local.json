@@ -107,7 +107,10 @@
       "Bash(awk '/interface MoonPhaseInfo/{f=1} f{print NR\": \"$0} f&&/\\\\}/{c++} f&&c>0{exit}' src/lib/almanacData.ts)",
       "Bash(awk 'NR>=1433 && NR<=2100 && /^        \\\\\\)\\\\}/{print NR\": \"$0}' \"src/app/\\(tabs\\)/almanac/AlmanacPageContent.tsx\")",
       "Bash(awk -F: '$1>=1433 && $1<=2200')",
-      "Bash(awk 'NR>=1000 && NR<=1101' src/app/onboarding/page.tsx)"
+      "Bash(awk 'NR>=1000 && NR<=1101' src/app/onboarding/page.tsx)",
+      "Bash(rm -rf webversion)",
+      "Bash(mkdir -p webversion)",
+      "Bash(unzip -o \"/Users/taylorcorbett/Downloads/webversion.zip\" -d webversion)"
     ]
   }
 }

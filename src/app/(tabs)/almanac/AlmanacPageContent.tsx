@@ -284,10 +284,12 @@ function getFactorIcon(icon: ActivityFactor["icon"]) {
 function ActivityDetailView({
   detail,
   transitData,
+  skyLine,
   onClose,
 }: {
   detail: ActivityDetail;
   transitData: string | null;
+  skyLine: string;
   onClose: () => void;
 }) {
   const isGood = detail.type === "good";
@@ -311,38 +313,21 @@ function ActivityDetailView({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col"
-      style={{
-        background: "var(--background)",
-        overflowY: "auto",
-      }}
+      className="fixed inset-0 z-[100] flex flex-col justify-end"
+      style={{ background: "var(--modal-overlay)" }}
+      onClick={onClose}
     >
-
-      <div className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 py-5 lg:pt-8 pb-10 flex flex-col gap-6">
-        {/* Header */}
-        <header className="flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-full"
-            style={{
-              color: "var(--foreground)",
-              background: "color-mix(in srgb, var(--foreground) 5%, transparent)",
-            }}
-            aria-label="Back"
-          >
-            <BackArrowIcon />
-          </button>
-          <button
-            className="w-9 h-9 flex items-center justify-center rounded-full"
-            style={{
-              color: "var(--foreground-muted)",
-              background: "color-mix(in srgb, var(--foreground) 5%, transparent)",
-            }}
-            aria-label="Bookmark"
-          >
-            <BookmarkIcon />
-          </button>
-        </header>
+      <div
+        className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 pt-2.5 pb-8 flex flex-col gap-5 rounded-t-3xl"
+        style={{ background: "var(--background)", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={detail.activity}
+      >
+        {/* Grab handle */}
+        <div className="flex justify-center pt-1 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} />
+        </div>
 
         {/* Title */}
         <div>
@@ -350,52 +335,51 @@ function ActivityDetailView({
             className="text-[10px] uppercase tracking-[0.18em] font-bold mb-1.5"
             style={{ color: accentColor }}
           >
-            {isGood ? "Today Is Good For" : "Skip Today"}
+            {isGood ? "GOOD FOR TODAY" : "HOLD OFF ON"}
           </p>
           <h2
-            className="text-[26px] leading-tight"
+            className="text-[28px] leading-tight"
             style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
           >
             {detail.activity}
           </h2>
         </div>
 
-        {/* Score */}
-        <div
-          className="rounded-xl px-5 py-5"
-          style={{
-            background: "var(--background-card)",
-            border: "1px solid var(--border-card)",
-          }}
-        >
-          <div className="flex items-baseline gap-2 mb-3">
+        {/* Score circle + lead why */}
+        <div className="flex items-center gap-4">
+          <div
+            className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center shrink-0"
+            style={{
+              background: `color-mix(in srgb, ${accentColor} 12%, var(--background-card))`,
+              border: `1.5px solid color-mix(in srgb, ${accentColor} 32%, transparent)`,
+            }}
+          >
             <span
-              className="text-[36px] font-bold tabular-nums"
-              style={{ fontFamily: "var(--font-display)", color: "var(--foreground-on-card)" }}
+              className="text-[24px] font-bold leading-none tabular-nums"
+              style={{ fontFamily: "var(--font-display)", color: accentColor }}
             >
               {detail.score.toFixed(1)}
             </span>
-            <span
-              className="text-[16px]"
-              style={{ color: "var(--foreground-on-card-faint)" }}
-            >
+            <span className="text-[9px] leading-none mt-0.5" style={{ color: "var(--foreground-muted)" }}>
               / 10
             </span>
           </div>
-          <div
-            className="w-full h-2 rounded-full overflow-hidden mb-3"
-            style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)" }}
-          >
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${(detail.score / 10) * 100}%`,
-                background: accentColor,
-              }}
-            />
-          </div>
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card-muted)" }}>
+          <p className="text-[14px] leading-relaxed flex-1" style={{ color: "var(--foreground-secondary)" }}>
             {detail.scoreContext}
+          </p>
+        </div>
+
+        {/* The sky right now */}
+        <div
+          className="rounded-xl px-4 py-3.5"
+          style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold mb-1.5" style={{ color: "var(--foreground-muted)" }}>
+            The Sky Right Now
+            <InfoTip text="A snapshot of the Moon's phase and sign and the Sun's sign right now — the live sky these picks are timed to." />
+          </p>
+          <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>
+            {skyLine}
           </p>
         </div>
 
@@ -406,6 +390,7 @@ function ActivityDetailView({
             style={{ color: "var(--foreground-muted)" }}
           >
             {isGood ? "Why The Sky Agrees" : "Why To Skip"}
+            <InfoTip text="The specific sky factors behind this pick, and how much each one helps or hinders." />
           </p>
           <div className="flex flex-col gap-3">
             {detail.factors.map((factor, i) => (
@@ -457,6 +442,7 @@ function ActivityDetailView({
               style={{ color: "var(--foreground-muted)" }}
             >
               Best Window
+              <InfoTip text="The stretch of today when this activity is most supported by the sky." />
             </p>
             <div
               className="rounded-xl px-5 py-4 flex items-center gap-4"
@@ -490,6 +476,7 @@ function ActivityDetailView({
             style={{ color: "var(--sage)" }}
           >
             For Your Chart Specifically
+            <InfoTip text="How today's sky touches your own birth chart in particular — not just a general read." />
           </p>
           <div
             className="rounded-xl px-4 py-4"
@@ -517,6 +504,7 @@ function ActivityDetailView({
               style={{ color: "var(--foreground-muted)" }}
             >
               From Your History
+              <InfoTip text="Patterns pulled from your own tracked practice with this activity over time." />
             </p>
             <div
               className="rounded-xl px-4 py-3.5 flex items-start gap-3"
@@ -535,18 +523,14 @@ function ActivityDetailView({
           </section>
         )}
 
-        {/* Action Button */}
-        <div className="mt-2">
+        {/* Got it */}
+        <div className="mt-1">
           <button
-            className="w-full rounded-xl py-3.5 text-[14px] font-semibold flex items-center justify-center gap-2"
-            style={{
-              background: "var(--background-card)",
-              border: "1px solid var(--border-card)",
-              color: "var(--foreground-on-card)",
-            }}
+            onClick={onClose}
+            className="w-full rounded-full py-3.5 text-[14px] font-semibold active:scale-[0.99] transition-transform"
+            style={{ background: "var(--brass)", color: "#1a1420" }}
           >
-            <CalendarIcon />
-            Add to calendar
+            Got it
           </button>
         </div>
       </div>
@@ -1829,6 +1813,7 @@ export default function AlmanacPageContent() {
         <div>
           <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: 0, color: "var(--foreground)" }}>
             GOOD FOR TODAY
+            <InfoTip text="Activities the current Moon sign and phase support today. Tap any line for the full why, the best window, and how it hits your chart." />
           </h3>
           <p className="text-[11.5px]" style={{ lineHeight: 1.5, color: "var(--foreground-faint)", margin: "4px 0 6px" }}>
             Timed to the Moon&apos;s sign and phase. Tap any line for why.
@@ -1853,6 +1838,7 @@ export default function AlmanacPageContent() {
         <div>
           <h3 className="mb-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: "0 0 6px", color: "var(--foreground)" }}>
             HOLD OFF ON
+            <InfoTip text="Activities the sky discourages today — better to wait. Tap any line to see why." />
           </h3>
           <div>
             {holdOff.items.slice(0, 3).map((item, i) => (
@@ -3036,6 +3022,7 @@ export default function AlmanacPageContent() {
         <ActivityDetailView
           detail={selectedDetail}
           transitData={transitData}
+          skyLine={`${sky.moonPhase.label} Moon in ${sky.moonSign} · ${Math.round(sky.moonPhase.illumination)}% · Sun in ${sky.sunSign}${sky.voidOfCourseMoon ? " · Moon void of course" : ""}`}
           onClose={() => setSelectedDetail(null)}
         />
       )}
