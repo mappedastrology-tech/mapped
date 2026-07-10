@@ -957,3 +957,11 @@ input, select, textarea {
 
 .mp-web textarea.mp-ta:focus { outline: none; border-color: color-mix(in srgb, var(--brass) 50%, transparent); }
 .mp-web textarea.mp-ta::placeholder { color: var(--faint); }
+
+/* Maps constellation + Dolly chat */
+@keyframes mp-glow { 0%,100%{filter:drop-shadow(0 0 16px rgba(201,169,97,0.35))} 50%{filter:drop-shadow(0 0 30px rgba(201,169,97,0.6))} }
+@keyframes mp-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+.mp-chip2 { transition: border-color .2s ease, color .2s ease; }
+.mp-chip2:hover { border-color: var(--brass); color: var(--fg); }
+.mp-person { transition: transform .15s ease; }
+.mp-person:hover { transform: translate(-50%, -50%) scale(1.06); }

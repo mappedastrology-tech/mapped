@@ -1899,84 +1899,87 @@ export default function AlmanacPageContent() {
           icon={ALMANAC_ICONS.garden}
           preview={`${plantingCal.todayVerdict.crop} · Score ${plantingCal.todayVerdict.score}/10`}
         >
-          {/* Zone lookup by zip */}
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="flex-1 relative">
+          {/* Location + zone — one clean row; tap to correct the zone */}
+          <button
+            onClick={() => setShowZonePicker((v) => !v)}
+            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          >
+            <span style={{ color: "var(--terracotta)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" /><circle cx="12" cy="10" r="2.5" />
+              </svg>
+            </span>
+            <span className="flex-1 min-w-0 truncate text-[14px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
+              {userLocation ? userLocation.label.split(",").slice(0, 2).join(", ").trim() : `Zone ${gardenZone} garden`}
+            </span>
+            <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "color-mix(in srgb, var(--sage) 14%, transparent)", color: "var(--sage)" }}>
+              Zone {gardenZone}
+            </span>
+            <InfoTip text="Your USDA Hardiness Zone sets your frost dates and what's plantable now. We estimate it from your location — tap the row to set it exactly with your zip code." />
+          </button>
+          {showZonePicker && (
+            <div className="mt-2 rounded-xl px-4 py-3" style={{ background: "color-mix(in srgb, var(--foreground) 4%, transparent)", border: "1px solid var(--border-card)" }}>
+              <label className="block text-[10px] uppercase tracking-[0.12em] font-bold mb-2" style={{ color: "var(--sage)" }}>
+                Enter your zip code
+              </label>
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={5}
-                placeholder="Enter zip code"
+                placeholder="e.g. 97201"
                 value={gardenZip}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, "").slice(0, 5);
                   setGardenZip(val);
+                  try { localStorage.setItem("mapped:garden-zip", val); } catch { /* ignore */ }
                   if (val.length === 5) {
                     const zone = getZoneFromZip(val);
                     if (zone) {
                       setGardenZone(zone);
-                      localStorage.setItem("mapped:garden-zone", zone);
-                      localStorage.setItem("mapped:garden-zip", val);
+                      try { localStorage.setItem("mapped:garden-zone", zone); } catch { /* ignore */ }
+                      setShowZonePicker(false);
                     }
                   }
                 }}
-                className="w-full rounded-lg px-3 py-2 text-[13px] tabular-nums"
+                className="w-full rounded-lg px-3 py-2.5 text-[15px] tabular-nums"
                 style={{
-                  background: "color-mix(in srgb, var(--foreground) 6%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)",
+                  background: "var(--background)",
+                  border: "1px solid var(--border-card)",
                   color: "var(--foreground)",
                   outline: "none",
-                  fontFamily: "var(--font-display)",
                 }}
                 aria-label="Zip code for garden zone"
               />
               {gardenZip.length === 5 && !getZoneFromZip(gardenZip) && (
-                <p className="text-[9px] mt-1" style={{ color: "var(--terracotta)" }}>
-                  Zip not found — pick a zone manually below
-                </p>
+                <>
+                  <p className="text-[10px] mt-2 mb-1.5" style={{ color: "var(--terracotta)" }}>
+                    We couldn&apos;t match that zip — pick your zone below.
+                  </p>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+                    {USDA_ZONES.map((z) => (
+                      <button
+                        key={z.zone}
+                        onClick={() => {
+                          setGardenZone(z.zone);
+                          try { localStorage.setItem("mapped:garden-zone", z.zone); } catch { /* ignore */ }
+                          setShowZonePicker(false);
+                        }}
+                        className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium active:scale-[0.96]"
+                        style={{
+                          background: z.zone === gardenZone ? "var(--sage)" : "color-mix(in srgb, var(--foreground) 6%, transparent)",
+                          color: z.zone === gardenZone ? "var(--background)" : "var(--foreground-muted)",
+                        }}
+                      >
+                        {z.zone}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
-            <div
-              className="shrink-0 rounded-lg px-3 py-2 text-center"
-              style={{
-                background: "color-mix(in srgb, var(--sage) 12%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--sage) 20%, transparent)",
-                minWidth: "52px",
-              }}
-            >
-              <p className="text-[9px] uppercase tracking-wider" style={{ color: "var(--sage)" }}>Zone</p>
-              <p className="text-[15px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-                {gardenZone}
-              </p>
-            </div>
-          </div>
-          <p className="text-[9px] leading-relaxed mb-2" style={{ color: "var(--foreground-faint)" }}>
-            Your USDA Hardiness Zone determines what to plant and when. {!gardenZip && "Type your zip code to auto-detect, or tap a zone below."}
-          </p>
-          {/* Manual zone fallback — compact scrollable pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-            {USDA_ZONES.map((z) => (
-              <button
-                key={z.zone}
-                onClick={() => {
-                  setGardenZone(z.zone);
-                  localStorage.setItem("mapped:garden-zone", z.zone);
-                }}
-                className="shrink-0 px-2 py-1 rounded-full text-[10px] font-medium transition-colors active:scale-[0.96]"
-                style={{
-                  background: z.zone === gardenZone
-                    ? "var(--sage)"
-                    : "color-mix(in srgb, var(--foreground) 6%, transparent)",
-                  color: z.zone === gardenZone
-                    ? "var(--background)"
-                    : "var(--foreground-muted)",
-                }}
-              >
-                {z.zone}
-              </button>
-            ))}
-          </div>
+          )}
 
           {/* Zone info bar */}
           <div
@@ -1986,12 +1989,12 @@ export default function AlmanacPageContent() {
               border: "1px solid color-mix(in srgb, var(--sage) 20%, transparent)",
             }}
           >
-            <div>
+            <div className="min-w-0 pr-3">
               <p className="text-[9px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--sage)" }}>
-                {plantingCal.region}
+                Your region
               </p>
-              <p className="text-[15px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-                Zone {plantingCal.zone}
+              <p className="text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>
+                {plantingCal.region || `Zone ${plantingCal.zone}`}
               </p>
             </div>
             <div className="text-right">
@@ -2009,27 +2012,28 @@ export default function AlmanacPageContent() {
             className="rounded-xl px-4 py-4 mt-3"
             style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: "color-mix(in srgb, var(--sage) 15%, transparent)" }}
+                className="w-[58px] h-[58px] rounded-full flex flex-col items-center justify-center shrink-0"
+                style={{
+                  background: "color-mix(in srgb, var(--sage) 14%, var(--background-card))",
+                  border: "1px solid color-mix(in srgb, var(--sage) 30%, transparent)",
+                }}
               >
-                <span className="text-[18px]">🌿</span>
+                <span className="text-[23px] font-bold leading-none tabular-nums" style={{ fontFamily: "var(--font-heading)", color: "var(--sage)" }}>
+                  {plantingCal.todayVerdict.score}
+                </span>
+                <span className="text-[9px] leading-none mt-0.5" style={{ color: "var(--foreground-muted)" }}>/ 10</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-bold" style={{ color: "var(--foreground-on-card)" }}>
+                <p className="text-[15px] font-bold" style={{ color: "var(--foreground-on-card)" }}>
                   {plantingCal.todayVerdict.crop}
                 </p>
-                <p className="text-[11px]" style={{ color: "var(--foreground-on-card-muted)" }}>
-                  {plantingCal.todayVerdict.moonSign} ({plantingCal.todayVerdict.moonElement} sign)
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-on-card-muted)" }}>
+                  Zone {plantingCal.zone} · {plantingCal.todayVerdict.moonSign} ({plantingCal.todayVerdict.moonElement} sign)
                 </p>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-[22px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--sage)" }}>
-                  {plantingCal.todayVerdict.score}
-                </p>
-                <p className="text-[9px] uppercase" style={{ color: "var(--foreground-muted)" }}>/10 <InfoTip text="Planting score based on Moon sign fertility and phase. 7+ is great for planting, 4-6 is moderate, below 4 is better for weeding and maintenance." /></p>
-              </div>
+              <InfoTip text="Planting score from the Moon's sign fertility and phase. 7+ is great for planting, 4–6 is moderate, below 4 is better for weeding, pruning, and rest." />
             </div>
             <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border-card)" }}>
               <p className="text-[9px] uppercase tracking-[0.12em] font-bold mb-1" style={{ color: "var(--sage)" }}>

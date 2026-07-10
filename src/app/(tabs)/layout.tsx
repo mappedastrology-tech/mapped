@@ -27,6 +27,8 @@ import WebToday from "@/components/web/WebToday";
 import WebAlmanac from "@/components/web/WebAlmanac";
 import WebTarot from "@/components/web/WebTarot";
 import WebJournal from "@/components/web/WebJournal";
+import WebMaps from "@/components/web/WebMaps";
+import WebDolly from "@/components/web/WebDolly";
 
 // Routes (inside this group) with a desktop "web" experience
 // (design_handoff_mapped_web). On lg+ these render the web page and the mobile
@@ -37,6 +39,8 @@ const WEB_PAGES: Record<string, React.ComponentType> = {
   "/almanac": WebAlmanac,
   "/tarot": WebTarot,
   "/journal": WebJournal,
+  "/maps": WebMaps,
+  "/dolly": WebDolly,
 };
 
 export default function TabsLayout({

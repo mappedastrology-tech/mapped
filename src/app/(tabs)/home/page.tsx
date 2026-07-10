@@ -155,16 +155,6 @@ export default function HomeTab() {
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
-  // When a card reading expands, scroll it fully into view so the buttons
-  // (Journal / Save / Share this pull) aren't left below the fold.
-  const readingRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!expandedCard) return;
-    const t = setTimeout(() => {
-      readingRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [expandedCard]);
 
   // Save pull state
   const [savingPull, setSavingPull] = useState<"tarot" | "oracle" | null>(null);
@@ -1180,9 +1170,15 @@ export default function HomeTab() {
           })()}
         </div>
 
+        {/* Dim backdrop behind the expanded reading sheet — tap to close */}
+        {expandedCard && (
+          <div className="fixed inset-0 z-[90]" style={{ background: "var(--modal-overlay)" }} onClick={() => setExpandedCard(null)} aria-hidden="true" />
+        )}
+
         {/* Expanded tarot reading */}
         {pullDeck === "tarot" && expandedCard === "tarot" && tarotRevealed && (
-          <div ref={readingRef} className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", scrollMarginBottom: 110 }}>
+          <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyTarot.name}
@@ -1334,7 +1330,8 @@ export default function HomeTab() {
 
         {/* Expanded oracle reading */}
         {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && (
-          <div ref={readingRef} className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", scrollMarginBottom: 110 }}>
+          <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyOracle.animal}
