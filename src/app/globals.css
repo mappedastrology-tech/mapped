@@ -933,3 +933,27 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .mp-web [style*="animation"] { animation: none !important; }
 }
+
+/* Web feature-page interactions (tarot deck/slots, element game, journal) */
+@keyframes mp-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mp-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+@keyframes mp-flipIn { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+@keyframes mp-deckfloat { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(-2deg)} }
+
+.mp-reveal { animation: mp-flipIn .4s cubic-bezier(.22,1,.36,1); }
+
+.mp-chip { transition: transform .12s ease, box-shadow .18s ease; }
+.mp-chip:active { cursor: grabbing; }
+.mp-chip.drag { opacity: 0.35; }
+
+.mp-bucket.over { box-shadow: 0 0 0 2px var(--brass), 0 10px 30px var(--shadow); transform: translateY(-2px); }
+.mp-bucket.wrong { animation: mp-shake .4s ease; }
+
+.mp-deck { transition: transform .18s ease, box-shadow .2s ease; }
+.mp-deck:hover { transform: translateY(-5px) rotate(-2deg); box-shadow: 0 20px 44px rgba(0,0,0,0.55); }
+.mp-deck.drag { opacity: 0.5; }
+
+.mp-slot.over { box-shadow: 0 0 0 2px var(--brass), inset 0 0 30px color-mix(in srgb, var(--brass) 22%, transparent); }
+
+.mp-web textarea.mp-ta:focus { outline: none; border-color: color-mix(in srgb, var(--brass) 50%, transparent); }
+.mp-web textarea.mp-ta::placeholder { color: var(--faint); }

@@ -155,6 +155,16 @@ export default function HomeTab() {
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
+  // When a card reading expands, scroll it fully into view so the buttons
+  // (Journal / Save / Share this pull) aren't left below the fold.
+  const readingRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!expandedCard) return;
+    const t = setTimeout(() => {
+      readingRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [expandedCard]);
 
   // Save pull state
   const [savingPull, setSavingPull] = useState<"tarot" | "oracle" | null>(null);
@@ -1172,7 +1182,7 @@ export default function HomeTab() {
 
         {/* Expanded tarot reading */}
         {pullDeck === "tarot" && expandedCard === "tarot" && tarotRevealed && (
-          <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
+          <div ref={readingRef} className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", scrollMarginBottom: 110 }}>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyTarot.name}
@@ -1324,7 +1334,7 @@ export default function HomeTab() {
 
         {/* Expanded oracle reading */}
         {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && (
-          <div className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2" }}>
+          <div ref={readingRef} className="rounded-2xl p-5 mb-6 space-y-3" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", scrollMarginBottom: 110 }}>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
                 {dailyOracle.animal}

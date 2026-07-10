@@ -13,6 +13,8 @@ import Link from "next/link";
 import { useMemo } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 
+const VS = "\uFE0E";
+
 const SUN_TIMES = [ { label: "Sunrise", val: "5:58" }, { label: "Sunset", val: "8:31" }, { label: "Daylight", val: "14h 33m" } ];
 const GOOD_FOR = [
   { activity: "Deep conversations", reason: "The Scorpio Moon wants truth, not small talk. Words land deeper today." },
@@ -133,7 +135,7 @@ export default function WebAlmanac() {
                 {EXPLORE.map((e) => (
                   <div key={e.title} style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: "24px 24px 26px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
-                      <span style={{ width: 38, height: 38, borderRadius: 10, background: "color-mix(in srgb, var(--brass) 14%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{e.glyph}</span>
+                      <span style={{ width: 38, height: 38, borderRadius: 10, background: "color-mix(in srgb, var(--brass) 14%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{e.glyph + VS}</span>
                       <div>
                         <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, margin: 0, color: "var(--fg)" }}>{e.title}</p>
                         <p style={{ fontSize: 11, color: "var(--faint)", margin: "1px 0 0" }}>{e.sub}</p>

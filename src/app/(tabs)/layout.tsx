@@ -25,13 +25,18 @@ import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
 import WebToday from "@/components/web/WebToday";
 import WebAlmanac from "@/components/web/WebAlmanac";
+import WebTarot from "@/components/web/WebTarot";
+import WebJournal from "@/components/web/WebJournal";
 
-// Routes that have a desktop "web" experience (design_handoff_mapped_web).
-// On lg+ these render the web page and the mobile chrome is hidden; on phones
-// the existing mobile app shows. Populated as each page is converted.
+// Routes (inside this group) with a desktop "web" experience
+// (design_handoff_mapped_web). On lg+ these render the web page and the mobile
+// chrome is hidden; on phones the mobile app shows. /library lives outside
+// (tabs) and wires its own desktop branch via DesktopWebRoute.
 const WEB_PAGES: Record<string, React.ComponentType> = {
   "/home": WebToday,
   "/almanac": WebAlmanac,
+  "/tarot": WebTarot,
+  "/journal": WebJournal,
 };
 
 export default function TabsLayout({

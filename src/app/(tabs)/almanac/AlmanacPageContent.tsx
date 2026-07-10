@@ -319,7 +319,12 @@ function ActivityDetailView({
     >
       <div
         className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 pt-2.5 pb-8 flex flex-col gap-5 rounded-t-3xl"
-        style={{ background: "var(--background)", maxHeight: "90vh", overflowY: "auto" }}
+        style={{
+          background: "var(--background)",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif",
+        }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={detail.activity}
@@ -356,7 +361,7 @@ function ActivityDetailView({
           </p>
           <h2
             className="text-[28px] leading-tight"
-            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}
           >
             {detail.activity}
           </h2>
@@ -373,7 +378,7 @@ function ActivityDetailView({
           >
             <span
               className="text-[24px] font-bold leading-none tabular-nums"
-              style={{ fontFamily: "var(--font-display)", color: accentColor }}
+              style={{ fontFamily: "var(--font-heading)", color: accentColor }}
             >
               {detail.score.toFixed(1)}
             </span>
