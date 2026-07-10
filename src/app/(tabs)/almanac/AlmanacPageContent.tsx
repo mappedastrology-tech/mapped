@@ -324,9 +324,26 @@ function ActivityDetailView({
         role="dialog"
         aria-label={detail.activity}
       >
-        {/* Grab handle */}
-        <div className="flex justify-center pt-1 pb-1">
-          <div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} />
+        {/* Grab handle + close */}
+        <div className="relative flex justify-center items-center pt-1 pb-1 min-h-[36px]">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="px-6 py-2 -my-2"
+          >
+            <div className="w-10 h-1 rounded-full" style={{ background: "var(--border)" }} />
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-0 top-0 w-9 h-9 flex items-center justify-center rounded-full"
+            style={{ color: "var(--foreground-muted)", background: "color-mix(in srgb, var(--foreground) 6%, transparent)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
 
         {/* Title */}

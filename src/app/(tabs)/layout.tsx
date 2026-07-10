@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import SideNav from "@/components/SideNav";
@@ -23,6 +23,16 @@ import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
+import WebToday from "@/components/web/WebToday";
+import WebAlmanac from "@/components/web/WebAlmanac";
+
+// Routes that have a desktop "web" experience (design_handoff_mapped_web).
+// On lg+ these render the web page and the mobile chrome is hidden; on phones
+// the existing mobile app shows. Populated as each page is converted.
+const WEB_PAGES: Record<string, React.ComponentType> = {
+  "/home": WebToday,
+  "/almanac": WebAlmanac,
+};
 
 export default function TabsLayout({
   children,
@@ -30,8 +40,23 @@ export default function TabsLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const WebPage = WEB_PAGES[pathname];
   const [showTour, setShowTour] = useState(false);
   const [ready, setReady] = useState(false);
+  // Desktop web pages replace the mobile app entirely on lg+. We resolve the
+  // breakpoint after mount (during the auth spinner) so the mobile page is
+  // never mounted on desktop — its onboarding/chart redirects must not fire
+  // underneath the web layout.
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  const showWeb = !!WebPage && isDesktop;
 
   const syncRan = useRef(false);
 
@@ -98,20 +123,27 @@ export default function TabsLayout({
   return (
     <TierProvider>
       <BirthTimeProvider>
-        {/* App shell. Mobile: TopBar + scrolling content + BottomNav (column).
-            Desktop (lg+): a left SideNav rail beside the scrolling content. */}
-        <div className="flex flex-col lg:flex-row h-dvh">
-          <SideNav />
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-              <TopBar />
-              <div className="pb-4 lg:pb-10">
-                {children}
-              </div>
-            </div>
-            <BottomNav />
+        {/* Desktop web pages take over the whole viewport with their own
+            top-nav shell. Otherwise: mobile TopBar + scrolling content +
+            BottomNav (column), with a left SideNav rail on lg+. */}
+        {showWeb ? (
+          <div className="h-dvh overflow-y-auto overscroll-contain">
+            <WebPage />
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row h-dvh">
+            <SideNav />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                <TopBar />
+                <div className="pb-4 lg:pb-10">
+                  {children}
+                </div>
+              </div>
+              <BottomNav />
+            </div>
+          </div>
+        )}
         <BugReportButton />
         {showTour && <AppTour onComplete={handleTourComplete} />}
       </BirthTimeProvider>

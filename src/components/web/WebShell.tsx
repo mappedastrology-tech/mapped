@@ -107,12 +107,14 @@ export default function WebShell({
   variant = "app",
   theme,
   onToggleTheme,
+  footerTagline,
   children,
 }: {
   current: WebNavKey;
   variant?: "marketing" | "app";
   theme: "night" | "day";
   onToggleTheme: () => void;
+  footerTagline?: string;
   children: React.ReactNode;
 }) {
   const stars = useMemo(() => makeStars(40, 20260710), []);
@@ -162,7 +164,7 @@ export default function WebShell({
       <main style={{ position: "relative", zIndex: 10 }}>{children}</main>
 
       {/* ===== FOOTER ===== */}
-      {variant === "marketing" ? <FullFooter /> : <CompactFooter />}
+      {variant === "marketing" ? <FullFooter /> : <CompactFooter tagline={footerTagline} />}
     </div>
   );
 }
