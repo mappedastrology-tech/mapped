@@ -6,7 +6,7 @@
  * Visual scrollable map with You at center and category nodes:
  * Family, Partner, Friends, City.
  * Tap a category to expand its members. Tap a member to see synastry.
- * Family section includes "Generate Family Analysis" for strengths & curses.
+ * Family section includes "Generate Family Analysis" for strengths & patterns.
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -7457,9 +7457,9 @@ export default function MapsTab() {
         const hasCurrent = !!savedFamily && !isStale;
         const btnLabel = analysisLoading
           ? "Generating…"
-          : hasCurrent ? "Traits & Curses"
-          : savedFamily ? "Regenerate traits & curses"
-          : "Generate traits & curses";
+          : hasCurrent ? "Traits & Patterns"
+          : savedFamily ? "Regenerate traits & patterns"
+          : "Generate traits & patterns";
         return (
           <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm" style={{ backgroundColor: "var(--modal-overlay)" }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowFamilyPanel(false); }}>
@@ -7471,7 +7471,7 @@ export default function MapsTab() {
                 </button>
               </div>
               <div className="px-5 pb-6 overflow-y-auto">
-                <p className="text-muted text-[13px] mb-3">Your family&rsquo;s traits &amp; curses, cross-referenced across these members:</p>
+                <p className="text-muted text-[13px] mb-3">Your family&rsquo;s traits &amp; patterns, cross-referenced across these members:</p>
                 {members.length === 0 ? (
                   <p className="text-secondary text-sm py-6 text-center">Add your parents and siblings to your map first.</p>
                 ) : (

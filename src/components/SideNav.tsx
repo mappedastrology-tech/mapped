@@ -26,7 +26,7 @@ const PRIMARY: Item[] = [
 ];
 
 const MORE: Item[] = [
-  { name: "Ritual", href: "/learn", glyph: "☾" },
+  { name: "Rituals", href: "/learn", glyph: "☾" },
   { name: "Journal", href: "/journal", glyph: "✎" },
   { name: "Library", href: "/library/reference", glyph: "❉" },
   { name: "Learn", href: "/library", glyph: "❦" },

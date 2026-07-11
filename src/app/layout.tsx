@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Mapped — astrology for your actual life",
   description:
-    "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+    "Understand your birth chart. Understand your life. Mapped is grounded, all-in-one astrology you can dial from skeptical to mystical — chart, transits, tarot, rituals, and a learning library. A lens, not a prediction.",
   applicationName: "Mapped",
   appleWebApp: { capable: true, title: "Mapped", statusBarStyle: "default" },
   openGraph: {
@@ -24,14 +24,14 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: "Mapped — astrology for your actual life",
     description:
-      "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+      "Understand your birth chart. Understand your life. Mapped is grounded, all-in-one astrology you can dial from skeptical to mystical — chart, transits, tarot, rituals, and a learning library. A lens, not a prediction.",
     images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Mapped" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mapped — astrology for your actual life",
     description:
-      "Understand your birth chart. Understand your life. Mapped gives you real, grounded astrology — not personality quizzes.",
+      "Understand your birth chart. Understand your life. Mapped is grounded, all-in-one astrology you can dial from skeptical to mystical — chart, transits, tarot, rituals, and a learning library. A lens, not a prediction.",
     images: ["/icon-512.png"],
   },
 };

@@ -124,7 +124,7 @@ export default function LibraryHome() {
 
       <TopBar />
 
-      <h1 className="sr-only">The Library — Learn</h1>
+      <h1 className="sr-only">Learn</h1>
 
       <div className="max-w-lg mx-auto px-5 pb-24 relative">
         {/* Starfield (decorative) */}
@@ -140,7 +140,7 @@ export default function LibraryHome() {
           {/* Decorative eyebrow */}
           <div className="flex items-center justify-center gap-2.5 pt-2 pb-3.5">
             <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
-            <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)", fontFamily: "var(--font-body)" }}>The Mapped Library</span>
+            <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)", fontFamily: "var(--font-body)" }}>Learn</span>
             <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
           </div>
 

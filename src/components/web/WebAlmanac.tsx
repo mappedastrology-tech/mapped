@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { useLiveSky } from "./useLiveSky";
 
 const VS = "\uFE0E";
 
@@ -62,6 +63,13 @@ const card: React.CSSProperties = { borderRadius: 20, background: "var(--card)",
 export default function WebAlmanac() {
   const { theme, toggle } = useWebTheme();
   const stars = useMemo(() => heroStars(90210), []);
+  const sky = useLiveSky();
+
+  const sunTimes = sky
+    ? [{ label: "Sunrise", val: sky.sunrise }, { label: "Sunset", val: sky.sunset }, { label: "Daylight", val: sky.daylight }]
+    : SUN_TIMES;
+  const goodCol = sky ? { sub: sky.goodFor.why, items: sky.goodFor.activities } : { sub: "Timed to the Moon's sign & phase.", items: GOOD_FOR.map((g) => g.activity) };
+  const holdCol = sky ? { sub: sky.holdOff.reason, items: sky.holdOff.activities } : { sub: "The void Moon asks for patience.", items: HOLD_OFF.map((h) => h.activity) };
 
   return (
     <WebShell current="almanac" theme={theme} onToggleTheme={toggle} footerTagline="Read the sky, then trust yourself.">
@@ -72,12 +80,12 @@ export default function WebAlmanac() {
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 26, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 78% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 20px 60px var(--shadow)", padding: "46px 48px", display: "grid", gridTemplateColumns: "1fr auto", gap: 40, alignItems: "center" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative" }}>
-            <p style={{ fontFamily: "var(--script)", fontSize: 32, color: "var(--brass-hi)", margin: "0 0 2px" }}>Wednesday</p>
-            <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 52, letterSpacing: "0.02em", lineHeight: 1, margin: "0 0 8px", color: "#f3ecd8" }}>July 1, 2026</h1>
-            <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "14px 0 8px" }}>Waxing Gibbous · 73% · Moon in Scorpio</p>
-            <p style={{ fontSize: 17, lineHeight: 1.6, color: "#cdc1a8", margin: "0 0 24px", maxWidth: 440, textWrap: "pretty" }}>Depth over noise. A day that rewards focus, honesty, and finishing what you started — the Moon pulls attention inward and asks for the real thing.</p>
+            <p style={{ fontFamily: "var(--script)", fontSize: 32, color: "var(--brass-hi)", margin: "0 0 2px" }}>{sky?.weekday ?? "Wednesday"}</p>
+            <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 52, letterSpacing: "0.02em", lineHeight: 1, margin: "0 0 8px", color: "#f3ecd8" }}>{sky?.longDate ?? "July 1, 2026"}</h1>
+            <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "14px 0 8px" }}>{sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Waxing Gibbous · 73% · Moon in Scorpio"}</p>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: "#cdc1a8", margin: "0 0 24px", maxWidth: 440, textWrap: "pretty" }}>{sky?.moonSignTheme ?? "Depth over noise. A day that rewards focus, honesty, and finishing what you started — the Moon pulls attention inward and asks for the real thing."}</p>
             <div style={{ display: "flex", maxWidth: 420, borderTop: "0.5px solid rgba(201,169,97,0.24)", paddingTop: 18 }}>
-              {SUN_TIMES.map((t, i) => (
+              {sunTimes.map((t, i) => (
                 <div key={i} style={{ flex: 1, textAlign: "center", borderRight: i < 2 ? "0.5px solid rgba(201,169,97,0.18)" : "none" }}>
                   <p style={{ fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#a89a7e", margin: "0 0 4px" }}>{t.label}</p>
                   <p style={{ fontFamily: "var(--deco)", fontSize: 19, color: "#f3ecd8", margin: 0 }}>{t.val}</p>
@@ -87,15 +95,17 @@ export default function WebAlmanac() {
           </div>
           <div style={{ position: "relative", width: 250, height: 250 }}>
             <div style={{ position: "absolute", inset: -20, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />
-            <img src="/moons/waxing-gibbous.png" alt="Waxing gibbous moon tonight" style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
+            <img src={sky?.moonImg ?? "/moons/waxing-gibbous.png"} alt={sky?.moonLabel ?? "Moon tonight"} style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
           </div>
         </div>
 
-        {/* V/C */}
-        <div style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 14, padding: "13px 18px", borderRadius: 14, background: "color-mix(in srgb, var(--terra) 9%, var(--card))", border: "1px solid color-mix(in srgb, var(--terra) 22%, transparent)" }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 6, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}>V/C</span>
-          <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from 2:32 pm — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
-        </div>
+        {/* V/C — only when the Moon is actually void of course today */}
+        {(!sky || sky.vocStart) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 14, padding: "13px 18px", borderRadius: 14, background: "color-mix(in srgb, var(--terra) 9%, var(--card))", border: "1px solid color-mix(in srgb, var(--terra) 22%, transparent)" }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 6, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}>V/C</span>
+            <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from {sky?.vocStart ?? "2:32 pm"} — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
+          </div>
+        )}
 
         {/* BODY GRID */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, marginTop: 36, alignItems: "start" }}>
@@ -103,25 +113,22 @@ export default function WebAlmanac() {
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             {/* Sabian */}
             <div style={{ ...card, padding: "30px 32px" }}>
-              <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>Cancer 10° · Today&rsquo;s Sabian symbol</p>
-              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>“A large diamond in the first stages of the cutting process.”</p>
-              <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>Latent worth, not yet revealed. What looks rough today is being shaped into something brilliant — patience is the craft. Don&rsquo;t judge the diamond by the dust.</p>
+              <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s Sabian symbol` : "Cancer 10° · Today’s Sabian symbol"}</p>
+              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>“{sky?.sabian.symbol ?? "A large diamond in the first stages of the cutting process."}”</p>
+              <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky?.sabian.keynote ?? "Latent worth, not yet revealed. What looks rough today is being shaped into something brilliant — patience is the craft."}</p>
             </div>
 
             {/* good / hold */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              {[{ h: "Good for today", sub: "Timed to the Moon's sign & phase.", list: GOOD_FOR, dot: "var(--go)", fg: "var(--fg)" },
-                { h: "Hold off on", sub: "The void Moon asks for patience.", list: HOLD_OFF, dot: "var(--terra)", fg: "var(--fg2)" }].map((col) => (
-                <div key={col.h} style={{ ...card, padding: "26px 26px 8px" }}>
+              {[{ h: "Good for today", sub: goodCol.sub, list: goodCol.items, dot: "var(--go)", fg: "var(--fg)" },
+                { h: "Hold off on", sub: holdCol.sub, list: holdCol.items, dot: "var(--terra)", fg: "var(--fg2)" }].map((col) => (
+                <div key={col.h} style={{ ...card, padding: "26px 26px 20px" }}>
                   <h2 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, letterSpacing: "0.02em", margin: "0 0 4px", color: "var(--fg)" }}>{col.h}</h2>
-                  <p style={{ fontSize: 12.5, color: "var(--faint)", margin: "0 0 12px" }}>{col.sub}</p>
-                  {col.list.map((g) => (
-                    <div key={g.activity} style={{ padding: "14px 0", borderTop: "0.5px solid var(--line)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 5 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: col.dot, boxShadow: `0 0 0 4px color-mix(in srgb, ${col.dot} 18%, transparent)` }} />
-                        <span style={{ fontSize: 15.5, fontWeight: 600, color: col.fg }}>{g.activity}</span>
-                      </div>
-                      <p style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 0 18px", textWrap: "pretty" }}>{g.reason}</p>
+                  <p style={{ fontSize: 12.5, color: "var(--faint)", margin: "0 0 12px", textWrap: "pretty" }}>{col.sub}</p>
+                  {col.list.map((activity) => (
+                    <div key={activity} style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 0", borderTop: "0.5px solid var(--line)" }}>
+                      <span style={{ width: 7, height: 7, flex: "0 0 auto", borderRadius: "50%", background: col.dot, boxShadow: `0 0 0 4px color-mix(in srgb, ${col.dot} 18%, transparent)` }} />
+                      <span style={{ fontSize: 15.5, fontWeight: 600, color: col.fg }}>{activity}</span>
                     </div>
                   ))}
                 </div>

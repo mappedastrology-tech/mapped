@@ -130,12 +130,12 @@ export default function WebLanding() {
       {/* ===== HERO ===== */}
       <section style={{ maxWidth: 1240, margin: "0 auto", padding: "74px 32px 40px", display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 40, alignItems: "center" }}>
         <div>
-          <p style={{ ...eyebrow, fontSize: 38, lineHeight: 1, marginBottom: 6 }}>your sky, daily</p>
+          <p style={{ ...eyebrow, fontSize: 38, lineHeight: 1, marginBottom: 6 }}>skeptic or witch, both welcome</p>
           <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 72, lineHeight: 1.02, letterSpacing: "-0.01em", margin: "0 0 22px", color: "var(--fg)", textWrap: "balance" }}>
-            The whole sky,<br /><span style={{ fontStyle: "italic" }}>made personal.</span>
+            Your chart called.<br /><span style={{ fontStyle: "italic" }}>It has notes.</span>
           </h1>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--fg2)", maxWidth: 480, margin: "0 0 30px", textWrap: "pretty" }}>
-            Your birth chart, the moon&rsquo;s phase, the almanac, tarot, and a guide who actually knows your placements — woven into one quiet daily practice. Mapped reads the sky so you can read yourself.
+            Astrology for your actual life — grounded, specific, and dialed to exactly how much you believe. Your chart, the moon, tarot, rituals, and a guide who actually knows your placements, all in one place.
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <Link href="/onboarding" style={{ fontSize: 16, fontWeight: 700, padding: "15px 30px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 32%, transparent)" }}>Start free — no card</Link>

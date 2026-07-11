@@ -255,7 +255,7 @@ export default function NightSky({
           {/* cluster labels — Origin Family is a tappable pill that opens the family panel */}
           {clusters.map((c) => (
             c.group === "origin" ? (
-              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} aria-label="Origin Family — view traits & curses" style={{
+              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} aria-label="Origin Family — view traits & patterns" style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1, fontFamily: "inherit",
                 color: c.color, padding: "8px 15px", borderRadius: 16, background: "rgba(184,160,210,.22)",
@@ -264,7 +264,7 @@ export default function NightSky({
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
                   {c.label} <span aria-hidden="true" style={{ opacity: 0.85, fontSize: 13 }}>›</span>
                 </span>
-                <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; curses</span>
+                <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; patterns</span>
               </button>
             ) : (
               <span key={`l-${c.group}`} style={{

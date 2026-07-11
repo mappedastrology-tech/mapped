@@ -24,11 +24,12 @@ import {
   type PositionKey,
 } from "@/lib/numerologyMeanings";
 import { getConceptInfo } from "@/lib/numerologyConcepts";
-import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
+import { fetchSetting, saveSetting, clearSetting } from "@/lib/syncedSettings";
 import { getApplication } from "@/lib/numerologyApplications";
 import NmOrbit from "@/components/numerology/NmOrbit";
 
 const NAME_KEY = "mapped:numerology-fullname";
+const MARRIED_KEY = "mapped:numerology-marriedname";
 const SYSTEM_KEY = "mapped:numerology-system";
 
 const NUM_WORD: Record<number, string> = {
@@ -57,6 +58,9 @@ export default function NumerologyPageContent() {
   const [nameConfirmed, setNameConfirmed] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [marriedName, setMarriedName] = useState("");
+  const [editingMarried, setEditingMarried] = useState(false);
+  const [marriedDraft, setMarriedDraft] = useState("");
   const [system, setSystem] = useState<NumerologySystem>("pythagorean");
   const [openCard, setOpenCard] = useState<string | null>("lifepath");
   const [pageTab, setPageTab] = useState<PageTab>("core");
@@ -66,8 +70,10 @@ export default function NumerologyPageContent() {
   useEffect(() => {
     async function load() {
       let storedName = "";
+      let storedMarried = "";
       try {
         storedName = localStorage.getItem(NAME_KEY) || "";
+        storedMarried = localStorage.getItem(MARRIED_KEY) || "";
         const sys = localStorage.getItem(SYSTEM_KEY);
         if (sys === "chaldean" || sys === "pythagorean") setSystem(sys);
       } catch {
@@ -101,7 +107,13 @@ export default function NumerologyPageContent() {
           storedName = acctName;
           try { localStorage.setItem(NAME_KEY, acctName); } catch { /* ignore */ }
         }
+        const acctMarried = await fetchSetting(session.user.id, "numerology-marriedname");
+        if (acctMarried != null) {
+          storedMarried = acctMarried;
+          try { localStorage.setItem(MARRIED_KEY, acctMarried); } catch { /* ignore */ }
+        }
       }
+      setMarriedName(storedMarried);
 
       if (!date) {
         try {
@@ -136,6 +148,12 @@ export default function NumerologyPageContent() {
     return computeNumerology(fullName, birthDate, { system, now });
   }, [birthDate, fullName, system, now]);
 
+  // Married / chosen name — same math, run on the second name.
+  const marriedProfile: NumerologyProfile | null = useMemo(() => {
+    if (!birthDate || !marriedName.trim()) return null;
+    return computeNumerology(marriedName, birthDate, { system, now });
+  }, [birthDate, marriedName, system, now]);
+
   function saveName() {
     const cleaned = nameDraft.trim();
     if (!cleaned) return;
@@ -148,6 +166,30 @@ export default function NumerologyPageContent() {
       /* ignore */
     }
     if (userId) saveSetting(userId, "numerology-fullname", cleaned);
+  }
+
+  function saveMarriedName() {
+    const cleaned = marriedDraft.trim();
+    setMarriedName(cleaned);
+    setEditingMarried(false);
+    try {
+      if (cleaned) localStorage.setItem(MARRIED_KEY, cleaned);
+      else localStorage.removeItem(MARRIED_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (userId) {
+      if (cleaned) saveSetting(userId, "numerology-marriedname", cleaned);
+      else clearSetting(userId, "numerology-marriedname");
+    }
+  }
+
+  function removeMarriedName() {
+    setMarriedName("");
+    setMarriedDraft("");
+    setEditingMarried(false);
+    try { localStorage.removeItem(MARRIED_KEY); } catch { /* ignore */ }
+    if (userId) clearSetting(userId, "numerology-marriedname");
   }
 
   // ── Gated states ────────────────────────────────────────────────────────────
@@ -445,6 +487,65 @@ export default function NumerologyPageContent() {
                       onToggle={() => setOpenCard(openCard === r.id ? null : r.id)}
                     />
                   ))}
+                </div>
+
+                {/* ── Married / chosen name comparison ── */}
+                <div className="mt-8 pt-5" style={{ borderTop: "1px solid var(--border-card)" }}>
+                  <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 20, color: "var(--foreground)" }}>Married or chosen name</p>
+                  <p className="text-[12.5px] leading-relaxed mb-3.5" style={{ color: "var(--foreground-muted)" }}>
+                    Your birth name is your blueprint. A name you take on later — married or chosen — layers a new energy over it. Your Life Path never changes, but the name numbers can. Add one to see what shifts.
+                  </p>
+
+                  {editingMarried ? (
+                    <div className="mb-2">
+                      <NameInput value={marriedDraft} onChange={setMarriedDraft} onSave={saveMarriedName} label="Compare" />
+                      <p className="text-[10.5px] mt-1.5" style={{ color: "var(--foreground-faint)" }}>Enter the full name — e.g. new first, middle, and married surname.</p>
+                    </div>
+                  ) : !marriedName.trim() ? (
+                    <button
+                      onClick={() => { setMarriedDraft(""); setEditingMarried(true); }}
+                      className="w-full rounded-xl px-4 py-3 text-[13px] font-medium transition-colors active:scale-[0.99]"
+                      style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", color: "var(--brass)" }}
+                    >
+                      + Add a name to compare
+                    </button>
+                  ) : marriedProfile ? (
+                    <>
+                      <div className="flex items-center justify-center gap-3 text-[11px] mb-3" style={{ color: "var(--foreground-faint)" }}>
+                        <span className="truncate">{fullName} → {marriedName}</span>
+                        <button onClick={() => { setMarriedDraft(marriedName); setEditingMarried(true); }} className="underline shrink-0" style={{ color: "var(--brass)" }}>edit</button>
+                        <button onClick={removeMarriedName} className="underline shrink-0" style={{ color: "var(--foreground-faint)" }}>remove</button>
+                      </div>
+                      <div className="flex flex-col gap-[9px]">
+                        {([
+                          { key: "expression" as PositionKey, label: "Expression", a: profile.expression.value, b: marriedProfile.expression.value },
+                          { key: "soulUrge" as PositionKey, label: "Soul Urge", a: profile.soulUrge.value, b: marriedProfile.soulUrge.value },
+                          { key: "personality" as PositionKey, label: "Personality", a: profile.personality.value, b: marriedProfile.personality.value },
+                        ]).map((r) => {
+                          const changed = r.a !== r.b;
+                          return (
+                            <div key={r.key} className="rounded-xl px-4 py-3" style={{ background: "var(--background-card)", border: `0.5px solid ${changed ? "rgba(212,161,58,0.4)" : "var(--border-card)"}` }}>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-[12.5px] font-semibold" style={{ color: "var(--foreground)" }}>{r.label}</span>
+                                <span className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-muted)" }}>{r.a}</span>
+                                  <span style={{ color: "var(--foreground-faint)" }}>→</span>
+                                  <span className="text-[18px] font-bold tabular-nums" style={{ fontFamily: "var(--font-heading)", color: changed ? "var(--brass)" : "var(--foreground-muted)" }}>{r.b}</span>
+                                </span>
+                              </div>
+                              {changed ? (
+                                <p className="text-[11.5px] leading-relaxed mt-1.5" style={{ color: "var(--foreground-muted)" }}>
+                                  Shifts from <b style={{ color: "var(--foreground-secondary)" }}>{getArchetype(r.a)?.title || `the ${r.a}`}</b> to <b style={{ color: "var(--brass)" }}>{getArchetype(r.b)?.title || `the ${r.b}`}</b> — {getArchetype(r.b)?.essence || ""}
+                                </p>
+                              ) : (
+                                <p className="text-[11px] mt-1" style={{ color: "var(--foreground-faint)" }}>Unchanged — the same energy carries through.</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </>
             )}

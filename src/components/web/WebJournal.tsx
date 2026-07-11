@@ -11,6 +11,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { getLocalEntries, addEntry, autoTag, type JournalEntry } from "@/lib/journal";
+import { getMoonPhase } from "@/lib/celestialCalendar";
 
 type Entry = { day: string; mon: string; tag: string; moon: string; text: string };
 const SEED: Entry[] = [
@@ -43,20 +45,36 @@ function panelStars(seed: number, n = 18): React.CSSProperties[] {
   }));
 }
 
+const PROMPT_TEXT = "Where are you carrying tension you could gently set down before the week turns?";
 const streak = 7;
+
+/** Map a real JournalEntry to the feed's display shape. */
+function toDisplay(e: JournalEntry): Entry {
+  const dt = e.date ? new Date(`${e.date}T12:00:00`) : new Date(e.created_at);
+  const valid = !isNaN(dt.getTime());
+  const d = valid ? dt : new Date();
+  let moon = "";
+  try { moon = getMoonPhase(d).label; } catch { /* ignore */ }
+  return {
+    day: String(d.getDate()),
+    mon: MONS[d.getMonth()],
+    tag: e.prompt_id ? "prompt" : "note",
+    moon,
+    text: e.text || e.content || "",
+  };
+}
 
 export default function WebJournal() {
   const { theme, toggle } = useWebTheme();
   const [draft, setDraft] = useState("");
-  const [saved, setSaved] = useState<Entry[]>([]);
+  const [real, setReal] = useState<JournalEntry[]>([]);
   const [justSaved, setJustSaved] = useState(false);
   const stars = useMemo(() => panelStars(33113), []);
 
   useEffect(() => {
     try {
       const d = localStorage.getItem("mapped:web-journal-draft"); if (d) setDraft(d);
-      const s = JSON.parse(localStorage.getItem("mapped:web-journal-entries") || "null");
-      if (Array.isArray(s)) setSaved(s);
+      setReal(getLocalEntries());
     } catch { /* ignore */ }
   }, []);
 
@@ -65,14 +83,32 @@ export default function WebJournal() {
     const txt = draft.trim();
     if (!txt) return;
     const now = new Date();
-    const entry: Entry = { day: String(now.getDate()), mon: MONS[now.getMonth()], tag: "prompt", moon: "Waxing · Scorpio", text: txt };
-    const next = [entry, ...saved];
-    setSaved(next); setDraft(""); setJustSaved(true);
-    try { localStorage.setItem("mapped:web-journal-entries", JSON.stringify(next)); localStorage.setItem("mapped:web-journal-draft", ""); } catch { /* */ }
+    const phase = (() => { try { return getMoonPhase(now).phase; } catch { return "unknown"; } })();
+    const entry: JournalEntry = {
+      id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      user_id: "local",
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+      text: txt,
+      content: txt,
+      prompt_id: "web-prompt",
+      prompt_text: PROMPT_TEXT,
+      prompt: PROMPT_TEXT,
+      is_burn: false,
+      is_voice: false,
+      tags: autoTag(txt, now, phase, null, []),
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    };
+    addEntry(entry);
+    setReal((prev) => [entry, ...prev]);
+    setDraft(""); setJustSaved(true);
+    try { localStorage.setItem("mapped:web-journal-draft", ""); } catch { /* */ }
   };
 
   const wordCount = (draft.trim().match(/\S+/g) || []).length;
-  const entries = [...saved, ...SEED];
+  // Real entries when the user has any; otherwise the sample reflections so the
+  // feed isn't empty on a fresh account.
+  const entries = real.length > 0 ? real.map(toDisplay) : SEED;
   const streakDots = Array.from({ length: 7 }, (_, i) => i < 6);
 
   return (
@@ -113,7 +149,7 @@ export default function WebJournal() {
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {entries.map((e, i) => {
                   const ts = TAG_STYLE[e.tag] || TAG_STYLE.note;
-                  const isNewest = i === 0 && saved.length > 0 && justSaved;
+                  const isNewest = i === 0 && real.length > 0 && justSaved;
                   return (
                     <div key={i} style={{ padding: "22px 24px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 14px var(--shadow)", animation: isNewest ? "mp-pop .3s ease" : undefined }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>

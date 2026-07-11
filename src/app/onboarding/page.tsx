@@ -1386,7 +1386,7 @@ export default function OnboardingPage() {
                   { label: "You", desc: "Your chart" },
                   { label: "Home", desc: "Daily guidance" },
                   { label: "Tarot", desc: "Card pulls" },
-                  { label: "Ritual", desc: "Moon work" },
+                  { label: "Rituals", desc: "Moon work" },
                   { label: "Maps", desc: "Connections" },
                   { label: "Dolly", desc: "AI guide" },
                 ].map((item) => (

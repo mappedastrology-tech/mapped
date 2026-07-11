@@ -278,8 +278,11 @@
   --forest: #2d4029;
   --forest-dark: #1a2818;
   --forest-light: #3d5838;
-  --sage: #5a7a3a;
-  --sage-light: #6a8a4a;
+  /* Deepened for day mode: the old sage (#5a7a3a) was a muddy, low-contrast
+     green on the cream page (earth-sign labels, etc). Placement cards remap
+     --sage to cream separately, so this only affects on-cream text. */
+  --sage: #4c6b26;
+  --sage-light: #5d7f33;
   --navy: #1a2548;
   --burnt-amber: #a87018;
 
@@ -354,6 +357,12 @@
   color: var(--cream);
   --color-foreground: var(--cream);
   --foreground: var(--cream);
+  /* The card stays dark in day mode, so brass accents/titles must use the
+     bright gold — the darkened day-mode brass would be gold-on-plum. */
+  --brass: #c9a961;
+  --brass-dark: #c9a961;
+  --terracotta: #c9a961;
+  --amber: #c9a961;
 }
 [data-theme="light"] .placement-card-text { color: #f0e6d2; }
 [data-theme="light"] .placement-card-text-secondary { color: #c4b8a0; }

@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { useLiveSky, useBigThree } from "./useLiveSky";
 
 type Key = "sky" | "chart" | "tarot" | "ritual" | "journal" | "numbers";
 const DEFAULT: Key[] = ["sky", "chart", "tarot", "ritual", "journal", "numbers"];
@@ -136,6 +137,33 @@ export default function WebToday() {
   const resetDash = () => { setOrder(DEFAULT.slice()); setDragKey(null); setOverKey(null); save(DEFAULT.slice()); };
   const stars = useMemo(() => bannerStars(48221), []);
 
+  // Live sky + chart (falls back to the sample copy until computed client-side)
+  const sky = useLiveSky();
+  const bt = useBigThree();
+  const bannerEyebrow = sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Waxing Gibbous · 73% · Moon in Scorpio";
+  const bannerTitle = sky ? `The Moon in ${sky.moonSign}` : "Depth over noise today";
+  const bannerBody = sky
+    ? `${sky.moonSignTheme}${sky.vocStart ? ` Void of course after ${sky.vocStart} — let new plans settle until tomorrow.` : ""}`
+    : "A day that rewards focus, honesty, and finishing what you started. Void of course after 2:32 pm — let new plans settle until tomorrow.";
+  const bannerMoon = sky?.moonImg ?? "/moons/waxing-gibbous.png";
+
+  // Per-widget live overrides for the dashboard cards
+  const liveBody = (key: Key): BodyPart[] => {
+    if (key === "sky" && sky) {
+      return [
+        { kind: "text", text: `${sky.moonLabel} in ${sky.moonSign}, ${sky.illumination}% lit. ${sky.moonSignTheme}` },
+        { kind: "chips", chips: [`Sunrise ${sky.sunrise}`, `Sunset ${sky.sunset}`, ...(sky.vocStart ? [`V/C ${sky.vocStart}`] : [])] },
+      ];
+    }
+    if (key === "chart" && bt) {
+      return [
+        { kind: "text", text: `Sun in ${bt.sun}, Moon in ${bt.moon}, ${bt.rising} rising — your core placements.` },
+        { kind: "rows", rows: [["Sun", bt.sun], ["Moon", bt.moon], ["Rising", bt.rising]] },
+      ];
+    }
+    return W[key].body;
+  };
+
   return (
     <WebShell current="today" theme={theme} onToggleTheme={toggle}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "44px 32px 20px" }}>
@@ -159,12 +187,13 @@ export default function WebToday() {
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", width: 92, height: 92, flex: "0 0 auto" }}>
             <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />
-            <img src="/moons/waxing-gibbous.png" alt="Waxing gibbous moon" style={{ position: "relative", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bannerMoon} alt={sky?.moonLabel ?? "Moon"} style={{ position: "relative", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
           </div>
           <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "0 0 5px" }}>Waxing Gibbous · 73% · Moon in Scorpio</p>
-            <p style={{ fontFamily: "var(--deco)", fontSize: 22, fontWeight: 500, color: "#f3ecd8", margin: "0 0 4px" }}>Depth over noise today</p>
-            <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "#cdc1a8", margin: 0, maxWidth: 640 }}>A day that rewards focus, honesty, and finishing what you started. Void of course after 2:32 pm — let new plans settle until tomorrow.</p>
+            <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "0 0 5px" }}>{bannerEyebrow}</p>
+            <p style={{ fontFamily: "var(--deco)", fontSize: 22, fontWeight: 500, color: "#f3ecd8", margin: "0 0 4px" }}>{bannerTitle}</p>
+            <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "#cdc1a8", margin: 0, maxWidth: 640 }}>{bannerBody}</p>
           </div>
           <Link href="/almanac" style={{ position: "relative", flex: "0 0 auto", fontSize: 13, fontWeight: 700, padding: "11px 20px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", color: "#f3ecd8" }}>Full almanac →</Link>
         </div>
@@ -194,7 +223,7 @@ export default function WebToday() {
                   </div>
                   <span style={{ color: "var(--faint)", fontSize: 17, lineHeight: 1 }}>⠿</span>
                 </div>
-                <BodyNode parts={w.body} />
+                <BodyNode parts={liveBody(key)} />
                 <Link href={w.href} style={{ marginTop: "auto", paddingTop: 14, fontSize: 12.5, fontWeight: 700, color: "var(--brass)" }}>{w.cta} →</Link>
               </div>
             );

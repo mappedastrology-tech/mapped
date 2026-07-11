@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
@@ -52,6 +53,7 @@ export default function ProfilePageContent() {
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,6 +69,13 @@ export default function ProfilePageContent() {
       const { data: { session } } = await supabase.auth.getSession();
       let metaName = "";
       if (session?.user) {
+        setUserId(session.user.id);
+        // Account-synced profile photo wins over the local copy.
+        const acctPhoto = await fetchSetting(session.user.id, "profile-photo");
+        if (acctPhoto) {
+          setPhoto(acctPhoto);
+          try { localStorage.setItem(PHOTO_KEY, acctPhoto); } catch { /* ignore */ }
+        }
         metaName =
           (session.user.user_metadata?.full_name as string | undefined) ||
           (session.user.user_metadata?.name as string | undefined) || "";
@@ -162,6 +171,7 @@ export default function ProfilePageContent() {
         setPhoto(dataUrl);
         try { localStorage.setItem(PHOTO_KEY, dataUrl); } catch { /* ignore */ }
         window.dispatchEvent(new CustomEvent("mapped:profile-photo"));
+        if (userId) saveSetting(userId, "profile-photo", dataUrl);
       };
       img.src = reader.result as string;
     };

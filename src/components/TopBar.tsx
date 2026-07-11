@@ -10,6 +10,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
+import { supabase } from "@/lib/supabase";
+import { fetchSetting } from "@/lib/syncedSettings";
 
 const MENU_ITEMS = [
   {
@@ -49,7 +51,7 @@ const MENU_ITEMS = [
     description: "Daily pulls & reflections",
   },
   {
-    label: "Ritual",
+    label: "Rituals",
     href: "/learn",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -139,6 +141,25 @@ export default function TopBar() {
       window.removeEventListener("mapped:profile-photo", read);
       window.removeEventListener("storage", read);
     };
+  }, []);
+
+  // Hydrate the avatar from the account so it appears on a fresh device
+  // even before the user opens the profile page.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid || cancelled) return;
+        const acct = await fetchSetting(uid, "profile-photo");
+        if (acct && !cancelled) {
+          setPhoto(acct);
+          try { localStorage.setItem("mapped:profile-photo", acct); } catch { /* ignore */ }
+        }
+      } catch { /* signed out / offline */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Close menu on navigation
