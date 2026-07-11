@@ -10,13 +10,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { useConstellation } from "./useConstellation";
 
 const SKY_W = 2400, SKY_H = 1600, VH = 620;
 const DEFAULT_PAN = { x: -612, y: -490 };
 
-const YOU = { id: "you", name: "You", initials: "Y", rel: "The center", x: 1200, y: 800, signs: "Sun Cancer · Moon Pisces · Leo rising", color: "#c9a961" };
+const SAMPLE_YOU = { id: "you", name: "You", initials: "Y", rel: "The center", x: 1200, y: 800, signs: "Sun Cancer · Moon Pisces · Leo rising", color: "#c9a961" };
 type Person = { id: string; name: string; initials: string; rel: string; x: number; y: number; color: string; score: number; connLabel: string; harm: number; chall: number; fated: number; signs: string; summary: string };
-const PEOPLE: Person[] = [
+const SAMPLE_PEOPLE: Person[] = [
   { id: "maya", name: "Maya", initials: "M", rel: "Partner", x: 770, y: 560, color: "#b5654a", score: 92, connLabel: "Deeply woven", harm: 8, chall: 2, fated: 3, signs: "Sun Taurus · Moon Cancer · Scorpio rising", summary: "Your water Moons meet her earth Sun — you feel everything, she makes it safe to. A rare, steadying love; the work is letting her slower pace soothe rather than worry you." },
   { id: "priya", name: "Priya", initials: "P", rel: "Closest friend", x: 1660, y: 1080, color: "#c9a961", score: 88, connLabel: "Easy & bright", harm: 7, chall: 1, fated: 2, signs: "Sun Libra · Moon Gemini · Libra rising", summary: "Air to your water — she lifts you out of your depths and into the light. Conversations that run for hours. The friendship that feels like weather you both just live in." },
   { id: "theo", name: "Theo", initials: "T", rel: "Best friend", x: 1720, y: 600, color: "#c9a961", score: 84, connLabel: "Adventurous", harm: 6, chall: 2, fated: 2, signs: "Sun Sagittarius · Moon Aries · Gemini rising", summary: "Fire to your water makes steam — he pushes you past your comfort, you soften his edges. Great for travel and big plans, trickier when you both need looking-after at once." },
@@ -58,6 +59,11 @@ export default function WebMaps() {
   const movedRef = useRef(false);
   const field = useMemo(() => starField(24680), []);
 
+  // Real connections when the user has any; otherwise the sample constellation.
+  const live = useConstellation();
+  const people = live?.people ?? SAMPLE_PEOPLE;
+  const you = live ? { ...SAMPLE_YOU, signs: live.you.signs } : SAMPLE_YOU;
+
   useEffect(() => {
     const measure = () => { if (vpRef.current) { const w = vpRef.current.clientWidth; if (w) setVw(w); } };
     measure();
@@ -85,8 +91,8 @@ export default function WebMaps() {
   const onUp = () => { if (dragging) setDragging(false); startRef.current = null; };
 
   const selYou = sel === "you";
-  const selPerson = sel && sel !== "you" ? PEOPLE.find((p) => p.id === sel) : null;
-  const orbit = [...PEOPLE].sort((a, b) => b.score - a.score);
+  const selPerson = sel && sel !== "you" ? people.find((p) => p.id === sel) : null;
+  const orbit = [...people].sort((a, b) => b.score - a.score);
 
   const nodeName: React.CSSProperties = { fontFamily: "var(--deco)", fontWeight: 600, color: "#f3ecd8", whiteSpace: "nowrap" };
 
@@ -111,12 +117,12 @@ export default function WebMaps() {
           >
             <div style={{ position: "absolute", left: 0, top: 0, width: SKY_W, height: SKY_H, transform: `translate(${pan.x}px, ${pan.y}px)`, transition: dragging ? undefined : "transform .5s cubic-bezier(.22,1,.36,1)" }}>
               <svg width={SKY_W} height={SKY_H} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-                {PEOPLE.map((p) => (
-                  <line key={p.id} x1={YOU.x} y1={YOU.y} x2={p.x} y2={p.y} stroke="var(--brass)" strokeWidth={p.score >= 85 ? 1.6 : 1} strokeOpacity={(0.14 + p.score / 400).toFixed(2)} />
+                {people.map((p) => (
+                  <line key={p.id} x1={you.x} y1={you.y} x2={p.x} y2={p.y} stroke="var(--brass)" strokeWidth={p.score >= 85 ? 1.6 : 1} strokeOpacity={(0.14 + p.score / 400).toFixed(2)} />
                 ))}
               </svg>
               {field.map((st, i) => <span key={i} style={st} />)}
-              {[{ ...YOU, isYou: true } as const, ...PEOPLE.map((p) => ({ ...p, isYou: false }))].map((p) => {
+              {[{ ...you, isYou: true } as const, ...people.map((p) => ({ ...p, isYou: false }))].map((p) => {
                 const size = p.isYou ? 78 : 58, fs = p.isYou ? 26 : 20;
                 return (
                   <div
@@ -148,15 +154,15 @@ export default function WebMaps() {
             <div style={{ position: "absolute", left: 18, top: 18, zIndex: 7, width: 308, padding: "24px 24px 26px", borderRadius: 18, background: "rgba(16,11,24,0.92)", backdropFilter: "blur(12px)", border: "1px solid var(--hair)", boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }}>
               <button onClick={() => setSel(null)} aria-label="Close" style={{ position: "absolute", top: 14, right: 14, width: 26, height: 26, borderRadius: "50%", border: "1px solid var(--hair)", background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
               <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 16 }}>
-                <span style={ava(selYou ? YOU.color : selPerson!.color, 46, 18)}>{selYou ? "Y" : selPerson!.initials}</span>
+                <span style={ava(selYou ? you.color : selPerson!.color, 46, 18)}>{selYou ? "Y" : selPerson!.initials}</span>
                 <div>
-                  <p style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{selYou ? YOU.rel : selPerson!.rel}</p>
-                  <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: 0, color: "#f3ecd8" }}>{selYou ? YOU.name : selPerson!.name}</h3>
+                  <p style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{selYou ? you.rel : selPerson!.rel}</p>
+                  <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: 0, color: "#f3ecd8" }}>{selYou ? you.name : selPerson!.name}</h3>
                 </div>
               </div>
               {selYou ? (
                 <>
-                  <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#d8cdb2", margin: "0 0 4px" }}>{YOU.signs}</p>
+                  <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#d8cdb2", margin: "0 0 4px" }}>{you.signs}</p>
                   <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--muted)", margin: "8px 0 0", textWrap: "pretty" }}>This is you — the center of your constellation. Every connection here is measured against your chart.</p>
                 </>
               ) : (

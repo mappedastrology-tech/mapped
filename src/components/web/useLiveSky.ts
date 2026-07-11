@@ -8,9 +8,12 @@
  */
 
 import { useEffect, useState } from "react";
-import { getTodaySky } from "@/lib/almanacData";
+import { getTodaySky, getComingUp } from "@/lib/almanacData";
 import { getSabianSymbolForDate } from "@/lib/sabianSymbols";
 import { getGoodForToday, getHoldOffToday } from "@/lib/almanacData";
+import { getOnThisDay } from "@/lib/onThisDay";
+
+const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 // Moon-phase enum → /moons/*.png filename.
 const MOON_FILE: Record<string, string> = {
@@ -41,6 +44,8 @@ export interface LiveSky {
   sabian: { sign: string; degree: number; symbol: string; keynote: string };
   goodFor: { why: string; activities: string[] };
   holdOff: { reason: string; activities: string[] };
+  comingUp: { day: string; mon: string; title: string }[];
+  onThisDay: { year: number; event: string; astroNote: string }[];
 }
 
 export function useLiveSky(): LiveSky | null {
@@ -69,6 +74,12 @@ export function useLiveSky(): LiveSky | null {
         sabian: sab,
         goodFor: { why: good.why, activities: good.activities.map((a) => a.activity) },
         holdOff: { reason: hold.reason, activities: hold.items.map((a) => a.activity) },
+        comingUp: getComingUp(d)
+          .filter((e) => e.date.getTime() >= d.getTime() - 12 * 3600 * 1000)
+          .sort((a, b) => a.date.getTime() - b.date.getTime())
+          .slice(0, 3)
+          .map((e) => ({ day: String(e.date.getDate()), mon: MONS[e.date.getMonth()], title: e.label })),
+        onThisDay: getOnThisDay(d).slice(0, 4).map((e) => ({ year: e.year, event: e.event, astroNote: e.astroNote })),
       });
     } catch { /* keep sample copy on any failure */ }
   }, []);

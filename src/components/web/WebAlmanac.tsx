@@ -40,12 +40,6 @@ const UPCOMING = [
   { day: "12", mon: "Jul", title: "Mercury enters Leo", sub: "Bolder, warmer, more expressive words." },
   { day: "15", mon: "Jul", title: "Mars trine Jupiter", sub: "A lucky push for ambitious effort." },
 ];
-const BIRTHDAYS = [
-  { name: "Princess Diana", note: "Princess of Wales", year: "1961", initials: "D" },
-  { name: "Pamela Anderson", note: "Actor", year: "1967", initials: "P" },
-  { name: "Missy Elliott", note: "Rapper & producer", year: "1971", initials: "M" },
-  { name: "Liv Tyler", note: "Actor", year: "1977", initials: "L" },
-];
 
 function heroStars(seed: number, n = 26): React.CSSProperties[] {
   let s = seed;
@@ -70,6 +64,10 @@ export default function WebAlmanac() {
     : SUN_TIMES;
   const goodCol = sky ? { sub: sky.goodFor.why, items: sky.goodFor.activities } : { sub: "Timed to the Moon's sign & phase.", items: GOOD_FOR.map((g) => g.activity) };
   const holdCol = sky ? { sub: sky.holdOff.reason, items: sky.holdOff.activities } : { sub: "The void Moon asks for patience.", items: HOLD_OFF.map((h) => h.activity) };
+  const comingUp = sky && sky.comingUp.length > 0
+    ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: "" }))
+    : UPCOMING;
+  const onThisDay = sky ? sky.onThisDay : [];
 
   return (
     <WebShell current="almanac" theme={theme} onToggleTheme={toggle} footerTagline="Read the sky, then trust yourself.">
@@ -160,35 +158,36 @@ export default function WebAlmanac() {
             <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
               <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 16px" }}>Coming up</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {UPCOMING.map((u) => (
-                  <div key={u.title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                {comingUp.map((u, i) => (
+                  <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <span style={{ flex: "0 0 auto", width: 42, textAlign: "center" }}>
                       <span style={{ display: "block", fontFamily: "var(--deco)", fontSize: 19, fontWeight: 600, lineHeight: 1, color: "var(--brass)" }}>{u.day}</span>
                       <span style={{ display: "block", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--faint)" }}>{u.mon}</span>
                     </span>
                     <div>
                       <p style={{ fontSize: 14, fontWeight: 700, color: "var(--fg)", margin: "0 0 2px" }}>{u.title}</p>
-                      <p style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)", margin: 0 }}>{u.sub}</p>
+                      {u.sub && <p style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)", margin: 0 }}>{u.sub}</p>}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
-              <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>Born on July 1 · Cancer ♋</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
-                {BIRTHDAYS.map((b) => (
-                  <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ width: 32, height: 32, flex: "0 0 auto", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--deco)", fontSize: 13, fontWeight: 600, background: "color-mix(in srgb, var(--brass) 14%, transparent)", color: "var(--brass)" }}>{b.initials}</span>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg)", margin: 0 }}>{b.name}</p>
-                      <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>{b.note}</p>
+            {onThisDay.length > 0 && (
+              <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
+                <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>On this day</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
+                  {onThisDay.map((e, i) => (
+                    <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flex: "0 0 auto", width: 40, fontFamily: "var(--deco)", fontSize: 15, fontWeight: 600, color: "var(--brass)", lineHeight: 1.1 }}>{e.year}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, lineHeight: 1.4, fontWeight: 600, color: "var(--fg)", margin: "0 0 2px" }}>{e.event}</p>
+                        <p style={{ fontSize: 11, lineHeight: 1.4, color: "var(--muted)", margin: 0 }}>{e.astroNote}</p>
+                      </div>
                     </div>
-                    <span style={{ fontFamily: "var(--deco)", fontSize: 13, color: "var(--faint)" }}>{b.year}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div style={{ padding: "26px 24px", borderRadius: 18, background: "linear-gradient(160deg, var(--card2), var(--card))", border: "1px solid var(--brass)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 18%, var(--shadow))" }}>
               <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, color: "var(--fg)", margin: "0 0 8px" }}>Get the day, every morning</p>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 16px" }}>Your personal almanac, timed to your chart and delivered before coffee.</p>

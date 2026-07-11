@@ -4,13 +4,20 @@
 
 /**
  * WebDolly — the AI guide chat (design_handoff_mapped_web "Dolly").
- * Suggested questions return canned answers after a short delay; free text
- * gets a generic reply. This is the prototype's demo behavior — in production
- * wire the input to the real Dolly/LLM endpoint with the user's chart.
+ * Streams real answers from /api/dolly with the user's cached chart in context;
+ * the suggested-question chips just prefill the same real send. Falls back to a
+ * gentle error line if the endpoint can't be reached.
  */
 
 import { useEffect, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { useBigThree } from "./useLiveSky";
+import { authedFetch } from "@/lib/authedFetch";
+
+const SIGN_GLYPH: Record<string, string> = {
+  Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋", Leo: "♌", Virgo: "♍",
+  Libra: "♎", Scorpio: "♏", Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
+};
 
 const AVATAR = "/images/crystal-ball.png";
 type Msg = { from: "dolly" | "you"; text: string };
@@ -20,7 +27,7 @@ const QA: { q: string; a: string }[] = [
   { q: "Why do I feel so restless lately?", a: "Right now transiting Mars is lighting your 10th house of direction and ambition, while the Scorpio Moon stirs everything underneath. That combination reads exactly as restlessness — energy with nowhere obvious to go. It usually means a decision is forming. Give it a week; don’t force it under the void Moon." },
   { q: "Are my partner and I compatible?", a: "Compatibility isn’t a yes-or-no — it’s a texture. Your Moons in water and their Venus in earth is a genuinely nourishing mix: you feel deeply, they make it feel safe. The friction to watch is your Cancer need for reassurance meeting their steadier pace. Name it kindly and it becomes easy." },
 ];
-const GREET: Msg = { from: "dolly", text: "Hi — I’m Dolly. I’ve read your chart: Cancer Sun, Pisces Moon, Leo rising. Ask me anything, or tap one of the questions below to see how I answer." };
+const GREET: Msg = { from: "dolly", text: "Hi — I’m Dolly, your astrological guide. I read your birth chart and the live sky to answer in plain, kind language. Ask me anything, or tap a question below to begin." };
 const ABILITIES = [
   { glyph: "☉", title: "Read your chart", desc: "Ask what any placement means and get a plain-language answer rooted in your actual birth chart." },
   { glyph: "☄", title: "Time your moves", desc: "When to launch, rest, or wait. Dolly watches your transits and tells you what the timing favors." },
@@ -29,25 +36,76 @@ const ABILITIES = [
 
 export default function WebDolly() {
   const { theme, toggle } = useWebTheme();
+  const bt = useBigThree();
   const [messages, setMessages] = useState<Msg[]>([GREET]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, typing]);
 
-  const reply = (userText: string) => {
+  const knows = bt ? `Knows: Sun ${SIGN_GLYPH[bt.sun] ?? ""} · Moon ${SIGN_GLYPH[bt.moon] ?? ""} · ${bt.rising} rising` : "Reading your sky";
+
+  const sendMsg = async (userText: string) => {
     if (typing) return;
+    // History is the conversation so far (before this turn).
+    const history = messages.map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.text }));
     setMessages((m) => [...m, { from: "you", text: userText }]);
     setInput("");
     setTyping(true);
-    const match = QA.find((x) => x.q.toLowerCase() === userText.toLowerCase());
-    const ans = match ? match.a : "That’s a lovely question. In the full app I’d read it against your exact placements and transits and answer specifically — here I’m just a taste. Try one of the suggested questions to see how I work.";
-    timer.current = setTimeout(() => { setMessages((m) => [...m, { from: "dolly", text: ans }]); setTyping(false); }, 900);
+
+    let chart: unknown = null, transits: unknown = null;
+    try { const c = sessionStorage.getItem("chartResult"); if (c) chart = JSON.parse(c); } catch { /* */ }
+    try { const t = sessionStorage.getItem("mapped:transits"); if (t) transits = JSON.parse(t); } catch { /* */ }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const fail = (text: string) => {
+      setMessages((m) => {
+        const last = m[m.length - 1];
+        if (last?.from === "dolly" && last.text === "") return [...m.slice(0, -1), { from: "dolly" as const, text }];
+        return [...m, { from: "dolly" as const, text }];
+      });
+    };
+
+    try {
+      const res = await authedFetch("/api/dolly", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: [], userName: "" }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "", started = false;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value, { stream: true }).split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const p = JSON.parse(data);
+            if (typeof p.text === "string" && p.text) {
+              full += p.text;
+              if (!started) { started = true; setTyping(false); setMessages((m) => [...m, { from: "dolly", text: full }]); }
+              else setMessages((m) => { const c = m.slice(); c[c.length - 1] = { from: "dolly", text: full }; return c; });
+            }
+          } catch { /* skip malformed chunk */ }
+        }
+      }
+      if (!started) fail("I couldn’t reach my full reading just now — try again in a moment.");
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") fail("I couldn’t reach my full reading just now — try again in a moment.");
+    } finally {
+      setTyping(false);
+    }
   };
-  const send = () => { const t = input.trim(); if (t) reply(t); };
+  const send = () => { const t = input.trim(); if (t) sendMsg(t); };
 
   return (
     <WebShell current="dolly" theme={theme} onToggleTheme={toggle} footerTagline="A guide who knows your chart.">
@@ -70,7 +128,7 @@ export default function WebDolly() {
               <p style={{ fontSize: 14.5, fontWeight: 700, color: "var(--fg)", margin: 0 }}>Dolly</p>
               <p style={{ fontSize: 11.5, color: "var(--go)", margin: 0, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--go)" }} />reading your sky</p>
             </div>
-            <span style={{ fontSize: 11, color: "var(--faint)" }}>{"Knows: Sun ♋︎ · Moon ♓︎ · Leo rising"}</span>
+            <span style={{ fontSize: 11, color: "var(--faint)" }}>{knows}</span>
           </div>
 
           <div ref={scrollRef} style={{ padding: "26px 24px", display: "flex", flexDirection: "column", gap: 16, minHeight: 280, maxHeight: 460, overflowY: "auto" }}>
@@ -98,7 +156,7 @@ export default function WebDolly() {
           {/* suggestions */}
           <div style={{ padding: "4px 20px 14px", display: "flex", flexWrap: "wrap", gap: 8 }}>
             {QA.map((x) => (
-              <button key={x.q} onClick={() => reply(x.q)} className="mp-chip2" style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 500, padding: "8px 14px", borderRadius: 999, cursor: "pointer", background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)" }}>{x.q}</button>
+              <button key={x.q} onClick={() => sendMsg(x.q)} className="mp-chip2" style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 500, padding: "8px 14px", borderRadius: 999, cursor: "pointer", background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)" }}>{x.q}</button>
             ))}
           </div>
 
@@ -116,7 +174,7 @@ export default function WebDolly() {
             </button>
           </div>
         </div>
-        <p style={{ textAlign: "center", fontSize: 12, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>Dolly is a demo here — in the app she reads your real birth chart and remembers every conversation.</p>
+        <p style={{ textAlign: "center", fontSize: 12, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>Dolly reads your real birth chart when you&rsquo;re signed in — the more complete your chart, the more specific her answers.</p>
 
         {/* WHAT DOLLY KNOWS */}
         <div style={{ margin: "64px 0 20px" }}>
