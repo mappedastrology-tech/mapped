@@ -29,6 +29,7 @@ import WebTarot from "@/components/web/WebTarot";
 import WebJournal from "@/components/web/WebJournal";
 import WebMaps from "@/components/web/WebMaps";
 import WebDolly from "@/components/web/WebDolly";
+import WebLibrary from "@/components/web/WebLibrary";
 import WebNumerology from "@/components/web/WebNumerology";
 import WebChart from "@/components/web/WebChart";
 import WebHumanDesign from "@/components/web/WebHumanDesign";
@@ -47,6 +48,7 @@ const WEB_PAGES: Record<string, React.ComponentType> = {
   "/journal": WebJournal,
   "/maps": WebMaps,
   "/dolly": WebDolly,
+  "/library": WebLibrary,
   // "Fill-in" routes: the shared web shell wrapping each page's real content.
   "/numerology": WebNumerology,
   "/you": WebChart,

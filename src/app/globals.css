@@ -367,6 +367,21 @@
 [data-theme="light"] .placement-card-text { color: #f0e6d2; }
 [data-theme="light"] .placement-card-text-secondary { color: #c4b8a0; }
 [data-theme="light"] .placement-card-text-muted { color: #8a7d6b; }
+
+/* Element-accent text utilities (text-sage/terracotta/amber/lavender) read the
+   frozen :root token, which is dark in day mode — so sign/label text renders
+   dark-on-plum inside the always-dark placement cards. Force the bright
+   on-plum values here (matching night mode) so those labels stay legible. */
+[data-theme="light"] .placement-card .text-sage,
+[data-theme="light"] .placement-card .text-sage\/70 { color: #cdd8b0 !important; }
+[data-theme="light"] .placement-card .text-terracotta,
+[data-theme="light"] .placement-card .text-terracotta\/70,
+[data-theme="light"] .placement-card .text-terracotta\/60 { color: #d4b878 !important; }
+[data-theme="light"] .placement-card .text-amber,
+[data-theme="light"] .placement-card .text-amber\/70 { color: #d4b878 !important; }
+[data-theme="light"] .placement-card .text-lavender { color: #b8a0d2 !important; }
+[data-theme="light"] .placement-card .text-lavender-light,
+[data-theme="light"] .placement-card .text-lavender-light\/70 { color: #cdbae0 !important; }
 [data-theme="light"] .placement-card-expanded { background: rgba(255, 255, 255, 0.08); }
 [data-theme="light"] .placement-card-expanded .placement-card-text { color: #f5f0e1; }
 [data-theme="light"] .placement-card-expanded .placement-card-text-secondary { color: #d4c8b0; }
