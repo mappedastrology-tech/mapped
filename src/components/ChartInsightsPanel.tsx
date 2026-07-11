@@ -5,7 +5,6 @@
  * in expandable, beautifully styled sections.
  */
 
-import { useState } from "react";
 import {
   type ChartAnalysis,
   type ChartPattern,
@@ -353,45 +352,31 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
       >
         {title}
       </h2>
-      <p className="text-sm placement-card-text-muted">{subtitle}</p>
+      {subtitle ? (
+        <p className="text-sm" style={{ color: "var(--insight-muted)" }}>{subtitle}</p>
+      ) : null}
     </div>
   );
 }
 
-// ─── Expandable Card ──────────────────────────────────────────────────────────
+// ─── Insight Card ─────────────────────────────────────────────────────────────
 
-function ExpandableCard({
-  header,
-  children,
-  isOpen,
-  onToggle,
-}: {
-  header: React.ReactNode;
+function InsightCard({ tone, eyebrow, title, subtitle, children }: {
+  tone: "harmony" | "tension" | "neutral";
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
   children: React.ReactNode;
-  isOpen: boolean;
-  onToggle: () => void;
 }) {
+  const accent = tone === "harmony" ? "var(--insight-harmony)" : tone === "tension" ? "var(--insight-tension)" : "var(--insight-neutral)";
   return (
-    <div className="placement-card mb-3">
-      <button
-        onClick={onToggle}
-        className="w-full text-left flex items-center justify-between gap-2 p-0"
-      >
-        <div className="flex-1">{header}</div>
-        <span
-          className="text-xs opacity-60 transition-transform duration-300"
-          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-        >
-          &#9660;
-        </span>
-      </button>
-      <div
-        className={`overflow-hidden transition-all duration-300 ${
-          isOpen ? "max-h-[2000px] opacity-100 mt-3" : "max-h-0 opacity-0"
-        }`}
-      >
-        {children}
+    <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: `3px solid ${accent}`, boxShadow: "var(--insight-shadow)", padding: "18px 20px", marginBottom: 14 }}>
+      <p style={{ color: accent, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase", margin: 0, marginBottom: 8 }}>{eyebrow}</p>
+      <div style={{ marginBottom: 8, lineHeight: 1.2 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 21, color: "var(--insight-ink)" }}>{title}</span>
+        {subtitle ? <span style={{ marginLeft: 8, fontSize: 13, color: "var(--insight-muted)" }}>{subtitle}</span> : null}
       </div>
+      <div style={{ color: "var(--insight-body)", fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-line" }}>{children}</div>
     </div>
   );
 }
@@ -813,16 +798,15 @@ function personalizePattern(pattern: ChartPattern, planets: Planet[]): string {
   return getPatternInterpretation(type)?.detail || "";
 }
 
+const HARD_PATTERNS = new Set(["t-square", "grand-cross", "yod"]);
+const FLOWING_PATTERNS = new Set(["grand-trine", "kite", "mystic-rectangle"]);
+
 function PatternsSection({
   patterns,
   planets,
-  openCards,
-  toggle,
 }: {
   patterns: ChartPattern[];
   planets: Planet[];
-  openCards: Set<string>;
-  toggle: (id: string) => void;
 }) {
   if (patterns.length === 0) return null;
 
@@ -835,7 +819,6 @@ function PatternsSection({
       {patterns.map((pattern, i) => {
         const interp = getPatternInterpretation(pattern.type);
         const id = `pattern-${i}`;
-        const isOpen = openCards.has(id);
 
         let subtitle = pattern.planets.join(", ");
         if (pattern.type === "stellium") {
@@ -851,34 +834,28 @@ function PatternsSection({
 
         const personalDetail = personalizePattern(pattern, planets);
 
+        let tone: "harmony" | "tension" | "neutral" = "neutral";
+        let eyebrow = "CONCENTRATION";
+        if (HARD_PATTERNS.has(pattern.type)) {
+          tone = "tension";
+          eyebrow = "HARD PATTERN";
+        } else if (FLOWING_PATTERNS.has(pattern.type)) {
+          tone = "harmony";
+          eyebrow = "FLOWING PATTERN";
+        }
+
+        const body = interp?.summary ? `${interp.summary}\n\n${personalDetail}` : personalDetail;
+
         return (
-          <ExpandableCard
+          <InsightCard
             key={id}
-            isOpen={isOpen}
-            onToggle={() => toggle(id)}
-            header={
-              <div>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="mr-1">{interp?.emoji || "+"}</span>
-                  <span className="placement-card-text font-semibold">
-                    {interp?.title || pattern.type}
-                  </span>
-                  <span className="ml-1 placement-card-text-secondary text-sm">
-                    {subtitle}
-                  </span>
-                </div>
-                {interp?.summary && (
-                  <p className="placement-card-text-muted text-xs leading-relaxed mt-1">
-                    {interp.summary}
-                  </p>
-                )}
-              </div>
-            }
+            tone={tone}
+            eyebrow={eyebrow}
+            title={interp?.title || pattern.type}
+            subtitle={subtitle}
           >
-            <div className="placement-card-text-secondary text-sm leading-relaxed whitespace-pre-line">
-              {personalDetail}
-            </div>
-          </ExpandableCard>
+            {body}
+          </InsightCard>
         );
       })}
     </section>
@@ -891,11 +868,11 @@ function DignitiesSection({ dignities, planets }: { dignities: PlanetDignity[]; 
   const notable = dignities.filter((d) => d.dignity !== "peregrine");
   if (notable.length === 0) return null;
 
-  const emojiMap: Record<string, string> = {
-    domicile: "\u{1F3E0}",
-    exaltation: "⬆️",
-    detriment: "⚠️",
-    fall: "⬇️",
+  const dignityMeta: Record<string, { eyebrow: string; tone: "harmony" | "tension" | "neutral" }> = {
+    domicile: { eyebrow: "AT HOME", tone: "harmony" },
+    exaltation: { eyebrow: "EXALTED", tone: "harmony" },
+    detriment: { eyebrow: "IN DETRIMENT", tone: "tension" },
+    fall: { eyebrow: "IN FALL", tone: "tension" },
   };
 
   return (
@@ -904,40 +881,32 @@ function DignitiesSection({ dignities, planets }: { dignities: PlanetDignity[]; 
         title="Planet strengths"
         subtitle="Some signs make a planet stronger or weaker — like a fish in water vs. a fish on land."
       />
-      <div className="space-y-3">
-        {notable.map((d) => {
-          const interp = getDignityInterpretation(d.planet, d.dignity, signName(d.sign));
-          const info = planetInfo(planets, d.planet);
-          return (
-            <div key={`${d.planet}-${d.dignity}`} className="placement-card">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-lg">{emojiMap[d.dignity]}</span>
-                <span className="placement-card-text font-semibold">{d.planet}</span>
-                <span
-                  className="text-[11px] uppercase tracking-widest font-semibold opacity-80"
-                  style={{ color: "var(--brass)" }}
-                >
-                  {interp.label}
-                </span>
-              </div>
-              <p className="placement-card-text-secondary text-sm leading-relaxed mb-2">
-                <strong>{d.planet}</strong> is {info.planetMeaning}. Yours is in{" "}
-                <strong>{signName(d.sign)}</strong>
-                {info.signMeaning ? ` — ${info.signMeaning}` : ""}
-                {info.house ? (
-                  <>
-                    , sitting in your <strong>{ordinalHouse(info.house)} house</strong>
-                    {info.houseMeaning ? ` (${info.houseMeaning})` : ""}
-                  </>
-                ) : null}.
-              </p>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {notable.map((d) => {
+        const interp = getDignityInterpretation(d.planet, d.dignity, signName(d.sign));
+        const info = planetInfo(planets, d.planet);
+        const meta = dignityMeta[d.dignity] || { eyebrow: interp.label, tone: "neutral" as const };
+        return (
+          <InsightCard
+            key={`${d.planet}-${d.dignity}`}
+            tone={meta.tone}
+            eyebrow={meta.eyebrow}
+            title={`${d.planet} in ${signName(d.sign)}`}
+          >
+            <p style={{ margin: 0, marginBottom: 10 }}>
+              <strong>{d.planet}</strong> is {info.planetMeaning}. Yours is in{" "}
+              <strong>{signName(d.sign)}</strong>
+              {info.signMeaning ? ` — ${info.signMeaning}` : ""}
+              {info.house ? (
+                <>
+                  , sitting in your <strong>{ordinalHouse(info.house)} house</strong>
+                  {info.houseMeaning ? ` (${info.houseMeaning})` : ""}
+                </>
+              ) : null}.
+            </p>
+            <p style={{ margin: 0 }}>{interp.summary}</p>
+          </InsightCard>
+        );
+      })}
     </section>
   );
 }
@@ -961,71 +930,48 @@ function CriticalDegreesSection({
         title="Notable degrees"
         subtitle="Each sign spans 30°. Planets at the very start, end, or certain critical points carry extra weight."
       />
-      <div className="space-y-3">
-        {criticalDegrees.map((cd, i) => {
-          const interp = getCriticalDegreeInterpretation(cd.type, cd.planet, signName(cd.sign));
-          const info = planetInfo(planets, cd.planet);
-          return (
-            <div key={`cd-${i}`} className="placement-card">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="placement-card-text font-semibold">{cd.planet}</span>
-                <span className="placement-card-text-secondary text-sm">
-                  {cd.position.toFixed(0)}&deg; {signName(cd.sign)}
-                </span>
-                <span
-                  className="text-[11px] uppercase tracking-widest font-semibold opacity-80"
-                  style={{ color: "var(--brass)" }}
-                >
-                  {interp.title}
-                </span>
-              </div>
-              <p className="placement-card-text-secondary text-sm leading-relaxed mb-2">
-                <strong>{cd.planet}</strong> is {info.planetMeaning}.
-                {info.house ? (
-                  <> It sits in your <strong>{ordinalHouse(info.house)} house</strong>
-                  {info.houseMeaning ? ` (${info.houseMeaning})` : ""}.</>
-                ) : null}
-              </p>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
+      {criticalDegrees.map((cd, i) => {
+        const interp = getCriticalDegreeInterpretation(cd.type, cd.planet, signName(cd.sign));
+        const info = planetInfo(planets, cd.planet);
+        return (
+          <InsightCard
+            key={`cd-${i}`}
+            tone="neutral"
+            eyebrow={interp.title.toUpperCase()}
+            title={cd.planet}
+            subtitle={`${cd.position.toFixed(0)}° ${signName(cd.sign)}`}
+          >
+            <p style={{ margin: 0, marginBottom: 10 }}>
+              <strong>{cd.planet}</strong> is {info.planetMeaning}.
+              {info.house ? (
+                <> It sits in your <strong>{ordinalHouse(info.house)} house</strong>
+                {info.houseMeaning ? ` (${info.houseMeaning})` : ""}.</>
+              ) : null}
+            </p>
+            <p style={{ margin: 0 }}>{interp.summary}</p>
+          </InsightCard>
+        );
+      })}
 
-        {combustPlanets.map((cp) => {
-          const interp = getCriticalDegreeInterpretation(cp.type, cp.planet, "");
-          const info = planetInfo(planets, cp.planet);
-          const highlight =
-            cp.type === "cazimi"
-              ? "border-l-2 border-yellow-400"
-              : cp.type === "combust"
-              ? "border-l-2 border-orange-400"
-              : "opacity-80";
-          return (
-            <div key={`combust-${cp.planet}`} className={`placement-card ${highlight}`}>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="placement-card-text font-semibold">{cp.planet}</span>
-                <span className="placement-card-text-secondary text-sm">
-                  {cp.distanceFromSun.toFixed(1)}&deg; from Sun
-                </span>
-                <span
-                  className="text-[11px] uppercase tracking-widest font-semibold opacity-80"
-                  style={{ color: cp.type === "cazimi" ? "#d4a017" : "var(--brass)" }}
-                >
-                  {cp.type === "under-the-beams" ? "Under the beams" : cp.type}
-                </span>
-              </div>
-              <p className="placement-card-text-secondary text-sm leading-relaxed mb-2">
-                <strong>{cp.planet}</strong> is {info.planetMeaning}.
-              </p>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {combustPlanets.map((cp) => {
+        const interp = getCriticalDegreeInterpretation(cp.type, cp.planet, "");
+        const info = planetInfo(planets, cp.planet);
+        const eyebrow = cp.type === "cazimi" ? "CAZIMI" : "UNDER THE BEAMS";
+        return (
+          <InsightCard
+            key={`combust-${cp.planet}`}
+            tone="neutral"
+            eyebrow={eyebrow}
+            title={cp.planet}
+            subtitle={`${cp.distanceFromSun.toFixed(1)}° from the Sun`}
+          >
+            <p style={{ margin: 0, marginBottom: 10 }}>
+              <strong>{cp.planet}</strong> is {info.planetMeaning}.
+            </p>
+            <p style={{ margin: 0 }}>{interp.summary}</p>
+          </InsightCard>
+        );
+      })}
     </section>
   );
 }
@@ -1038,22 +984,14 @@ function MoonPhaseSection({ moonPhase }: { moonPhase: ChartAnalysis["moonPhase"]
   return (
     <section className="mb-10">
       <SectionHeader title="Your birth moon" subtitle="" />
-      <div className="placement-card">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-2xl">{interp?.emoji || "\u{1F315}"}</span>
-          <div>
-            <span className="placement-card-text font-semibold">
-              {interp?.title || moonPhase.phase}
-            </span>
-            <span className="ml-2 placement-card-text-secondary text-sm">
-              {moonPhase.phase}
-            </span>
-          </div>
-        </div>
-        <p className="placement-card-text-secondary text-sm leading-relaxed">
-          {interp?.summary || moonPhase.description}
-        </p>
-      </div>
+      <InsightCard
+        tone="neutral"
+        eyebrow="LUNAR PHASE"
+        title={interp?.title || moonPhase.phase}
+        subtitle={`${moonPhase.angle.toFixed(0)}° past the Sun`}
+      >
+        {interp?.summary || moonPhase.description}
+      </InsightCard>
     </section>
   );
 }
@@ -1066,15 +1004,14 @@ function SectSection({ sect }: { sect: ChartAnalysis["sect"] }) {
   return (
     <section className="mb-10">
       <SectionHeader title="Day or night person" subtitle="Were you born while the Sun was up or down? This changes which planets help you most." />
-      <div className="placement-card">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">{sect.isDayChart ? "☀️" : "\u{1F319}"}</span>
-          <span className="placement-card-text font-semibold">{interp.title}</span>
-        </div>
-        <p className="placement-card-text-secondary text-sm leading-relaxed">
-          {interp.summary}
-        </p>
-      </div>
+      <InsightCard
+        tone="neutral"
+        eyebrow="SECT"
+        title={sect.isDayChart ? "A Day Chart" : "A Night Chart"}
+        subtitle={sect.isDayChart ? "Born during the day" : "Born after sunset"}
+      >
+        {interp.summary}
+      </InsightCard>
     </section>
   );
 }
@@ -1095,7 +1032,7 @@ function BalanceBar({
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div className="flex items-center gap-2 mb-1">
-      <span className="text-xs w-16 text-right placement-card-text-muted capitalize">
+      <span className="text-xs w-16 text-right capitalize" style={{ color: "var(--insight-body)" }}>
         {label}
       </span>
       <div className="flex-1 h-3 rounded-full bg-foreground/10 overflow-hidden">
@@ -1104,7 +1041,7 @@ function BalanceBar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-xs w-4 placement-card-text-secondary">{value}</span>
+      <span className="text-xs w-4" style={{ color: "var(--insight-ink)" }}>{value}</span>
     </div>
   );
 }
@@ -1135,10 +1072,10 @@ function BalanceSection({
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Elements */}
-        <div className="placement-card">
+        <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: "3px solid var(--insight-neutral)", boxShadow: "var(--insight-shadow)", padding: "18px 20px" }}>
           <p
-            className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-3"
-            style={{ color: "var(--brass)" }}
+            className="text-[11px] uppercase tracking-widest font-semibold mb-3"
+            style={{ color: "var(--insight-neutral)", letterSpacing: "0.12em" }}
           >
             Elements
           </p>
@@ -1146,23 +1083,23 @@ function BalanceSection({
           <BalanceBar label="Earth" value={elementBalance.earth} max={maxEl} colorClass="bg-sage" />
           <BalanceBar label="Air" value={elementBalance.air} max={maxEl} colorClass="bg-lavender" />
           <BalanceBar label="Water" value={elementBalance.water} max={maxEl} colorClass="bg-lavender-light" />
-          <p className="mt-3 text-xs placement-card-text-muted leading-relaxed">
+          <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--insight-body)" }}>
             {elInterp.summary}
           </p>
         </div>
 
         {/* Modality */}
-        <div className="placement-card">
+        <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: "3px solid var(--insight-neutral)", boxShadow: "var(--insight-shadow)", padding: "18px 20px" }}>
           <p
-            className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-3"
-            style={{ color: "var(--brass)" }}
+            className="text-[11px] uppercase tracking-widest font-semibold mb-3"
+            style={{ color: "var(--insight-neutral)", letterSpacing: "0.12em" }}
           >
-            Mode (how you act)
+            Mode · How you act
           </p>
           <BalanceBar label="Starters" value={modalityBalance.cardinal} max={maxMod} colorClass="bg-terracotta/70" />
           <BalanceBar label="Sustainers" value={modalityBalance.fixed} max={maxMod} colorClass="bg-sage/70" />
           <BalanceBar label="Adapters" value={modalityBalance.mutable} max={maxMod} colorClass="bg-lavender/70" />
-          <p className="mt-3 text-xs placement-card-text-muted leading-relaxed">
+          <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--insight-body)" }}>
             {modInterp.summary}
           </p>
         </div>
@@ -1262,120 +1199,94 @@ function HouseMarkersSection({
         title="House patterns"
         subtitle="Your chart has 12 houses — each one represents a different area of life (career, love, home, etc). Some houses are packed with planets, making those areas extra active. Others are empty, meaning those parts of life tend to run on autopilot."
       />
-      <div className="space-y-3">
-        {angularPlanets.length > 0 && (
-          <div className="placement-card">
-            <p
-              className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-2"
-              style={{ color: "var(--brass)" }}
-            >
-              Front and center
-            </p>
-            <p className="placement-card-text-muted text-xs mb-3 leading-relaxed">
-              These planets sit at the four most powerful positions in any chart — the angles. Think of these as the four corners of your life: identity, home, relationships, and career. Planets here are loud. Other people notice them in you right away.
-            </p>
-            {angularPlanets.map((p) => {
-              const info = planetInfo(planets, p);
-              const houseRole = info.house ? ANGULAR_HOUSE_ROLE[info.house] || `your ${ordinalHouse(info.house)} house` : "";
-              return (
-                <div key={p} className="mb-3 last:mb-0">
-                  <span className="placement-card-text font-semibold text-sm">{p}</span>
-                  {houseRole && (
-                    <span className="ml-1 placement-card-text-secondary text-xs">in {houseRole}</span>
-                  )}
-                  <p className="placement-card-text-muted text-xs leading-relaxed mt-0.5">
-                    {info.planetMeaning ? `${p} represents ${info.planetMeaning}. ` : ""}Because it&apos;s at an angle, this part of you is immediately visible to everyone around you — it shapes first impressions and can&apos;t be hidden.
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {cadentPlanets.length > 0 && (
-          <div className="placement-card">
-            <p
-              className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-2"
-              style={{ color: "var(--brass)" }}
-            >
-              Behind the scenes
-            </p>
-            <p className="placement-card-text-muted text-xs mb-3 leading-relaxed">
-              Cadent houses (3rd, 6th, 9th, 12th) are the quieter corners of your chart. Planets here work internally — shaping your thoughts, habits, beliefs, and subconscious patterns rather than being obvious to the outside world.
-            </p>
-            {cadentPlanets.map((p) => {
-              const info = planetInfo(planets, p);
-              const houseRole = info.house ? CADENT_HOUSE_ROLE[info.house] || `your ${ordinalHouse(info.house)} house` : "";
-              return (
-                <div key={p} className="mb-2 last:mb-0">
-                  <span className="placement-card-text font-semibold text-sm">{p}</span>
-                  {houseRole && (
-                    <span className="ml-1 placement-card-text-secondary text-xs">in {houseRole}</span>
-                  )}
-                  <p className="placement-card-text-muted text-xs leading-relaxed mt-0.5">
-                    {info.planetMeaning ? `${p} represents ${info.planetMeaning}. ` : ""}You experience this more privately — it influences how you think and process rather than how others perceive you.
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {houseEmphasis.length > 0 && (
-          <div className="placement-card">
-            <p
-              className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-2"
-              style={{ color: "var(--brass)" }}
-            >
-              Crowded houses
-            </p>
-            <p className="placement-card-text-muted text-xs mb-3 leading-relaxed">
-              When multiple planets pile into the same house, that area of life gets extra attention, complexity, and energy. It becomes a central theme you can&apos;t ignore.
-            </p>
-            {houseEmphasis.map((he) => {
-              const interp = getHouseEmphasisInterpretation(he.house);
-              return (
-                <div key={he.house} className="mb-3 last:mb-0">
-                  <span className="placement-card-text font-semibold text-sm">
-                    {ordinalHouse(he.house)} House
-                  </span>
-                  <span className="ml-2 placement-card-text-secondary text-xs">
-                    ({he.planets.join(", ")})
-                  </span>
-                  <p className="placement-card-text-muted text-xs leading-relaxed mt-0.5">
-                    {interp.summary}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {emptyGroups.length > 0 && (
-          <div className="placement-card">
-            <p
-              className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-2"
-              style={{ color: "var(--brass)" }}
-            >
-              Empty houses
-            </p>
-            <p className="placement-card-text-muted text-xs mb-3 leading-relaxed">
-              No planets landed in these houses. That doesn&apos;t mean these areas are missing from your life — just that they tend to run on autopilot without generating as much inner drama or growth pressure.
-            </p>
-            {emptyGroups.map((group) => (
-              <div key={group.houses.join("-")} className="mb-3 last:mb-0">
-                <span className="placement-card-text font-semibold text-sm">{group.label}</span>
-                <span className="ml-2 placement-card-text-secondary text-xs">
-                  ({group.houses.map((h) => `${ordinalHouse(h)} house`).join(" & ")})
-                </span>
-                <p className="placement-card-text-muted text-xs leading-relaxed mt-0.5">
-                  {group.explanation}
+      {angularPlanets.length > 0 && (
+        <InsightCard tone="neutral" eyebrow="FRONT AND CENTER" title="Angular planets">
+          <p style={{ margin: 0, marginBottom: 12, color: "var(--insight-muted)" }}>
+            These planets sit at the four most powerful positions in any chart — the angles. Think of these as the four corners of your life: identity, home, relationships, and career. Planets here are loud. Other people notice them in you right away.
+          </p>
+          {angularPlanets.map((p) => {
+            const info = planetInfo(planets, p);
+            const houseRole = info.house ? ANGULAR_HOUSE_ROLE[info.house] || `your ${ordinalHouse(info.house)} house` : "";
+            return (
+              <div key={p} style={{ marginBottom: 12 }}>
+                <span style={{ color: "var(--insight-ink)", fontWeight: 600 }}>{p}</span>
+                {houseRole && (
+                  <span style={{ color: "var(--insight-muted)", marginLeft: 4, fontSize: 13 }}>in {houseRole}</span>
+                )}
+                <p style={{ margin: 0, marginTop: 2, color: "var(--insight-body)" }}>
+                  {info.planetMeaning ? `${p} represents ${info.planetMeaning}. ` : ""}Because it&apos;s at an angle, this part of you is immediately visible to everyone around you — it shapes first impressions and can&apos;t be hidden.
                 </p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </InsightCard>
+      )}
+
+      {cadentPlanets.length > 0 && (
+        <InsightCard tone="neutral" eyebrow="BEHIND THE SCENES" title="Cadent planets">
+          <p style={{ margin: 0, marginBottom: 12, color: "var(--insight-muted)" }}>
+            Cadent houses (3rd, 6th, 9th, 12th) are the quieter corners of your chart. Planets here work internally — shaping your thoughts, habits, beliefs, and subconscious patterns rather than being obvious to the outside world.
+          </p>
+          {cadentPlanets.map((p) => {
+            const info = planetInfo(planets, p);
+            const houseRole = info.house ? CADENT_HOUSE_ROLE[info.house] || `your ${ordinalHouse(info.house)} house` : "";
+            return (
+              <div key={p} style={{ marginBottom: 10 }}>
+                <span style={{ color: "var(--insight-ink)", fontWeight: 600 }}>{p}</span>
+                {houseRole && (
+                  <span style={{ color: "var(--insight-muted)", marginLeft: 4, fontSize: 13 }}>in {houseRole}</span>
+                )}
+                <p style={{ margin: 0, marginTop: 2, color: "var(--insight-body)" }}>
+                  {info.planetMeaning ? `${p} represents ${info.planetMeaning}. ` : ""}You experience this more privately — it influences how you think and process rather than how others perceive you.
+                </p>
+              </div>
+            );
+          })}
+        </InsightCard>
+      )}
+
+      {houseEmphasis.length > 0 && (
+        <InsightCard tone="neutral" eyebrow="CROWDED HOUSES" title="Stacked with planets">
+          <p style={{ margin: 0, marginBottom: 12, color: "var(--insight-muted)" }}>
+            When multiple planets pile into the same house, that area of life gets extra attention, complexity, and energy. It becomes a central theme you can&apos;t ignore.
+          </p>
+          {houseEmphasis.map((he) => {
+            const interp = getHouseEmphasisInterpretation(he.house);
+            return (
+              <div key={he.house} style={{ marginBottom: 12 }}>
+                <span style={{ color: "var(--insight-ink)", fontWeight: 600 }}>
+                  {ordinalHouse(he.house)} House
+                </span>
+                <span style={{ color: "var(--insight-muted)", marginLeft: 6, fontSize: 13 }}>
+                  ({he.planets.join(", ")})
+                </span>
+                <p style={{ margin: 0, marginTop: 2, color: "var(--insight-body)" }}>
+                  {interp.summary}
+                </p>
+              </div>
+            );
+          })}
+        </InsightCard>
+      )}
+
+      {emptyGroups.length > 0 && (
+        <InsightCard tone="neutral" eyebrow="EMPTY HOUSES" title="Running on autopilot">
+          <p style={{ margin: 0, marginBottom: 12, color: "var(--insight-muted)" }}>
+            No planets landed in these houses. That doesn&apos;t mean these areas are missing from your life — just that they tend to run on autopilot without generating as much inner drama or growth pressure.
+          </p>
+          {emptyGroups.map((group) => (
+            <div key={group.houses.join("-")} style={{ marginBottom: 12 }}>
+              <span style={{ color: "var(--insight-ink)", fontWeight: 600 }}>{group.label}</span>
+              <span style={{ color: "var(--insight-muted)", marginLeft: 6, fontSize: 13 }}>
+                ({group.houses.map((h) => `${ordinalHouse(h)} house`).join(" & ")})
+              </span>
+              <p style={{ margin: 0, marginTop: 2, color: "var(--insight-body)" }}>
+                {group.explanation}
+              </p>
+            </div>
+          ))}
+        </InsightCard>
+      )}
     </section>
   );
 }
@@ -1391,30 +1302,20 @@ function RetrogradesSection({ retrogradePlanets }: { retrogradePlanets: Retrogra
         title="Retrograde planets"
         subtitle="These planets appeared to move backward when you were born. Their energy turns inward — you experience their themes more privately and on your own terms."
       />
-      <div className="space-y-2">
-        {retrogradePlanets.map((rp) => {
-          const interp = getRetrogradeInterpretation(rp.planet);
-          return (
-            <div key={rp.planet} className="placement-card">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="placement-card-text font-semibold">{rp.planet}</span>
-                <span className="text-xs placement-card-text-muted">↺ retrograde</span>
-                {rp.isPersonal && (
-                  <span
-                    className="text-[11px] uppercase tracking-widest font-semibold opacity-80"
-                    style={{ color: "var(--brass)" }}
-                  >
-                    Strongly felt
-                  </span>
-                )}
-              </div>
-              <p className="placement-card-text-secondary text-sm leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {retrogradePlanets.map((rp) => {
+        const interp = getRetrogradeInterpretation(rp.planet);
+        return (
+          <InsightCard
+            key={rp.planet}
+            tone="neutral"
+            eyebrow={rp.isPersonal ? "STRONGLY FELT" : "RETROGRADE"}
+            title={rp.planet}
+            subtitle="Retrograde"
+          >
+            {interp.summary}
+          </InsightCard>
+        );
+      })}
     </section>
   );
 }
@@ -1449,119 +1350,77 @@ function SpecialFindingsSection({
         title="Rare findings"
         subtitle="Most people don't have these. They make your chart distinctive."
       />
-      <div className="space-y-2">
-        {finalDispositor && (() => {
-          const interp = getFinalDispositorInterpretation(finalDispositor);
-          return (
-            <div className="placement-card">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{"\u{1F451}"}</span>
-                <span className="placement-card-text font-semibold">{interp.title}</span>
-                <span className="placement-card-text-secondary text-sm">{finalDispositor}</span>
-              </div>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })()}
+      {finalDispositor && (() => {
+        const interp = getFinalDispositorInterpretation(finalDispositor);
+        return (
+          <InsightCard tone="neutral" eyebrow="FINAL DISPOSITOR" title={interp.title} subtitle={finalDispositor}>
+            {interp.summary}
+          </InsightCard>
+        );
+      })()}
 
-        {mutualReceptions.map((mr) => {
-          const interp = getMutualReceptionInterpretation(
-            mr.planet1,
-            signName(mr.sign1),
-            mr.planet2,
-            signName(mr.sign2)
-          );
-          return (
-            <div key={`mr-${mr.planet1}-${mr.planet2}`} className="placement-card">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{"\u{1F91D}"}</span>
-                <span className="placement-card-text font-semibold">{interp.title}</span>
-                <span className="placement-card-text-secondary text-sm">
-                  {mr.planet1} &harr; {mr.planet2}
-                </span>
-              </div>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
+      {mutualReceptions.map((mr) => {
+        const interp = getMutualReceptionInterpretation(
+          mr.planet1,
+          signName(mr.sign1),
+          mr.planet2,
+          signName(mr.sign2)
+        );
+        return (
+          <InsightCard
+            key={`mr-${mr.planet1}-${mr.planet2}`}
+            tone="neutral"
+            eyebrow="MUTUAL RECEPTION"
+            title={interp.title}
+            subtitle={`${mr.planet1} ↔ ${mr.planet2}`}
+          >
+            {interp.summary}
+          </InsightCard>
+        );
+      })}
 
-        {singletons.map((s, i) => {
-          const interp = getSingletonInterpretation(s.planet, s.type);
-          return (
-            <div key={`singleton-${i}`} className="placement-card">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{"\u{1F48E}"}</span>
-                <span className="placement-card-text font-semibold">{interp.title}</span>
-                <span className="placement-card-text-secondary text-sm">
-                  {s.planet} — only {s.value} {s.type === "element" ? "sign" : s.type === "hemisphere" ? "placement" : "energy"} in your chart
-                </span>
-              </div>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
+      {singletons.map((s, i) => {
+        const interp = getSingletonInterpretation(s.planet, s.type);
+        return (
+          <InsightCard
+            key={`singleton-${i}`}
+            tone="neutral"
+            eyebrow={`${s.value.toUpperCase()} SINGLETON`}
+            title={interp.title}
+            subtitle={`${s.planet} — only ${s.value} ${s.type === "element" ? "sign" : s.type === "hemisphere" ? "placement" : "energy"} in your chart`}
+          >
+            {interp.summary}
+          </InsightCard>
+        );
+      })}
 
-        {unaspectedPlanets.map((p) => {
-          const interp = getUnaspectedInterpretation(p);
-          return (
-            <div key={`unasp-${p}`} className="placement-card">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{"\u{1F30C}"}</span>
-                <span className="placement-card-text font-semibold">{interp.title}</span>
-                <span className="placement-card-text-secondary text-sm">{p}</span>
-              </div>
-              <p className="placement-card-text-muted text-xs leading-relaxed">
-                {interp.summary}
-              </p>
-            </div>
-          );
-        })}
+      {unaspectedPlanets.map((p) => {
+        const interp = getUnaspectedInterpretation(p);
+        return (
+          <InsightCard key={`unasp-${p}`} tone="neutral" eyebrow="UNASPECTED" title={interp.title} subtitle={p}>
+            {interp.summary}
+          </InsightCard>
+        );
+      })}
 
-        {tightAspects.length > 0 && (
-          <div className="placement-card">
-            <p
-              className="text-[11px] uppercase tracking-widest font-semibold opacity-80 mb-2"
-              style={{ color: "var(--brass)" }}
+      {tightAspects.length > 0 && (
+        <>
+          <p className="text-xs mb-2" style={{ color: "var(--insight-muted)" }}>
+            These planet pairs are locked tightly together — their themes are inseparable in your life.
+          </p>
+          {tightAspects.map((ta, i) => (
+            <InsightCard
+              key={`tight-${i}`}
+              tone="tension"
+              eyebrow={ta.isExact ? `EXACT · ${ta.orb.toFixed(1)}° ORB` : `${ta.orb.toFixed(1)}° ORB`}
+              title={`${ta.p1} ↔ ${ta.p2}`}
+              subtitle={aspectName(ta.aspect)}
             >
-              Strongest connections
-            </p>
-            <p className="placement-card-text-muted text-xs mb-2">
-              These planet pairs are locked tightly together — their themes are inseparable in your life.
-            </p>
-            <div className="space-y-3">
-              {tightAspects.map((ta, i) => (
-                <div key={`tight-${i}`}>
-                  <div className="flex items-center gap-2">
-                    <span className="placement-card-text text-sm font-medium">
-                      {ta.p1} ↔ {ta.p2}
-                    </span>
-                    <span className="placement-card-text-secondary text-xs">
-                      {aspectName(ta.aspect)}
-                    </span>
-                    {ta.isExact && (
-                      <span
-                        className="text-[10px] uppercase tracking-widest font-bold"
-                        style={{ color: "var(--brass)" }}
-                      >
-                        Exact
-                      </span>
-                    )}
-                  </div>
-                  <p className="placement-card-text-muted text-xs leading-relaxed mt-0.5">
-                    {pairDescription(ta.p1, ta.p2, ta.aspect)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+              {pairDescription(ta.p1, ta.p2, ta.aspect)}
+            </InsightCard>
+          ))}
+        </>
+      )}
     </section>
   );
 }
@@ -1569,20 +1428,9 @@ function SpecialFindingsSection({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ChartInsightsPanel({ analysis, planets }: ChartInsightsPanelProps) {
-  const [openCards, setOpenCards] = useState<Set<string>>(new Set());
-
-  const toggle = (id: string) => {
-    setOpenCards((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   return (
     <div className="w-full">
-      <PatternsSection patterns={analysis.patterns} planets={planets} openCards={openCards} toggle={toggle} />
+      <PatternsSection patterns={analysis.patterns} planets={planets} />
       <DignitiesSection dignities={analysis.dignities} planets={planets} />
       <CriticalDegreesSection
         criticalDegrees={analysis.criticalDegrees}

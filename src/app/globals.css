@@ -147,6 +147,16 @@
   --dont-bg: var(--oxblood-deep);
   --dont-text: var(--cream);
   --dont-accent: var(--brass-light);
+
+  /* Chart Insights cards (dark-mode variant of the light accent-card format) */
+  --insight-card: #241b30;
+  --insight-ink: #efe7d4;
+  --insight-body: #d8cebb;
+  --insight-muted: #9b8f7c;
+  --insight-harmony: #7a9a55;
+  --insight-tension: #cf7a5f;
+  --insight-neutral: #c9a961;
+  --insight-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* ═══ NIGHT MODE (explicit — matches :root) ═══ */
@@ -338,6 +348,16 @@
   --lib-track: rgba(0, 0, 0, 0.07);      /* progress tracks, subtle fills */
   --lib-soft: rgba(0, 0, 0, 0.045);      /* faint chips / dividers */
   --lib-orb-text: #3a1830;               /* number on the bright gold orb */
+
+  /* Chart Insights cards (light accent-card format) */
+  --insight-card: #fbf7ec;
+  --insight-ink: #241c12;
+  --insight-body: #3c3427;
+  --insight-muted: #7c7060;
+  --insight-harmony: #4c6b26;
+  --insight-tension: #a2402e;
+  --insight-neutral: #8a6a1c;
+  --insight-shadow: 0 1px 3px rgba(60, 45, 20, 0.08);
 }
 
 /* Day mode body — soft celestial parchment behind the whole app */

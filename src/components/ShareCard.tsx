@@ -166,11 +166,11 @@ export default function ShareCard({
           {/* Logo / branding */}
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <img
-              src="/logo-terracotta-cropped.png"
+              src="/logo-light.png"
               alt="Mapped"
-              width={150}
-              height={54}
-              style={{ width: 150, height: 54, objectFit: "contain", display: "block", margin: "0 auto" }}
+              width={170}
+              height={48}
+              style={{ width: 170, height: 48, objectFit: "contain", display: "block", margin: "0 auto" }}
             />
           </div>
 

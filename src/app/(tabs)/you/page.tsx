@@ -2218,11 +2218,11 @@ export default function YouTab() {
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                     aspectTab === tab.key
                       ? "placement-card shadow-sm"
-                      : "placement-card-text-secondary hover:text-foreground"
+                      : "text-secondary hover:text-foreground"
                   }`}
                 >
                   {tab.label}
-                  <span className={`ml-1.5 ${aspectTab === tab.key ? "placement-card-text-secondary" : "placement-card-text-muted"}`}>
+                  <span className={`ml-1.5 ${aspectTab === tab.key ? "placement-card-text-secondary" : "text-muted"}`}>
                     {tab.items.length}
                   </span>
                 </button>
@@ -2230,13 +2230,13 @@ export default function YouTab() {
             </div>
 
             {/* Tab description */}
-            <p className="placement-card-text-secondary text-xs leading-relaxed mb-4">
+            <p className="text-secondary text-xs leading-relaxed mb-4">
               {active.description}
             </p>
 
             {/* Aspect list */}
             {active.items.length === 0 ? (
-              <p className="placement-card-text-secondary text-sm text-center py-6">No {active.key} aspects in your chart.</p>
+              <p className="text-secondary text-sm text-center py-6">No {active.key} aspects in your chart.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {active.items.map((a, i) => {
