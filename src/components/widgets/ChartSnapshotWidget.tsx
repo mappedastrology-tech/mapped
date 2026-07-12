@@ -39,7 +39,7 @@ export default function ChartSnapshotWidget() {
     return (
       <div className="rounded-xl bg-card/50 border border-foreground/15 p-6">
         <p className="text-xs uppercase tracking-widest text-amber/70 mb-4">
-          🌀 Birth Chart
+          Birth Chart
         </p>
         <p className="text-secondary text-sm mb-4">
           Calculate your birth chart to see your big three and current transits.
