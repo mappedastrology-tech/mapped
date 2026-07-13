@@ -752,77 +752,111 @@ function JournalPage() {
     const entryText = selectedEntry.text || selectedEntry.content || "";
     const tags = selectedEntry.tags;
 
+    const entryDate = new Date(selectedEntry.created_at || selectedEntry.date);
+    const eMonth = entryDate.toLocaleDateString("en-US", { month: "long" });
+    const eWeekday = entryDate.toLocaleDateString("en-US", { weekday: "long" });
+    const moonLabel = tags?.moonPhase
+      ? tags.moonPhase.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : (getMoonPhase(entryDate)?.label || "");
+    const moods = (selectedEntry.mood || "").split(",").map((m) => m.trim()).filter(Boolean);
+
     return (
       <main className="min-h-full flex flex-col">
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <button onClick={() => { setConfirmingDelete(false); setView("home"); }} className="text-muted">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+        {/* Header — back · Edit/Delete */}
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border-card)" }}>
+          <button onClick={() => { setConfirmingDelete(false); setEditingEntry(false); setView("home"); }} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
-          <div className="flex items-center gap-3">
-            {!editingEntry && (
+          <div className="flex items-center gap-2">
+            {editingEntry ? (
               <>
-                {confirmingDelete ? (
-                  <>
-                    <button onClick={() => setConfirmingDelete(false)} className="text-xs text-muted">Cancel</button>
-                    <button onClick={handleDeleteEntry} className="text-xs text-red-500 font-medium">Are you sure?</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => { setEditText(entryText); setEditingEntry(true); }} className="text-xs text-muted">Edit</button>
-                    <button onClick={handleDeleteEntry} className="text-xs text-red-400/70">Delete</button>
-                  </>
-                )}
+                <button onClick={() => setEditingEntry(false)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium" style={{ color: "var(--foreground-muted)", border: "0.5px solid var(--border-card)" }}>Cancel</button>
+                <button onClick={handleSaveEdit} className="px-4 py-1.5 rounded-full text-[12px] font-bold" style={{ background: "var(--lavender)", color: "var(--plum-deep)", letterSpacing: "0.04em" }}>Save</button>
+              </>
+            ) : confirmingDelete ? (
+              <>
+                <button onClick={() => setConfirmingDelete(false)} className="px-3.5 py-1.5 rounded-full text-[12px]" style={{ color: "var(--foreground-muted)", border: "0.5px solid var(--border-card)" }}>Cancel</button>
+                <button onClick={handleDeleteEntry} className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold" style={{ background: "color-mix(in srgb, var(--oxblood-light) 16%, transparent)", color: "var(--oxblood-light)" }}>Delete for good?</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setEditText(entryText); setEditingEntry(true); }} className="px-3.5 py-1.5 rounded-full text-[12px]" style={{ color: "var(--foreground-secondary)", border: "0.5px solid var(--border-card)" }}>Edit</button>
+                <button onClick={() => setConfirmingDelete(true)} aria-label="Delete" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ border: "0.5px solid var(--border-card)" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--oxblood-light)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                </button>
               </>
             )}
           </div>
         </div>
 
-        <div className="flex-1 px-5 pb-8 overflow-y-auto">
-          {/* Date & sky context */}
-          <p className="text-xs text-muted mb-1">
-            {new Date(selectedEntry.created_at || selectedEntry.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-          </p>
-
-          {/* Mood + sky context chips */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {selectedEntry.mood && selectedEntry.mood.split(",").map((mo) => mo.trim()).filter(Boolean).map((mo) => (
-              <span key={mo} className="px-2.5 py-0.5 rounded-full bg-terracotta/15 text-[10px] text-terracotta font-medium">
-                {mo}
-              </span>
-            ))}
-            {tags?.moonPhase && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">{tags.moonPhase.replace("_", " ")} moon</span>}
-            {tags?.planetaryDay && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">{tags.planetaryDay} day</span>}
-            {tags?.lordOfYear && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">LOY: {tags.lordOfYear}</span>}
-            {tags?.activeTransits?.map((t) => (
-              <span key={t} className="px-2 py-0.5 rounded-full bg-terracotta/8 text-[10px] text-terracotta/60">{t.replace(/_/g, " ")}</span>
-            ))}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-10">
+          {/* Date */}
+          <div className="flex items-baseline gap-3 mb-4 px-1">
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 46, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{entryDate.getDate()}</span>
+            <div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>{eMonth}, {eWeekday}</div>
+              {moonLabel && (
+                <div className="inline-flex items-center gap-1.5 mt-1 text-[11.5px]" style={{ color: "var(--foreground-muted)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+                  {moonLabel}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Prompt shown */}
-          {selectedEntry.prompt_text && (
-            <div className="rounded-xl border border-foreground/8 bg-foreground/3 p-3 mb-4">
-              <p className="text-[11px] text-muted italic">{selectedEntry.prompt_text}</p>
-            </div>
-          )}
-
-          {/* Entry content */}
-          {editingEntry ? (
-            <div>
+          {/* WRITING SHEET (read-only) */}
+          <div className="rounded-[20px] p-[20px_18px] mb-5" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)", boxShadow: "0 10px 34px -20px rgba(0,0,0,0.55)" }}>
+            {selectedEntry.title && (
+              <p className="pb-3.5 mb-4" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)", borderBottom: "0.5px solid var(--border-card)" }}>{selectedEntry.title}</p>
+            )}
+            {selectedEntry.prompt_text && (
+              <div style={{ borderLeft: "2px solid var(--lavender)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
+                <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 16, lineHeight: 1.45, color: "var(--foreground-muted)", margin: 0 }}>{selectedEntry.prompt_text}</p>
+              </div>
+            )}
+            {editingEntry ? (
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 aria-label="Edit journal entry"
-                className="w-full min-h-[200px] bg-transparent text-foreground text-sm leading-relaxed resize-none focus:outline-none border border-foreground/10 rounded-xl p-4"
+                className="w-full bg-transparent resize-none focus:outline-none"
+                style={{ minHeight: 200, fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
+                autoFocus
               />
-              <div className="flex gap-2 mt-3">
-                <button onClick={handleSaveEdit} className="px-4 py-2 rounded-full bg-terracotta text-cream text-xs font-medium">Save</button>
-                <button onClick={() => setEditingEntry(false)} className="px-4 py-2 rounded-full border border-foreground/18 text-muted text-xs">Cancel</button>
+            ) : (
+              <p className="whitespace-pre-wrap" style={{ fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)", margin: 0 }}>{entryText}</p>
+            )}
+          </div>
+
+          {/* MOOD */}
+          {moods.length > 0 && (
+            <>
+              <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>How the night felt</p>
+              <div className="flex flex-wrap gap-2 mb-5 px-1">
+                {moods.map((mo) => (
+                  <span key={mo} className="px-3 py-2 rounded-full text-[11px] font-semibold" style={{ background: "color-mix(in srgb, var(--lavender) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 45%, transparent)", color: "var(--foreground)" }}>{mo}</span>
+                ))}
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-secondary leading-relaxed whitespace-pre-wrap">{entryText}</p>
+            </>
           )}
+
+          {/* DETAILS — sky context */}
+          <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>Details</p>
+          <div className="rounded-[18px] overflow-hidden" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+            {[
+              ...(moonLabel ? [{ label: "Moon", value: moonLabel, color: "var(--lavender)", icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /> }] : []),
+              ...(tags?.planetaryDay ? [{ label: "Day", value: `${tags.planetaryDay} day`, color: "var(--sage-light)", icon: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></> }] : []),
+            ].map((row, i, arr) => (
+              <div key={row.label} className="flex items-center gap-3 px-4 py-3.5" style={i < arr.length - 1 ? { borderBottom: "0.5px solid var(--border-card)" } : undefined}>
+                <span className="shrink-0 w-[34px] h-[34px] rounded-[10px] flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={row.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
+                </span>
+                <span className="flex-1 text-[13.5px]" style={{ color: "var(--foreground)" }}>{row.label}</span>
+                <span className="text-[13px] text-right" style={{ color: "var(--foreground-muted)" }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
         </div>{/* close max-w-lg wrapper */}
       </main>
