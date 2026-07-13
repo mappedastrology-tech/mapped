@@ -79,6 +79,7 @@ function JournalPage() {
   // Compose state
   const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt | null>(null);
   const [composeText, setComposeText] = useState("");
+  const [composeTitle, setComposeTitle] = useState("");
   const [isBurn, setIsBurn] = useState(false);
   const [promptCycleCount, setPromptCycleCount] = useState(0);
   const [cycledIds, setCycledIds] = useState<string[]>([]);
@@ -348,6 +349,7 @@ function JournalPage() {
     const prompt = selectPrompt(promptContext);
     setCurrentPrompt(prompt);
     setComposeText("");
+    setComposeTitle("");
     setIsBurn(false);
     setSelectedMoods([]);
     setPromptCycleCount(0);
@@ -387,6 +389,7 @@ function JournalPage() {
       // Local calendar date — toISOString() is UTC and stamps evening
       // entries with tomorrow's date.
       date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+      title: composeTitle.trim() || undefined,
       text: composeText,
       content: composeText,
       prompt_id: currentPrompt?.id || null,
@@ -491,162 +494,166 @@ function JournalPage() {
   // ─── Welcome View ──────────────────────────────────────────────────────────
   // ─── Compose View ──────────────────────────────────────────────────────────
   if (view === "compose") {
+    const wordCount = composeText.trim() ? composeText.trim().split(/\s+/).filter(Boolean).length : 0;
+    const canSave = !!composeText.trim();
     return (
       <main className="min-h-full flex flex-col">
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <button onClick={() => setView("home")} className="text-muted text-sm">Cancel</button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsBurn(!isBurn)}
-              className={`text-sm px-3 py-1.5 rounded-full transition-colors ${isBurn ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-muted border border-foreground/12"}`}
-            >
-              {isBurn ? "Burn mode on" : "Burn mode"}
-            </button>
-          </div>
+        {/* Header — back · New entry · Save */}
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border-card)" }}>
+          <button onClick={() => setView("home")} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <span className="text-[12px] uppercase font-semibold" style={{ letterSpacing: "0.14em", color: "var(--foreground-muted)" }}>New entry</span>
+          <button
+            onClick={saveEntry}
+            disabled={!canSave}
+            className="px-4 py-2 rounded-full text-[12px] font-bold"
+            style={{
+              letterSpacing: "0.06em",
+              background: !canSave ? "color-mix(in srgb, var(--foreground) 10%, transparent)" : isBurn ? "var(--oxblood-light)" : "var(--lavender)",
+              color: !canSave ? "var(--foreground-muted)" : isBurn ? "#fff" : "var(--plum-deep)",
+            }}
+          >
+            {isBurn ? "Burn" : "Save"}
+          </button>
         </div>
 
-        {/* Burn mode explanation */}
-        {isBurn && (
-          <div className="mx-5 mb-3 rounded-xl bg-red-500/5 border border-red-500/10 px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <p className="text-xs text-secondary leading-relaxed">
-              <span className="font-semibold text-red-400/80">Write &amp; burn</span> — get it out, then let it go. When you&apos;re done, your entry is burned. Nothing is saved or stored anywhere. It only exists while you&apos;re writing it.
-            </p>
-          </div>
-        )}
-
-        <div className="flex-1 px-5 pb-6 flex flex-col overflow-y-auto">
-          {/* Date header */}
-          <div className="flex items-baseline gap-2.5 mb-1.5">
-            <span style={{ fontFamily: "var(--font-heading)", fontSize: 54, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{composeDate.day}</span>
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8">
+          {/* Date */}
+          <div className="flex items-baseline gap-3 mb-4 px-1">
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 46, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{composeDate.day}</span>
             <div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)" }}>{composeDate.month}</div>
-              <div className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{composeDate.weekday} · {composeDate.year}</div>
-            </div>
-          </div>
-          {composeMoonLabel && (
-            <div className="inline-flex items-center gap-1.5 self-start mb-5 mt-1 px-3 py-1.5 rounded-full" style={{ background: "rgba(184,160,210,0.12)", border: "0.5px solid rgba(184,160,210,0.28)" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
-              <span className="text-[11px]" style={{ color: "var(--foreground-secondary)" }}>{composeMoonLabel}</span>
-            </div>
-          )}
-
-          {/* Prompt — left-bordered accent */}
-          {currentPrompt && (
-            <div className="mb-6" style={{ borderLeft: "2px solid var(--lavender)", padding: "2px 0 2px 16px" }}>
-              <p className="text-[10px] uppercase font-bold mb-1.5" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</p>
-              <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.45, color: "var(--foreground)" }}>{currentPrompt.text}</p>
-              <div className="flex gap-3 mt-2.5">
-                {promptCycleCount < 2 && (
-                  <button onClick={cyclePrompt} className="text-[11px] transition-colors" style={{ color: "var(--lavender)" }}>
-                    Different prompt
-                  </button>
-                )}
-                <button onClick={goFreeWrite} className="text-[11px] text-muted hover:text-foreground transition-colors">
-                  Write something else
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!currentPrompt && (
-            <div className="mb-4">
-              <p className="text-xs text-muted italic">Free write — no prompt.</p>
-            </div>
-          )}
-
-          {/* AI prompt loading indicator */}
-          {aiPromptLoading && (
-            <div className="flex items-center gap-2 mb-3 animate-in fade-in duration-300">
-              <div className="w-3 h-3 border border-terracotta/40 border-t-terracotta rounded-full animate-spin" />
-              <span className="text-[11px] text-muted">Personalizing your prompt...</span>
-            </div>
-          )}
-
-          {/* Mood picker — pick as many as fit */}
-          <div className="mb-4">
-            <p className="text-[11px] text-muted uppercase tracking-widest mb-2">How the night felt · pick any</p>
-            <div className="flex flex-wrap gap-1.5">
-              {MOOD_PALETTE.map((m) => {
-                const active = selectedMoods.includes(m.word);
-                return (
-                  <button
-                    key={m.word}
-                    aria-pressed={active}
-                    onClick={() => setSelectedMoods((prev) => prev.includes(m.word) ? prev.filter((x) => x !== m.word) : [...prev, m.word])}
-                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                      active
-                        ? `${m.color} text-foreground font-medium ring-1 ring-foreground/20`
-                        : "bg-foreground/5 text-muted hover:bg-foreground/10"
-                    }`}
-                  >
-                    {m.word}
-                  </button>
-                );
-              })}
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>{composeDate.month}, {composeDate.weekday}</div>
+              {composeMoonLabel && (
+                <div className="inline-flex items-center gap-1.5 mt-1 text-[11.5px]" style={{ color: "var(--foreground-muted)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+                  {composeMoonLabel}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Text input — a clearly-defined writing area */}
-          <p className="text-[11px] text-muted uppercase tracking-widest mb-2">Your entry</p>
-          <div
-            className="flex-1 flex flex-col rounded-2xl px-4 py-3.5 min-h-[220px] transition-colors focus-within:border-terracotta/40"
-            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
-            onClick={() => textareaRef.current?.focus()}
+          {/* Burn-mode toggle */}
+          <button
+            onClick={() => setIsBurn(!isBurn)}
+            className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors"
+            style={isBurn
+              ? { background: "color-mix(in srgb, var(--oxblood-light) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 40%, transparent)", color: "var(--oxblood-light)" }
+              : { background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
           >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+            {isBurn ? "Burn mode on" : "Burn mode"}
+          </button>
+          {isBurn && (
+            <div className="mb-4 rounded-xl px-4 py-3" style={{ background: "color-mix(in srgb, var(--oxblood-light) 6%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 16%, transparent)" }}>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                <span className="font-semibold" style={{ color: "var(--oxblood-light)" }}>Write &amp; burn</span> — get it out, then let it go. Nothing is saved; it only exists while you&apos;re writing.
+              </p>
+            </div>
+          )}
+
+          {/* WRITING SHEET */}
+          <div className="rounded-[20px] p-[20px_18px] mb-5" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)", boxShadow: "0 10px 34px -20px rgba(0,0,0,0.55)" }}>
+            <input
+              value={composeTitle}
+              onChange={(e) => setComposeTitle(e.target.value)}
+              placeholder="Give tonight a title…"
+              aria-label="Entry title"
+              className="w-full bg-transparent outline-none pb-3.5"
+              style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)", borderBottom: "0.5px solid var(--border-card)" }}
+            />
+
+            {composeMoonLabel && (
+              <div className="flex flex-wrap gap-2 mt-4 mb-4">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--lavender)" }} />
+                  <span className="text-[10.5px]" style={{ color: "var(--foreground-secondary)" }}>{composeMoonLabel}</span>
+                </span>
+              </div>
+            )}
+
+            {/* Prompt */}
+            {currentPrompt && (
+              <div style={{ borderLeft: "2px solid var(--lavender)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
+                <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 16, lineHeight: 1.45, color: "var(--foreground-muted)", margin: 0 }}>{currentPrompt.text}</p>
+                <div className="flex gap-3 mt-2">
+                  {promptCycleCount < 2 && <button onClick={cyclePrompt} className="text-[11px]" style={{ color: "var(--lavender)" }}>Different prompt</button>}
+                  <button onClick={goFreeWrite} className="text-[11px] text-muted">Write something else</button>
+                </div>
+              </div>
+            )}
+            {aiPromptLoading && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 border rounded-full animate-spin" style={{ borderColor: "color-mix(in srgb, var(--lavender) 40%, transparent)", borderTopColor: "var(--lavender)" }} />
+                <span className="text-[11px] text-muted">Personalizing your prompt…</span>
+              </div>
+            )}
+
             <textarea
               ref={textareaRef}
               value={composeText}
               onChange={(e) => setComposeText(e.target.value)}
-              placeholder="Start writing here — whatever's on your mind…"
+              placeholder="Let the words come — whatever's on your mind tonight…"
               aria-label="Journal entry"
-              className="flex-1 min-h-[190px] w-full bg-transparent text-foreground text-[15px] leading-relaxed resize-none focus:outline-none placeholder:text-muted"
+              className="w-full bg-transparent resize-none focus:outline-none"
+              style={{ minHeight: 180, fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
               autoFocus
             />
           </div>
 
-          {/* Bottom bar */}
-          <div className="flex items-center justify-between pt-4 border-t border-foreground/8 mt-4">
-            <div className="flex items-center gap-3">
-              {/* Voice-to-text */}
-              <button
-                onClick={toggleListening}
-                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
-                  isListening
-                    ? "border-red-400 bg-red-500/10 animate-pulse"
-                    : "border-foreground/15 hover:border-foreground/30"
-                }`}
-                aria-label={isListening ? "Stop listening" : "Start voice input"}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isListening ? "var(--terracotta)" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
-              </button>
-              {isListening && (
-                <span className="text-[10px] text-red-400 font-medium">Listening...</span>
-              )}
-              {!isListening && composeText && (
-                <span className="text-[10px] text-muted">
-                  {composeText.trim().split(/\s+/).filter(Boolean).length} words
+          {/* MOOD */}
+          <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>How the night felt</p>
+          <div className="flex flex-wrap gap-2 mb-5 px-1">
+            {MOOD_PALETTE.map((m) => {
+              const active = selectedMoods.includes(m.word);
+              return (
+                <button
+                  key={m.word}
+                  aria-pressed={active}
+                  onClick={() => setSelectedMoods((prev) => prev.includes(m.word) ? prev.filter((x) => x !== m.word) : [...prev, m.word])}
+                  className="px-3 py-2 rounded-full text-[11px] transition-all"
+                  style={active
+                    ? { background: "color-mix(in srgb, var(--lavender) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 45%, transparent)", color: "var(--foreground)", fontWeight: 600 }
+                    : { background: "color-mix(in srgb, var(--foreground) 4%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
+                >
+                  {m.word}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* DETAILS — real sky context */}
+          <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>Details</p>
+          <div className="rounded-[18px] overflow-hidden mb-2" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+            {[
+              { icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />, label: "Moon", value: composeMoonLabel || "—", color: "var(--lavender)" },
+              { icon: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></>, label: "Mood", value: selectedMoods.length ? selectedMoods.join(", ") : "Tap above to set", color: "var(--sage-light)" },
+            ].map((row, i) => (
+              <div key={row.label} className="flex items-center gap-3 px-4 py-3.5" style={i === 0 ? { borderBottom: "0.5px solid var(--border-card)" } : undefined}>
+                <span className="shrink-0 w-[34px] h-[34px] rounded-[10px] flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={row.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
                 </span>
-              )}
-            </div>
+                <span className="flex-1 text-[13.5px]" style={{ color: "var(--foreground)" }}>{row.label}</span>
+                <span className="text-[13px] text-right" style={{ color: "var(--foreground-muted)" }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom toolbar — voice + word count */}
+          <div className="flex items-center gap-4 pt-4 mt-2" style={{ borderTop: "0.5px solid var(--border-card)" }}>
             <button
-              onClick={saveEntry}
-              disabled={!composeText.trim()}
-              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
-                !composeText.trim()
-                  ? "bg-foreground/10 text-muted"
-                  : isBurn
-                    ? "bg-gradient-to-r from-red-600 to-orange-500 text-white"
-                    : "bg-terracotta text-cream"
-              }`}
+              onClick={toggleListening}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+              style={isListening
+                ? { border: "1px solid var(--oxblood-light)", background: "color-mix(in srgb, var(--oxblood-light) 10%, transparent)" }
+                : { border: "0.5px solid var(--border-card)" }}
+              aria-label={isListening ? "Stop listening" : "Start voice input"}
             >
-              {isBurn ? "Write & burn" : "Save entry"}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isListening ? "var(--oxblood-light)" : "var(--foreground-muted)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></svg>
             </button>
+            {isListening && <span className="text-[10px] font-medium" style={{ color: "var(--oxblood-light)" }}>Listening…</span>}
+            <span className="ml-auto text-[12px]" style={{ color: "var(--foreground-faint)" }}>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
           </div>
         </div>
 

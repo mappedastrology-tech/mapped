@@ -22,6 +22,8 @@ export interface JournalEntry {
   prompt_text: string | null;
   is_burn: boolean;
   is_voice: boolean;
+  // Optional entry title (journal compose)
+  title?: string;
   // Legacy compat
   prompt?: string;
   content?: string;
