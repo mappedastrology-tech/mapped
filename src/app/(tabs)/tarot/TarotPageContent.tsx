@@ -34,6 +34,15 @@ type DeckTab = "my-decks" | "store";
 const CARD_W = 74;
 const CARD_H = Math.round(CARD_W * 1.6);
 
+/* ─── Per-spread guide copy (design "About this spread" panel) ─── */
+const SPREAD_GUIDES: Record<string, string> = {
+  "yes-no": "Best for a single, well-framed question. Upright leans yes; reversed leans no — read the card’s meaning for the nuance behind the answer.",
+  "relationship": "Maps a connection from both sides. Reach for it when you want to understand a dynamic — romantic, family, or work — rather than a yes/no verdict.",
+  "horseshoe": "A gentle arc from where a situation came from to where it’s heading, with a card of advice in between. Good for a decision you’re sitting with.",
+  "celtic-cross": "The classic deep-dive. Ten positions cover the heart of a matter, what crosses it, your inner world, outside forces, and the likely outcome. Give it time.",
+  "freestyle": "No fixed positions — draw one card at a time and let the reading find its own shape. Best when you don’t have a set question yet.",
+};
+
 interface UserChart {
   planets?: { name: string; sign: string; signNum: number }[];
   bigThree?: { sun: string; moon: string; rising: string };
@@ -72,6 +81,10 @@ export default function TarotTab() {
 
   /* ─── Freestyle state ─── */
   const [freestylePicks, setFreestylePicks] = useState<DrawnCard[]>([]);
+
+  /* ─── Spread select-confirm state (design select → about → begin flow) ─── */
+  const [pendingSpreadId, setPendingSpreadId] = useState<string | null>(null); // spread id, or "freestyle"
+  const [question, setQuestion] = useState("");
 
   /* ─── Card detail state ─── */
   const [detailCard, setDetailCard] = useState<DrawnCard | null>(null);
@@ -291,6 +304,17 @@ export default function TarotTab() {
     setView("freestyle-fan");
   }, [isOracleDeck, activeOracleDeck]);
 
+  /* ─── Begin the reading (confirm step after selecting a spread) ─── */
+  const handleBeginReading = useCallback(() => {
+    if (!pendingSpreadId) return;
+    if (pendingSpreadId === "freestyle") {
+      handleStartFreestyle();
+      return;
+    }
+    const spread = SPREADS.find((s) => s.id === pendingSpreadId);
+    if (spread) handleStartSpread(spread);
+  }, [pendingSpreadId, handleStartFreestyle, handleStartSpread]);
+
   const pickFreestyleCard = useCallback((deckIndex: number) => {
     const card = shuffledDeck[deckIndex];
     if (!card || freestylePicks.some(p => p.card.id === card.id)) return;
@@ -457,7 +481,7 @@ export default function TarotTab() {
 
         {/* Card header */}
         <div className="text-center mb-4">
-          <h1 className="text-xl text-foreground mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-xl text-foreground mb-1" style={{ fontFamily: "var(--font-heading)" }}>
             {oCard.animal}
           </h1>
           <span className="text-xs tracking-widest uppercase text-terracotta/70">{oCard.keyword}</span>
@@ -568,7 +592,7 @@ export default function TarotTab() {
 
         {/* Card header */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl text-foreground" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-xl text-foreground" style={{ fontFamily: "var(--font-heading)" }}>
             {card.name}
             {reversed && <span className="text-muted text-sm ml-2">(Reversed)</span>}
           </h1>
@@ -682,7 +706,7 @@ export default function TarotTab() {
             sub="The full Major & Minor Arcana — the traditional voice."
             count="78 cards"
             covers={["major-0", "major-8", "major-13"].map((id) => getCardImagePath(id)!).filter(Boolean)}
-            onClick={() => { setSelectedDeck("classic-tarot"); setView("spreads"); }}
+            onClick={() => { setSelectedDeck("classic-tarot"); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
           />
           {ORACLE_DECK_REGISTRY.map((deck) => (
             <DeckRow
@@ -692,7 +716,7 @@ export default function TarotTab() {
               sub={deck.description}
               count={`${deck.cardCount} cards`}
               covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.png`)}
-              onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }}
+              onClick={() => { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
             />
           ))}
           {oracleDecks.filter((d) => d.purchased).map((deck) => (
@@ -704,7 +728,7 @@ export default function TarotTab() {
               count={`${deck.cardCount} cards`}
               covers={[]}
               gradient={deck.coverColor}
-              onClick={() => { setSelectedDeck(deck.id); setView("spreads"); }}
+              onClick={() => { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
             />
           ))}
         </div>
@@ -865,6 +889,11 @@ export default function TarotTab() {
      RENDER: Spread Selection
      ═══════════════════════════════════════════ */
   if (view === "spreads") {
+    const deckName = isOracleDeck ? (activeOracleDeck?.name || getOracleDeck(selectedDeck)?.name || "Oracle") : "Classic Tarot";
+    const pendingName = pendingSpreadId === "freestyle" ? "Fanned" : (SPREADS.find((s) => s.id === pendingSpreadId)?.name || "");
+    const slotStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+      width: 10, height: 15, borderRadius: 2.5, background: "rgba(201,169,97,0.2)", border: "0.5px solid rgba(201,169,97,0.4)", ...extra,
+    });
     return (
       <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
         {/* Selected-deck hero */}
@@ -882,41 +911,100 @@ export default function TarotTab() {
 
         <p className="text-[9px] tracking-[0.25em] uppercase font-bold mt-8 mb-4" style={{ color: "var(--brass)" }}>How would you like to read?</p>
         <div className="flex flex-col gap-3 mb-3">
-          {SPREADS.map((spread) => (
-            <button
-              key={spread.id}
-              onClick={() => handleStartSpread(spread)}
-              className="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-transform"
-              style={{ borderRadius: 18, background: "#4a2540", border: "0.5px solid rgba(201,169,97,0.16)", padding: "16px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)" }}
-            >
-              {/* position diagram */}
-              <span className="shrink-0 flex items-center justify-center gap-1" style={{ width: 62, height: 44 }}>
-                {Array.from({ length: Math.min(spread.cardCount, 5) }).map((_, i) => (
-                  <span key={i} style={{ width: 10, height: 15, borderRadius: 2.5, background: "rgba(201,169,97,0.2)", border: "0.5px solid rgba(201,169,97,0.4)" }} />
-                ))}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>{spread.name}</span>
-                <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"} · {spread.description}</span>
-              </span>
-              <span className="shrink-0 text-[15px]" style={{ color: "var(--brass)" }}>›</span>
-            </button>
-          ))}
+          {SPREADS.map((spread) => {
+            const sel = pendingSpreadId === spread.id;
+            return (
+              <div key={spread.id}>
+                <button
+                  onClick={() => setPendingSpreadId(spread.id)}
+                  className="w-full text-left flex items-center gap-4 active:scale-[0.99]"
+                  style={{ borderRadius: 18, background: "#4a2540", border: sel ? "1px solid var(--brass)" : "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
+                >
+                  {/* position diagram */}
+                  <span className="shrink-0 flex items-center justify-center gap-1" style={{ width: 62, height: 44 }}>
+                    {Array.from({ length: Math.min(spread.cardCount, 5) }).map((_, i) => (
+                      <span key={i} style={slotStyle()} />
+                    ))}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>{spread.name}</span>
+                    <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"} · {spread.description}</span>
+                  </span>
+                  {/* select check ring */}
+                  <span className="shrink-0 flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: "50%", background: sel ? "var(--brass)" : "transparent", border: sel ? "1px solid var(--brass)" : "1px solid rgba(240,230,210,0.25)", transition: "all .18s" }}>
+                    {sel && <span style={{ color: "#1a1420", fontSize: 13, fontWeight: 700 }}>✓</span>}
+                  </span>
+                </button>
+                {sel && (
+                  <div className="mt-2" style={{ padding: "12px 15px 13px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)" }}>
+                    <p className="text-[8px] tracking-[0.22em] uppercase font-bold" style={{ color: "var(--brass)", margin: "0 0 6px" }}>About this spread</p>
+                    <p className="text-[12px]" style={{ lineHeight: 1.6, margin: 0, color: "rgba(240,230,210,0.65)" }}>{SPREAD_GUIDES[spread.id] || spread.description}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Freestyle */}
-          <button
-            onClick={() => handleStartFreestyle()}
-            className="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-transform"
-            style={{ borderRadius: 18, background: "#4a2540", border: "0.5px solid rgba(201,169,97,0.16)", padding: "16px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)" }}
-          >
-            <span className="shrink-0 flex items-center justify-center text-[22px]" style={{ width: 62, height: 44, opacity: 0.5 }}>🃏</span>
-            <span className="flex-1 min-w-0">
-              <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>Fanned</span>
-              <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>No rules — swipe the arc and pick the cards that call to you.</span>
-            </span>
-            <span className="shrink-0 text-[15px]" style={{ color: "var(--brass)" }}>›</span>
-          </button>
+          <div>
+            <button
+              onClick={() => setPendingSpreadId("freestyle")}
+              className="w-full text-left flex items-center gap-4 active:scale-[0.99]"
+              style={{ borderRadius: 18, background: "#4a2540", border: pendingSpreadId === "freestyle" ? "1px solid var(--brass)" : "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
+            >
+              <span className="shrink-0 flex items-center justify-center" style={{ width: 62, height: 44 }}>
+                <span style={slotStyle({ transform: "rotate(-11deg)" })} />
+                <span style={slotStyle({ transform: "rotate(5deg)", marginLeft: -6 })} />
+                <span style={slotStyle({ transform: "rotate(-2deg)", marginLeft: -6 })} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>Fanned</span>
+                <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>No rules — swipe the arc and pick the cards that call to you.</span>
+              </span>
+              <span className="shrink-0 flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: "50%", background: pendingSpreadId === "freestyle" ? "var(--brass)" : "transparent", border: pendingSpreadId === "freestyle" ? "1px solid var(--brass)" : "1px solid rgba(240,230,210,0.25)", transition: "all .18s" }}>
+                {pendingSpreadId === "freestyle" && <span style={{ color: "#1a1420", fontSize: 13, fontWeight: 700 }}>✓</span>}
+              </span>
+            </button>
+            {pendingSpreadId === "freestyle" && (
+              <div className="mt-2" style={{ padding: "12px 15px 13px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)" }}>
+                <p className="text-[8px] tracking-[0.22em] uppercase font-bold" style={{ color: "var(--brass)", margin: "0 0 6px" }}>About this spread</p>
+                <p className="text-[12px]" style={{ lineHeight: 1.6, margin: 0, color: "rgba(240,230,210,0.65)" }}>{SPREAD_GUIDES["freestyle"]}</p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Your question — optional */}
+        {pendingSpreadId && (
+          <div className="mt-4">
+            <label className="block text-[9px] tracking-[0.25em] uppercase font-bold mb-2.5" style={{ color: "var(--brass)" }}>
+              Your question <span style={{ color: "var(--foreground-faint)", letterSpacing: "0.04em", textTransform: "none", fontWeight: 500 }}>— optional</span>
+            </label>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              rows={2}
+              placeholder="What’s on your mind? Hold it as the cards turn…"
+              className="w-full resize-none outline-none"
+              style={{ boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", color: "#f0e6d2", fontFamily: "inherit", fontSize: 13.5, lineHeight: 1.5 }}
+            />
+          </div>
+        )}
+
+        {/* Begin the reading */}
+        <button
+          onClick={handleBeginReading}
+          disabled={!pendingSpreadId}
+          className="w-full flex items-center justify-center gap-2 mt-6"
+          style={{ padding: 16, borderRadius: 99, border: "none", background: "var(--brass)", color: "#1a1815", cursor: pendingSpreadId ? "pointer" : "not-allowed", opacity: pendingSpreadId ? 1 : 0.4, transition: "opacity .2s" }}
+        >
+          <span style={{ fontFamily: "var(--font-script)", fontSize: 19 }}>Begin</span>
+          <span className="text-[11px] tracking-[0.16em] uppercase font-semibold">the reading</span>
+          <span style={{ fontSize: 15 }}>→</span>
+        </button>
+        <p className="text-center text-[10.5px] mt-3.5" style={{ lineHeight: 1.6, color: "var(--foreground-faint)", minHeight: 14 }}>
+          {pendingSpreadId ? `Drawing ${pendingName} from ${deckName}` : "Select a spread to continue"}
+        </p>
       </main>
     );
   }
@@ -942,13 +1030,16 @@ export default function TarotTab() {
 
         {/* Position indicator */}
         <div className="text-center mb-3">
-          <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-display)" }}>
+          <p className="text-foreground text-sm font-medium" style={{ fontFamily: "var(--font-heading)" }}>
             {pos?.name || `Card ${currentPickPos + 1}`}
           </p>
           <p className="text-muted text-[10px] mt-0.5">{pos?.description}</p>
           <p className="text-muted text-[10px] mt-1">
             {currentPickPos + 1} of {selectedSpread.cardCount} · Swipe & tap to pick
           </p>
+          {question && (
+            <p className="mx-auto mt-1.5" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+          )}
         </div>
 
         {/* Progress dots */}
@@ -1052,6 +1143,9 @@ export default function TarotTab() {
           <p className="text-muted text-xs text-center mb-4">
             {allRevealed ? "Tap any card to read its message" : "Tap each card to reveal it"}
           </p>
+          {question && (
+            <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+          )}
 
           {showSavedBanner && (
             <div className="text-center mb-3 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 text-sage text-xs font-medium mx-auto" style={{ display: "flex", justifyContent: "center", width: "fit-content" }}>
@@ -1262,6 +1356,9 @@ export default function TarotTab() {
         <p className="text-muted text-xs text-center mb-4">
           {allRevealed ? "Tap any card to read its full meaning" : "Tap each card to reveal it"}
         </p>
+        {question && (
+          <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+        )}
 
         {showSavedBanner && (
           <div className="text-center mb-3 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 text-sage text-xs font-medium mx-auto" style={{ display: "flex", justifyContent: "center", width: "fit-content" }}>
@@ -1529,8 +1626,11 @@ export default function TarotTab() {
           <span className="text-lg">‹</span> Back
         </button>
 
-        <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-display)" }}>Fanned</h1>
+        <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-heading)" }}>Fanned</h1>
         <p className="text-muted text-[10px] text-center mb-2">Swipe or drag through the deck · Tap cards that call to you · {totalPicked} picked</p>
+        {question && (
+          <p className="text-center mx-auto -mt-1 mb-2" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+        )}
         {showSavedBanner && (
           <div className="text-center mb-2 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 text-sage text-xs font-medium mx-auto" style={{ display: "flex", justifyContent: "center", width: "fit-content" }}>
             Saved to Past Readings

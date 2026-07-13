@@ -29,6 +29,7 @@ import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearI
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
 import { analyzeChart, type ChartAnalysis } from "@/lib/chartAnalysis";
 import ChartInsightsPanel from "@/components/ChartInsightsPanel";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface Planet {
   name: string;
@@ -161,8 +162,8 @@ const RISING_DESCRIPTIONS: Record<string, { summary: string; appearance: string;
 function elementColor(sign: string): string {
   if (["Ari", "Leo", "Sag"].includes(sign)) return "text-terracotta";
   if (["Tau", "Vir", "Cap"].includes(sign)) return "text-sage";
-  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-lavender";
-  return "text-lavender-light";
+  if (["Gem", "Lib", "Aqu"].includes(sign)) return "text-amber";
+  return "text-lavender";
 }
 
 // Maps Kerykeion house strings like "Fifth_House" to numbers
@@ -1155,6 +1156,12 @@ function elementBg(sign: string): string {
 
 export default function YouTab() {
   const router = useRouter();
+  const { theme } = useTheme();
+  // Aspect-line hues: the wheel's pastels sit on the plum disc in both themes,
+  // but the legend sits on the page background, so day mode needs darker inks.
+  const aspectLegend = theme === "light"
+    ? { harmonious: "#3a6ea8", challenging: "#b0503a", conjunction: "#9a7a2a" }
+    : { harmonious: "#79aee0", challenging: "#e08c7a", conjunction: "#e6cf8c" };
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openPlanet, setOpenPlanet] = useState<string | null>(null);
@@ -1441,29 +1448,29 @@ export default function YouTab() {
       {/* Aspect legend */}
       <div className="flex justify-center items-center flex-wrap gap-4 mt-2.5 mb-1">
         <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-          <span style={{ width: 16, borderTop: "2px solid #79aee0" }} />Harmonious
+          <span style={{ width: 16, borderTop: `2px solid ${aspectLegend.harmonious}` }} />Harmonious
         </span>
         <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-          <span style={{ width: 16, borderTop: "2px dashed #e08c7a" }} />Challenging
+          <span style={{ width: 16, borderTop: `2px dashed ${aspectLegend.challenging}` }} />Challenging
         </span>
         <span className="inline-flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-          <span style={{ width: 16, borderTop: "2px solid #e6cf8c" }} />Conjunction
+          <span style={{ width: 16, borderTop: `2px solid ${aspectLegend.conjunction}` }} />Conjunction
         </span>
       </div>
 
       {/* Big 3 — Sun / Moon / Rising (Rising hidden when birth time is unknown) */}
       <div className="flex justify-center mt-3.5 mb-4">
         {[
-          { label: "Sun", sign: effectiveBigThree.sun, glyph: "☉" },
-          { label: "Moon", sign: effectiveBigThree.moon, glyph: "☽" },
-          ...(unknownTime ? [] : [{ label: "Rising", sign: effectiveBigThree.rising, glyph: "↑" }]),
+          { label: "Sun", sign: effectiveBigThree.sun, glyph: "☉\uFE0E" },
+          { label: "Moon", sign: effectiveBigThree.moon, glyph: "☽\uFE0E" },
+          ...(unknownTime ? [] : [{ label: "Rising", sign: effectiveBigThree.rising, glyph: "↑\uFE0E" }]),
         ].map(({ label, sign, glyph }, i) => (
           <div
             key={label}
             className="flex-1 text-center px-1.5"
             style={{ borderLeft: i === 0 ? "none" : "1px solid var(--border-card)", maxWidth: 130 }}
           >
-            <span className="block leading-none" style={{ fontFamily: "var(--font-glyph, serif)", fontSize: 19, color: "var(--brass)" }}>{glyph}</span>
+            <span className="block leading-none" style={{ fontSize: 19, color: "var(--brass)" }}>{glyph}</span>
             <span className="block mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 20, letterSpacing: "0.03em", color: "var(--foreground)" }}>{SIGN_NAMES[sign] || sign}</span>
             <span className="block mt-1 text-[8.5px] tracking-[0.2em] uppercase font-semibold" style={{ color: "var(--foreground-faint)" }}>{label}</span>
           </div>

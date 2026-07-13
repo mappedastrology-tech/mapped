@@ -62,7 +62,7 @@ function panelStars(seed: number, n = 30): React.CSSProperties[] {
   return Array.from({ length: n }, () => ({
     position: "absolute", left: `${(rand() * 100).toFixed(1)}%`, top: `${(rand() * 100).toFixed(1)}%`,
     width: `${(rand() * 1.6 + 0.5).toFixed(1)}px`, height: `${(rand() * 1.6 + 0.5).toFixed(1)}px`,
-    borderRadius: "50%", background: "#e8dfc4", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
+    borderRadius: "50%", background: "var(--brass-hi)", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
     animation: `mp-tw ${(rand() * 3 + 2).toFixed(1)}s ease-in-out infinite`,
   }));
 }
@@ -100,7 +100,7 @@ export default function WebTarot() {
   const reading = slots.map((ci, idx) => (ci == null ? null : { label: LABELS[idx], card: DECK[ci] })).filter(Boolean) as { label: string; card: Card }[];
 
   return (
-    <WebShell current="tarot" theme={theme} onToggleTheme={toggle} footerTagline="Pull a card, then read yourself.">
+    <WebShell current="tarot" theme={theme} onToggleTheme={toggle} footerTagline="The cards are a mirror, not a map.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "52px 32px 20px" }}>
         <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 36px" }}>
           <p style={{ fontFamily: "var(--script)", fontSize: 34, color: "var(--brass)", margin: "0 0 4px" }}>draw your day</p>

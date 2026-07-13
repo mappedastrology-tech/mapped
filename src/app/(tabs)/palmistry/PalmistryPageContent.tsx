@@ -534,7 +534,7 @@ export default function PalmistryTab() {
           <button onClick={() => openPerson(SELF_ID)} className="flex items-center gap-1.5 text-secondary text-[14px] -ml-1 mb-2">
             <span className="text-lg leading-none">‹</span> Your palms
           </button>
-          <h1 className="text-foreground text-[24px] font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>Palms</h1>
+          <h1 className="text-foreground text-[24px] font-semibold mb-1" style={{ fontFamily: "var(--font-serif)" }}>Palms</h1>
           {people.map((p, i) => (
             <PersonCard key={p.id} person={p} accent={personColor(i)} onOpen={() => openPerson(p.id)} />
           ))}
@@ -545,7 +545,7 @@ export default function PalmistryTab() {
             <span className="text-[18px] leading-none">+</span> Add a person&apos;s palm
           </button>
           <p className="text-muted text-[11px] text-center leading-relaxed pt-2">
-            Photos are read in the moment and never saved — only the reading text.
+            For reflection &amp; entertainment. Photos are never saved — only the reading text.
           </p>
         </div>
       )}
@@ -588,12 +588,12 @@ export default function PalmistryTab() {
           {/* Header */}
           <div className="flex items-center justify-between">
             {selectedPerson.isSelf ? (
-              <h1 className="text-[21px] font-semibold text-foreground flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+              <h1 className="text-[21px] font-semibold text-foreground flex items-center gap-2" style={{ fontFamily: "var(--font-serif)" }}>
                 <PalmIcon />
                 {selectedPerson.name && selectedPerson.name !== "You" ? selectedPerson.name : "Your palms"}
               </h1>
             ) : (
-              <button onClick={() => setView("people")} className="flex items-center gap-1.5 text-foreground text-[21px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+              <button onClick={() => setView("people")} className="flex items-center gap-1.5 text-foreground text-[21px] font-semibold" style={{ fontFamily: "var(--font-serif)" }}>
                 <span className="text-xl leading-none text-secondary">‹</span> {selectedPerson.name}
               </button>
             )}
@@ -751,7 +751,7 @@ export default function PalmistryTab() {
           <div className="rounded-2xl border border-foreground/15 bg-card/60 p-6 text-center">
             <div className="flex justify-center mb-3"><HandGlyph hand={scanHand} size={44} /></div>
             {stepLabel && <p className="text-terracotta text-[11px] uppercase tracking-widest mb-1">{stepLabel}</p>}
-            <p className="text-foreground text-[18px] font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+            <p className="text-foreground text-[18px] font-semibold mb-1" style={{ fontFamily: "var(--font-serif)" }}>
               {guided && scanHand === "right" ? `First, ${scanName} right hand`
                 : guided && scanHand === "left" ? `Now ${scanName} left hand`
                 : `Scan ${scanName} ${scanHand} hand`}
@@ -967,7 +967,7 @@ function ReadingPanel({
       )}
 
       <p className="text-muted text-[11px] text-center leading-relaxed">
-        Palmistry is a centuries-old art of reading the hand — offered here for reflection and insight.
+        Palmistry is a traditional practice shared for reflection and entertainment — not fact, prediction, or professional advice.
       </p>
 
       <button

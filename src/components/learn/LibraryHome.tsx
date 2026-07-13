@@ -12,6 +12,7 @@ import { getDailyGoal } from "@/lib/learn/goals";
 import { evaluateAchievements } from "@/lib/learn/achievements";
 import type { Course, CourseProgress, ReferenceEntry } from "@/lib/learn/types";
 import TopBar from "@/components/TopBar";
+import { useTheme } from "@/components/ThemeProvider";
 import ReferenceSheet from "./ReferenceSheet";
 
 /** Deterministic-ish starfield for the hero (positions fixed so it doesn't reflow). */
@@ -57,6 +58,7 @@ function searchCourses(q: string): Course[] {
 
 export default function LibraryHome() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [progress, setProgress] = useState<Record<string, CourseProgress>>({});
   const [dueCount, setDueCount] = useState(0);
   const [eng, setEng] = useState<Engagement | null>(null);
@@ -127,8 +129,8 @@ export default function LibraryHome() {
       <h1 className="sr-only">Learn</h1>
 
       <div className="max-w-lg mx-auto px-5 pb-24 relative">
-        {/* Starfield (decorative) */}
-        {!searching && (
+        {/* Starfield (decorative, dark theme only — reads as ink specks on parchment in light) */}
+        {!searching && theme === "dark" && (
           <div aria-hidden="true" style={{ position: "absolute", inset: "0 0 auto 0", height: 260, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
             {STARS.map(([x, y, s, o, d], i) => (
               <span key={i} style={{ position: "absolute", left: x, top: y, width: s, height: s, borderRadius: "50%", background: "var(--foreground)", opacity: o, animation: `lib-twinkle ${d}s ease-in-out infinite` }} />
@@ -139,13 +141,13 @@ export default function LibraryHome() {
         <div className="relative" style={{ zIndex: 1 }}>
           {/* Decorative eyebrow */}
           <div className="flex items-center justify-center gap-2.5 pt-2 pb-3.5">
-            <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
+            <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
             <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)", fontFamily: "var(--font-body)" }}>Learn</span>
-            <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
+            <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
           </div>
 
           {/* Search */}
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-[14px]" style={{ background: "var(--lib-surface)", border: "0.5px solid rgba(201,169,97,0.22)" }}>
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-[14px]" style={{ background: "var(--lib-surface)", border: "0.5px solid color-mix(in srgb, var(--brass) 22%, transparent)" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -221,7 +223,7 @@ export default function LibraryHome() {
                     </Link>
 
                     {/* Streak card */}
-                    <div className="mt-5 px-4.5 py-4 rounded-[18px]" style={{ background: "var(--lib-surface)", border: "0.5px solid rgba(201,169,97,0.12)", padding: "16px 18px" }}>
+                    <div className="mt-5 px-4.5 py-4 rounded-[18px]" style={{ background: "var(--lib-surface)", border: "0.5px solid color-mix(in srgb, var(--brass) 12%, transparent)", padding: "16px 18px" }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <span className="text-[22px]" aria-hidden="true">🔥</span>
@@ -277,7 +279,7 @@ export default function LibraryHome() {
 
                     {/* Milestone teaser */}
                     {nextMilestone && (
-                      <Link href="/library/progress" className="flex items-center gap-2.5 mt-4 px-3.5 py-3 rounded-[14px] active:scale-[0.99] transition-transform" style={{ background: "rgba(201,169,97,0.1)", border: "0.5px solid rgba(201,169,97,0.2)" }}>
+                      <Link href="/library/progress" className="flex items-center gap-2.5 mt-4 px-3.5 py-3 rounded-[14px] active:scale-[0.99] transition-transform" style={{ background: "color-mix(in srgb, var(--brass) 10%, transparent)", border: "0.5px solid color-mix(in srgb, var(--brass) 20%, transparent)" }}>
                         <span className="text-[16px]" aria-hidden="true">{nextMilestone.icon}</span>
                         <span className="text-[12px] flex-1 leading-snug" style={{ color: "var(--foreground-secondary)" }}>
                           <span style={{ color: "var(--foreground)", fontWeight: 600 }}>{nextMilestone.title}</span> — {nextMilestone.description.toLowerCase()}
@@ -306,7 +308,7 @@ export default function LibraryHome() {
                 const { course, total, doneCount, nextLesson, started, ready, href } = pathTarget;
                 const pct = total > 0 ? Math.round((Math.min(doneCount, total) / total) * 100) : 0;
                 return (
-                  <Link href={href} className="block rounded-[18px] mt-6 active:scale-[0.99] transition-transform" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.16)", padding: "20px 20px 18px" }}>
+                  <Link href={href} className="block rounded-[18px] mt-6 active:scale-[0.99] transition-transform" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px color-mix(in srgb, var(--brass) 16%, transparent)", padding: "20px 20px 18px" }}>
                     <div className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>{ready ? "Ready for your final test" : started ? "Continue your path" : "Begin your path"}</div>
                     <div className="mt-2.5" style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 500, color: "var(--foreground)", lineHeight: 1.22 }}>{course.title}</div>
                     <div className="text-[12px] mt-1.5" style={{ color: "var(--foreground)", opacity: 0.65 }}>{ready ? "All lessons complete · pass the test to finish" : started ? `Up next · ${nextLesson.title}` : `${total} lessons · ${course.estMinutes} min`}</div>
@@ -342,7 +344,7 @@ export default function LibraryHome() {
               {/* Browse all topics */}
               <div className="flex items-center gap-3 mt-8 mb-4">
                 <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-secondary)" }}>Browse all topics</span>
-                <span className="flex-1 h-px" style={{ borderTop: "0.5px solid rgba(138,125,107,0.28)" }} />
+                <span className="flex-1 h-px" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--foreground-muted) 28%, transparent)" }} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {DOMAINS.map((d) => {
@@ -353,7 +355,7 @@ export default function LibraryHome() {
                       key={d.id}
                       onClick={() => router.push(target)}
                       className="relative overflow-hidden text-left rounded-[18px] flex flex-col active:scale-[0.98] transition-transform"
-                      style={{ background: "var(--lib-surface)", minHeight: 132, padding: "16px 15px", border: "0.5px solid rgba(201,169,97,0.1)" }}
+                      style={{ background: "var(--lib-surface)", minHeight: 132, padding: "16px 15px", border: "0.5px solid color-mix(in srgb, var(--brass) 10%, transparent)" }}
                     >
                       {/* accent glow blob */}
                       <span aria-hidden="true" style={{ position: "absolute", right: -26, top: -26, width: 98, height: 98, borderRadius: "50%", overflow: "hidden", opacity: 0.85 }}>

@@ -634,7 +634,7 @@ export default function DollyTab() {
         <div className="flex items-center justify-between px-5 py-3 border-b border-foreground/15">
           <h1
             className="text-lg text-foreground"
-            style={{ fontFamily: "var(--font-display)" }}
+            style={{ fontFamily: "var(--font-heading)" }}
           >
             Chats
           </h1>
@@ -804,26 +804,42 @@ export default function DollyTab() {
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {/* Empty state — starter prompts */}
+        {/* Empty state — Dolly greeting bubble + suggestion chips */}
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
-            <DollyAvatar size={72} className="mb-4" />
-            <p
-              className="text-foreground mb-1"
-              style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}
+          <div className="flex flex-col gap-[18px]">
+            <div
+              className="max-w-[86%] self-start px-[19px] py-[17px]"
+              style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
             >
-              Ask Dolly anything
-            </p>
-            <p className="text-muted text-xs mb-8 text-center max-w-[260px]">
-              Your chart, your transits, your relationships — she knows it all
-            </p>
+              <p
+                className="mb-2.5"
+                style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 18, lineHeight: 1.45, color: "rgba(244,236,214,0.96)" }}
+              >
+                {(() => {
+                  const h = new Date().getHours();
+                  const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+                  return `${salutation}, ${userName ? userName.split(" ")[0] : "Seeker"}.`;
+                })()}
+              </p>
+              <p className="text-sm" style={{ lineHeight: 1.65, color: "rgba(240,230,210,0.9)" }}>
+                Your chart, your transits, your relationships — I know it all. What&rsquo;s sitting with you?
+              </p>
+            </div>
 
-            <div className="flex flex-col gap-2.5 w-full max-w-[320px]">
+            <div className="flex flex-wrap gap-[9px] self-start max-w-[92%]">
               {STARTER_PROMPTS.map((prompt, i) => (
                 <button
                   key={i}
                   onClick={() => handleSend(prompt)}
-                  className="text-left px-4 py-3 rounded-xl border border-foreground/15 bg-card/40 text-muted text-sm hover:border-terracotta/20 hover:text-foreground hover:bg-card/50 transition-all active:scale-[0.98]"
+                  className="text-left font-medium transition-all active:scale-[0.98]"
+                  style={{
+                    padding: "9px 15px",
+                    borderRadius: 99,
+                    background: "color-mix(in srgb, var(--journal-accent) 8%, transparent)",
+                    border: "0.5px solid color-mix(in srgb, var(--journal-accent) 28%, transparent)",
+                    color: "var(--journal-accent)",
+                    fontSize: 12.5,
+                  }}
                 >
                   {prompt}
                 </button>
@@ -889,9 +905,9 @@ export default function DollyTab() {
             disabled={!input.trim() || isStreaming}
             className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
             aria-label="Send message"
-            style={{ backgroundColor: "var(--lavender)" }}
+            style={{ backgroundColor: "var(--journal-accent)" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#161022" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--journal-on-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M7 12h11M13 6l6 6-6 6" />
             </svg>
           </button>

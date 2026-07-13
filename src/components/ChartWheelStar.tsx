@@ -122,7 +122,7 @@ export default function ChartWheelStar({ planets, houses, aspects }: { planets: 
               <g key={sign}>
                 <line x1={dx1} y1={dy1} x2={dx2} y2={dy2} stroke="#eef2fb" strokeWidth="0.9" opacity="0.5" />
                 <text x={gx} y={gy} textAnchor="middle" dominantBaseline="central" fontSize="15" fill="#eef2fb" style={{ fontFamily: PLANET_FONT }}>
-                  {SIGN_GLYPH[sign]}
+                  {SIGN_GLYPH[sign] + "\uFE0E"}
                 </text>
               </g>
             );
@@ -141,7 +141,7 @@ export default function ChartWheelStar({ planets, houses, aspects }: { planets: 
             return (
               <g key={`h-${i}`}>
                 <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={isAxis ? "#e0c488" : "#c9a961"} strokeWidth={isAxis ? 1 : 0.6} opacity={isAxis ? 0.5 : 0.28} />
-                <text x={hx} y={hy} textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="600" fill="rgba(214,186,120,0.82)" style={{ fontFamily: "var(--font-display)" }}>
+                <text x={hx} y={hy} textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="600" fill="rgba(214,186,120,0.82)" style={{ fontFamily: "var(--font-serif)" }}>
                   {h.number}
                 </text>
               </g>
@@ -170,7 +170,7 @@ export default function ChartWheelStar({ planets, houses, aspects }: { planets: 
                 <line x1={t1x} y1={t1y} x2={t2x} y2={t2y} stroke={col} strokeWidth="1.1" opacity="0.6" />
                 <circle cx={px} cy={py} r="11.5" fill="#0f1729" stroke={col} strokeWidth="1.2" />
                 <text x={px} y={py} textAnchor="middle" dominantBaseline="central" fontSize="13" fontWeight="700" fill={col} style={{ fontFamily: PLANET_FONT }}>
-                  {PLANET_GLYPH[p.name] || p.name[0]}
+                  {PLANET_GLYPH[p.name] ? PLANET_GLYPH[p.name] + "\uFE0E" : p.name[0]}
                 </text>
                 {p.retrograde && (
                   <text x={px + 9} y={py - 8} fontSize="6" fill="#9d8fd0" fontWeight="700">℞</text>

@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/components/ThemeProvider";
 import HdBodyGraph from "@/components/humanDesign/HdBodyGraph";
 import { computeHumanDesign, type HumanDesignProfile, type Activation } from "@/lib/humanDesign/engine";
 import { CENTER_NAMES, CENTER_ORDER, GATE_TO_CENTER, type CenterId } from "@/lib/humanDesign/data";
@@ -33,17 +34,27 @@ interface ChartRow {
   place: string;
 }
 
-/** Astronomical glyphs for the Design / Personality activation columns. */
+/** Astronomical glyphs for the Design / Personality activation columns.
+ *  U+FE0E forces monochrome text presentation (not color-emoji). */
 const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Earth: "⊕", "North Node": "☊", "South Node": "☋", Moon: "☽",
-  Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄",
-  Uranus: "♅", Neptune: "♆", Pluto: "♇",
+  Sun: "\u2609\uFE0E", Earth: "\u2295\uFE0E", "North Node": "\u260A\uFE0E", "South Node": "\u260B\uFE0E", Moon: "\u263D\uFE0E",
+  Mercury: "\u263F\uFE0E", Venus: "\u2640\uFE0E", Mars: "\u2642\uFE0E", Jupiter: "\u2643\uFE0E", Saturn: "\u2644\uFE0E",
+  Uranus: "\u2645\uFE0E", Neptune: "\u2646\uFE0E", Pluto: "\u2647\uFE0E",
 };
 
-/** A little color per center so the Centers tab reads at a glance. */
-const CENTER_COLOR: Record<CenterId, string> = {
+/** Symbol font stack for line-art glyphs (matches ChartWheel / the design's --a-glyph). */
+const GLYPH_FONT = "'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Segoe UI Symbol', serif";
+
+/** A little color per center so the Centers tab reads at a glance.
+ *  These sit on theme-switching cards, so each theme gets its own set —
+ *  night uses the design's night accents, day the darkened day equivalents. */
+const CENTER_COLOR_DARK: Record<CenterId, string> = {
   head: "#d4a13a", ajna: "#8aa055", throat: "var(--brass)", g: "#d4a13a",
   heart: "#c07a52", sacral: "#c07a52", solarPlexus: "#9d8fd0", spleen: "#8aa055", root: "#8aa055",
+};
+const CENTER_COLOR_LIGHT: Record<CenterId, string> = {
+  head: "#9a7322", ajna: "#5d7d3c", throat: "var(--brass)", g: "#9a7322",
+  heart: "#a4502f", sacral: "#a4502f", solarPlexus: "#6a5aa0", spleen: "#5d7d3c", root: "#5d7d3c",
 };
 
 /** Population + energy descriptor chips per type, matching the design. */
@@ -59,6 +70,9 @@ type PageTab = "type" | "centers" | "gates";
 
 export default function HumanDesignPageContent() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+  const centerColor = isLight ? CENTER_COLOR_LIGHT : CENTER_COLOR_DARK;
   const [isLoading, setIsLoading] = useState(true);
   const [row, setRow] = useState<ChartRow | null>(null);
   const [name, setName] = useState("");
@@ -241,21 +255,21 @@ export default function HumanDesignPageContent() {
       {pageTab === "type" && (
         <>
           <div className="flex flex-col gap-3 mb-4">
-            <GradientCard glyph="⚙" kicker="Your type" title={hd.type} body={tc?.description ?? ""} chips={TYPE_CHIPS[hd.type] ?? [`${hd.aura} aura`]} />
-            <GradientCard glyph="↻" kicker="Your strategy" title={hd.strategy} body={tc?.strategyDetail ?? ""} chips={[hd.strategy]} />
-            <GradientCard glyph="◑" kicker="Your authority" title={ac?.name ?? hd.authorityName} body={ac?.description ?? ""} chips={[`${authorityShort} authority`]} />
-            <GradientCard glyph="✥" kicker="Your profile" title={`${hd.profile} · ${hd.profileName}`} body={pc?.description ?? ""} chips={hd.profileName.split(" / ")} />
+            <GradientCard glyph={"\u2699\uFE0E"} kicker="Your type" title={hd.type} body={tc?.description ?? ""} chips={TYPE_CHIPS[hd.type] ?? [`${hd.aura} aura`]} />
+            <GradientCard glyph={"\u21BB\uFE0E"} kicker="Your strategy" title={hd.strategy} body={tc?.strategyDetail ?? ""} chips={[hd.strategy]} />
+            <GradientCard glyph={"\u25D1\uFE0E"} kicker="Your authority" title={ac?.name ?? hd.authorityName} body={ac?.description ?? ""} chips={[`${authorityShort} authority`]} />
+            <GradientCard glyph={"\u2725\uFE0E"} kicker="Your profile" title={`${hd.profile} · ${hd.profileName}`} body={pc?.description ?? ""} chips={hd.profileName.split(" / ")} />
           </div>
           <div className="flex flex-col gap-[9px] mb-2">
-            <MechCard kicker="Signature" title={hd.signature} body={tc?.signatureDetail ?? ""} accent="#7ba055" />
-            <MechCard kicker="Not-self theme" title={hd.notSelf} body={tc?.notSelfDetail ?? ""} accent="#b5654a" />
+            <MechCard kicker="Signature" title={hd.signature} body={tc?.signatureDetail ?? ""} accent={isLight ? "#5d7d3c" : "#7ba055"} />
+            <MechCard kicker="Not-self theme" title={hd.notSelf} body={tc?.notSelfDetail ?? ""} accent="var(--hold)" />
             <MechCard kicker="Definition" title={hd.definitionName} body={definitionBlurb(hd.definition)} accent="var(--brass)" />
             <MechCard
               kicker="Incarnation cross"
               title={`${hd.incarnationCross.angle} Cross`}
               meta={`Gates ${hd.incarnationCross.gates.join(" / ")}`}
               body={crossBlurb(hd)}
-              accent="#d4a13a"
+              accent={isLight ? "#9a7322" : "#d4a13a"}
             />
           </div>
         </>
@@ -275,7 +289,7 @@ export default function HumanDesignPageContent() {
             {CENTER_ORDER.map((id) => {
               const defined = hd.definedCenters.includes(id);
               const cc = getCenter(id);
-              const color = CENTER_COLOR[id];
+              const color = centerColor[id];
               return (
                 <CenterRow
                   key={id}
@@ -454,7 +468,7 @@ function ActivationColumn({ title, tone, activations }: { title: string; tone: "
             className="flex items-center gap-[7px] px-[9px] py-[3px] rounded-[7px]"
             style={{ background: rowBg, border: `0.5px solid ${rowBd}` }}
           >
-            <span className="text-[12px] w-[14px] text-center shrink-0" style={{ color: glyphColor, fontFamily: "var(--font-glyph, serif)" }}>
+            <span className="text-[12px] w-[14px] text-center shrink-0" style={{ color: glyphColor, fontFamily: GLYPH_FONT }}>
               {PLANET_GLYPH[a.body] ?? "•"}
             </span>
             <span className="text-[10.5px] font-semibold tabular-nums" style={{ color: valueColor }}>
@@ -469,9 +483,9 @@ function ActivationColumn({ title, tone, activations }: { title: string; tone: "
 
 function GradientCard({ glyph, kicker, title, body, chips }: { glyph: string; kicker: string; title: string; body: string; chips?: string[] }) {
   return (
-    <div className="rounded-[20px] p-5" style={{ background: "linear-gradient(165deg, #342440, #15101c)", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+    <div className="rounded-[20px] p-5" style={{ background: "#342440", border: "0.5px solid rgba(201,169,97,0.16)" }}>
       <div className="flex items-center gap-[11px] mb-3">
-        <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: "var(--font-glyph, serif)" }}>{glyph}</span>
+        <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: GLYPH_FONT }}>{glyph}</span>
         <span>
           <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{kicker}</span>
           <span className="block mt-0.5" style={{ fontFamily: "var(--font-heading)", fontSize: 19, color: "#f0e6d2" }}>{title}</span>

@@ -40,7 +40,7 @@ function panelStars(seed: number, n = 18): React.CSSProperties[] {
   return Array.from({ length: n }, () => ({
     position: "absolute", left: `${(rand() * 100).toFixed(1)}%`, top: `${(rand() * 100).toFixed(1)}%`,
     width: `${(rand() * 1.5 + 0.5).toFixed(1)}px`, height: `${(rand() * 1.5 + 0.5).toFixed(1)}px`,
-    borderRadius: "50%", background: "#e8dfc4", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
+    borderRadius: "50%", background: "var(--brass-hi)", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
     animation: `mp-tw ${(rand() * 3 + 2).toFixed(1)}s ease-in-out infinite`,
   }));
 }
@@ -112,7 +112,7 @@ export default function WebJournal() {
   const streakDots = Array.from({ length: 7 }, (_, i) => i < 6);
 
   return (
-    <WebShell current="journal" theme={theme} onToggleTheme={toggle} footerTagline="A private record of your inner weather.">
+    <WebShell current="journal" theme={theme} onToggleTheme={toggle} footerTagline="Your words, kept in rhythm with the sky.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "52px 32px 20px" }}>
         <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 40px" }}>
           <p style={{ fontFamily: "var(--script)", fontSize: 34, color: "var(--brass)", margin: "0 0 4px" }}>your inner weather</p>

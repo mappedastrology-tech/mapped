@@ -316,8 +316,8 @@ function elementColor(element: string): string {
   switch (element) {
     case "fire": return "text-terracotta";
     case "earth": return "text-sage";
-    case "air": return "text-lavender";
-    case "water": return "text-lavender-light";
+    case "air": return "text-amber";
+    case "water": return "text-lavender";
     default: return "text-foreground";
   }
 }
@@ -348,7 +348,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
     <div className="mb-4">
       <h2
         className="text-xl text-foreground mb-1"
-        style={{ fontFamily: "var(--font-display)" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         {title}
       </h2>
@@ -373,7 +373,7 @@ function InsightCard({ tone, eyebrow, title, subtitle, children }: {
     <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: `3px solid ${accent}`, boxShadow: "var(--insight-shadow)", padding: "18px 20px", marginBottom: 14 }}>
       <p style={{ color: accent, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase", margin: 0, marginBottom: 8 }}>{eyebrow}</p>
       <div style={{ marginBottom: 8, lineHeight: 1.2 }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: 21, color: "var(--insight-ink)" }}>{title}</span>
+        <span style={{ fontFamily: "var(--font-heading)", fontSize: 21, color: "var(--insight-ink)" }}>{title}</span>
         {subtitle ? <span style={{ marginLeft: 8, fontSize: 13, color: "var(--insight-muted)" }}>{subtitle}</span> : null}
       </div>
       <div style={{ color: "var(--insight-body)", fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-line" }}>{children}</div>
@@ -1081,8 +1081,8 @@ function BalanceSection({
           </p>
           <BalanceBar label="Fire" value={elementBalance.fire} max={maxEl} colorClass="bg-terracotta" />
           <BalanceBar label="Earth" value={elementBalance.earth} max={maxEl} colorClass="bg-sage" />
-          <BalanceBar label="Air" value={elementBalance.air} max={maxEl} colorClass="bg-lavender" />
-          <BalanceBar label="Water" value={elementBalance.water} max={maxEl} colorClass="bg-lavender-light" />
+          <BalanceBar label="Air" value={elementBalance.air} max={maxEl} colorClass="bg-amber" />
+          <BalanceBar label="Water" value={elementBalance.water} max={maxEl} colorClass="bg-lavender" />
           <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--insight-body)" }}>
             {elInterp.summary}
           </p>
@@ -1098,7 +1098,7 @@ function BalanceSection({
           </p>
           <BalanceBar label="Starters" value={modalityBalance.cardinal} max={maxMod} colorClass="bg-terracotta/70" />
           <BalanceBar label="Sustainers" value={modalityBalance.fixed} max={maxMod} colorClass="bg-sage/70" />
-          <BalanceBar label="Adapters" value={modalityBalance.mutable} max={maxMod} colorClass="bg-lavender/70" />
+          <BalanceBar label="Adapters" value={modalityBalance.mutable} max={maxMod} colorClass="bg-amber/70" />
           <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--insight-body)" }}>
             {modInterp.summary}
           </p>

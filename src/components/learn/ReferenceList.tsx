@@ -19,7 +19,7 @@ function IconTile({ entry, accent, size }: { entry: ReferenceEntry; accent: stri
   return (
     <span
       className="shrink-0 flex items-center justify-center overflow-hidden"
-      style={{ width: size, height: size, borderRadius: size * 0.26, background: `${accent}1a`, color: "var(--brass-light)" }}
+      style={{ width: size, height: size, borderRadius: size * 0.26, background: `${accent}1a`, color: "var(--brass)" }}
       aria-hidden="true"
     >
       {entry.image ? (
@@ -59,8 +59,9 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
   if (!topic) {
     return (
       <div className="relative">
-        <style>{`@keyframes ref-tw{0%,100%{opacity:.25}50%{opacity:.9}}`}</style>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[200px] overflow-hidden" style={{ zIndex: 0 }}>
+        {/* Starfield is a dark-mode ornament — in light theme it would paint ink specks on the parchment. */}
+        <style>{`@keyframes ref-tw{0%,100%{opacity:.25}50%{opacity:.9}} [data-theme="light"] .ref-stars{display:none}`}</style>
+        <div aria-hidden="true" className="ref-stars pointer-events-none absolute inset-x-0 top-0 h-[200px] overflow-hidden" style={{ zIndex: 0 }}>
           {STARS.map(([x, y, s, o, d], i) => (
             <span key={i} className="absolute rounded-full" style={{ left: x, top: y, width: s, height: s, background: "var(--foreground)", opacity: o, animation: `ref-tw ${d}s ease-in-out infinite` }} />
           ))}
@@ -68,9 +69,9 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
 
         <div className="relative" style={{ zIndex: 1 }}>
           <div className="flex items-center justify-center gap-2.5 pt-5 pb-1.5">
-            <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
+            <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
             <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)" }}>The Library</span>
-            <span style={{ width: 16, height: 1, background: "rgba(201,169,97,0.45)" }} />
+            <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
           </div>
           <h1 className="text-center font-medium" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)", fontSize: 34, lineHeight: 1.05 }}>Look it up</h1>
           <p className="text-[13px] leading-relaxed text-center mt-1.5 mb-5" style={{ color: "var(--foreground-muted)" }}>An index of every topic — tap a thread to follow it.</p>
@@ -125,7 +126,7 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
       )}
 
       {/* Search */}
-      <div className="flex items-center gap-2.5 px-4 py-3 rounded-[14px]" style={{ background: "var(--lib-surface)", border: "0.5px solid rgba(201,169,97,0.22)" }}>
+      <div className="flex items-center gap-2.5 px-4 py-3 rounded-[14px]" style={{ background: "var(--lib-surface)", border: "0.5px solid color-mix(in srgb, var(--brass) 22%, transparent)" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>

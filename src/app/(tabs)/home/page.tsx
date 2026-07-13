@@ -90,7 +90,7 @@ import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
 import FlipCard from "@/components/FlipCard";
 import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
-import { fetchSetting } from "@/lib/syncedSettings";
+import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
 import StartHereCard from "@/components/StartHereCard";
@@ -109,13 +109,13 @@ interface DailyHoroscope {
 }
 
 const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉",
-  Moon: "☽",
-  Mars: "♂",
-  Mercury: "☿",
-  Jupiter: "♃",
-  Venus: "♀",
-  Saturn: "♄",
+  Sun: "☉︎",
+  Moon: "☽︎",
+  Mars: "♂︎",
+  Mercury: "☿︎",
+  Jupiter: "♃︎",
+  Venus: "♀︎",
+  Saturn: "♄︎",
 };
 
 type HorizonEvent = {
@@ -217,6 +217,13 @@ export default function HomeTab() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Choose an oracle deck — persists the same way Settings → Oracle deck does
+  const chooseOracleDeck = useCallback((id: string) => {
+    setOracleDeckId(id);
+    try { localStorage.setItem(ORACLE_DECK_KEY, id); } catch { /* ignore */ }
+    if (currentUserId) saveSetting(currentUserId, "oracle-deck", id);
+  }, [currentUserId]);
 
   // Save a daily pull with optional notes
   const saveDailyPull = useCallback((type: "tarot" | "oracle", notes: string) => {
@@ -725,7 +732,7 @@ export default function HomeTab() {
             {firstName && (
               <span
                 className="text-[54px] leading-[1.0] -mt-1"
-                style={{ fontFamily: "var(--font-script)", fontWeight: 400 }}
+                style={{ fontFamily: "var(--font-script)", fontWeight: 400, color: "var(--brass)" }}
               >
                 {firstName}
               </span>
@@ -733,7 +740,7 @@ export default function HomeTab() {
           </h1>
           <p
             className="text-[12px] tracking-[0.08em] mt-2"
-            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)", opacity: 0.72 }}
+            style={{ fontFamily: "var(--font-body)", color: "var(--foreground)", opacity: 0.72 }}
           >
             {moon.label.toLowerCase()} · moon in {currentMoonSign.full.toLowerCase()}
           </p>
@@ -884,7 +891,7 @@ export default function HomeTab() {
               </button>
 
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-[28px]">☀️</span>
+                <span className="text-[28px]">{"☀︎"}</span>
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
                      style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
@@ -1085,8 +1092,8 @@ export default function HomeTab() {
         {/* ─── Daily quote ─── */}
         <div className="mb-12 px-1">
           <p
-            className="text-[15px] leading-[1.7] italic text-foreground/80 text-center"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            className="text-[16px] leading-[1.7] italic text-foreground/80 text-center"
+            style={{ fontFamily: "var(--font-serif)" }}
           >
             &ldquo;{dailyQuote.text}&rdquo;
           </p>
@@ -1094,7 +1101,7 @@ export default function HomeTab() {
             className="text-[9px] uppercase tracking-[0.15em] mt-2.5 text-center"
             style={{ color: "var(--terracotta)", opacity: 0.45 }}
           >
-            ✦ {dailyQuote.reason}
+            {"✦︎"} {dailyQuote.reason}
           </p>
         </div>
 
@@ -1129,7 +1136,31 @@ export default function HomeTab() {
             })}
           </div>
 
-          {/* Single card — the selected deck (chosen in Settings → Oracle deck) */}
+          {/* Oracle deck sub-chooser — only when Oracle is selected */}
+          {pullDeck === "oracle" && (
+            <div className="flex gap-2 mb-4">
+              {ORACLE_DECKS.map((deck) => {
+                const active = oracleDeckId === deck.id;
+                return (
+                  <button
+                    key={deck.id}
+                    onClick={() => chooseOracleDeck(deck.id)}
+                    className="flex-1 py-[9px] px-1.5 rounded-[11px] text-center transition-all"
+                    style={{
+                      border: `0.5px solid ${active ? "var(--brass)" : "rgba(240,230,210,0.18)"}`,
+                      background: active ? "rgba(201,169,97,0.14)" : "transparent",
+                      color: active ? "#f0e6d2" : "rgba(240,230,210,0.55)",
+                    }}
+                  >
+                    <span className="block text-[13px] leading-[1.2]" style={{ fontFamily: "var(--font-heading)" }}>{deck.name}</span>
+                    <span className="block text-[8px] uppercase tracking-[0.14em] mt-[3px] opacity-60">{deck.cardCount} cards</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Single card — the selected deck */}
           {pullDeck === "tarot" ? (() => {
             const tarotFaceSrc = getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE;
             return (
@@ -1513,7 +1544,7 @@ export default function HomeTab() {
               className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
             >
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#c9a961" }}>
-                <span className="text-[16px]">{PLANET_GLYPH[planetaryDay.planet] ?? "✦"}</span>
+                <span className="text-[16px]">{PLANET_GLYPH[planetaryDay.planet] ?? "✦︎"}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Planetary Day</p>
@@ -1568,7 +1599,7 @@ export default function HomeTab() {
               className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
             >
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--plum)" }}>
-                <span className="text-[16px]">☽</span>
+                <span className="text-[16px]">{"☽︎"}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Moon Sign</p>
@@ -1617,7 +1648,7 @@ export default function HomeTab() {
               className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
             >
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#2d4029" }}>
-                <span className="text-[16px]" style={{ color: "#f0e6d2" }}>✦</span>
+                <span className="text-[16px]" style={{ color: "#f0e6d2" }}>{"✦︎"}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>Nakshatra</p>
@@ -2036,7 +2067,7 @@ function elementGlyph(element: string): string {
   if (e.includes("water")) return "💧";
   if (e.includes("earth")) return "🌿";
   if (e.includes("air")) return "🌬";
-  return "✦";
+  return "✦︎";
 }
 
 function capitalize(s: string): string {

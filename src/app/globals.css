@@ -157,6 +157,19 @@
   --insight-tension: #cf7a5f;
   --insight-neutral: #c9a961;
   --insight-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+
+  /* Hold-off accent — warm red "hold off" marker (almanac) */
+  --hold: #b5654a;
+
+  /* Journal accent pair — night lavender fill + dark ink on it */
+  --journal-accent: #b8a4e0;
+  --journal-on-accent: #161022;
+
+  /* Journal entry-type palette (ritual / tarot / prompt / heavy) */
+  --type-ritual: #9aa2c8;
+  --type-tarot: #d99bb0;
+  --type-prompt: #8fb894;
+  --type-heavy: #b58a6a;
 }
 
 /* ═══ NIGHT MODE (explicit — matches :root) ═══ */
@@ -248,6 +261,19 @@
   --lib-soft: rgba(255, 255, 255, 0.05);  /* faint chips / dividers */
   --lib-orb-text: #281320;                /* number on the bright gold orb */
   --lib-on-plum: #f0e6d2;                 /* text on always-dark plum surfaces */
+
+  /* Hold-off accent — warm red "hold off" marker (almanac) */
+  --hold: #b5654a;
+
+  /* Journal accent pair — night lavender fill + dark ink on it */
+  --journal-accent: #b8a4e0;
+  --journal-on-accent: #161022;
+
+  /* Journal entry-type palette (ritual / tarot / prompt / heavy) */
+  --type-ritual: #9aa2c8;
+  --type-tarot: #d99bb0;
+  --type-prompt: #8fb894;
+  --type-heavy: #b58a6a;
 }
 
 /* ═══ DAY MODE — cream canvas with dark content ═══ */
@@ -358,6 +384,19 @@
   --insight-tension: #a2402e;
   --insight-neutral: #8a6a1c;
   --insight-shadow: 0 1px 3px rgba(60, 45, 20, 0.08);
+
+  /* Hold-off accent — warm red "hold off" marker (almanac) */
+  --hold: #a4502f;
+
+  /* Journal accent pair — day slate fill + cream ink on it */
+  --journal-accent: #5b6180;
+  --journal-on-accent: #f6efdc;
+
+  /* Journal entry-type palette (ritual / tarot / prompt / heavy) */
+  --type-ritual: #5c649a;
+  --type-tarot: #a4586e;
+  --type-prompt: #4f7a54;
+  --type-heavy: #8a5a34;
 }
 
 /* Day mode body — soft celestial parchment behind the whole app */
@@ -488,13 +527,16 @@
   Typography system:
   --font-display:  JS Chanok — big block-caps titles ("RITUAL", "YOUR MAP")
   --font-heading:  Le Jour Serif — card titles, body text, the workhorse serif
+  --font-serif:    Bodoni Moda — mixed-case elegant titles
   --font-script:   Le Jour Script — name accents, italic emphasis flourishes
   --font-editorial: Le Jour Serif — eyebrow caps, transit headlines
-  --font-body:     DM Sans — UI elements, labels, small text
+  --font-body:     Georgia — default body copy (.lib-felt and .mp-web surfaces
+                   re-override it to DM Sans for their UI text)
 */
 :root {
   --font-display: 'JS Chanok', 'Bodoni Moda', 'Playfair Display', Georgia, serif;
   --font-heading: 'Le Jour Serif', 'Playfair Display', Georgia, serif;
+  --font-serif: 'Bodoni Moda', Georgia, serif;
   --font-script: 'Le Jour Script', 'Ahsing', 'Snell Roundhand', cursive;
   --font-body: Georgia, 'Times New Roman', serif;
   --font-editorial: 'Le Jour Serif', 'DM Mono', Georgia, serif;
@@ -979,7 +1021,7 @@ input, select, textarea {
 }
 
 /* Web feature-page interactions (tarot deck/slots, element game, journal) */
-@keyframes mp-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mp-pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes mp-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 @keyframes mp-flipIn { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
 @keyframes mp-deckfloat { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(-2deg)} }
@@ -1007,5 +1049,8 @@ input, select, textarea {
 @keyframes mp-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
 .mp-chip2 { transition: border-color .2s ease, color .2s ease; }
 .mp-chip2:hover { border-color: var(--brass); color: var(--fg); }
-.mp-person { transition: transform .15s ease; }
-.mp-person:hover { transform: translate(-50%, -50%) scale(1.06); }
+/* Person-node hover — 3px brass ring on the avatar circle (per design), not a
+   scale zoom. The avatar span carries an inline base box-shadow, so the hover
+   ring needs !important to win over it. */
+.mp-person > span:first-child { transition: box-shadow .15s ease; }
+.mp-person:hover > span:first-child { box-shadow: 0 0 0 3px var(--brass), 0 8px 22px rgba(0, 0, 0, 0.5) !important; }

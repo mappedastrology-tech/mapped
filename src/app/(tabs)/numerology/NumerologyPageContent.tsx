@@ -24,6 +24,7 @@ import {
   type PositionKey,
 } from "@/lib/numerologyMeanings";
 import { getConceptInfo } from "@/lib/numerologyConcepts";
+import InfoTip from "@/components/InfoTip";
 import { fetchSetting, saveSetting, clearSetting } from "@/lib/syncedSettings";
 import { getApplication } from "@/lib/numerologyApplications";
 import NmOrbit from "@/components/numerology/NmOrbit";
@@ -399,7 +400,7 @@ export default function NumerologyPageContent() {
             {/* CYCLES TAB */}
             {pageTab === "cycles" && (
               <>
-                <div className="rounded-[20px] p-5 mb-5" style={{ background: "linear-gradient(165deg, #4a2540, #15101c)", border: "0.5px solid rgba(201,169,97,0.16)" }}>
+                <div className="rounded-[20px] p-5 mb-5" style={{ background: "#4a2540", border: "0.5px solid rgba(201,169,97,0.16)" }}>
                   <div className="flex items-center gap-3.5">
                     <span
                       className="shrink-0 flex items-center justify-center"
@@ -408,14 +409,23 @@ export default function NumerologyPageContent() {
                       {profile.personalYear}
                     </span>
                     <span>
-                      <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>Personal Year · {now.getFullYear()}</span>
+                      <span className="flex items-center text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>
+                        Personal Year · {now.getFullYear()}
+                        <InfoTip term="Personal Year" explanation={getConceptInfo("personalYear")} />
+                      </span>
                       <span className="block mt-0.5" style={{ fontFamily: "var(--font-heading)", fontSize: 20, color: "#f0e6d2" }}>{getArchetype(profile.personalYear)?.title || `Year ${profile.personalYear}`}</span>
                     </span>
                   </div>
                   <p className="text-[13px] mt-3.5" style={{ lineHeight: 1.7, color: "rgba(240,230,210,0.82)" }}>{getMeaning("personalYear", profile.personalYear)}</p>
                 </div>
 
-                <p className="mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>Pinnacles &amp; challenges</p>
+                <p className="mb-1 flex items-center" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>
+                  Pinnacles &amp; challenges
+                  <InfoTip
+                    term="Pinnacles & challenges"
+                    explanation="Four long chapters divide a life. Each pinnacle is the opportunity that chapter offers; each challenge is the recurring lesson sitting underneath it."
+                  />
+                </p>
                 <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
                   Your life divides into four long chapters, each ruled by a pinnacle — its opportunity — and shadowed by a challenge.
                 </p>

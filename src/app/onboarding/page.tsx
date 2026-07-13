@@ -747,20 +747,26 @@ export default function OnboardingPage() {
                           <button
                             type="button"
                             onClick={() => setIsDaytime(true)}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all inline-flex items-center gap-1.5 ${
                               isDaytime === true ? "border-amber bg-amber/10 text-amber" : "border-foreground/15 text-muted"
                             }`}
                           >
-                            ☀️ Daytime
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <circle cx="12" cy="12" r="4" /><line x1="12" y1="2" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="22" /><line x1="4.93" y1="4.93" x2="6.34" y2="6.34" /><line x1="17.66" y1="17.66" x2="19.07" y2="19.07" /><line x1="2" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="22" y2="12" /><line x1="4.93" y1="19.07" x2="6.34" y2="17.66" /><line x1="17.66" y1="6.34" x2="19.07" y2="4.93" />
+                            </svg>
+                            Daytime
                           </button>
                           <button
                             type="button"
                             onClick={() => setIsDaytime(false)}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all inline-flex items-center gap-1.5 ${
                               isDaytime === false ? "border-sage bg-sage/10 text-sage" : "border-foreground/15 text-muted"
                             }`}
                           >
-                            🌙 Nighttime
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                            Nighttime
                           </button>
                         </div>
                       )}
@@ -1195,7 +1201,11 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 5: Meet Dolly ══════════ */}
           {step === 5 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <div className="text-4xl mb-4">&#x1F4AC;</div>
+              <div className="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+              </div>
               <h1
                 className="text-[30px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -1278,7 +1288,12 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 7: Notifications ══════════ */}
           {step === 7 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <div className="text-4xl mb-5">&#x1F514;</div>
+              <div className="mb-5">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </div>
               <h1
                 className="text-[26px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -1339,7 +1354,11 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 8: Moon Practice ══════════ */}
           {step === 8 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <div className="text-4xl mb-4">&#x1F319;</div>
+              <div className="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              </div>
               <h1
                 className="text-[26px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}

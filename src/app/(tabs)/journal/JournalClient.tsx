@@ -53,6 +53,16 @@ import { MOOD_PALETTE } from "@/lib/feedback";
 
 type View = "home" | "compose" | "entry" | "patterns";
 
+// Mood-chip dot colors — map mood categories onto the themed entry-type tokens
+// (matches the design's mood-dot pattern: each chip carries a small tinted dot).
+const MOOD_DOT: Record<string, string> = {
+  heavy: "var(--type-heavy)",
+  hard: "var(--type-ritual)",
+  neutral: "var(--journal-accent)",
+  soft_positive: "var(--type-tarot)",
+  bright_positive: "var(--type-prompt)",
+};
+
 export default function JournalPageWrapper() {
   return (
     <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" /></div>}>
@@ -110,6 +120,9 @@ function JournalPage() {
   const [selectedPulls, setSelectedPulls] = useState<Set<number>>(new Set());
   const [expandedPullIdx, setExpandedPullIdx] = useState<number | null>(null);
   const [pullCopied, setPullCopied] = useState<number | null>(null);
+
+  // Recent list — expand from the latest 4 to all entries in place
+  const [showAllEntries, setShowAllEntries] = useState(false);
 
   // Pagination
   const [entriesPage, setEntriesPage] = useState(1);
@@ -511,8 +524,8 @@ function JournalPage() {
             className="px-4 py-2 rounded-full text-[12px] font-bold"
             style={{
               letterSpacing: "0.06em",
-              background: !canSave ? "color-mix(in srgb, var(--foreground) 10%, transparent)" : isBurn ? "var(--oxblood-light)" : "var(--lavender)",
-              color: !canSave ? "var(--foreground-muted)" : isBurn ? "#fff" : "var(--plum-deep)",
+              background: !canSave ? "color-mix(in srgb, var(--foreground) 10%, transparent)" : isBurn ? "var(--oxblood-light)" : "var(--journal-accent)",
+              color: !canSave ? "var(--foreground-muted)" : isBurn ? "#fff" : "var(--journal-on-accent)",
             }}
           >
             {isBurn ? "Burn" : "Save"}
@@ -524,10 +537,11 @@ function JournalPage() {
           <div className="flex items-baseline gap-3 mb-4 px-1">
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 46, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{composeDate.day}</span>
             <div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>{composeDate.month}, {composeDate.weekday}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)" }}>{composeDate.month}</div>
+              <div className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{composeDate.weekday} &middot; {composeDate.year}</div>
               {composeMoonLabel && (
                 <div className="inline-flex items-center gap-1.5 mt-1 text-[11.5px]" style={{ color: "var(--foreground-muted)" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--journal-accent)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
                   {composeMoonLabel}
                 </div>
               )}
@@ -567,7 +581,7 @@ function JournalPage() {
             {composeMoonLabel && (
               <div className="flex flex-wrap gap-2 mt-4 mb-4">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--lavender)" }} />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--journal-accent)" }} />
                   <span className="text-[10.5px]" style={{ color: "var(--foreground-secondary)" }}>{composeMoonLabel}</span>
                 </span>
               </div>
@@ -575,17 +589,18 @@ function JournalPage() {
 
             {/* Prompt */}
             {currentPrompt && (
-              <div style={{ borderLeft: "2px solid var(--lavender)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
+              <div style={{ borderLeft: "2px solid var(--journal-accent)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
+                <div className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--journal-accent)", marginBottom: 6 }}>Tonight&rsquo;s prompt</div>
                 <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 16, lineHeight: 1.45, color: "var(--foreground-muted)", margin: 0 }}>{currentPrompt.text}</p>
                 <div className="flex gap-3 mt-2">
-                  {promptCycleCount < 2 && <button onClick={cyclePrompt} className="text-[11px]" style={{ color: "var(--lavender)" }}>Different prompt</button>}
+                  {promptCycleCount < 2 && <button onClick={cyclePrompt} className="text-[11px]" style={{ color: "var(--journal-accent)" }}>Different prompt</button>}
                   <button onClick={goFreeWrite} className="text-[11px] text-muted">Write something else</button>
                 </div>
               </div>
             )}
             {aiPromptLoading && (
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-3 h-3 border rounded-full animate-spin" style={{ borderColor: "color-mix(in srgb, var(--lavender) 40%, transparent)", borderTopColor: "var(--lavender)" }} />
+                <div className="w-3 h-3 border rounded-full animate-spin" style={{ borderColor: "color-mix(in srgb, var(--journal-accent) 40%, transparent)", borderTopColor: "var(--journal-accent)" }} />
                 <span className="text-[11px] text-muted">Personalizing your prompt…</span>
               </div>
             )}
@@ -612,11 +627,12 @@ function JournalPage() {
                   key={m.word}
                   aria-pressed={active}
                   onClick={() => setSelectedMoods((prev) => prev.includes(m.word) ? prev.filter((x) => x !== m.word) : [...prev, m.word])}
-                  className="px-3 py-2 rounded-full text-[11px] transition-all"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] transition-all"
                   style={active
-                    ? { background: "color-mix(in srgb, var(--lavender) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 45%, transparent)", color: "var(--foreground)", fontWeight: 600 }
+                    ? { background: "color-mix(in srgb, var(--journal-accent) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--journal-accent) 45%, transparent)", color: "var(--foreground)", fontWeight: 600 }
                     : { background: "color-mix(in srgb, var(--foreground) 4%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
                 >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: MOOD_DOT[m.category] || "var(--journal-accent)" }} />
                   {m.word}
                 </button>
               );
@@ -627,7 +643,7 @@ function JournalPage() {
           <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>Details</p>
           <div className="rounded-[18px] overflow-hidden mb-2" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
             {[
-              { icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />, label: "Moon", value: composeMoonLabel || "—", color: "var(--lavender)" },
+              { icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />, label: "Moon", value: composeMoonLabel || "—", color: "var(--journal-accent)" },
               { icon: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></>, label: "Mood", value: selectedMoods.length ? selectedMoods.join(", ") : "Tap above to set", color: "var(--sage-light)" },
             ].map((row, i) => (
               <div key={row.label} className="flex items-center gap-3 px-4 py-3.5" style={i === 0 ? { borderBottom: "0.5px solid var(--border-card)" } : undefined}>
@@ -772,7 +788,7 @@ function JournalPage() {
             {editingEntry ? (
               <>
                 <button onClick={() => setEditingEntry(false)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium" style={{ color: "var(--foreground-muted)", border: "0.5px solid var(--border-card)" }}>Cancel</button>
-                <button onClick={handleSaveEdit} className="px-4 py-1.5 rounded-full text-[12px] font-bold" style={{ background: "var(--lavender)", color: "var(--plum-deep)", letterSpacing: "0.04em" }}>Save</button>
+                <button onClick={handleSaveEdit} className="px-4 py-1.5 rounded-full text-[12px] font-bold" style={{ background: "var(--journal-accent)", color: "var(--journal-on-accent)", letterSpacing: "0.04em" }}>Save</button>
               </>
             ) : confirmingDelete ? (
               <>
@@ -795,10 +811,11 @@ function JournalPage() {
           <div className="flex items-baseline gap-3 mb-4 px-1">
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 46, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{entryDate.getDate()}</span>
             <div>
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)" }}>{eMonth}, {eWeekday}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)" }}>{eMonth}</div>
+              <div className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{eWeekday} &middot; {entryDate.getFullYear()}</div>
               {moonLabel && (
                 <div className="inline-flex items-center gap-1.5 mt-1 text-[11.5px]" style={{ color: "var(--foreground-muted)" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--journal-accent)" strokeWidth="1.5"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
                   {moonLabel}
                 </div>
               )}
@@ -811,7 +828,7 @@ function JournalPage() {
               <p className="pb-3.5 mb-4" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)", borderBottom: "0.5px solid var(--border-card)" }}>{selectedEntry.title}</p>
             )}
             {selectedEntry.prompt_text && (
-              <div style={{ borderLeft: "2px solid var(--lavender)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
+              <div style={{ borderLeft: "2px solid var(--journal-accent)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>
                 <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 16, lineHeight: 1.45, color: "var(--foreground-muted)", margin: 0 }}>{selectedEntry.prompt_text}</p>
               </div>
             )}
@@ -834,9 +851,15 @@ function JournalPage() {
             <>
               <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>How the night felt</p>
               <div className="flex flex-wrap gap-2 mb-5 px-1">
-                {moods.map((mo) => (
-                  <span key={mo} className="px-3 py-2 rounded-full text-[11px] font-semibold" style={{ background: "color-mix(in srgb, var(--lavender) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 45%, transparent)", color: "var(--foreground)" }}>{mo}</span>
-                ))}
+                {moods.map((mo) => {
+                  const cat = MOOD_PALETTE.find((p) => p.word.toLowerCase() === mo.toLowerCase())?.category;
+                  return (
+                    <span key={mo} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] font-semibold" style={{ background: "color-mix(in srgb, var(--journal-accent) 16%, transparent)", border: "0.5px solid color-mix(in srgb, var(--journal-accent) 45%, transparent)", color: "var(--foreground)" }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: (cat && MOOD_DOT[cat]) || "var(--journal-accent)" }} />
+                      {mo}
+                    </span>
+                  );
+                })}
               </div>
             </>
           )}
@@ -845,7 +868,7 @@ function JournalPage() {
           <p className="text-[11px] uppercase font-bold mb-3 px-1" style={{ letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>Details</p>
           <div className="rounded-[18px] overflow-hidden" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
             {[
-              ...(moonLabel ? [{ label: "Moon", value: moonLabel, color: "var(--lavender)", icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /> }] : []),
+              ...(moonLabel ? [{ label: "Moon", value: moonLabel, color: "var(--journal-accent)", icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /> }] : []),
               ...(tags?.planetaryDay ? [{ label: "Day", value: `${tags.planetaryDay} day`, color: "var(--sage-light)", icon: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></> }] : []),
             ].map((row, i, arr) => (
               <div key={row.label} className="flex items-center gap-3 px-4 py-3.5" style={i < arr.length - 1 ? { borderBottom: "0.5px solid var(--border-card)" } : undefined}>
@@ -905,7 +928,7 @@ function JournalPage() {
   }
 
   // ─── Home View (default) — matches the "Journal - Today" Claude design ──────
-  const TYPE_COLOR: Record<string, string> = { ritual: "#9aa2c8", tarot: "#d99bb0", prompt: "#8fb894", heavy: "#b58a6a" };
+  const TYPE_COLOR: Record<string, string> = { ritual: "var(--type-ritual)", tarot: "var(--type-tarot)", prompt: "var(--type-prompt)", heavy: "var(--type-heavy)" };
   const TYPE_LABEL: Record<string, string> = { ritual: "From your ritual", tarot: "From your Tarot pull", prompt: "From your horoscope", heavy: "Free writing" };
   const classifyEntry = (e: JournalEntry): keyof typeof TYPE_COLOR => {
     const pid = (e.prompt_id || "").toLowerCase();
@@ -977,7 +1000,7 @@ function JournalPage() {
     while (feed.some((f) => sameDay(f.date, cur))) { streak++; cur.setDate(cur.getDate() - 1); } }
 
   const cheer = monthEntryCount >= 5;
-  const recent = feed.slice(0, 4);
+  const recent = showAllEntries ? feed : feed.slice(0, 4);
   const cardBg = "var(--background-card)";
   const cardBd = "var(--border-card)";
   const promptText = currentPrompt?.text || todayPrompt?.text || "What are you ready to set down before the new moon?";
@@ -988,12 +1011,12 @@ function JournalPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <p style={{ fontFamily: "var(--font-script)", fontSize: 32, lineHeight: 1, color: "var(--lavender)", margin: "0 0 2px" }}>Your reflections,</p>
+            <p style={{ fontFamily: "var(--font-script)", fontSize: 32, lineHeight: 1, color: "var(--journal-accent)", margin: "0 0 2px" }}>Your reflections,</p>
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 36, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1, color: "var(--foreground)" }}>Journal</h1>
           </div>
           {streak > 0 && (
-            <span className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full" style={{ background: "color-mix(in srgb, var(--lavender) 14%, transparent)", border: "1px solid color-mix(in srgb, var(--lavender) 40%, transparent)" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+            <span className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full" style={{ background: "color-mix(in srgb, var(--journal-accent) 14%, transparent)", border: "1px solid color-mix(in srgb, var(--journal-accent) 40%, transparent)" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--journal-accent)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
               <span className="text-[12.5px] font-bold" style={{ color: "var(--foreground)" }}>{streak}</span>
             </span>
           )}
@@ -1003,22 +1026,22 @@ function JournalPage() {
         <div className="flex gap-[7px] mb-[22px]">
           {weekStrip.map((d, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-[10px] rounded-2xl" style={{
-              background: d.isToday ? "var(--lavender)" : cardBg,
+              background: d.isToday ? "var(--journal-accent)" : cardBg,
               border: d.isToday ? "none" : `0.5px solid ${cardBd}`,
             }}>
-              <span className="text-[10px] font-semibold" style={{ color: d.isToday ? "var(--plum-deep)" : "var(--foreground-muted)" }}>{d.dow}</span>
-              <span style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 600, color: d.isToday ? "var(--plum-deep)" : "var(--foreground)" }}>{d.num}</span>
-              <span className="w-[5px] h-[5px] rounded-full" style={{ background: d.type ? (d.isToday ? "var(--plum-deep)" : TYPE_COLOR[d.type]) : "transparent" }} />
+              <span className="text-[10px] font-semibold" style={{ color: d.isToday ? "var(--journal-on-accent)" : "var(--foreground-muted)" }}>{d.dow}</span>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 600, color: d.isToday ? "var(--journal-on-accent)" : "var(--foreground)" }}>{d.num}</span>
+              <span className="w-[5px] h-[5px] rounded-full" style={{ background: d.type ? (d.isToday ? "var(--journal-on-accent)" : TYPE_COLOR[d.type]) : "transparent" }} />
             </div>
           ))}
         </div>
 
         {/* ENCOURAGING BANNER */}
         {cheer && (
-          <div className="relative overflow-hidden rounded-[20px] p-[18px_20px] mb-4" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--lavender) 22%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--lavender) 24%, transparent)` }}>
+          <div className="relative overflow-hidden rounded-[20px] p-[18px_20px] mb-4" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--journal-accent) 22%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--journal-accent) 24%, transparent)` }}>
             <div className="flex items-center gap-3.5">
-              <div className="shrink-0 w-[46px] h-[46px] rounded-[14px] flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--lavender) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 40%, transparent)" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z" /></svg>
+              <div className="shrink-0 w-[46px] h-[46px] rounded-[14px] flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--journal-accent) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--journal-accent) 40%, transparent)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--journal-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z" /></svg>
               </div>
               <div className="min-w-0">
                 <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{monthEntryCount} nights kept this month</div>
@@ -1029,14 +1052,14 @@ function JournalPage() {
         )}
 
         {/* HERO PROMPT CARD */}
-        <div className="relative overflow-hidden rounded-[22px] p-[22px] mb-4" style={{ background: "linear-gradient(165deg, color-mix(in srgb, var(--lavender) 20%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--lavender) 22%, transparent)` }}>
-          <div aria-hidden className="absolute pointer-events-none" style={{ top: -40, right: -30, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--lavender) 14%, transparent), transparent 68%)" }} />
+        <div className="relative overflow-hidden rounded-[22px] p-[22px] mb-4" style={{ background: "linear-gradient(165deg, color-mix(in srgb, var(--journal-accent) 20%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--journal-accent) 22%, transparent)` }}>
+          <div aria-hidden className="absolute pointer-events-none" style={{ top: -40, right: -30, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--journal-accent) 14%, transparent), transparent 68%)" }} />
           <div className="flex items-center gap-1.5 mb-3 relative">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /><circle cx="12" cy="12" r="3.4" /></svg>
-            <span className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--journal-accent)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /><circle cx="12" cy="12" r="3.4" /></svg>
+            <span className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--journal-accent)" }}>Tonight&rsquo;s prompt</span>
           </div>
           <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 22, fontStyle: "italic", lineHeight: 1.4, color: "var(--foreground)", margin: "0 0 20px", position: "relative", textWrap: "pretty" }}>{promptText}</p>
-          <button onClick={startCompose} className="w-full py-[15px] rounded-full text-[12.5px] font-bold uppercase" style={{ letterSpacing: "0.1em", background: "var(--lavender)", color: "var(--plum-deep)", border: "none" }}>Begin writing</button>
+          <button onClick={startCompose} className="w-full py-[15px] rounded-full text-[12.5px] font-bold uppercase" style={{ letterSpacing: "0.1em", background: "var(--journal-accent)", color: "var(--journal-on-accent)", border: "none" }}>Begin writing</button>
         </div>
 
         {/* MORNING / EVENING SPLIT */}
@@ -1069,9 +1092,9 @@ function JournalPage() {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {calCells.map((c, i) => (
-              <div key={i} className="aspect-square flex flex-col items-center justify-center gap-[3px] rounded-[10px]" style={c && c.isToday ? { background: "color-mix(in srgb, var(--lavender) 14%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--lavender) 50%, transparent)" } : undefined}>
+              <div key={i} className="aspect-square flex flex-col items-center justify-center gap-[3px] rounded-[10px]" style={c && c.isToday ? { background: "color-mix(in srgb, var(--journal-accent) 14%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--journal-accent) 50%, transparent)" } : undefined}>
                 {c && <>
-                  <span className="text-[13px]" style={{ fontWeight: c.isToday ? 700 : c.type ? 600 : 400, color: c.isToday ? "var(--lavender)" : c.type ? "var(--foreground)" : "var(--foreground-faint)" }}>{c.day}</span>
+                  <span className="text-[13px]" style={{ fontWeight: c.isToday ? 700 : c.type ? 600 : 400, color: c.isToday ? "var(--journal-accent)" : c.type ? "var(--foreground)" : "var(--foreground-faint)" }}>{c.day}</span>
                   <span className="w-[5px] h-[5px] rounded-full" style={{ background: c.type ? TYPE_COLOR[c.type] : "transparent" }} />
                 </>}
               </div>
@@ -1116,6 +1139,11 @@ function JournalPage() {
         {/* RECENT */}
         <div className="flex items-baseline justify-between mb-3">
           <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 18, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>Recent</h3>
+          {feed.length > 4 && (
+            <button onClick={() => setShowAllEntries((v) => !v)} className="text-[11.5px] font-semibold" style={{ letterSpacing: "0.02em", color: "var(--journal-accent)" }}>
+              {showAllEntries ? "Show less" : <>All entries &rsaquo;</>}
+            </button>
+          )}
         </div>
         {recent.length === 0 ? (
           <div className="rounded-2xl p-8 text-center" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>

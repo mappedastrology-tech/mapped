@@ -203,7 +203,7 @@ export default function WebShell({
 const FOOT_COLS = [
   { head: "Explore", links: [ { label: "Almanac", href: "/almanac" }, { label: "Maps", href: "/maps" }, { label: "Library", href: "/library" }, { label: "Tarot", href: "/tarot" } ] },
   { head: "Practice", links: [ { label: "Journal", href: "/journal" }, { label: "Ask Dolly", href: "/dolly" }, { label: "Rituals", href: "/learn" }, { label: "Numerology", href: "/numerology" } ] },
-  { head: "Company", links: [ { label: "The app", href: "/" }, { label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Log in", href: "/onboarding" } ] },
+  { head: "Company", links: [ { label: "About", href: "/" }, { label: "The app", href: "/home" }, { label: "Help", href: "/dolly" }, { label: "Log in", href: "/onboarding" } ] },
 ];
 
 function FullFooter() {
@@ -245,7 +245,7 @@ export function CompactFooter({ tagline = "Read the sky, then trust yourself." }
   return (
     <footer style={{ position: "relative", zIndex: 10, borderTop: "1px solid var(--hair)", background: "var(--bg2)" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped · {tagline}</span>
+        <span style={{ fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. {tagline}</span>
         <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>← Back to home</Link>
       </div>
     </footer>

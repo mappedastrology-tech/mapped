@@ -14,9 +14,10 @@ import WebShell, { useWebTheme } from "./WebShell";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 
+// U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const SIGN_GLYPH: Record<string, string> = {
-  Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋", Leo: "♌", Virgo: "♍",
-  Libra: "♎", Scorpio: "♏", Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
+  Aries: "♈︎", Taurus: "♉︎", Gemini: "♊︎", Cancer: "♋︎", Leo: "♌︎", Virgo: "♍︎",
+  Libra: "♎︎", Scorpio: "♏︎", Sagittarius: "♐︎", Capricorn: "♑︎", Aquarius: "♒︎", Pisces: "♓︎",
 };
 
 const AVATAR = "/images/crystal-ball.png";

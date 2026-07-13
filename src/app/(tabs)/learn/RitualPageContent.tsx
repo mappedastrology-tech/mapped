@@ -105,6 +105,41 @@ const MOOD_LABELS: Record<string, string> = {
   joyful: "Uplifting", grounded: "Grounding", releasing: "Releasing",
 };
 
+// ─── Saved rituals (heart/bookmark system) ─────────────────────────────────
+const SAVED_RITUALS_KEY = "mapped:saved-rituals";
+
+/**
+ * Per-intention accent hexes from the design (Ritual - Today.dc.html CATS).
+ * Tiles are accent-on-dark panels with fixed cream text in BOTH themes —
+ * same treatment as the plum hero card, so no theme branching needed.
+ */
+const INTENTION_ACCENTS: Record<string, string> = {
+  love: "#a8697e", manifestation: "#bb954e", protection: "#6f4a66",
+  career: "#9c7a44", clarity: "#8b6f8c", peace: "#869471",
+  growth: "#7a9350", release: "#6e9184", health: "#8c8c4c",
+  wealth: "#c3a45f", creativity: "#c1734e", foundation: "#a5744f",
+  all: "#7d5876",
+};
+
+/** Cream label color used on the accent tiles (design labelColor). */
+const TILE_CREAM = "#f6efdc";
+
+function HeartIcon({ filled, color = "#e8c37a", size = 17 }: { filled: boolean; color?: string; size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={filled ? color : "#efe6cf"} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20.3s-7.2-4.5-9.7-8.8C.4 7.9 2.9 4.2 6.4 4.2 8.9 4.2 11 6.3 12 7.5c1-1.2 3.1-3.3 5.6-3.3 3.5 0 6 3.7 4.1 7.3C19.2 15.8 12 20.3 12 20.3z" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled, color = "var(--brass)", size = 15 }: { filled: boolean; color?: string; size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4.5h12v15l-6-4-6 4z" />
+    </svg>
+  );
+}
+
 // ─── Tradition display names ───────────────────────────────────────────────
 const TRADITION_LABELS: Record<string, string> = {
   vedic: "Vedic / Hindu", chinese: "Chinese", celtic: "Celtic / Gaelic",
@@ -241,7 +276,7 @@ function RitualToolsPopup({ onClose }: { onClose: () => void }) {
           <button
             onClick={onClose}
             className="w-full py-3 rounded-xl text-[14px] font-semibold transition-all"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+            style={{ fontFamily: "var(--font-serif)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
           >
             Done
           </button>
@@ -459,7 +494,7 @@ function EventCalendar({
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[14px]">{sym.icon}</span>
-                    <span className="text-[13px] font-semibold flex-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>{evt.name}</span>
+                    <span className="text-[13px] font-semibold flex-1" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{evt.name}</span>
                     <svg aria-hidden="true" className={`w-3.5 h-3.5 transition-transform ${isActive ? "rotate-90" : ""}`} style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -533,7 +568,7 @@ function RitualDetailCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <RitualIcon name={ritual.element} size={20} />
-              <h3 className="text-[14px] font-medium" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>{ritual.title}</h3>
+              <h3 className="text-[14px] font-medium" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{ritual.title}</h3>
             </div>
             <div className="flex items-center gap-2 text-[10px] flex-wrap">
               {(() => {
@@ -758,6 +793,33 @@ export default function RitualPageContent() {
 
   // Customize tools popup
   const [showCustomize, setShowCustomize] = useState(false);
+
+  // ─── Saved rituals (hearted for later) ───
+  const [savedRituals, setSavedRituals] = useState<string[]>([]);
+  const [expandedSaved, setExpandedSaved] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SAVED_RITUALS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setSavedRituals(parsed.filter((id): id is string => typeof id === "string"));
+      }
+    } catch {}
+  }, []);
+
+  const toggleSaved = (ritualId: string) => {
+    setSavedRituals((prev) => {
+      const next = prev.includes(ritualId) ? prev.filter((id) => id !== ritualId) : [...prev, ritualId];
+      try { localStorage.setItem(SAVED_RITUALS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const savedRitualObjects = useMemo(
+    () => savedRituals.map((id) => RITUAL_CATALOG.find((r) => r.id === id)).filter((r): r is CatalogRitual => !!r),
+    [savedRituals]
+  );
 
   const handleRitualComplete = (ritualId: string, ritualTitle: string) => {
     setShowCheckin({ ritualId, ritualTitle });
@@ -998,13 +1060,24 @@ export default function RitualPageContent() {
 
       {/* ═══ GREETING HEADER ═══ */}
       <div className="relative pt-5 pb-4">
-        <button
-          onClick={() => setShowCustomize(true)}
-          className="absolute right-0 text-[11px] font-medium px-3 py-1.5 rounded-full transition-colors"
-          style={{ top: 20, color: "var(--foreground-faint)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
-        >
-          Customize
-        </button>
+        <div className="absolute right-0 flex items-center gap-2" style={{ top: 20 }}>
+          <button
+            onClick={() => document.getElementById("saved-shelf")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            aria-label={`Saved rituals: ${savedRituals.length}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors"
+            style={{ border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
+          >
+            <BookmarkIcon filled={savedRituals.length > 0} />
+            <span className="text-[11px] font-bold" style={{ color: "var(--foreground-secondary)" }}>{savedRituals.length}</span>
+          </button>
+          <button
+            onClick={() => setShowCustomize(true)}
+            className="text-[11px] font-medium px-3 py-1.5 rounded-full transition-colors"
+            style={{ color: "var(--foreground-faint)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
+          >
+            Customize
+          </button>
+        </div>
         <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1, color: "var(--brass)", margin: "0 0 2px" }}>
           {ritualGreeting},
         </p>
@@ -1035,7 +1108,7 @@ export default function RitualPageContent() {
                   <p className="text-[10px] uppercase tracking-[0.15em] font-bold" style={{ color: "var(--terracotta)" }}>
                     Your Active Practice — Day {activeRitual.dayNumber}
                   </p>
-                  <h2 className="text-[18px] font-bold" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+                  <h2 className="text-[18px] font-bold" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>
                     {ritual.title}
                   </h2>
                 </div>
@@ -1086,6 +1159,14 @@ export default function RitualPageContent() {
         <div aria-hidden="true" className="absolute pointer-events-none" style={{ top: 22, left: "50%", transform: "translateX(-50%)", width: 172, height: 172, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.22), transparent 66%)" }} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={getMoonPhaseImage(energy.moonPhase.phase)} alt={energy.moonPhase.label} style={{ position: "absolute", top: 28, left: "50%", transform: "translateX(-50%)", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.5))" }} />
+        <button
+          onClick={() => toggleSaved(dailySuggestion.id)}
+          aria-label={savedRituals.includes(dailySuggestion.id) ? "Remove ritual from saved" : "Save ritual for later"}
+          className="active:scale-95 transition-transform"
+          style={{ position: "absolute", top: 16, right: 16, zIndex: 3, width: 38, height: 38, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(15,8,20,0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <HeartIcon filled={savedRituals.includes(dailySuggestion.id)} />
+        </button>
 
         <div className="absolute left-0 right-0 bottom-0" style={{ padding: "22px 24px 24px", background: "linear-gradient(180deg,transparent 0%,rgba(20,10,26,0.5) 32%,rgba(20,10,26,0.92) 100%)" }}>
           <p className="text-[9.5px] uppercase font-bold mb-2" style={{ letterSpacing: "0.2em", color: "#e0c488" }}>{contextLine}</p>
@@ -1126,10 +1207,71 @@ export default function RitualPageContent() {
         </div>
       )}
 
+      {/* ═══ SAVED FOR LATER (hearted rituals shelf) ═══ */}
+      {savedRitualObjects.length > 0 && (
+        <div id="saved-shelf" className="mb-8" style={{ scrollMarginTop: 16 }}>
+          <div className="flex items-baseline justify-between">
+            <h3 className="flex items-center gap-2" style={{ fontFamily: "var(--font-serif)", fontSize: 20, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>
+              <BookmarkIcon filled={true} />
+              Saved for later
+            </h3>
+            <span className="text-[11.5px]" style={{ color: "var(--foreground-faint)" }}>
+              {savedRitualObjects.length} saved
+            </span>
+          </div>
+          <p className="text-[12.5px] mb-3.5 mt-0.5" style={{ color: "var(--foreground-muted)" }}>Pick up a ritual you set aside.</p>
+          <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-1.5">
+            {savedRitualObjects.map((r) => {
+              const cat = RITUAL_CATEGORIES.find((c) => c.key === r.category);
+              const accent = INTENTION_ACCENTS[r.category] || INTENTION_ACCENTS.all;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setExpandedSaved(expandedSaved === r.id ? null : r.id)}
+                  className="relative shrink-0 text-left active:scale-[0.98] transition-transform"
+                  style={{ width: 158, padding: 14, borderRadius: 16, background: "var(--background-card)", border: "0.5px solid var(--border-card)", boxShadow: cardShadow }}
+                >
+                  <span
+                    role="button"
+                    aria-label="Remove from saved"
+                    onClick={(e) => { e.stopPropagation(); toggleSaved(r.id); if (expandedSaved === r.id) setExpandedSaved(null); }}
+                    className="absolute flex items-center justify-center"
+                    style={{ top: 8, right: 8, padding: 6, cursor: "pointer" }}
+                  >
+                    <HeartIcon filled={true} color={accent} size={15} />
+                  </span>
+                  <span
+                    className="inline-flex items-center justify-center"
+                    style={{ width: 38, height: 38, borderRadius: 11, background: `color-mix(in srgb, ${accent} 18%, transparent)`, border: `0.5px solid color-mix(in srgb, ${accent} 30%, transparent)` }}
+                  >
+                    <RitualIcon name={r.category} size={20} />
+                  </span>
+                  <span className="block" style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, lineHeight: 1.15, color: "var(--foreground)", marginTop: 11 }}>
+                    {r.title}
+                  </span>
+                  <span className="block text-[11px]" style={{ color: "var(--foreground-muted)", marginTop: 4 }}>
+                    {cat?.label || r.category} · {r.duration || "5 min"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {expandedSaved && (() => {
+            const r = savedRitualObjects.find((s) => s.id === expandedSaved);
+            if (!r) return null;
+            return (
+              <div className="mt-2 rounded-2xl overflow-hidden" style={{ boxShadow: cardShadow }}>
+                <RitualDetailCard ritual={r} isExpanded={true} onToggle={() => setExpandedSaved(null)} onComplete={handleRitualComplete} variant="featured" />
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* ═══ FOR RIGHT NOW (quick rituals) ═══ */}
       {quickRituals.length > 0 && (
         <div className="mb-8">
-          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 20, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>For right now</h3>
+          <h3 style={{ fontFamily: "var(--font-serif)", fontSize: 20, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>For right now</h3>
           <p className="text-[12.5px] mb-3.5 mt-0.5" style={{ color: "var(--foreground-muted)" }}>The fastest way back to yourself.</p>
           <div className="flex flex-col gap-3">
             {quickRituals.map((r) => (
@@ -1188,7 +1330,7 @@ export default function RitualPageContent() {
           <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5 pr-10" style={{ color: "var(--foreground-secondary)" }}>
             Tonight&apos;s Moon
           </p>
-          <h2 className="text-[17px] font-bold leading-tight mb-1" style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "var(--foreground)" }}>
+          <h2 className="text-[17px] font-bold leading-tight mb-1" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>
             {energy.moonPhase.label}
           </h2>
           <p className="text-[11px] leading-snug" style={{ color: "var(--foreground-muted)" }}>
@@ -1277,7 +1419,7 @@ export default function RitualPageContent() {
       {/* ═══ WHAT ARE YOU CALLING IN? (intention tiles) ═══ */}
       <div className="mb-5">
         <div className="flex items-baseline justify-between mb-0.5">
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 20, fontWeight: 500, color: "var(--foreground)" }}>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 20, fontWeight: 500, color: "var(--foreground)" }}>
             What are you calling in?
           </h2>
           <span className="text-[11.5px]" style={{ color: "var(--foreground-faint)" }}>{RITUAL_CATEGORIES.length} intentions</span>
@@ -1288,23 +1430,29 @@ export default function RitualPageContent() {
           {([{ key: null as string | null, label: "All rituals" }, ...RITUAL_CATEGORIES.map((c) => ({ key: c.key as string | null, label: c.label }))]).map((cat) => {
             const active = selectedCategory === cat.key;
             const count = cat.key === null ? filteredRituals.length : toolFilteredCatalog.filter((r) => r.category === cat.key).length;
+            // Accent-on-dark tile treatment from the design — fixed cream text
+            // on a per-category gradient panel, same in both themes (like the
+            // plum hero card).
+            const accent = INTENTION_ACCENTS[cat.key ?? "all"];
             return (
               <button
                 key={cat.key ?? "all"}
                 onClick={() => setSelectedCategory(cat.key === selectedCategory ? null : (cat.key as RitualCategory | null))}
                 className="flex items-center gap-3 px-3.5 py-3.5 rounded-[16px] text-left transition-all"
                 style={{
-                  background: active ? "color-mix(in srgb, var(--terracotta) 12%, var(--background-card))" : "var(--background-card)",
-                  border: `0.5px solid ${active ? "var(--terracotta)" : "var(--border-card)"}`,
-                  boxShadow: cardShadow,
+                  background: `linear-gradient(150deg, color-mix(in srgb, ${accent} 90%, #100810), color-mix(in srgb, ${accent} 66%, #180e18))`,
+                  border: `0.5px solid ${active ? TILE_CREAM : `color-mix(in srgb, ${accent} 55%, transparent)`}`,
+                  boxShadow: active
+                    ? `0 7px 18px color-mix(in srgb, ${accent} 26%, transparent), inset 0 0 0 1px rgba(246,239,220,0.55)`
+                    : `0 7px 18px color-mix(in srgb, ${accent} 26%, transparent)`,
                 }}
               >
-                <span className="shrink-0 w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: active ? "color-mix(in srgb, var(--terracotta) 18%, transparent)" : "var(--icon-thumb-love, rgba(196,149,106,0.12))" }}>
-                  {cat.key === null ? <span style={{ color: "var(--brass)", fontSize: 16 }}>✦</span> : <RitualIcon name={cat.key} size={20} />}
+                <span className="shrink-0 w-9 h-9 rounded-[11px] flex items-center justify-center" style={{ background: "rgba(255,255,255,0.16)", border: "0.5px solid rgba(255,255,255,0.14)" }}>
+                  {cat.key === null ? <span style={{ color: TILE_CREAM, fontSize: 16 }}>{"\u2726\uFE0E"}</span> : <RitualIcon name={cat.key} size={20} />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 15, lineHeight: 1.1, color: active ? "var(--terracotta)" : "var(--foreground)" }}>{cat.label}</span>
-                  <span className="block text-[10.5px] mt-0.5" style={{ color: "var(--foreground-faint)" }}>{count} {count === 1 ? "ritual" : "rituals"}</span>
+                  <span className="block" style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, lineHeight: 1.1, color: TILE_CREAM }}>{cat.label}</span>
+                  <span className="block text-[10.5px] mt-0.5" style={{ letterSpacing: "0.03em", color: "rgba(246,239,220,0.72)" }}>{count} {count === 1 ? "ritual" : "rituals"}</span>
                 </span>
               </button>
             );

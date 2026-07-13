@@ -77,7 +77,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
           {statFields.length > 0 && (
             <div className="flex gap-2 mt-5">
               {statFields.map((f, i) => (
-                <div key={i} className="flex-1 text-center px-1 py-2.5 rounded-[13px]" style={{ background: "var(--lib-surface)", border: "0.5px solid rgba(201,169,97,0.14)" }}>
+                <div key={i} className="flex-1 text-center px-1 py-2.5 rounded-[13px]" style={{ background: "var(--lib-surface)", border: "0.5px solid color-mix(in srgb, var(--brass) 14%, transparent)" }}>
                   <div className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.16em", color: "var(--foreground-muted)" }}>{f.label}</div>
                   {(() => {
                     const linked = onOpenEntry ? findEntryByName(f.value, entry.domain, entry.id) : undefined;
@@ -98,7 +98,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
               <p className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.2em", color: accent }}>At a glance</p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {entry.tags.slice(0, 8).map((t, i) => (
-                  <span key={i} className="text-[11px] px-3 py-1.5 rounded-full" style={{ background: `${accent}1a`, border: `0.5px solid ${accent}38`, color: "var(--brass-light)" }}>{t}</span>
+                  <span key={i} className="text-[11px] px-3 py-1.5 rounded-full" style={{ background: `${accent}1a`, border: `0.5px solid ${accent}38`, color: "var(--brass)" }}>{t}</span>
                 ))}
               </div>
             </div>
@@ -106,13 +106,13 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
 
           {/* Body */}
           <p className="text-[9px] uppercase font-semibold mt-6" style={{ letterSpacing: "0.2em", color: accent }}>{(entry.domain === "almanac" || entry.domain === "meditation") ? "Overview" : "The tradition"}</p>
-          <p className="text-[14px] leading-relaxed mt-2.5" style={{ color: "rgba(240,230,210,0.82)" }}>{entry.summary}</p>
+          <p className="text-[14px] leading-relaxed mt-2.5" style={{ color: "var(--foreground-secondary)" }}>{entry.summary}</p>
 
           {/* Safety */}
           {entry.safety && (
             <div className="rounded-xl px-4 py-3 mt-4" style={{ backgroundColor: "rgba(122,48,40,0.2)", borderLeft: `3px solid ${SAFETY_TONE}` }}>
               <p className="text-[9px] uppercase tracking-widest mb-1 font-semibold" style={{ color: SAFETY_TONE }}>Safety</p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "rgba(240,230,210,0.9)" }}>{entry.safety}</p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{entry.safety}</p>
             </div>
           )}
 
@@ -127,7 +127,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
                     {linked ? (
                       <button onClick={() => onOpenEntry!(linked)} className="text-[14px] leading-relaxed text-left active:opacity-70" style={{ color: accent, textDecoration: "underline", textUnderlineOffset: 2 }}>{f.value} →</button>
                     ) : (
-                      <p className="text-[14px] leading-relaxed" style={{ color: "rgba(240,230,210,0.92)" }}>{f.value}</p>
+                      <p className="text-[14px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{f.value}</p>
                     )}
                   </div>
                 );
@@ -136,7 +136,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
           )}
 
           {(entry.safety || entry.domain === "herbalism" || entry.domain === "essential-oils") && (
-            <p className="text-[10px] leading-relaxed mt-6 text-center" style={{ color: "rgba(240,230,210,0.45)" }}>
+            <p className="text-[10px] leading-relaxed mt-6 text-center" style={{ color: "var(--foreground-muted)" }}>
               Not medical advice — check with a clinician or pharmacist before using herbs or oils for a health condition or alongside medication.
             </p>
           )}

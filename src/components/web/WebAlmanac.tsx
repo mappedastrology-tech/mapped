@@ -13,8 +13,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { useLiveSky } from "./useLiveSky";
+import { getOnThisDay } from "@/lib/onThisDay";
 
 const VS = "\uFE0E";
+
+const SIGN_GLYPH: Record<string, string> = {
+  Aries: "\u2648", Taurus: "\u2649", Gemini: "\u264A", Cancer: "\u264B", Leo: "\u264C", Virgo: "\u264D",
+  Libra: "\u264E", Scorpio: "\u264F", Sagittarius: "\u2650", Capricorn: "\u2651", Aquarius: "\u2652", Pisces: "\u2653",
+};
 
 const SUN_TIMES = [ { label: "Sunrise", val: "5:58" }, { label: "Sunset", val: "8:31" }, { label: "Daylight", val: "14h 33m" } ];
 const GOOD_FOR = [
@@ -40,6 +46,47 @@ const UPCOMING = [
   { day: "12", mon: "Jul", title: "Mercury enters Leo", sub: "Bolder, warmer, more expressive words." },
   { day: "15", mon: "Jul", title: "Mars trine Jupiter", sub: "A lucky push for ambitious effort." },
 ];
+// Sample "Born on this day" sidebar rows (design fallback until the live sky resolves).
+const BIRTHDAYS = [
+  { initials: "PD", name: "Princess Diana", note: "Princess of Wales", year: "1961" },
+  { initials: "DH", name: "Debbie Harry", note: "Singer, Blondie", year: "1945" },
+  { initials: "DA", name: "Dan Aykroyd", note: "Actor & comedian", year: "1952" },
+  { initials: "ME", name: "Missy Elliott", note: "Rapper & producer", year: "1971" },
+];
+
+/** Short per-item reason for the live good-for list, from the day's Moon sign + phase. */
+function liveGoodReason(moonSign: string, moonLabel: string, i: number): string {
+  const t = [
+    `The ${moonSign} Moon leans this way — the ${moonLabel.toLowerCase()} phase gives it momentum.`,
+    `Well-timed under a ${moonLabel.toLowerCase()} Moon in ${moonSign}.`,
+    `${moonSign} energy favors it; today's sky adds follow-through.`,
+    `A natural fit while the Moon moves through ${moonSign}.`,
+    `The ${moonLabel.toLowerCase()} Moon builds quiet support for this all day.`,
+  ];
+  return t[i % t.length];
+}
+
+/** Short per-item reason for the live hold-off list. */
+function liveHoldReason(moonSign: string, moonLabel: string, i: number): string {
+  const t = [
+    `The ${moonSign} Moon pulls the other way — give it a day or two.`,
+    `Poorly timed under a ${moonLabel.toLowerCase()} Moon in ${moonSign}; it tends to unravel.`,
+    `${moonSign} energy works against this today — wait for a friendlier sky.`,
+  ];
+  return t[i % t.length];
+}
+
+/** Muted sub-line for a live coming-up event, derived from its title. */
+function upcomingSub(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("new moon")) return "A reset — set one intention for the cycle ahead.";
+  if (t.includes("moon")) return "A culmination — what you tend now ripens.";
+  if (t.includes("season")) return "The sky changes sign — a shift in the day's tone.";
+  if (t.includes("equinox")) return "Day and night in balance — a seasonal hinge.";
+  if (t.includes("solstice")) return "The year turns — light at its extreme.";
+  if (t.includes("meteor") || t.includes("shower")) return "Look up after midnight for the best of it.";
+  return "One to mark on the calendar.";
+}
 
 function heroStars(seed: number, n = 26): React.CSSProperties[] {
   let s = seed;
@@ -62,12 +109,33 @@ export default function WebAlmanac() {
   const sunTimes = sky
     ? [{ label: "Sunrise", val: sky.sunrise }, { label: "Sunset", val: sky.sunset }, { label: "Daylight", val: sky.daylight }]
     : SUN_TIMES;
-  const goodCol = sky ? { sub: sky.goodFor.why, items: sky.goodFor.activities } : { sub: "Timed to the Moon's sign & phase.", items: GOOD_FOR.map((g) => g.activity) };
-  const holdCol = sky ? { sub: sky.holdOff.reason, items: sky.holdOff.activities } : { sub: "The void Moon asks for patience.", items: HOLD_OFF.map((h) => h.activity) };
+  const goodCol = sky
+    ? { sub: sky.goodFor.why, items: sky.goodFor.activities.map((a, i) => ({ activity: a, reason: liveGoodReason(sky.moonSign, sky.moonLabel, i) })) }
+    : { sub: "Timed to the Moon's sign & phase.", items: GOOD_FOR };
+  const holdCol = sky
+    ? { sub: sky.holdOff.reason, items: sky.holdOff.activities.map((a, i) => ({ activity: a, reason: liveHoldReason(sky.moonSign, sky.moonLabel, i) })) }
+    : { sub: "The void Moon asks for patience.", items: HOLD_OFF };
   const comingUp = sky && sky.comingUp.length > 0
-    ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: "" }))
+    ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: upcomingSub(u.title) }))
     : UPCOMING;
-  const onThisDay = sky ? sky.onThisDay : [];
+
+  // "Born on this day" — extract birth entries from the on-this-day archive;
+  // keep the design's sample rows until live births are available.
+  const liveBirths = useMemo(() => {
+    if (!sky) return [];
+    return getOnThisDay(sky.date)
+      .filter((e) => e.event.includes(" is born"))
+      .slice(0, 4)
+      .map((e) => {
+        const name = e.event.split(" is born")[0];
+        const words = name.split(/\s+/).filter(Boolean);
+        const initials = (words.length > 1 ? words[0][0] + words[words.length - 1][0] : name.slice(0, 2)).toUpperCase();
+        return { initials, name, note: e.astroNote, year: String(e.year) };
+      });
+  }, [sky]);
+  const born = sky && liveBirths.length > 0
+    ? { head: `Born on ${sky.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })} · ${sky.sabian.sign} ${(SIGN_GLYPH[sky.sabian.sign] ?? "") + VS}`, rows: liveBirths }
+    : { head: `Born on July 1 · Cancer ${"♋" + VS}`, rows: BIRTHDAYS };
 
   return (
     <WebShell current="almanac" theme={theme} onToggleTheme={toggle} footerTagline="Read the sky, then trust yourself.">
@@ -120,13 +188,16 @@ export default function WebAlmanac() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               {[{ h: "Good for today", sub: goodCol.sub, list: goodCol.items, dot: "var(--go)", fg: "var(--fg)" },
                 { h: "Hold off on", sub: holdCol.sub, list: holdCol.items, dot: "var(--terra)", fg: "var(--fg2)" }].map((col) => (
-                <div key={col.h} style={{ ...card, padding: "26px 26px 20px" }}>
+                <div key={col.h} style={{ ...card, padding: "26px 26px 8px" }}>
                   <h2 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, letterSpacing: "0.02em", margin: "0 0 4px", color: "var(--fg)" }}>{col.h}</h2>
                   <p style={{ fontSize: 12.5, color: "var(--faint)", margin: "0 0 12px", textWrap: "pretty" }}>{col.sub}</p>
-                  {col.list.map((activity) => (
-                    <div key={activity} style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 0", borderTop: "0.5px solid var(--line)" }}>
-                      <span style={{ width: 7, height: 7, flex: "0 0 auto", borderRadius: "50%", background: col.dot, boxShadow: `0 0 0 4px color-mix(in srgb, ${col.dot} 18%, transparent)` }} />
-                      <span style={{ fontSize: 15.5, fontWeight: 600, color: col.fg }}>{activity}</span>
+                  {col.list.map((it) => (
+                    <div key={it.activity} style={{ padding: "14px 0", borderTop: "0.5px solid var(--line)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 5 }}>
+                        <span style={{ width: 7, height: 7, flex: "0 0 auto", borderRadius: "50%", background: col.dot, boxShadow: `0 0 0 4px color-mix(in srgb, ${col.dot} 18%, transparent)` }} />
+                        <span style={{ fontSize: 15.5, fontWeight: 600, color: col.fg }}>{it.activity}</span>
+                      </div>
+                      <p style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 0 18px", textWrap: "pretty" }}>{it.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -172,22 +243,21 @@ export default function WebAlmanac() {
                 ))}
               </div>
             </div>
-            {onThisDay.length > 0 && (
-              <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
-                <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>On this day</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
-                  {onThisDay.map((e, i) => (
-                    <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <span style={{ flex: "0 0 auto", width: 40, fontFamily: "var(--deco)", fontSize: 15, fontWeight: 600, color: "var(--brass)", lineHeight: 1.1 }}>{e.year}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 13, lineHeight: 1.4, fontWeight: 600, color: "var(--fg)", margin: "0 0 2px" }}>{e.event}</p>
-                        <p style={{ fontSize: 11, lineHeight: 1.4, color: "var(--muted)", margin: 0 }}>{e.astroNote}</p>
-                      </div>
+            <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
+              <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>{born.head}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+                {born.rows.map((b, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ width: 32, height: 32, flex: "0 0 auto", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--deco)", fontSize: 13, fontWeight: 600, background: "color-mix(in srgb, var(--brass) 14%, transparent)", color: "var(--brass)" }}>{b.initials}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg)", margin: 0 }}>{b.name}</p>
+                      <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>{b.note}</p>
                     </div>
-                  ))}
-                </div>
+                    <span style={{ fontFamily: "var(--deco)", fontSize: 13, color: "var(--faint)" }}>{b.year}</span>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
             <div style={{ padding: "26px 24px", borderRadius: 18, background: "linear-gradient(160deg, var(--card2), var(--card))", border: "1px solid var(--brass)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 18%, var(--shadow))" }}>
               <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, color: "var(--fg)", margin: "0 0 8px" }}>Get the day, every morning</p>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 16px" }}>Your personal almanac, timed to your chart and delivered before coffee.</p>

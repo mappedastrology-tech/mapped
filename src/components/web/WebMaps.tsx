@@ -37,6 +37,12 @@ function ava(color: string, size: number, fs: number, breathe = false): React.CS
   };
 }
 
+/** "Eight" for 8, etc. — falls back to digits beyond twelve. */
+function countWord(n: number): string {
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+  return words[n] ?? String(n);
+}
+
 function starField(seed: number): React.CSSProperties[] {
   let s = seed;
   const rand = () => { s |= 0; s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -189,7 +195,7 @@ export default function WebMaps() {
         {/* ORBIT LIST */}
         <div style={{ margin: "46px 0 20px" }}>
           <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 32, margin: "0 0 6px", color: "var(--fg)" }}>Your orbit</h2>
-          <p style={{ fontSize: 14.5, color: "var(--muted)", margin: "0 0 22px" }}>Eight people mapped · sorted by how closely your charts weave together</p>
+          <p style={{ fontSize: 14.5, color: "var(--muted)", margin: "0 0 22px" }}>{countWord(people.length)} {people.length === 1 ? "person" : "people"} mapped · sorted by how closely your charts weave together</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
             {orbit.map((o) => (
               <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 14px var(--shadow)" }}>

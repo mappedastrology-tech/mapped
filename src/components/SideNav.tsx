@@ -30,7 +30,7 @@ const MORE: Item[] = [
   { name: "Journal", href: "/journal", glyph: "✎" },
   { name: "Library", href: "/library/reference", glyph: "❉" },
   { name: "Learn", href: "/library", glyph: "❦" },
-  { name: "Palmistry", href: "/palmistry", glyph: "✋" },
+  { name: "Palmistry", href: "/palmistry", glyph: "✋︎" },
   { name: "Human Design", href: "/human-design", glyph: "⬡" },
   { name: "Numerology", href: "/numerology", glyph: "№" },
 ];

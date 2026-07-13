@@ -50,7 +50,7 @@ function panelStars(seed: number, n = 26): React.CSSProperties[] {
   return Array.from({ length: n }, () => ({
     position: "absolute", left: `${(rand() * 100).toFixed(1)}%`, top: `${(rand() * 100).toFixed(1)}%`,
     width: `${(rand() * 1.6 + 0.5).toFixed(1)}px`, height: `${(rand() * 1.6 + 0.5).toFixed(1)}px`,
-    borderRadius: "50%", background: "#e8dfc4", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
+    borderRadius: "50%", background: "var(--brass-hi)", opacity: Number((rand() * 0.5 + 0.2).toFixed(2)),
     animation: `mp-tw ${(rand() * 3 + 2).toFixed(1)}s ease-in-out infinite`,
   }));
 }
@@ -91,7 +91,7 @@ export default function WebLibrary() {
   const reset = () => { setPlaced({}); setDrag(null); setOver(null); setWrong(null); save({}); };
 
   return (
-    <WebShell current="library" theme={theme} onToggleTheme={toggle} footerTagline="Learn it by heart.">
+    <WebShell current="library" theme={theme} onToggleTheme={toggle} footerTagline="An almanac for the modern sky-watcher.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "52px 32px 20px" }}>
         <div style={{ textAlign: "center", maxWidth: 660, margin: "0 auto 40px" }}>
           <p style={{ fontFamily: "var(--script)", fontSize: 34, color: "var(--brass)", margin: "0 0 4px" }}>learn it by heart</p>
@@ -126,7 +126,7 @@ export default function WebLibrary() {
                   key={c.id}
                   draggable
                   onDragStart={(e) => { try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.id); } catch { /* */ } setDrag(c.id); }}
-                  onDragEnd={() => setDrag(null)}
+                  onDragEnd={() => { setDrag(null); setOver(null); }}
                   className={`mp-chip${drag === c.id ? " drag" : ""}`}
                   style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 15px 10px 12px", borderRadius: 13, cursor: "grab", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 3px 10px rgba(0,0,0,0.3)", userSelect: "none" }}
                 >

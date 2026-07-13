@@ -279,7 +279,7 @@ export default function NightSky({
           <button onClick={tap(onSelectSelf)} style={{ position: "absolute", left: 0, top: 0, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "inherit" }}>
             <span style={{ position: "relative", width: 54, height: 54, display: "flex", alignItems: "center", justifyContent: "center", animation: "ns-drift 6s ease-in-out infinite" }}>
               <span style={{ position: "absolute", inset: -10, borderRadius: 999, background: "radial-gradient(circle, rgba(201,169,97,.55), rgba(201,169,97,.12) 60%, transparent 75%)" }} />
-              <span style={{ position: "relative", fontSize: 26, color: "#f3e6c4", textShadow: "0 0 14px rgba(201,169,97,.9)" }} aria-hidden="true">{"☉"}</span>
+              <span style={{ position: "relative", fontSize: 26, color: "#f3e6c4", textShadow: "0 0 14px rgba(201,169,97,.9)" }} aria-hidden="true">{"☉\uFE0E"}</span>
             </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#f0e6d2", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>You</span>
             {hasChart && userSun && <span style={{ fontSize: 9, color: "#cdbfa6", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{userSun}</span>}

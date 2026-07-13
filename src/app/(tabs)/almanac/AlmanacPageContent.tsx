@@ -297,7 +297,7 @@ function ActivityDetailView({
   onClose: () => void;
 }) {
   const isGood = detail.type === "good";
-  const accentColor = isGood ? "var(--sage)" : "var(--terracotta)";
+  const accentColor = isGood ? "var(--sage)" : "var(--hold)";
 
   // Parse transit data
   let personalTransitText: string | null = null;
@@ -364,8 +364,8 @@ function ActivityDetailView({
             {isGood ? "GOOD FOR TODAY" : "HOLD OFF ON"}
           </p>
           <h2
-            className="text-[28px] leading-tight"
-            style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}
+            className="text-[25px] leading-tight"
+            style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}
           >
             {detail.activity}
           </h2>
@@ -660,7 +660,7 @@ function InfoTip({ text }: { text: string }) {
 }
 
 /**
- * A single "Explore the day" accordion row — an icon tile, a Le Jour Serif
+ * A single "Explore the day" accordion row — an icon tile, a Bodoni Moda
  * title, a one-line subtitle, and expandable content. Designed to sit inside
  * the grouped Explore card (rows separated by hairlines), matching the design.
  */
@@ -692,7 +692,7 @@ function AlmanacDrawer({
           </span>
         )}
         <div className="flex-1 min-w-0">
-          <p style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.15, color: "var(--foreground-on-card)" }}>
+          <p style={{ fontFamily: "var(--font-serif)", fontSize: 17, lineHeight: 1.15, color: "var(--foreground-on-card)" }}>
             {title}
           </p>
           {preview && (
@@ -1911,7 +1911,7 @@ export default function AlmanacPageContent() {
                 className="flex items-center gap-[13px] w-full text-left px-1 py-[13px]"
                 style={{ background: "transparent", border: "none", borderBottom: "0.5px solid var(--border-card)" }}
               >
-                <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: "var(--terracotta)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--terracotta) 18%, transparent)" }} />
+                <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: "var(--hold)", boxShadow: "0 0 0 4px color-mix(in srgb, var(--hold) 18%, transparent)" }} />
                 <span className="flex-1 min-w-0 text-[14px]" style={{ color: "var(--foreground-muted)" }}>{item.activity}</span>
                 <span className="text-[13px] shrink-0" style={{ color: "var(--foreground-faint)" }}>→</span>
               </button>
@@ -3079,8 +3079,8 @@ export default function AlmanacPageContent() {
               return (
                 <div key={i} className="flex flex-col items-center gap-1.5" style={{ opacity: isToday ? 1 : 0.68 }}>
                   <span className="text-[9px] font-bold uppercase" style={{ color: isToday ? "var(--brass)" : "var(--foreground-muted)" }}>{d.dayLabel[0]}</span>
-                  <span className="text-[17px] leading-none">{d.moonIcon}</span>
-                  <span className="text-[12px] font-semibold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{d.dayNum}</span>
+                  <MoonPhaseGlyph illum={d.illumination} waning={d.waning} size={17} />
+                  <span className="text-[12px] font-semibold leading-none" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{d.dayNum}</span>
                   <span className="w-1 h-1 rounded-full" style={{ background: isToday ? "var(--brass)" : "transparent" }} />
                 </div>
               );
@@ -3090,6 +3090,11 @@ export default function AlmanacPageContent() {
             <p className="text-[11px] leading-relaxed mt-3.5" style={{ color: "var(--foreground-muted)" }}>{weekData.headline.title}</p>
           )}
         </button>
+
+        {/* Closing line */}
+        <p className="text-[11px] text-center px-2.5 mt-6" style={{ lineHeight: 1.6, color: "var(--foreground-faint)", textWrap: "pretty" }}>
+          An almanac is a companion, not a rulebook. Read the sky, then trust yourself.
+        </p>
 
         </>}
       </div>

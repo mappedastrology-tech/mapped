@@ -17,6 +17,9 @@ import { useLiveSky, useBigThree } from "./useLiveSky";
 type Key = "sky" | "chart" | "tarot" | "ritual" | "journal" | "numbers";
 const DEFAULT: Key[] = ["sky", "chart", "tarot", "ritual", "journal", "numbers"];
 
+// U+FE0E forces monochrome text (not color-emoji) rendering of the widget glyphs.
+const VS = "︎";
+
 type BodyPart =
   | { kind: "text"; text: string }
   | { kind: "chips"; chips: string[] }
@@ -165,7 +168,7 @@ export default function WebToday() {
   };
 
   return (
-    <WebShell current="today" theme={theme} onToggleTheme={toggle}>
+    <WebShell current="today" theme={theme} onToggleTheme={toggle} footerTagline="Your day, arranged the way you read it.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "44px 32px 20px" }}>
         {/* greeting */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginBottom: 26 }}>
@@ -216,7 +219,7 @@ export default function WebToday() {
                 style={{ borderRadius: 18, padding: "22px 22px 20px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 5px 18px var(--shadow)", userSelect: "none", display: "flex", flexDirection: "column", minHeight: 210, cursor: "grab" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 14 }}>
-                  <span style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, background: "color-mix(in srgb, var(--brass) 15%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{w.glyph}</span>
+                  <span style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, background: "color-mix(in srgb, var(--brass) 15%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{w.glyph + VS}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
                     <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 600, color: "var(--fg)", margin: 0, lineHeight: 1.1 }}>{w.title}</p>
