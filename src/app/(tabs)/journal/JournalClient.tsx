@@ -87,7 +87,8 @@ function JournalPage() {
   const [showBurnAnimation, setShowBurnAnimation] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [aiPromptLoading, setAiPromptLoading] = useState(false);
 
   // Entry detail
@@ -169,7 +170,7 @@ function JournalPage() {
       const ctx = searchParams.get("context") || "";
       setCurrentPrompt({ id: "ai-prompt", text: promptParam, category: "generic" });
       setComposeText("");
-      setSelectedMood(null);
+      setSelectedMoods([]);
       setView("compose");
       // Clean URL
       window.history.replaceState({}, "", "/journal");
@@ -182,7 +183,7 @@ function JournalPage() {
       });
       setCurrentPrompt(localPrompt);
       setComposeText("");
-      setSelectedMood(null);
+      setSelectedMoods([]);
       setView("compose");
 
       // Fire AI prompt generation in background
@@ -348,7 +349,7 @@ function JournalPage() {
     setCurrentPrompt(prompt);
     setComposeText("");
     setIsBurn(false);
-    setSelectedMood(null);
+    setSelectedMoods([]);
     setPromptCycleCount(0);
     setCycledIds(prompt ? [prompt.id] : []);
     setView("compose");
@@ -391,7 +392,7 @@ function JournalPage() {
       prompt_id: currentPrompt?.id || null,
       prompt_text: currentPrompt?.text || null,
       prompt: currentPrompt?.text || "(free write)",
-      mood: selectedMood || undefined,
+      mood: selectedMoods.length ? selectedMoods.join(", ") : undefined,
       is_burn: isBurn,
       is_voice: false,
       tags: autoTag(composeText, now, moonPhase?.phase || "unknown", null, []),
@@ -535,7 +536,7 @@ function JournalPage() {
           {currentPrompt && (
             <div className="mb-6" style={{ borderLeft: "2px solid var(--lavender)", padding: "2px 0 2px 16px" }}>
               <p className="text-[10px] uppercase font-bold mb-1.5" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</p>
-              <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.45, color: "var(--foreground)" }}>{currentPrompt.text}</p>
+              <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.45, color: "var(--foreground)" }}>{currentPrompt.text}</p>
               <div className="flex gap-3 mt-2.5">
                 {promptCycleCount < 2 && (
                   <button onClick={cyclePrompt} className="text-[11px] transition-colors" style={{ color: "var(--lavender)" }}>
@@ -563,35 +564,47 @@ function JournalPage() {
             </div>
           )}
 
-          {/* Mood picker */}
+          {/* Mood picker — pick as many as fit */}
           <div className="mb-4">
-            <p className="text-[11px] text-muted uppercase tracking-widest mb-2">How the night felt</p>
+            <p className="text-[11px] text-muted uppercase tracking-widest mb-2">How the night felt · pick any</p>
             <div className="flex flex-wrap gap-1.5">
-              {MOOD_PALETTE.map((m) => (
-                <button
-                  key={m.word}
-                  onClick={() => setSelectedMood(selectedMood === m.word ? null : m.word)}
-                  className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                    selectedMood === m.word
-                      ? `${m.color} text-foreground font-medium ring-1 ring-foreground/20`
-                      : "bg-foreground/5 text-muted hover:bg-foreground/10"
-                  }`}
-                >
-                  {m.word}
-                </button>
-              ))}
+              {MOOD_PALETTE.map((m) => {
+                const active = selectedMoods.includes(m.word);
+                return (
+                  <button
+                    key={m.word}
+                    aria-pressed={active}
+                    onClick={() => setSelectedMoods((prev) => prev.includes(m.word) ? prev.filter((x) => x !== m.word) : [...prev, m.word])}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                      active
+                        ? `${m.color} text-foreground font-medium ring-1 ring-foreground/20`
+                        : "bg-foreground/5 text-muted hover:bg-foreground/10"
+                    }`}
+                  >
+                    {m.word}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Text input */}
-          <textarea
-            value={composeText}
-            onChange={(e) => setComposeText(e.target.value)}
-            placeholder="Start writing..."
-            aria-label="Journal entry"
-            className="flex-1 min-h-[200px] bg-transparent text-foreground text-sm leading-relaxed resize-none focus:outline-none placeholder:text-muted"
-            autoFocus
-          />
+          {/* Text input — a clearly-defined writing area */}
+          <p className="text-[11px] text-muted uppercase tracking-widest mb-2">Your entry</p>
+          <div
+            className="flex-1 flex flex-col rounded-2xl px-4 py-3.5 min-h-[220px] transition-colors focus-within:border-terracotta/40"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+            onClick={() => textareaRef.current?.focus()}
+          >
+            <textarea
+              ref={textareaRef}
+              value={composeText}
+              onChange={(e) => setComposeText(e.target.value)}
+              placeholder="Start writing here — whatever's on your mind…"
+              aria-label="Journal entry"
+              className="flex-1 min-h-[190px] w-full bg-transparent text-foreground text-[15px] leading-relaxed resize-none focus:outline-none placeholder:text-muted"
+              autoFocus
+            />
+          </div>
 
           {/* Bottom bar */}
           <div className="flex items-center justify-between pt-4 border-t border-foreground/8 mt-4">
@@ -766,11 +779,11 @@ function JournalPage() {
 
           {/* Mood + sky context chips */}
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {selectedEntry.mood && (
-              <span className="px-2.5 py-0.5 rounded-full bg-terracotta/15 text-[10px] text-terracotta font-medium">
-                {selectedEntry.mood}
+            {selectedEntry.mood && selectedEntry.mood.split(",").map((mo) => mo.trim()).filter(Boolean).map((mo) => (
+              <span key={mo} className="px-2.5 py-0.5 rounded-full bg-terracotta/15 text-[10px] text-terracotta font-medium">
+                {mo}
               </span>
-            )}
+            ))}
             {tags?.moonPhase && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">{tags.moonPhase.replace("_", " ")} moon</span>}
             {tags?.planetaryDay && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">{tags.planetaryDay} day</span>}
             {tags?.lordOfYear && <span className="px-2 py-0.5 rounded-full bg-foreground/5 text-[10px] text-muted">LOY: {tags.lordOfYear}</span>}
@@ -850,488 +863,243 @@ function JournalPage() {
     );
   }
 
-  // ─── Home View (default) ───────────────────────────────────────────────────
+  // ─── Home View (default) — matches the "Journal - Today" Claude design ──────
+  const TYPE_COLOR: Record<string, string> = { ritual: "#9aa2c8", tarot: "#d99bb0", prompt: "#8fb894", heavy: "#b58a6a" };
+  const TYPE_LABEL: Record<string, string> = { ritual: "From your ritual", tarot: "From your Tarot pull", prompt: "From your horoscope", heavy: "Free writing" };
+  const classifyEntry = (e: JournalEntry): keyof typeof TYPE_COLOR => {
+    const pid = (e.prompt_id || "").toLowerCase();
+    const pt = (e.prompt_text || e.prompt || "").toLowerCase();
+    if (pid.includes("tarot") || pt.includes("card")) return "tarot";
+    if (pid.includes("ritual") || pt.includes("ritual")) return "ritual";
+    if (e.prompt_id || e.prompt_text || e.prompt) return "prompt";
+    return "heavy";
+  };
+  type FeedItem = { key: string; date: Date; type: keyof typeof TYPE_COLOR; excerpt: string; entry: JournalEntry | null };
+  const feed: FeedItem[] = [
+    ...entries.map((e, i) => ({
+      key: `e${e.id || i}`,
+      date: new Date(e.created_at || e.date || Date.now()),
+      type: classifyEntry(e),
+      excerpt: (e.text || e.content || "").trim(),
+      entry: e,
+    })),
+    ...pullHistory.map((p, i) => ({
+      key: `p${p.id || i}`,
+      date: new Date(p.date),
+      type: "tarot" as const,
+      excerpt: p.notes?.trim() || (p.cards?.map((c) => c.name).filter(Boolean).join(", ")) || "Card pull",
+      entry: null,
+    })),
+  ].filter((f) => !isNaN(f.date.getTime())).sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  const nowD = new Date();
+  const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  // week strip — Sunday…Saturday of the current week
+  const weekStart = new Date(nowD); weekStart.setDate(nowD.getDate() - nowD.getDay());
+  const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+  const weekStrip = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
+    const hit = feed.find((f) => sameDay(f.date, d));
+    return { dow: DOW[i], num: d.getDate(), isToday: sameDay(d, nowD), type: hit?.type ?? null };
+  });
+
+  // month calendar
+  const mYear = nowD.getFullYear(), mMonth = nowD.getMonth();
+  const firstDow = new Date(mYear, mMonth, 1).getDay();
+  const daysInMonth = new Date(mYear, mMonth + 1, 0).getDate();
+  const dayType: Record<number, keyof typeof TYPE_COLOR> = {};
+  feed.forEach((f) => { if (f.date.getFullYear() === mYear && f.date.getMonth() === mMonth && !(f.date.getDate() in dayType)) dayType[f.date.getDate()] = f.type; });
+  const monthEntryCount = Object.keys(dayType).length;
+  const monthName = nowD.toLocaleDateString("en-US", { month: "long" });
+  const calCells: ({ day: number; type: keyof typeof TYPE_COLOR | null; isToday: boolean } | null)[] = [
+    ...Array.from({ length: firstDow }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, type: dayType[i + 1] ?? null, isToday: i + 1 === nowD.getDate() })),
+  ];
+
+  // stats ring
+  const counts: Record<string, number> = { ritual: 0, tarot: 0, prompt: 0, heavy: 0 };
+  feed.forEach((f) => { counts[f.type]++; });
+  const totalKept = feed.length;
+  const ringOrder: (keyof typeof TYPE_COLOR)[] = ["ritual", "tarot", "prompt", "heavy"];
+  let acc = 0;
+  const ringStops = totalKept === 0 ? "var(--foreground-ghost) 0 100%" : ringOrder.map((t) => {
+    const frac = counts[t] / totalKept;
+    const start = acc * 100, end = (acc + frac) * 100; acc += frac;
+    return `${TYPE_COLOR[t]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+  }).join(", ");
+
+  // streak — consecutive days with an entry ending today (or yesterday)
+  let streak = 0;
+  { const cur = new Date(nowD);
+    if (!feed.some((f) => sameDay(f.date, cur))) cur.setDate(cur.getDate() - 1);
+    while (feed.some((f) => sameDay(f.date, cur))) { streak++; cur.setDate(cur.getDate() - 1); } }
+
+  const cheer = monthEntryCount >= 5;
+  const recent = feed.slice(0, 4);
+  const cardBg = "var(--background-card)";
+  const cardBd = "var(--border-card)";
+  const promptText = currentPrompt?.text || todayPrompt?.text || "What are you ready to set down before the new moon?";
+
   return (
     <main className="min-h-full">
-      <div className="max-w-lg mx-auto px-5 py-6 pb-6">
+      <div className="max-w-lg mx-auto px-5 py-6 pb-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-5">
           <div>
-            <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1, color: "var(--lavender)", margin: "0 0 2px" }}>Your reflections,</p>
+            <p style={{ fontFamily: "var(--font-script)", fontSize: 32, lineHeight: 1, color: "var(--lavender)", margin: "0 0 2px" }}>Your reflections,</p>
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 36, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1, color: "var(--foreground)" }}>Journal</h1>
           </div>
-          {remaining !== null && activeTab === "calendar" && (
-            <span className="text-[10px] text-muted bg-foreground/5 px-2 py-1 rounded-full mt-1">
-              {remaining} left this month
+          {streak > 0 && (
+            <span className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full" style={{ background: "color-mix(in srgb, var(--lavender) 14%, transparent)", border: "1px solid color-mix(in srgb, var(--lavender) 40%, transparent)" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+              <span className="text-[12.5px] font-bold" style={{ color: "var(--foreground)" }}>{streak}</span>
             </span>
           )}
         </div>
 
-        {/* ─── Tabs ─── */}
-        <div className="flex gap-1 mb-5 bg-foreground/5 rounded-xl p-1">
-          {([
-            { key: "calendar" as const, label: "Calendar" },
-            { key: "pulls" as const, label: "Card Pulls" },
-          ]).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeTab === key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted"
-              }`}
-            >
-              {label}
+        {/* WEEK STRIP */}
+        <div className="flex gap-[7px] mb-[22px]">
+          {weekStrip.map((d, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 py-[10px] rounded-2xl" style={{
+              background: d.isToday ? "var(--lavender)" : cardBg,
+              border: d.isToday ? "none" : `0.5px solid ${cardBd}`,
+            }}>
+              <span className="text-[10px] font-semibold" style={{ color: d.isToday ? "var(--plum-deep)" : "var(--foreground-muted)" }}>{d.dow}</span>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 600, color: d.isToday ? "var(--plum-deep)" : "var(--foreground)" }}>{d.num}</span>
+              <span className="w-[5px] h-[5px] rounded-full" style={{ background: d.type ? (d.isToday ? "var(--plum-deep)" : TYPE_COLOR[d.type]) : "transparent" }} />
+            </div>
+          ))}
+        </div>
+
+        {/* ENCOURAGING BANNER */}
+        {cheer && (
+          <div className="relative overflow-hidden rounded-[20px] p-[18px_20px] mb-4" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--lavender) 22%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--lavender) 24%, transparent)` }}>
+            <div className="flex items-center gap-3.5">
+              <div className="shrink-0 w-[46px] h-[46px] rounded-[14px] flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--lavender) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 40%, transparent)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z" /></svg>
+              </div>
+              <div className="min-w-0">
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{monthEntryCount} nights kept this month</div>
+                <div className="text-[12.5px] mt-1" style={{ lineHeight: 1.5, color: "var(--foreground-secondary)" }}>Your reflections are becoming a rhythm — keep the practice going.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* HERO PROMPT CARD */}
+        <div className="relative overflow-hidden rounded-[22px] p-[22px] mb-4" style={{ background: "linear-gradient(165deg, color-mix(in srgb, var(--lavender) 20%, var(--background-card)), var(--background-card))", border: `0.5px solid color-mix(in srgb, var(--lavender) 22%, transparent)` }}>
+          <div aria-hidden className="absolute pointer-events-none" style={{ top: -40, right: -30, width: 150, height: 150, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--lavender) 14%, transparent), transparent 68%)" }} />
+          <div className="flex items-center gap-1.5 mb-3 relative">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /><circle cx="12" cy="12" r="3.4" /></svg>
+            <span className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</span>
+          </div>
+          <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 22, fontStyle: "italic", lineHeight: 1.4, color: "var(--foreground)", margin: "0 0 20px", position: "relative", textWrap: "pretty" }}>{promptText}</p>
+          <button onClick={startCompose} className="w-full py-[15px] rounded-full text-[12.5px] font-bold uppercase" style={{ letterSpacing: "0.1em", background: "var(--lavender)", color: "var(--plum-deep)", border: "none" }}>Begin writing</button>
+        </div>
+
+        {/* MORNING / EVENING SPLIT */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {[
+            { title: "Morning intention", sub: "Set the day", color: TYPE_COLOR.heavy, icon: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></> },
+            { title: "Evening reflection", sub: "Unwind & release", color: TYPE_COLOR.ritual, icon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /> },
+          ].map((c) => (
+            <button key={c.title} onClick={startCompose} className="text-left rounded-[18px] p-4" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
+              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center mb-3.5" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{c.icon}</svg>
+              </div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", marginBottom: 3 }}>{c.title}</div>
+              <div className="text-[11.5px]" style={{ color: "var(--foreground-muted)" }}>{c.sub}</div>
             </button>
           ))}
         </div>
 
-        {/* First save celebration */}
-        {showFirstSaveMsg && activeTab === "calendar" && (
-          <div className="mb-4 rounded-xl border border-sage/20 bg-sage/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <p className="text-xs text-sage leading-relaxed">{JOURNAL_PRIVACY_COPY.firstEntrySaved}</p>
+        {/* CALENDAR CARD */}
+        <div className="rounded-[22px] p-[20px_18px] mb-4" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--foreground)", lineHeight: 1 }}>Your month</div>
+              <div className="text-[11.5px] mt-[3px]" style={{ color: "var(--foreground-muted)" }}>{monthEntryCount} {monthEntryCount === 1 ? "night" : "nights"} kept in {monthName}</div>
+            </div>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 15, color: "var(--foreground)" }}>{monthName}</span>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1.5">
+            {DOW.map((w, i) => <div key={i} className="text-center text-[10px] font-semibold" style={{ color: "var(--foreground-faint)" }}>{w}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {calCells.map((c, i) => (
+              <div key={i} className="aspect-square flex flex-col items-center justify-center gap-[3px] rounded-[10px]" style={c && c.isToday ? { background: "color-mix(in srgb, var(--lavender) 14%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--lavender) 50%, transparent)" } : undefined}>
+                {c && <>
+                  <span className="text-[13px]" style={{ fontWeight: c.isToday ? 700 : c.type ? 600 : 400, color: c.isToday ? "var(--lavender)" : c.type ? "var(--foreground)" : "var(--foreground-faint)" }}>{c.day}</span>
+                  <span className="w-[5px] h-[5px] rounded-full" style={{ background: c.type ? TYPE_COLOR[c.type] : "transparent" }} />
+                </>}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3.5 mt-[18px] pt-4" style={{ borderTop: `0.5px solid ${cardBd}` }}>
+            {[["Ritual", "ritual"], ["Tarot", "tarot"], ["Horoscope", "prompt"]].map(([label, t]) => (
+              <div key={t} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ background: TYPE_COLOR[t] }} />
+                <span className="text-[10.5px]" style={{ color: "var(--foreground-muted)" }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* STATS RING */}
+        <div className="rounded-[22px] p-[22px_20px] mb-6" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, color: "var(--foreground)", marginBottom: 2 }}>Your journal, so far</div>
+          <div className="text-[11.5px] mb-5" style={{ color: "var(--foreground-muted)" }}>Every night you&rsquo;ve kept the practice</div>
+          <div className="flex items-center justify-center mb-[22px]">
+            <div className="relative w-[186px] h-[186px] rounded-full" style={{ background: `conic-gradient(from -90deg, ${ringStops})` }}>
+              <div className="absolute rounded-full flex flex-col items-center justify-center" style={{ inset: 15, background: cardBg }}>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 52, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{totalKept}</div>
+                <div className="text-[10.5px] uppercase mt-1.5" style={{ letterSpacing: "0.1em", color: "var(--foreground-muted)" }}>Entries kept</div>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {ringOrder.map((t) => (
+              <div key={t} className="flex items-center gap-3">
+                <span className="w-[9px] h-[9px] rounded-full shrink-0" style={{ background: TYPE_COLOR[t] }} />
+                <span className="text-[13.5px] flex-1" style={{ color: "var(--foreground-secondary)" }}>{TYPE_LABEL[t].replace("From your ", "From your ").replace("ritual", "rituals").replace("Tarot pull", "Tarot pulls")}</span>
+                <div className="w-[88px] h-[5px] rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--foreground) 6%, transparent)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${totalKept ? Math.round((counts[t] / totalKept) * 100) : 0}%`, background: TYPE_COLOR[t] }} />
+                </div>
+                <span className="text-[13px] font-semibold text-right min-w-[26px]" style={{ color: "var(--foreground)" }}>{counts[t]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* RECENT */}
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 18, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>Recent</h3>
+        </div>
+        {recent.length === 0 ? (
+          <div className="rounded-2xl p-8 text-center" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
+            <p className="text-[14px]" style={{ color: "var(--foreground-muted)" }}>No entries yet — your first reflection starts above.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[11px]">
+            {recent.map((f) => (
+              <button key={f.key} onClick={() => { if (f.entry) { setSelectedEntry(f.entry); setView("entry"); } }} className="flex gap-3.5 p-[15px] rounded-2xl text-left" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
+                <div className="shrink-0 w-11 text-center">
+                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 22, fontWeight: 600, color: "var(--foreground)", lineHeight: 1 }}>{f.date.getDate()}</div>
+                  <div className="text-[10px] uppercase mt-0.5" style={{ letterSpacing: "0.08em", color: "var(--foreground-muted)" }}>{f.date.toLocaleDateString("en-US", { month: "short" })}</div>
+                </div>
+                <div className="flex-1 min-w-0 pl-[13px]" style={{ borderLeft: `0.5px solid ${cardBd}` }}>
+                  <div className="inline-flex items-center gap-1.5 mb-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: TYPE_COLOR[f.type] }} />
+                    <span className="text-[10px] font-semibold" style={{ color: TYPE_COLOR[f.type] }}>{TYPE_LABEL[f.type]}</span>
+                  </div>
+                  <p className="text-[13.5px] m-0" style={{ lineHeight: 1.55, color: "var(--foreground-secondary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.excerpt || "(no words)"}</p>
+                </div>
+              </button>
+            ))}
           </div>
         )}
-
-        {/* ═══════════════ PULLS TAB ═══════════════ */}
-        {activeTab === "pulls" && (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs uppercase tracking-widest text-secondary/60 font-semibold">Card Pull History</p>
-              {pullHistory.length > 0 && (
-                <button
-                  onClick={() => {
-                    if (bulkSelectMode) {
-                      setBulkSelectMode(false);
-                      setSelectedPulls(new Set());
-                    } else {
-                      setBulkSelectMode(true);
-                      setSelectedPulls(new Set());
-                    }
-                  }}
-                  className="text-xs font-medium px-3 py-1 rounded-full border border-foreground/12 text-secondary/60 active:bg-foreground/[0.06] transition-colors"
-                >
-                  {bulkSelectMode ? "Cancel" : "Select"}
-                </button>
-              )}
-            </div>
-
-            {/* Bulk delete bar */}
-            {bulkSelectMode && selectedPulls.size > 0 && (
-              <div className="flex items-center justify-between mb-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <span className="text-sm text-secondary">
-                  {selectedPulls.size} selected
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      const allIdxs = new Set(pullHistory.map((_, i) => i));
-                      setSelectedPulls(selectedPulls.size === pullHistory.length ? new Set() : allIdxs);
-                    }}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full border border-foreground/12 text-secondary active:bg-foreground/[0.06] transition-colors"
-                  >
-                    {selectedPulls.size === pullHistory.length ? "Deselect all" : "Select all"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete ${selectedPulls.size} reading${selectedPulls.size !== 1 ? "s" : ""}?`)) {
-                        setPullHistory((prev) => {
-                          const updated = prev.filter((_, idx) => !selectedPulls.has(idx));
-                          try { localStorage.setItem(getTarotHistoryKey(userId), JSON.stringify(updated)); } catch {}
-                          return updated;
-                        });
-                        setSelectedPulls(new Set());
-                        setBulkSelectMode(false);
-                        setExpandedPullIdx(null);
-                      }
-                    }}
-                    className="text-xs font-medium px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 active:bg-red-500/30 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {pullHistory.length === 0 ? (
-              <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-8 text-center">
-                <p className="text-secondary text-base">No card pulls yet</p>
-                <p className="text-secondary/50 text-sm mt-2">Pull a card from the home screen to see it here.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pullHistory.slice(0, pullsPage * PULLS_PER_PAGE).map((pull, i) => {
-                  const isExpanded = expandedPullIdx === i;
-                  const spreadLabel = pull.spreadName || pull.spread || "Reading";
-                  const dateStr = new Date(pull.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                  return (
-                    <div
-                      key={pull.id || i}
-                      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${
-                        isExpanded
-                          ? "border-foreground/15 bg-foreground/[0.05]"
-                          : "border-foreground/8 bg-foreground/[0.03]"
-                      }`}
-                    >
-                      {/* Header — tap to expand (or select in bulk mode) */}
-                      <button
-                        onClick={() => {
-                          if (bulkSelectMode) {
-                            setSelectedPulls((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(i)) next.delete(i); else next.add(i);
-                              return next;
-                            });
-                          } else {
-                            setExpandedPullIdx(isExpanded ? null : i);
-                          }
-                        }}
-                        className="w-full flex items-center gap-3 px-5 py-4 active:bg-foreground/[0.06] transition-colors"
-                      >
-                        {bulkSelectMode && (
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                            selectedPulls.has(i)
-                              ? "bg-terracotta border-terracotta"
-                              : "border-foreground/20 bg-transparent"
-                          }`}>
-                            {selectedPulls.has(i) && (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                            )}
-                          </div>
-                        )}
-                        <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
-                          <span className="text-foreground text-[15px] truncate">
-                            {spreadLabel}
-                          </span>
-                          <span className="text-secondary/50 text-[13px]">
-                            {pull.cards.length} card{pull.cards.length !== 1 ? "s" : ""} · {dateStr}{pull.notes ? " · has notes" : ""}
-                          </span>
-                        </div>
-                        {!bulkSelectMode && (
-                          <svg
-                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                            className={`text-secondary/40 transition-transform duration-300 flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Expanded detail */}
-                      {isExpanded && (
-                        <div className="px-5 pb-5">
-                          {pull.question && (
-                            <p className="text-[14px] text-secondary/60 italic mb-4">&ldquo;{pull.question}&rdquo;</p>
-                          )}
-
-                          {/* Cards list */}
-                          <div className="space-y-2 mb-5">
-                            {pull.cards.map((card, j) => (
-                              <div
-                                key={j}
-                                className="rounded-xl bg-foreground/[0.04] border border-foreground/[0.08] px-4 py-3.5"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0 flex-1">
-                                    {card.position && (
-                                      <p className="text-secondary/50 text-[12px] font-medium uppercase tracking-wider mb-1.5">
-                                        {card.position}
-                                      </p>
-                                    )}
-                                    <p className="text-foreground text-[16px]">
-                                      {card.name}
-                                    </p>
-                                    {card.keywords && card.keywords.length > 0 && (
-                                      <p className="text-secondary/50 text-[13px] mt-1">
-                                        {card.keywords.slice(0, 3).join(" · ")}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {card.reversed && (
-                                    <span className="text-[11px] font-medium text-secondary/40 bg-foreground/[0.06] px-2.5 py-1 rounded-lg flex-shrink-0 mt-0.5">
-                                      Reversed
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Notes */}
-                          {pull.notes && (
-                            <div className="rounded-xl bg-foreground/[0.04] border border-foreground/[0.08] px-4 py-3.5 mb-5">
-                              <p className="text-secondary/50 text-[11px] font-medium uppercase tracking-wider mb-2">Notes</p>
-                              <p className="text-secondary text-[13px] leading-relaxed whitespace-pre-wrap">{pull.notes}</p>
-                            </div>
-                          )}
-
-                          {/* Action buttons */}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const cardsSummary = pull.cards.map(c =>
-                                  `${c.position ? c.position + ": " : ""}${c.name}${c.reversed ? " (Reversed)" : ""}`
-                                ).join(". ");
-                                const dollyContext = `I did a ${spreadLabel} reading on ${new Date(pull.date).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Cards: ${cardsSummary}.${pull.notes ? ` My notes: "${pull.notes}".` : ""} Help me revisit this reading and understand what these cards were telling me.`;
-                                sessionStorage.setItem("dolly-context", dollyContext);
-                                router.push("/dolly");
-                              }}
-                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-foreground/12 bg-foreground/[0.03] text-secondary text-[13px] font-medium active:bg-foreground/[0.08] transition-colors"
-                            >
-                              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" stroke="currentColor" strokeLinecap="round">
-                                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-                              </svg>
-                              Ask Dolly
-                            </button>
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const fullDateStr = new Date(pull.date).toLocaleDateString("en-US", { month: "long", day: "numeric" });
-                                const cardLines = pull.cards.map(c =>
-                                  `${c.position ? c.position + ": " : ""}${c.name}${c.reversed ? " (Reversed)" : ""}`
-                                ).join("\n");
-                                const fallback = `My ${spreadLabel} reading (${fullDateStr}):\n\n${cardLines}\n\n— Mapped Astrology`;
-                                setPullCopied(i);
-                                await shareReadingAsImage(
-                                  { spreadName: spreadLabel, date: fullDateStr, cards: pull.cards },
-                                  fallback
-                                );
-                                setTimeout(() => setPullCopied(null), 2000);
-                              }}
-                              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-foreground/12 bg-foreground/[0.03] text-secondary text-[13px] font-medium active:bg-foreground/[0.08] transition-colors"
-                            >
-                              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
-                              </svg>
-                              {pullCopied === i ? "Shared!" : "Share"}
-                            </button>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm("Delete this reading?")) {
-                                setPullHistory((prev) => {
-                                  const updated = prev.filter((_, idx) => idx !== i);
-                                  try { localStorage.setItem(getTarotHistoryKey(userId), JSON.stringify(updated)); } catch {}
-                                  return updated;
-                                });
-                                setExpandedPullIdx(null);
-                              }
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 mt-2 py-2.5 text-secondary/30 text-xs font-medium active:text-red-400/60 transition-colors"
-                          >
-                            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
-                            </svg>
-                            Delete reading
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {pullHistory.length > pullsPage * PULLS_PER_PAGE && (
-                  <button
-                    onClick={() => setPullsPage((p) => p + 1)}
-                    className="w-full py-3 text-center text-xs text-terracotta/70 hover:text-terracotta transition-colors"
-                  >
-                    Show more ({pullHistory.length - pullsPage * PULLS_PER_PAGE} remaining)
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ═══════════════ CALENDAR TAB ═══════════════ */}
-        {activeTab === "calendar" && (
-          <>
-            <JournalCalendar entries={entries} onSelectEntry={openEntry} />
-
-            {/* Tonight's Prompt Card */}
-            <div
-              className="relative overflow-hidden p-5 mb-5 mt-6"
-              style={{ borderRadius: 20, background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.18)" }}
-            >
-              <div aria-hidden="true" className="absolute pointer-events-none" style={{ top: -30, right: -24, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,206,232,0.12), transparent 68%)" }} />
-              <div className="relative flex items-center gap-1.5 mb-3">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /><circle cx="12" cy="12" r="3.4" /></svg>
-                <span className="text-[10px] uppercase font-bold" style={{ letterSpacing: "0.16em", color: "var(--lavender)" }}>Tonight&rsquo;s prompt</span>
-              </div>
-              {todayEntry ? (
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(123,160,85,0.25)" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--sage)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    </span>
-                    <span className="text-sm font-medium" style={{ color: "#f0e6d2" }}>Complete for today</span>
-                  </div>
-                  <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: "rgba(240,230,210,0.75)" }}>{(todayEntry.text || todayEntry.content || "").slice(0, 120)}</p>
-                  <button onClick={() => openEntry(todayEntry)} className="w-full py-3.5 rounded-full text-xs font-bold uppercase tracking-[0.1em]" style={{ background: "var(--lavender)", color: "#161022" }}>
-                    Edit tonight&rsquo;s entry
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <p className="mb-4" style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 22, lineHeight: 1.4, color: "#f0e6d2" }}>{todayPrompt.text}</p>
-                  <button onClick={startCompose} className="w-full py-3.5 rounded-full text-xs font-bold uppercase tracking-[0.1em]" style={{ background: "var(--lavender)", color: "#161022" }}>
-                    Begin writing
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Recent Entries */}
-            <div className="mb-6">
-              <p className="text-[10px] uppercase tracking-widest text-muted font-semibold mb-3">Recent</p>
-              {entries.length === 0 ? (
-                <div className="rounded-xl border border-foreground/8 bg-foreground/3 p-6 text-center">
-                  <p className="text-muted text-sm">No entries yet.</p>
-                  <p className="text-muted text-xs mt-1">Tap &quot;Begin entry&quot; to start.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {entries.slice(0, entriesPage * ENTRIES_PER_PAGE).map((entry) => {
-                    const text = entry.text || entry.content || "";
-                    const preview = text.slice(0, 80);
-                    return (
-                      <button
-                        key={entry.id}
-                        onClick={() => openEntry(entry)}
-                        className="w-full text-left rounded-xl border border-foreground/8 bg-foreground/3 p-4 hover:border-foreground/15 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs text-muted">
-                            {new Date(entry.created_at || entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </p>
-                          {entry.mood && (
-                            <span className="px-2 py-0.5 rounded-full bg-terracotta/12 text-[10px] text-terracotta/80">{entry.mood}</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-secondary leading-snug">
-                          {preview}{text.length > 80 ? "..." : ""}
-                        </p>
-                      </button>
-                    );
-                  })}
-                  {entries.length > entriesPage * ENTRIES_PER_PAGE && (
-                    <button
-                      onClick={() => setEntriesPage((p) => p + 1)}
-                      className="w-full py-3 text-center text-xs text-terracotta/70 hover:text-terracotta transition-colors"
-                    >
-                      Show more ({entries.length - entriesPage * ENTRIES_PER_PAGE} remaining)
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Cap reached message */}
-            {remaining === 0 && (
-              <div className="mt-4 rounded-xl border border-amber/20 bg-amber/5 p-4 text-center">
-                <p className="text-xs text-amber/80">{JOURNAL_PRIVACY_COPY.capReached(0)}</p>
-              </div>
-            )}
-          </>
-        )}
       </div>
-
-      {PaywallModal}
     </main>
-  );
-}
-
-/* ─── Journal Calendar Component ─── */
-
-function JournalCalendar({ entries, onSelectEntry }: { entries: JournalEntry[]; onSelectEntry: (e: JournalEntry) => void }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-
-  // Map entry dates to day numbers
-  const entryDays = new Map<number, JournalEntry>();
-  for (const entry of entries) {
-    const d = new Date(entry.created_at || entry.date);
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      entryDays.set(d.getDate(), entry);
-    }
-  }
-
-  const today = new Date();
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
-  const todayDate = today.getDate();
-
-  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
-
-  const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-  return (
-    <div>
-      {/* Month nav */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="w-8 h-8 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border border-foreground/12 text-muted" aria-label="Previous month">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <p className="text-sm font-semibold text-secondary">{monthLabel}</p>
-        <button onClick={nextMonth} className="w-8 h-8 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border border-foreground/12 text-muted" aria-label="Next month">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
-
-      {/* Day names */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {dayNames.map((d) => (
-          <div key={d} className="text-center text-[9px] text-muted font-semibold uppercase py-1">{d}</div>
-        ))}
-      </div>
-
-      {/* Days grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {/* Empty cells for offset */}
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-square" />
-        ))}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const hasEntry = entryDays.has(day);
-          const isToday = isCurrentMonth && day === todayDate;
-          const entry = entryDays.get(day);
-
-          return (
-            <button
-              key={day}
-              onClick={() => entry && onSelectEntry(entry)}
-              disabled={!hasEntry}
-              className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-colors relative ${
-                isToday
-                  ? "border border-terracotta/30 text-terracotta font-semibold"
-                  : hasEntry
-                  ? "text-secondary hover:bg-foreground/5"
-                  : "text-muted"
-              }`}
-            >
-              {day}
-              {hasEntry && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-sage" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Entries for selected month summary */}
-      {entryDays.size > 0 && (
-        <p className="text-[10px] text-muted text-center mt-4">
-          {entryDays.size} {entryDays.size === 1 ? "entry" : "entries"} this month
-        </p>
-      )}
-    </div>
   );
 }

@@ -114,7 +114,10 @@
       "Bash(sed -n '/<main /,/<\\\\/main>/p' \"Web - Dolly.dc.html\")",
       "Bash(sed -n '/<style>/,/<\\\\/style>/p' \"Web - Dolly.dc.html\")",
       "Bash(echo \"BUILD EXIT: $?\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(grep -nE \"view === \\\\\"home\\\\\"|view === \\\\\"entry\\\\\"|view === \\\\\"patterns\\\\\"|// ─── Home|Home View|return \\\\\\(\\\\s*$|^  return \\\\\\(|^    return \\\\\\(\" \"src/app/\\(tabs\\)/journal/JournalClient.tsx\")",
+      "Bash(grep -nE \"^  \\\\}$|^  \\\\\\);|view === |^  return\" \"src/app/\\(tabs\\)/journal/JournalClient.tsx\")",
+      "Bash(awk -F: '$1>640 && $1<720')"
     ]
   }
 }
