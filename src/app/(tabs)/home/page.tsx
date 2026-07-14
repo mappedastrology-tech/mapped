@@ -98,7 +98,7 @@ import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
 import SolarEventScreen from "@/components/SolarEventScreen";
 import { getTodaysMoonEvent, getTodaysSolarEvent } from "@/lib/celestialCalendar";
-import { getCurrentMoonSign, getCurrentPlanetSign } from "@/lib/astro/currentSky";
+import { getCurrentMoonSign, getCurrentPlanetSign, getActiveRetrogrades } from "@/lib/astro/currentSky";
 
 interface DailyHoroscope {
   headline: string;
@@ -152,6 +152,7 @@ export default function HomeTab() {
   const [showMoonEvent, setShowMoonEvent] = useState(false);
   const [showSolarBanner, setShowSolarBanner] = useState<boolean | null>(null);
   const [showSolarEvent, setShowSolarEvent] = useState(false);
+  const [showRetroBanner, setShowRetroBanner] = useState<boolean | null>(null);
   const [pullDeck, setPullDeck] = useState<"tarot" | "oracle">("tarot");
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
@@ -339,6 +340,31 @@ export default function HomeTab() {
     setShowSolarBanner(false);
     try { localStorage.setItem(`mapped:solar-banner-dismissed-${todayLocal}`, "1"); } catch {}
   }, [todayLocal]);
+
+  // Retrogrades — surface the "event" retrogrades everyone tracks (Mercury,
+  // Venus, Mars, Jupiter, Saturn). The slow outer planets are retrograde ~40%
+  // of the year, so they only appear as context, never as the trigger.
+  const activeRetrogrades = useMemo(() => getActiveRetrogrades(today), [today]);
+  const bannerRetrogrades = useMemo(
+    () => activeRetrogrades.filter((r) => ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"].includes(r.planet)),
+    [activeRetrogrades]
+  );
+  const retroDismissKey = useMemo(
+    () => `mapped:retro-banner-dismissed-${bannerRetrogrades.map((r) => r.planet).join("-")}`,
+    [bannerRetrogrades]
+  );
+
+  useEffect(() => {
+    if (bannerRetrogrades.length === 0) { setShowRetroBanner(false); return; }
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(retroDismissKey) === "1"; } catch {}
+    setShowRetroBanner(!dismissed);
+  }, [bannerRetrogrades, retroDismissKey]);
+
+  const handleCloseRetroBanner = useCallback(() => {
+    setShowRetroBanner(false);
+    try { localStorage.setItem(retroDismissKey, "1"); } catch {}
+  }, [retroDismissKey]);
 
   // Deterministic daily seed — same value all day, changes at midnight
   const dailySeed = useMemo(() => {
@@ -916,6 +942,65 @@ export default function HomeTab() {
                 aria-label="View full solstice event details"
               >
                 Explore this turning point →
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* ─── Retrograde banner ─── */}
+        {showRetroBanner && bannerRetrogrades.length > 0 && (() => {
+          const head = bannerRetrogrades[0];
+          const others = activeRetrogrades.filter((r) => r.planet !== head.planet);
+          return (
+            <div
+              className="relative rounded-2xl px-5 py-5 mb-8 overflow-hidden"
+              style={{ background: "linear-gradient(135deg, #241528 0%, #0e0a14 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <button
+                type="button"
+                onClick={handleCloseRetroBanner}
+                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+                aria-label="Dismiss retrograde banner"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[26px]" style={{ color: "#c9a9d4" }} aria-hidden="true">℞</span>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                    In the sky now
+                  </p>
+                  <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
+                    {head.planet} Retrograde in {head.sign}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[13px] leading-[1.6] mb-3" style={{ color: "rgba(240,230,210,0.75)", fontFamily: "var(--font-body)" }}>
+                {head.meaning}
+              </p>
+
+              {others.length > 0 && (
+                <p className="text-[11px] mb-4" style={{ color: "rgba(240,230,210,0.45)" }}>
+                  Also retrograde: {others.map((r) => `${r.planet} in ${r.sign}`).join(" · ")}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  try { sessionStorage.setItem("dolly-context", `I want to understand the current ${head.planet} retrograde in ${head.sign} and how it affects me specifically based on my chart.`); } catch {}
+                  router.push("/dolly");
+                }}
+                className="text-[12px] tracking-[0.06em] px-4 py-2 rounded-full active:scale-95 transition-transform"
+                style={{ background: "rgba(201,169,212,0.18)", color: "#c9a9d4", border: "1px solid rgba(201,169,212,0.28)", fontFamily: "var(--font-display)" }}
+                aria-label="Ask Dolly about this retrograde"
+              >
+                Ask Dolly what it means for you →
               </button>
             </div>
           );

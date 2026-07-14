@@ -131,3 +131,63 @@ export function getMoonIllumination(date: Date = new Date()): number {
   const illum = Astronomy.Illumination(Astronomy.Body.Moon, time);
   return Math.round(illum.phase_fraction * 100);
 }
+
+// ─── Retrogrades ──────────────────────────────────────────────────────────────
+
+export interface RetrogradeInfo {
+  planet: string;
+  sign: string;   // full sign name it's retrograde in
+  meaning: string;
+}
+
+const RETRO_BODIES: Record<string, Astronomy.Body> = {
+  Mercury: Astronomy.Body.Mercury,
+  Venus: Astronomy.Body.Venus,
+  Mars: Astronomy.Body.Mars,
+  Jupiter: Astronomy.Body.Jupiter,
+  Saturn: Astronomy.Body.Saturn,
+  Uranus: Astronomy.Body.Uranus,
+  Neptune: Astronomy.Body.Neptune,
+  Pluto: Astronomy.Body.Pluto,
+};
+
+const RETRO_MEANING: Record<string, string> = {
+  Mercury: "Communication, tech, and travel ask for a slower, second-draft pace. Back things up, reread before you send, and expect plans to shift.",
+  Venus: "Love, money, and values turn inward. Old flames and old feelings resurface as you reassess what — and who — you truly want.",
+  Mars: "Drive and momentum stall. Rethink your strategy rather than forcing action; frustration can turn inward, so channel it with care.",
+  Jupiter: "Growth and belief turn reflective. Revisit your bigger vision and notice where you've overextended or overpromised.",
+  Saturn: "Structures, commitments, and responsibilities come up for review. Where have you been too rigid — or not disciplined enough?",
+  Uranus: "The urge to break free turns inward. Reconsider where you genuinely need change versus where you're just restless.",
+  Neptune: "Dreams, intuition, and illusions slowly clarify. Fog around a person or situation begins to lift.",
+  Pluto: "Deep power, control, and transformation themes resurface for another, quieter layer of work.",
+};
+
+/** Priority for the headline retrograde (Mercury is the cultural headliner). */
+const RETRO_ORDER = ["Mercury", "Venus", "Mars", "Saturn", "Jupiter", "Pluto", "Uranus", "Neptune"];
+
+function eclipticLongitude(body: Astronomy.Body, date: Date): number {
+  const time = dateToAstroTime(date);
+  const vec = Astronomy.GeoVector(body, time, true);
+  return Astronomy.Ecliptic(vec).elon;
+}
+
+/**
+ * Which major planets are retrograde on a given date, computed from the
+ * ephemeris (Sun and Moon never retrograde). A planet is retrograde when its
+ * apparent ecliptic longitude is decreasing day over day.
+ */
+export function getActiveRetrogrades(date: Date = new Date()): RetrogradeInfo[] {
+  const prev = new Date(date.getTime() - 24 * 60 * 60 * 1000);
+  const found: RetrogradeInfo[] = [];
+  for (const [planet, body] of Object.entries(RETRO_BODIES)) {
+    const today = eclipticLongitude(body, date);
+    const yesterday = eclipticLongitude(body, prev);
+    let delta = today - yesterday;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    if (delta < 0) {
+      found.push({ planet, sign: getCurrentPlanetSign(planet, date).full, meaning: RETRO_MEANING[planet] });
+    }
+  }
+  return found.sort((a, b) => RETRO_ORDER.indexOf(a.planet) - RETRO_ORDER.indexOf(b.planet));
+}
