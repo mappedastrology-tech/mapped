@@ -96,8 +96,6 @@ function JournalPage() {
   const [showCrisisModal, setShowCrisisModal] = useState(false);
   const [showFirstSaveMsg, setShowFirstSaveMsg] = useState(false);
   const [showBurnAnimation, setShowBurnAnimation] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [aiPromptLoading, setAiPromptLoading] = useState(false);
@@ -301,57 +299,6 @@ function JournalPage() {
   }, []);
 
   // ─── Speech Recognition ─────────────────────────────────────────────────────
-  const toggleListening = useCallback(() => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition isn't supported in this browser.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-
-    let finalTranscript = "";
-
-    recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
-          setComposeText((prev) => prev + transcript + " ");
-        } else {
-          interim = transcript;
-        }
-      }
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isListening]);
-
-  // Clean up recognition on unmount
-  useEffect(() => {
-    return () => { recognitionRef.current?.stop(); };
-  }, []);
-
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   function startCompose() {
@@ -656,19 +603,8 @@ function JournalPage() {
             ))}
           </div>
 
-          {/* Bottom toolbar — voice + word count */}
-          <div className="flex items-center gap-4 pt-4 mt-2" style={{ borderTop: "0.5px solid var(--border-card)" }}>
-            <button
-              onClick={toggleListening}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-              style={isListening
-                ? { border: "1px solid var(--oxblood-light)", background: "color-mix(in srgb, var(--oxblood-light) 10%, transparent)" }
-                : { border: "0.5px solid var(--border-card)" }}
-              aria-label={isListening ? "Stop listening" : "Start voice input"}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isListening ? "var(--oxblood-light)" : "var(--foreground-muted)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></svg>
-            </button>
-            {isListening && <span className="text-[10px] font-medium" style={{ color: "var(--oxblood-light)" }}>Listening…</span>}
+          {/* Bottom toolbar — word count */}
+          <div className="flex items-center pt-4 mt-2" style={{ borderTop: "0.5px solid var(--border-card)" }}>
             <span className="ml-auto text-[12px]" style={{ color: "var(--foreground-faint)" }}>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
           </div>
         </div>

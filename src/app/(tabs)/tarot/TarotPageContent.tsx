@@ -28,7 +28,7 @@ import { shareReadingAsImage } from "@/lib/shareCard";
 import Image from "next/image";
 
 /* ─── Types ─── */
-type View = "decks" | "spreads" | "picking" | "spread-view" | "card-detail" | "freestyle-fan";
+type View = "decks" | "spreads" | "intention" | "picking" | "spread-view" | "card-detail" | "freestyle-fan";
 type DeckTab = "my-decks" | "store";
 
 const CARD_W = 74;
@@ -889,8 +889,6 @@ export default function TarotTab() {
      RENDER: Spread Selection
      ═══════════════════════════════════════════ */
   if (view === "spreads") {
-    const deckName = isOracleDeck ? (activeOracleDeck?.name || getOracleDeck(selectedDeck)?.name || "Oracle") : "Classic Tarot";
-    const pendingName = pendingSpreadId === "freestyle" ? "Fanned" : (SPREADS.find((s) => s.id === pendingSpreadId)?.name || "");
     const slotStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
       width: 10, height: 15, borderRadius: 2.5, background: "rgba(201,169,97,0.2)", border: "0.5px solid rgba(201,169,97,0.4)", ...extra,
     });
@@ -911,99 +909,99 @@ export default function TarotTab() {
 
         <p className="text-[9px] tracking-[0.25em] uppercase font-bold mt-8 mb-4" style={{ color: "var(--brass)" }}>How would you like to read?</p>
         <div className="flex flex-col gap-3 mb-3">
-          {SPREADS.map((spread) => {
-            const sel = pendingSpreadId === spread.id;
-            return (
-              <div key={spread.id}>
-                <button
-                  onClick={() => setPendingSpreadId(spread.id)}
-                  className="w-full text-left flex items-center gap-4 active:scale-[0.99]"
-                  style={{ borderRadius: 18, background: "#4a2540", border: sel ? "1px solid var(--brass)" : "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
-                >
-                  {/* position diagram */}
-                  <span className="shrink-0 flex items-center justify-center gap-1" style={{ width: 62, height: 44 }}>
-                    {Array.from({ length: Math.min(spread.cardCount, 5) }).map((_, i) => (
-                      <span key={i} style={slotStyle()} />
-                    ))}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>{spread.name}</span>
-                    <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"} · {spread.description}</span>
-                  </span>
-                  {/* select check ring */}
-                  <span className="shrink-0 flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: "50%", background: sel ? "var(--brass)" : "transparent", border: sel ? "1px solid var(--brass)" : "1px solid rgba(240,230,210,0.25)", transition: "all .18s" }}>
-                    {sel && <span style={{ color: "#1a1420", fontSize: 13, fontWeight: 700 }}>✓</span>}
-                  </span>
-                </button>
-                {sel && (
-                  <div className="mt-2" style={{ padding: "12px 15px 13px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)" }}>
-                    <p className="text-[8px] tracking-[0.22em] uppercase font-bold" style={{ color: "var(--brass)", margin: "0 0 6px" }}>About this spread</p>
-                    <p className="text-[12px]" style={{ lineHeight: 1.6, margin: 0, color: "rgba(240,230,210,0.65)" }}>{SPREAD_GUIDES[spread.id] || spread.description}</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Freestyle */}
-          <div>
+          {SPREADS.map((spread) => (
             <button
-              onClick={() => setPendingSpreadId("freestyle")}
+              key={spread.id}
+              onClick={() => { setPendingSpreadId(spread.id); setQuestion(""); setView("intention"); }}
               className="w-full text-left flex items-center gap-4 active:scale-[0.99]"
-              style={{ borderRadius: 18, background: "#4a2540", border: pendingSpreadId === "freestyle" ? "1px solid var(--brass)" : "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
+              style={{ borderRadius: 18, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
             >
-              <span className="shrink-0 flex items-center justify-center" style={{ width: 62, height: 44 }}>
-                <span style={slotStyle({ transform: "rotate(-11deg)" })} />
-                <span style={slotStyle({ transform: "rotate(5deg)", marginLeft: -6 })} />
-                <span style={slotStyle({ transform: "rotate(-2deg)", marginLeft: -6 })} />
+              {/* position diagram */}
+              <span className="shrink-0 flex items-center justify-center gap-1" style={{ width: 62, height: 44 }}>
+                {Array.from({ length: Math.min(spread.cardCount, 5) }).map((_, i) => (
+                  <span key={i} style={slotStyle()} />
+                ))}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>Fanned</span>
-                <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>No rules — swipe the arc and pick the cards that call to you.</span>
+                <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>{spread.name}</span>
+                <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>{spread.cardCount} {spread.cardCount === 1 ? "card" : "cards"} · {spread.description}</span>
               </span>
-              <span className="shrink-0 flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: "50%", background: pendingSpreadId === "freestyle" ? "var(--brass)" : "transparent", border: pendingSpreadId === "freestyle" ? "1px solid var(--brass)" : "1px solid rgba(240,230,210,0.25)", transition: "all .18s" }}>
-                {pendingSpreadId === "freestyle" && <span style={{ color: "#1a1420", fontSize: 13, fontWeight: 700 }}>✓</span>}
-              </span>
+              <span className="shrink-0" style={{ color: "rgba(240,230,210,0.4)", fontSize: 20 }}>›</span>
             </button>
-            {pendingSpreadId === "freestyle" && (
-              <div className="mt-2" style={{ padding: "12px 15px 13px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)" }}>
-                <p className="text-[8px] tracking-[0.22em] uppercase font-bold" style={{ color: "var(--brass)", margin: "0 0 6px" }}>About this spread</p>
-                <p className="text-[12px]" style={{ lineHeight: 1.6, margin: 0, color: "rgba(240,230,210,0.65)" }}>{SPREAD_GUIDES["freestyle"]}</p>
-              </div>
-            )}
-          </div>
+          ))}
+
+          {/* Freestyle */}
+          <button
+            onClick={() => { setPendingSpreadId("freestyle"); setQuestion(""); setView("intention"); }}
+            className="w-full text-left flex items-center gap-4 active:scale-[0.99]"
+            style={{ borderRadius: 18, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", padding: "15px 16px", boxShadow: "0 6px 22px rgba(0,0,0,0.28)", transition: "border-color .18s, transform .15s" }}
+          >
+            <span className="shrink-0 flex items-center justify-center" style={{ width: 62, height: 44 }}>
+              <span style={slotStyle({ transform: "rotate(-11deg)" })} />
+              <span style={slotStyle({ transform: "rotate(5deg)", marginLeft: -6 })} />
+              <span style={slotStyle({ transform: "rotate(-2deg)", marginLeft: -6 })} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.1, color: "#f0e6d2" }}>Fanned</span>
+              <span className="block text-[11.5px] mt-0.5" style={{ lineHeight: 1.4, color: "rgba(240,230,210,0.58)" }}>No rules — swipe the arc and pick the cards that call to you.</span>
+            </span>
+            <span className="shrink-0" style={{ color: "rgba(240,230,210,0.4)", fontSize: 20 }}>›</span>
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     RENDER: Intention (one tap from a spread → set an intention → draw)
+     ═══════════════════════════════════════════ */
+  if (view === "intention" && pendingSpreadId) {
+    const isFree = pendingSpreadId === "freestyle";
+    const spread = SPREADS.find((s) => s.id === pendingSpreadId);
+    const name = isFree ? "Fanned" : (spread?.name || "");
+    const cardCount = isFree ? "" : `${spread?.cardCount ?? ""} ${spread?.cardCount === 1 ? "card" : "cards"} · `;
+    const guide = isFree ? SPREAD_GUIDES["freestyle"] : (SPREAD_GUIDES[pendingSpreadId] || spread?.description || "");
+    const deckName = isOracleDeck ? (activeOracleDeck?.name || getOracleDeck(selectedDeck)?.name || "Oracle") : "Classic Tarot";
+    return (
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+        <button onClick={() => setView("spreads")} className="self-start text-[12px] flex items-center gap-1.5 mb-4" style={{ color: "var(--foreground-faint)" }}>
+          <span style={{ fontSize: 16 }}>‹</span> Spreads
+        </button>
+
+        <div className="flex flex-col items-center text-center pt-4 pb-2">
+          <span className="text-[8.5px] tracking-[0.24em] uppercase font-bold" style={{ color: "var(--brass)" }}>Your reading</span>
+          <p className="mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 30, color: "var(--foreground)" }}>{name}</p>
+          <p className="text-[11.5px] mt-1" style={{ color: "var(--foreground-muted)" }}>{cardCount}{deckName}</p>
         </div>
 
-        {/* Your question — optional */}
-        {pendingSpreadId && (
-          <div className="mt-4">
-            <label className="block text-[9px] tracking-[0.25em] uppercase font-bold mb-2.5" style={{ color: "var(--brass)" }}>
-              Your question <span style={{ color: "var(--foreground-faint)", letterSpacing: "0.04em", textTransform: "none", fontWeight: 500 }}>— optional</span>
-            </label>
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              rows={2}
-              placeholder="What’s on your mind? Hold it as the cards turn…"
-              className="w-full resize-none outline-none"
-              style={{ boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", color: "#f0e6d2", fontFamily: "inherit", fontSize: 13.5, lineHeight: 1.5 }}
-            />
-          </div>
-        )}
+        <div className="mt-4" style={{ padding: "13px 16px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)" }}>
+          <p className="text-[8px] tracking-[0.22em] uppercase font-bold" style={{ color: "var(--brass)", margin: "0 0 6px" }}>About this spread</p>
+          <p className="text-[12px]" style={{ lineHeight: 1.6, margin: 0, color: "rgba(240,230,210,0.7)" }}>{guide}</p>
+        </div>
 
-        {/* Begin the reading */}
+        <label className="block text-[9px] tracking-[0.25em] uppercase font-bold mt-6 mb-2.5" style={{ color: "var(--brass)" }}>
+          Ask a question · set your intention <span style={{ color: "var(--foreground-faint)", letterSpacing: "0.04em", textTransform: "none", fontWeight: 500 }}>— optional</span>
+        </label>
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="What’s on your mind? Hold it as the cards turn…"
+          className="w-full resize-none outline-none"
+          style={{ boxSizing: "border-box", padding: "14px 15px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", color: "#f0e6d2", fontFamily: "inherit", fontSize: 14, lineHeight: 1.5 }}
+        />
+
         <button
           onClick={handleBeginReading}
-          disabled={!pendingSpreadId}
           className="w-full flex items-center justify-center gap-2 mt-6"
-          style={{ padding: 16, borderRadius: 99, border: "none", background: "var(--brass)", color: "#1a1815", cursor: pendingSpreadId ? "pointer" : "not-allowed", opacity: pendingSpreadId ? 1 : 0.4, transition: "opacity .2s" }}
+          style={{ padding: 16, borderRadius: 99, border: "none", background: "var(--brass)", color: "#1a1815", cursor: "pointer" }}
         >
-          <span style={{ fontFamily: "var(--font-script)", fontSize: 19 }}>Begin</span>
-          <span className="text-[11px] tracking-[0.16em] uppercase font-semibold">the reading</span>
+          <span style={{ fontFamily: "var(--font-script)", fontSize: 19 }}>Draw your cards</span>
           <span style={{ fontSize: 15 }}>→</span>
         </button>
-        <p className="text-center text-[10.5px] mt-3.5" style={{ lineHeight: 1.6, color: "var(--foreground-faint)", minHeight: 14 }}>
-          {pendingSpreadId ? `Drawing ${pendingName} from ${deckName}` : "Select a spread to continue"}
+        <p className="text-center text-[10.5px] mt-3.5" style={{ lineHeight: 1.6, color: "var(--foreground-faint)" }}>
+          {isFree ? "Swipe the fan and pick the cards that call to you" : `Drawing ${name} from ${deckName}`}
         </p>
       </main>
     );
