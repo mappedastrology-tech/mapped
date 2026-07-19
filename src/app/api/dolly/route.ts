@@ -340,6 +340,15 @@ export async function POST(request: NextRequest) {
       // ephemeris unavailable — skip retrograde context
     }
 
+    // Reference library: distilled, attributed book knowledge relevant to the question.
+    try {
+      const { retrieveDollyKnowledge } = await import("@/lib/dollyKnowledge");
+      const kb = await retrieveDollyKnowledge(supabase, message, { limit: 5 });
+      if (kb) contextParts.push(kb);
+    } catch {
+      // knowledge table may not exist yet — non-fatal
+    }
+
     const fullSystem = contextParts.length
       ? `${DOLLY_SYSTEM_PROMPT}\n\n---\n\n${contextParts.join("\n")}`
       : DOLLY_SYSTEM_PROMPT;

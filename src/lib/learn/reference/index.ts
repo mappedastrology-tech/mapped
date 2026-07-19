@@ -10,6 +10,7 @@ import { chakraReference } from "./chakras";
 import { dreamReference } from "./dreams";
 import { almanacReference } from "./almanac";
 import { meditationReference } from "./meditation";
+import { ingestedReference } from "./ingested";
 
 /** All quick-reference entries across domains. */
 export const ALL_REFERENCE: ReferenceEntry[] = [
@@ -24,6 +25,7 @@ export const ALL_REFERENCE: ReferenceEntry[] = [
   ...dreamReference,
   ...almanacReference,
   ...meditationReference,
+  ...ingestedReference,
 ];
 
 export function referenceByDomain(domain: LearnDomain): ReferenceEntry[] {
