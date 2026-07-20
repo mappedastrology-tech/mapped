@@ -39,17 +39,13 @@ export async function retrieveDollyKnowledge(
       lim: opts.limit ?? 5,
     });
     if (error || !Array.isArray(data) || data.length === 0) return "";
-    const lines = (data as KbPassage[]).map((p) => {
-      const attribution = [p.source_author, p.source_title].filter(Boolean).join(", ");
-      const src = attribution ? ` — ${attribution}` : "";
-      return `- **${p.title}**${src}: ${p.body}`;
-    });
+    const lines = (data as KbPassage[]).map((p) => `- **${p.title}**: ${p.body}`);
     return (
-      `\n## From Mapped's reference library` +
-      ` (distilled from astrology, esoteric, and folk sources)\n` +
+      `\n## Relevant background knowledge\n` +
       `${lines.join("\n")}\n` +
-      `Draw on these to deepen your answer and name the tradition where relevant. ` +
-      `Traditions disagree — present them as perspective, not settled fact, and always tie back to their chart.`
+      `This is your own understanding — weave it in naturally as part of what you know. ` +
+      `Do NOT cite sources, books, or authors, and do not quote it verbatim. ` +
+      `Where traditions differ, speak to it as perspective, and always tie back to their chart.`
     );
   } catch {
     return "";

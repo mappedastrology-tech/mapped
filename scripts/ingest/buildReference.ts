@@ -16,7 +16,11 @@ const SKIP_FILES = new Set(["western_core.reference.json"]);
 const norm = (s: string) =>
   s.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]+/g, "").trim();
 
-const existing = new Set(ALL_REFERENCE.map((e) => `${e.domain}::${norm(e.name)}`));
+// Baseline = the app's own curated reference, EXCLUDING previously-ingested
+// entries (ids prefixed "ing-"), so regeneration never dedupes against itself.
+const existing = new Set(
+  ALL_REFERENCE.filter((e) => !e.id.startsWith("ing-")).map((e) => `${e.domain}::${norm(e.name)}`),
+);
 const seen = new Set<string>();
 const usedIds = new Set<string>();
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);

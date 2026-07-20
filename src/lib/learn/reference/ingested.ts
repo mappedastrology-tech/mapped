@@ -340,7 +340,7 @@ export const ingestedReference: ReferenceEntry[] = [
     "fields": [
       {
         "label": "Origin",
-        "value": "Presented in the twentieth century by Alice A. Bailey, who described the material as transmitted through a teacher referred to as Djwhal Khul."
+        "value": "This tradition took shape in the twentieth century, framed as teachings transmitted from an inner spiritual guide rather than authored in the ordinary sense."
       },
       {
         "label": "Core claim",
@@ -358,7 +358,6 @@ export const ingestedReference: ReferenceEntry[] = [
     "tags": [
       "esoteric astrology",
       "soul",
-      "alice bailey",
       "core concept"
     ]
   },
@@ -1128,7 +1127,7 @@ export const ingestedReference: ReferenceEntry[] = [
       },
       {
         "label": "Tradition",
-        "value": "Alice A. Bailey's Esoteric Astrology (1951) calls it the Ray of the Destroyer — not evil, but the force that breaks down rigid or outworn forms so new life can emerge."
+        "value": "In this tradition it is called the Ray of the Destroyer — not evil, but the force that breaks down rigid or outworn forms so new life can emerge."
       }
     ],
     "aka": [
