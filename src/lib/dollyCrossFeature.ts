@@ -31,15 +31,35 @@ export function gatherCrossFeatureContext(userId: string | null): { journalConte
     const raw = localStorage.getItem(getTarotHistoryKey(userId));
     if (raw) {
       const hist = JSON.parse(raw);
-      const last = Array.isArray(hist) && hist.length ? hist[hist.length - 1] : null;
+      // History is stored newest-first, so the latest pull is the first element.
+      const last: Record<string, unknown> | null = Array.isArray(hist) && hist.length ? hist[0] : null;
       if (last) {
-        const name = last.card?.name || last.name || last.cardName || last.card || "";
-        const when = (last.date || last.created_at || "").slice(0, 10);
-        const rev = last.reversed ? " (reversed)" : "";
-        const note = last.notes || last.meaning || "";
-        tarotContext = name
-          ? `${name}${rev}${when ? ` — pulled ${when}` : ""}${note ? `. Their note: ${String(note).slice(0, 160)}` : ""}`
-          : "";
+        const when = String((last.date as string) || (last.created_at as string) || "").slice(0, 10);
+        const cards = last.cards;
+        if (Array.isArray(cards) && cards.length) {
+          // Multi-card spread: summarize each card and its position.
+          const list = (cards as Array<Record<string, unknown>>)
+            .map((c) => {
+              const pos = c.position ? `${String(c.position)}: ` : "";
+              const rev = c.reversed ? " (reversed)" : "";
+              return `${pos}${String(c.name ?? "")}${rev}`.trim();
+            })
+            .filter((s) => s.length > 1)
+            .join("; ");
+          const spread = last.spreadName ? `${String(last.spreadName)} — ` : "";
+          tarotContext = list ? `${spread}${list}${when ? ` (pulled ${when})` : ""}` : "";
+        } else {
+          // Single-card / legacy shape.
+          const cardObj = last.card as Record<string, unknown> | undefined;
+          const name =
+            (cardObj?.name as string) || (last.name as string) || (last.cardName as string) ||
+            (typeof last.card === "string" ? last.card : "") || "";
+          const rev = last.reversed ? " (reversed)" : "";
+          const note = (last.notes as string) || (last.meaning as string) || "";
+          tarotContext = name
+            ? `${name}${rev}${when ? ` — pulled ${when}` : ""}${note ? `. Their note: ${String(note).slice(0, 160)}` : ""}`
+            : "";
+        }
       }
     }
   } catch { /* ignore */ }

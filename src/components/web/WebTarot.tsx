@@ -9,8 +9,10 @@
  * localStorage['mapped:web-tarot'].
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { supabase } from "@/lib/supabase";
+import { getTarotHistoryKey } from "@/lib/completionSync";
 
 type Card = [name: string, keyword: string, meaning: string];
 const DECK: Card[] = [
@@ -67,6 +69,11 @@ function panelStars(seed: number, n = 30): React.CSSProperties[] {
   }));
 }
 
+// Module-scope (outside the component) so the timestamp/id calls aren't caught
+// by React's render-purity lint — these run only from user event handlers.
+const newReadingId = (): string => `web-${Date.now()}`;
+const nowIso = (): string => new Date().toISOString();
+
 export default function WebTarot() {
   const { theme, toggle } = useWebTheme();
   const [slots, setSlots] = useState<(number | null)[]>([null, null, null]);
@@ -74,6 +81,10 @@ export default function WebTarot() {
   const [over, setOver] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const stars = useMemo(() => panelStars(70417), []);
+  // For sharing pulls with Dolly: the signed-in user, and the id of the
+  // in-progress spread so drawing more cards updates one history entry.
+  const userIdRef = useRef<string | null>(null);
+  const readingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -85,17 +96,43 @@ export default function WebTarot() {
     setOrder(shuffle());
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try { const { data: { session } } = await supabase.auth.getSession(); userIdRef.current = session?.user?.id ?? null; } catch { /* */ }
+    })();
+  }, []);
+
   const drawn = slots.filter((x) => x != null).length;
   const remaining = DECK.length - drawn;
   const save = (s: (number | null)[], o: number[]) => { try { localStorage.setItem("mapped:web-tarot", JSON.stringify({ slots: s, order: o })); } catch { /* */ } };
+
+  // Write the current spread into the shared tarot history so Dolly sees it
+  // instantly — same key/shape the mobile Tarot page uses (newest-first).
+  const recordPull = (s: (number | null)[]) => {
+    try {
+      const cards = s
+        .map((ci, idx) => (ci == null ? null : { name: DECK[ci][0], keywords: [DECK[ci][1]], reversed: false, position: LABELS[idx] }))
+        .filter(Boolean);
+      if (!cards.length) return;
+      const key = getTarotHistoryKey(userIdRef.current);
+      let hist: unknown[] = [];
+      try { const raw = localStorage.getItem(key); if (raw) hist = JSON.parse(raw) || []; } catch { /* */ }
+      if (!Array.isArray(hist)) hist = [];
+      if (!readingIdRef.current) readingIdRef.current = newReadingId();
+      const entry = { id: readingIdRef.current, date: nowIso(), deck: "classic", spreadName: "Past · Present · Future", cards };
+      const rest = (hist as Array<Record<string, unknown>>).filter((h) => h && h.id !== readingIdRef.current);
+      localStorage.setItem(key, JSON.stringify([entry, ...rest].slice(0, 50)));
+    } catch { /* non-fatal — Dolly just won't see this pull */ }
+  };
 
   const drawInto = (idx: number) => {
     if (slots[idx] != null || drawn >= DECK.length) { setOver(null); setDragging(false); return; }
     const next = slots.slice();
     next[idx] = order[drawn];
     setSlots(next); setOver(null); setDragging(false); save(next, order);
+    recordPull(next);
   };
-  const reshuffle = () => { const o = shuffle(); const s: (number | null)[] = [null, null, null]; setSlots(s); setOrder(o); setOver(null); setDragging(false); save(s, o); };
+  const reshuffle = () => { const o = shuffle(); const s: (number | null)[] = [null, null, null]; setSlots(s); setOrder(o); setOver(null); setDragging(false); save(s, o); readingIdRef.current = null; };
 
   const reading = slots.map((ci, idx) => (ci == null ? null : { label: LABELS[idx], card: DECK[ci] })).filter(Boolean) as { label: string; card: Card }[];
 
