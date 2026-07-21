@@ -137,11 +137,22 @@ function JournalPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const usedVoiceRef = useRef(false);
+  const composeScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
     setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
   }, []);
+
+  // Entering compose: start at the top. Without this, switching from a
+  // scrolled-down home view (or the textarea's autofocus) left the view stuck
+  // near the bottom, unable to scroll up.
+  useEffect(() => {
+    if (view === "compose") {
+      composeScrollRef.current?.scrollTo({ top: 0 });
+      if (typeof window !== "undefined") window.scrollTo(0, 0);
+    }
+  }, [view]);
   const [aiPromptLoading, setAiPromptLoading] = useState(false);
 
   // Entry detail
@@ -587,7 +598,7 @@ function JournalPage() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8">
+        <div ref={composeScrollRef} className="flex-1 overflow-y-auto px-4 pt-4 pb-8">
           {/* Date */}
           <div className="flex items-baseline gap-3 mb-4 px-1">
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 46, fontWeight: 600, lineHeight: 1, color: "var(--foreground)" }}>{composeDate.day}</span>
@@ -686,7 +697,6 @@ function JournalPage() {
               aria-label="Journal entry"
               className="w-full bg-transparent resize-none focus:outline-none"
               style={{ minHeight: 180, fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
-              autoFocus
             />
 
             {/* Attached photo preview */}
