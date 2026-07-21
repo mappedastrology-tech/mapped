@@ -408,7 +408,7 @@ export default function TarotTab() {
   }
 
   /* ─── Navigate to Dolly with reading context ─── */
-  const goToDolly = useCallback((card?: DrawnCard) => {
+  const navigateDolly = useCallback((card?: DrawnCard) => {
     let context = "";
 
     if (card) {
@@ -448,6 +448,28 @@ export default function TarotTab() {
     }
     router.push("/dolly");
   }, [router, isOracleDeck, pickedOracleCards, pickedCards, freestylePicks, selectedSpread]);
+
+  // Prompt to save the reading before handing it off to Dolly (the save is opt-in,
+  // so without this the reading would be lost when you leave for Dolly).
+  const [dollySave, setDollySave] = useState<{ card?: DrawnCard } | null>(null);
+  const goToDolly = useCallback((card?: DrawnCard) => {
+    const hasReading = pickedCards.length > 0 || pickedOracleCards.length > 0 || freestylePicks.length > 0;
+    if (hasReading && !readingSaved) { setDollySave({ card }); return; }
+    navigateDolly(card);
+  }, [pickedCards, pickedOracleCards, freestylePicks, readingSaved, navigateDolly]);
+
+  const dollySaveModal = dollySave ? (
+    <div onClick={() => setDollySave(null)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}>
+        <p style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
+        <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>Save it to your history before you take it to Dolly, so you can come back to it later.</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => { const c = dollySave.card; handleSaveReading(); setDollySave(null); navigateDolly(c); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "var(--brass)", color: "#1a1020", border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Save &amp; continue</button>
+          <button onClick={() => { const c = dollySave.card; setDollySave(null); navigateDolly(c); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "transparent", color: "var(--foreground-muted)", border: "0.5px solid var(--border-card)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>Skip</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   /* ═══════════════════════════════════════════
      RENDER: Oracle Card Detail View
@@ -529,6 +551,7 @@ export default function TarotTab() {
           </svg>
           Talk to Dolly about this card
         </button>
+        {dollySaveModal}
 
         {/* Share */}
         <button
@@ -658,6 +681,7 @@ export default function TarotTab() {
           </svg>
           Talk to Dolly about this card
         </button>
+        {dollySaveModal}
 
         {/* Share */}
         <button
@@ -1319,6 +1343,7 @@ export default function TarotTab() {
                 </svg>
                 Talk to Dolly about this reading
               </button>
+              {dollySaveModal}
               {/* New / Reshuffle */}
               <div className="flex gap-3 mb-4">
                 <button onClick={() => { setView("spreads"); setPickedOracleCards([]); }}
@@ -1581,6 +1606,7 @@ export default function TarotTab() {
               </svg>
               Talk to Dolly about this reading
             </button>
+            {dollySaveModal}
             {/* New / Reshuffle */}
             <div className="flex gap-3 mb-4">
               <button onClick={() => { setView("spreads"); setPickedCards([]); }}
