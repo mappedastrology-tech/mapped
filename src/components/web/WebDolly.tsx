@@ -14,6 +14,7 @@ import WebShell, { useWebTheme } from "./WebShell";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 import { supabase } from "@/lib/supabase";
+import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
 
 // U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const SIGN_GLYPH: Record<string, string> = {
@@ -44,44 +45,90 @@ export default function WebDolly() {
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Chart loaded from Supabase for signed-in users (fallback when it isn't
-  // already cached in sessionStorage by the chart page this session).
+  // Cross-feature context loaded for signed-in users so web Dolly knows the
+  // same things the mobile Dolly does — chart, people, and live transits.
   const chartRef = useRef<unknown>(null);
   const userNameRef = useRef<string>("");
+  const userIdRef = useRef<string | null>(null);
+  const connectionsRef = useRef<unknown[]>([]);
+  const transitsRef = useRef<unknown>(null);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, typing]);
 
-  // Connect Dolly to the signed-in user's saved chart even if they haven't
-  // opened the chart page this session (which is what fills sessionStorage).
-  // Mirrors the mobile Dolly tab so web users aren't told "I can't see your chart".
+  // Connect Dolly to everything the app knows about the signed-in user —
+  // their saved chart, the people in their life, and today's live transits —
+  // even if they haven't opened those pages this session. Mirrors the mobile
+  // Dolly tab so web users aren't told "I can't see your chart".
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        if (typeof window !== "undefined" && sessionStorage.getItem("chartResult")) return;
+        // Resolve the chart: sessionStorage first, else the saved chart in Supabase.
+        let chart: { bigThree?: unknown; planets?: unknown[]; houses?: unknown[]; specialPoints?: unknown[]; birthDate?: string; birthTime?: string } | null = null;
+        try { const s = sessionStorage.getItem("chartResult"); if (s) chart = JSON.parse(s); } catch { /* */ }
+
         const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
+        const userId = session?.user?.id ?? null;
+        userIdRef.current = userId;
+
+        if (!chart && userId) {
+          const { data: c } = await supabase
+            .from("charts")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          if (c) {
+            chart = {
+              bigThree: c.big_three,
+              planets: c.planets || [],
+              houses: c.houses || [],
+              specialPoints: c.special_points || [],
+              birthDate: c.birth_date,
+              birthTime: c.birth_time,
+            };
+            userNameRef.current = c.name || "";
+            try { sessionStorage.setItem("chartResult", JSON.stringify(chart)); } catch { /* */ }
+          }
+        }
+        if (cancelled) return;
+        if (chart) chartRef.current = chart;
         if (!userId) return;
-        const { data: c } = await supabase
-          .from("charts")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-        if (cancelled || !c) return;
-        const chart = {
-          bigThree: c.big_three,
-          planets: c.planets || [],
-          houses: c.houses || [],
-          specialPoints: c.special_points || [],
-          birthDate: c.birth_date,
-          birthTime: c.birth_time,
-        };
-        chartRef.current = chart;
-        userNameRef.current = c.name || "";
-        try { sessionStorage.setItem("chartResult", JSON.stringify(chart)); } catch { /* storage may be unavailable */ }
+
+        // People in their life (connections) for relationship questions.
+        try {
+          const { data: conns } = await supabase
+            .from("connections")
+            .select("name, relationship, category, big_three, planets, houses")
+            .eq("user_id", userId);
+          if (!cancelled && Array.isArray(conns)) {
+            connectionsRef.current = conns.map((c) => ({
+              name: c.name, relationship: c.relationship, category: c.category,
+              bigThree: c.big_three, planets: c.planets, houses: c.houses,
+            }));
+          }
+        } catch { /* connections optional */ }
+
+        // Today's transits so timing answers are current, not stale.
+        try {
+          const planets = (chart?.planets ?? []) as unknown[];
+          if (planets.length) {
+            const today = new Date().toISOString().split("T")[0];
+            const res = await fetch("/api/transits", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                natalPlanets: planets,
+                natalHouses: chart?.houses ?? [],
+                transitDate: today,
+                zodiacSystem: "tropical",
+              }),
+            });
+            if (!cancelled && res.ok) transitsRef.current = await res.json();
+          }
+        } catch { /* transits optional */ }
       } catch { /* not signed in or no saved chart — Dolly will say so honestly */ }
     })();
     return () => { cancelled = true; };
@@ -97,9 +144,11 @@ export default function WebDolly() {
     setInput("");
     setTyping(true);
 
-    let chart: unknown = chartRef.current, transits: unknown = null;
+    let chart: unknown = chartRef.current, transits: unknown = transitsRef.current;
     try { const c = sessionStorage.getItem("chartResult"); if (c) chart = JSON.parse(c); } catch { /* */ }
     try { const t = sessionStorage.getItem("mapped:transits"); if (t) transits = JSON.parse(t); } catch { /* */ }
+    // Journal + latest tarot/oracle pull (same source as the mobile Dolly).
+    const { journalContext, tarotContext } = gatherCrossFeatureContext(userIdRef.current);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -115,7 +164,7 @@ export default function WebDolly() {
       const res = await authedFetch("/api/dolly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: [], userName: userNameRef.current }),
+        body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: connectionsRef.current, userName: userNameRef.current, journalContext, tarotContext }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
