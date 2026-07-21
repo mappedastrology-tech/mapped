@@ -50,8 +50,40 @@ import {
 } from "@/lib/celestialCalendar";
 import { shareReadingAsImage } from "@/lib/shareCard";
 import { MOOD_PALETTE } from "@/lib/feedback";
+import InfoTip from "@/components/InfoTip";
 
 type View = "home" | "compose" | "entry" | "patterns";
+
+// Time-of-day word so the title prompt matches when the user is actually writing.
+function currentTimeWord(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "tonight";
+  if (h < 12) return "this morning";
+  if (h < 17) return "this afternoon";
+  if (h < 21) return "this evening";
+  return "tonight";
+}
+
+// Tappable title suggestions, tuned to the time of day.
+function titleIdeas(timeWord: string): string[] {
+  const base = ["What's on my mind", "Letting it out", "A quiet moment", "Where I am right now"];
+  if (timeWord.includes("morning")) return ["Morning pages", "Setting my intention", "How I woke up", ...base].slice(0, 5);
+  if (timeWord.includes("afternoon")) return ["Midday check-in", "Catching my breath", ...base].slice(0, 5);
+  return ["Winding down", "Releasing the day", "Tonight's reflection", ...base].slice(0, 5);
+}
+
+// Minimal Web Speech API shapes (not in the standard TS DOM lib).
+interface SpeechAlt { transcript: string }
+interface SpeechResult { isFinal: boolean; 0: SpeechAlt; length: number }
+interface SpeechResults { length: number; [i: number]: SpeechResult }
+interface SpeechEvt { resultIndex: number; results: SpeechResults }
+interface SpeechRecognitionLike {
+  continuous: boolean; interimResults: boolean; lang: string;
+  start(): void; stop(): void;
+  onresult: ((e: SpeechEvt) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+}
 
 // Mood-chip dot colors — map mood categories onto the themed entry-type tokens
 // (matches the design's mood-dot pattern: each chip carries a small tinted dot).
@@ -98,6 +130,18 @@ function JournalPage() {
   const [showBurnAnimation, setShowBurnAnimation] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
+  const [timeWord] = useState(currentTimeWord);
+  const [composeImage, setComposeImage] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const usedVoiceRef = useRef(false);
+
+  useEffect(() => {
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+  }, []);
   const [aiPromptLoading, setAiPromptLoading] = useState(false);
 
   // Entry detail
@@ -312,9 +356,72 @@ function JournalPage() {
     setComposeTitle("");
     setIsBurn(false);
     setSelectedMoods([]);
+    setComposeImage(null);
+    usedVoiceRef.current = false;
+    try { recognitionRef.current?.stop(); } catch { /* */ }
+    setIsRecording(false);
     setPromptCycleCount(0);
     setCycledIds(prompt ? [prompt.id] : []);
     setView("compose");
+  }
+
+  // Voice-to-text: dictate into the entry body via the Web Speech API.
+  function toggleVoice() {
+    if (!voiceSupported) return;
+    if (isRecording) { try { recognitionRef.current?.stop(); } catch { /* */ } return; }
+    try {
+      const w = window as unknown as {
+        SpeechRecognition?: new () => SpeechRecognitionLike;
+        webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+      };
+      const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+      if (!Ctor) return;
+      const rec = new Ctor();
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = "en-US";
+      rec.onresult = (e) => {
+        let chunk = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) chunk += e.results[i][0].transcript;
+        }
+        chunk = chunk.trim();
+        if (chunk) {
+          usedVoiceRef.current = true;
+          setComposeText((prev) => (prev ? prev.replace(/\s+$/, "") + " " : "") + chunk + " ");
+        }
+      };
+      rec.onend = () => setIsRecording(false);
+      rec.onerror = () => setIsRecording(false);
+      recognitionRef.current = rec;
+      rec.start();
+      setIsRecording(true);
+    } catch { setIsRecording(false); }
+  }
+
+  // Attach a photo — compressed to keep on-device storage reasonable.
+  function onPickJournalPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1100;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        setComposeImage(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   function cyclePrompt() {
@@ -356,8 +463,9 @@ function JournalPage() {
       prompt_text: currentPrompt?.text || null,
       prompt: currentPrompt?.text || "(free write)",
       mood: selectedMoods.length ? selectedMoods.join(", ") : undefined,
+      image: composeImage || undefined,
       is_burn: isBurn,
-      is_voice: false,
+      is_voice: usedVoiceRef.current,
       tags: autoTag(composeText, now, moonPhase?.phase || "unknown", null, []),
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
@@ -496,16 +604,19 @@ function JournalPage() {
           </div>
 
           {/* Burn-mode toggle */}
-          <button
-            onClick={() => setIsBurn(!isBurn)}
-            className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors"
-            style={isBurn
-              ? { background: "color-mix(in srgb, var(--oxblood-light) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 40%, transparent)", color: "var(--oxblood-light)" }
-              : { background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
-            {isBurn ? "Burn mode on" : "Burn mode"}
-          </button>
+          <div className="inline-flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setIsBurn(!isBurn)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors"
+              style={isBurn
+                ? { background: "color-mix(in srgb, var(--oxblood-light) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 40%, transparent)", color: "var(--oxblood-light)" }
+                : { background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+              {isBurn ? "Burn mode on" : "Burn mode"}
+            </button>
+            <InfoTip term="Burn mode" explanation="Sometimes, you need to get things out and then not ever see it again. Use burn mode to release it." />
+          </div>
           {isBurn && (
             <div className="mb-4 rounded-xl px-4 py-3" style={{ background: "color-mix(in srgb, var(--oxblood-light) 6%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 16%, transparent)" }}>
               <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
@@ -519,11 +630,26 @@ function JournalPage() {
             <input
               value={composeTitle}
               onChange={(e) => setComposeTitle(e.target.value)}
-              placeholder="Give tonight a title…"
+              placeholder={`Give ${timeWord} a title…`}
               aria-label="Entry title"
               className="w-full bg-transparent outline-none pb-3.5"
               style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)", borderBottom: "0.5px solid var(--border-card)" }}
             />
+            {!composeTitle && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {titleIdeas(timeWord).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setComposeTitle(t)}
+                    className="px-2.5 py-1 rounded-full text-[11px]"
+                    style={{ background: "color-mix(in srgb, var(--journal-accent) 10%, transparent)", border: "0.5px solid color-mix(in srgb, var(--journal-accent) 30%, transparent)", color: "var(--journal-accent)" }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {composeMoonLabel && (
               <div className="flex flex-wrap gap-2 mt-4 mb-4">
@@ -556,12 +682,56 @@ function JournalPage() {
               ref={textareaRef}
               value={composeText}
               onChange={(e) => setComposeText(e.target.value)}
-              placeholder="Let the words come — whatever's on your mind tonight…"
+              placeholder={`Let the words come — whatever's on your mind ${timeWord}…`}
               aria-label="Journal entry"
               className="w-full bg-transparent resize-none focus:outline-none"
               style={{ minHeight: 180, fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
               autoFocus
             />
+
+            {/* Attached photo preview */}
+            {composeImage && (
+              <div className="mt-4 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={composeImage} alt="Attached to entry" style={{ maxHeight: 220, maxWidth: "100%", borderRadius: 12, display: "block" }} />
+                <button
+                  type="button"
+                  onClick={() => setComposeImage(null)}
+                  aria-label="Remove photo"
+                  className="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                  style={{ background: "var(--oxblood-light)", color: "#fff", border: "none", lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {/* Compose toolbar — add photo + voice-to-text */}
+            <div className="flex items-center flex-wrap gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px]"
+                style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                {composeImage ? "Change photo" : "Add photo"}
+              </button>
+              {voiceSupported && (
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px]"
+                  style={isRecording
+                    ? { background: "color-mix(in srgb, var(--oxblood-light) 14%, transparent)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 40%, transparent)", color: "var(--oxblood-light)" }
+                    : { background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4" /></svg>
+                  {isRecording ? "Listening… tap to stop" : "Voice to text"}
+                </button>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={onPickJournalPhoto} className="hidden" />
+            </div>
           </div>
 
           {/* MOOD */}
@@ -762,6 +932,10 @@ function JournalPage() {
           <div className="rounded-[20px] p-[20px_18px] mb-5" style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)", boxShadow: "0 10px 34px -20px rgba(0,0,0,0.55)" }}>
             {selectedEntry.title && (
               <p className="pb-3.5 mb-4" style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)", borderBottom: "0.5px solid var(--border-card)" }}>{selectedEntry.title}</p>
+            )}
+            {selectedEntry.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={selectedEntry.image} alt="Entry photo" style={{ width: "100%", borderRadius: 12, marginBottom: 16, display: "block" }} />
             )}
             {selectedEntry.prompt_text && (
               <div style={{ borderLeft: "2px solid var(--journal-accent)", padding: "0 0 0 12px", margin: "2px 0 16px" }}>

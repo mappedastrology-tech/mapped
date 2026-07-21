@@ -24,6 +24,8 @@ export interface JournalEntry {
   is_voice: boolean;
   // Optional entry title (journal compose)
   title?: string;
+  // Optional attached photo (compressed base64 data URL, stored on-device)
+  image?: string;
   // Legacy compat
   prompt?: string;
   content?: string;
