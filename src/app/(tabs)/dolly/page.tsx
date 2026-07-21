@@ -93,6 +93,12 @@ function getDollyLsKey(uid?: string | null): string {
   return uid ? `${base}:${uid}` : base;
 }
 
+/** Cache of AI-generated chat summaries, so we summarize each chat only once. */
+function getDollySummaryKey(uid?: string | null): string {
+  const base = "mapped:dolly-summaries";
+  return uid ? `${base}:${uid}` : base;
+}
+
 export default function DollyTab() {
   const { gate, PaywallModal } = usePaywall();
   const { tier } = useTier();
@@ -110,6 +116,9 @@ export default function DollyTab() {
   // History drawer state
   const [showHistory, setShowHistory] = useState(false);
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [pastConversations, setPastConversations] = useState<PastConversation[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingDay, setViewingDay] = useState<string | null>(null); // which day's chat is loaded
@@ -546,6 +555,7 @@ export default function DollyTab() {
       }
 
       setPastConversations(convos);
+      void ensureSummaries(convos);
     } catch (err) {
       console.error("Load history error:", err);
     }
@@ -593,6 +603,79 @@ export default function DollyTab() {
       conversationIdRef.current = null;
       setViewingDay(null);
     }
+  }
+
+  // Load cached chat summaries for this user.
+  useEffect(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(getDollySummaryKey(currentUserId)) || "{}");
+      if (c && typeof c === "object") setSummaries(c);
+    } catch { /* ignore */ }
+  }, [currentUserId]);
+
+  // Generate a short summary for any chat that doesn't have one yet (cached).
+  async function ensureSummaries(convos: PastConversation[]) {
+    let cache: Record<string, string> = {};
+    try { cache = JSON.parse(localStorage.getItem(getDollySummaryKey(currentUserId)) || "{}"); } catch { /* */ }
+    const todo = convos.filter(
+      (c) => c.messages.length >= 2 && c.messages.some((m) => m.role === "assistant") && !cache[c.id]
+    ).slice(0, 20); // bound the number of calls per history open
+    if (!todo.length) return;
+    const updated = { ...cache };
+    for (const c of todo) {
+      try {
+        const res = await authedFetch("/api/dolly/summarize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: c.messages.slice(0, 12).map((m) => ({ role: m.role, content: m.content })) }),
+        });
+        if (res.ok) {
+          const { summary } = await res.json();
+          if (summary) {
+            updated[c.id] = summary;
+            setSummaries((prev) => ({ ...prev, [c.id]: summary }));
+          }
+        }
+      } catch { /* skip this one */ }
+    }
+    try { localStorage.setItem(getDollySummaryKey(currentUserId), JSON.stringify(updated)); } catch { /* */ }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  // Delete all selected conversations at once.
+  async function deleteSelected() {
+    const toDelete = pastConversations.filter((c) => selectedIds.has(c.id));
+    if (!toDelete.length) { setSelectMode(false); return; }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const lsKey = getDollyLsKey(currentUserId);
+      const ls = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { day?: string }>;
+      for (const c of toDelete) {
+        if (session?.user) {
+          try { await supabase.from("dolly_conversations").delete().eq("id", c.id).eq("user_id", session.user.id); } catch { /* */ }
+        }
+        delete ls[c.id];
+        for (const k of Object.keys(ls)) { if (ls[k]?.day === c.day) delete ls[k]; }
+      }
+      localStorage.setItem(lsKey, JSON.stringify(ls));
+    } catch { /* ignore */ }
+    const deletedActive = conversationId ? selectedIds.has(conversationId) : false;
+    setPastConversations((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+    if (deletedActive) {
+      setMessages([]);
+      setConversationId(null);
+      conversationIdRef.current = null;
+      setViewingDay(null);
+    }
+    setSelectedIds(new Set());
+    setSelectMode(false);
   }
 
   // Open history drawer
@@ -682,20 +765,41 @@ export default function DollyTab() {
           >
             Chats
           </h1>
-          {/* New reading button — compose style */}
-          <button
-            onClick={() => {
-              handleNewChat();
-              setShowHistory(false);
-            }}
-            className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
-            aria-label="New conversation"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {pastConversations.length > 0 && (
+              <button
+                onClick={() => { setSelectMode((s) => !s); setSelectedIds(new Set()); }}
+                className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
+              >
+                {selectMode ? "Cancel" : "Select"}
+              </button>
+            )}
+            {selectMode && selectedIds.size > 0 && (
+              <button
+                onClick={deleteSelected}
+                className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                style={{ background: "var(--oxblood-light)", color: "#fff", border: "none" }}
+              >
+                Delete ({selectedIds.size})
+              </button>
+            )}
+            {!selectMode && (
+              <button
+                onClick={() => {
+                  handleNewChat();
+                  setShowHistory(false);
+                }}
+                className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
+                aria-label="New conversation"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Conversation list */}
@@ -742,9 +846,21 @@ export default function DollyTab() {
                       isActive ? "bg-terracotta/8" : ""
                     }`}>
                       <button
-                        onClick={() => loadConversation(convo)}
+                        onClick={() => { if (selectMode) toggleSelect(convo.id); else loadConversation(convo); }}
                         className="flex-1 text-left px-5 py-3.5 flex gap-3 items-start active:bg-foreground/5 min-w-0"
                       >
+                        {selectMode && (
+                          <span
+                            className="mt-2.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={selectedIds.has(convo.id)
+                              ? { background: "var(--terracotta)", border: "1px solid var(--terracotta)" }
+                              : { border: "1.5px solid var(--border-card)" }}
+                          >
+                            {selectedIds.has(convo.id) && (
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                            )}
+                          </span>
+                        )}
                         {/* Dolly avatar */}
                         <DollyAvatar size={40} className="mt-0.5" />
 
@@ -754,7 +870,7 @@ export default function DollyTab() {
                             <span className={`text-sm font-medium truncate ${
                               isActive ? "text-foreground" : "text-secondary"
                             }`}>
-                              {preview}
+                              {summaries[convo.id] || preview}
                             </span>
                             <span className="text-muted text-[10px] ml-2 flex-shrink-0">
                               {formatConvoTime(convo)}
@@ -778,20 +894,22 @@ export default function DollyTab() {
                         </div>
                       </button>
 
-                      {/* Delete button */}
-                      <button
-                        onClick={() => {
-                          if (confirm("Delete this conversation?")) {
-                            deleteConversation(convo);
-                          }
-                        }}
-                        className="px-4 py-3.5 flex-shrink-0 text-foreground/20 active:text-red-400/70 transition-colors self-stretch flex items-center"
-                        aria-label="Delete conversation"
-                      >
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
-                        </svg>
-                      </button>
+                      {/* Delete button (hidden in multi-select mode) */}
+                      {!selectMode && (
+                        <button
+                          onClick={() => {
+                            if (confirm("Delete this conversation?")) {
+                              deleteConversation(convo);
+                            }
+                          }}
+                          className="px-4 py-3.5 flex-shrink-0 text-foreground/20 active:text-red-400/70 transition-colors self-stretch flex items-center"
+                          aria-label="Delete conversation"
+                        >
+                          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
 
                     {/* Divider */}
@@ -799,6 +917,9 @@ export default function DollyTab() {
                   </div>
                 );
               })}
+              {/* Spacer so the last row's delete button clears the floating
+                  "report a bug" button at the bottom-right. */}
+              <div className="h-36" aria-hidden="true" />
             </div>
           )}
         </div>
