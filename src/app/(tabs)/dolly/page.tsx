@@ -116,6 +116,9 @@ export default function DollyTab() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // The active conversation's canonical id, kept in a ref so saves within a
+  // session always reuse the same id (state updates are async).
+  const conversationIdRef = useRef<string | null>(null);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -257,58 +260,54 @@ export default function DollyTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingContext, isLoading]);
 
-  // Save conversation — always to localStorage, Supabase as backup
+  // Save conversation — one row per user/day, mirrored to localStorage under
+  // the same canonical id so a chat never appears twice in history.
   const saveConversation = useCallback(async (msgs: Message[]) => {
     if (!msgs.length) return;
 
     const todayKey = new Date().toISOString().split("T")[0];
-    // Ensure we have a unique conversation ID for this chat session
-    const convoId = conversationId || generateConvoId();
-    if (!conversationId) setConversationId(convoId);
+    const day = viewingDay || todayKey;
+    let id = conversationIdRef.current;
 
-    // Always save to localStorage first (guaranteed to work)
-    try {
-      const lsKey = getDollyLsKey(currentUserId);
-      const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
-      existing[convoId] = { messages: msgs, updated_at: new Date().toISOString(), day: viewingDay || todayKey };
-      // Keep last 50 conversations
-      const entries = Object.entries(existing).sort((a, b) => b[1].updated_at.localeCompare(a[1].updated_at));
-      if (entries.length > 50) {
-        const pruned: Record<string, { messages: Message[]; updated_at: string; day?: string }> = {};
-        entries.slice(0, 50).forEach(([k, v]) => { pruned[k] = v; });
-        localStorage.setItem(lsKey, JSON.stringify(pruned));
-      } else {
-        localStorage.setItem(lsKey, JSON.stringify(existing));
-      }
-    } catch { /* localStorage full or unavailable */ }
-
-    // Also try Supabase
+    // Supabase first (when signed in): upsert on (user_id, day) so we always
+    // reuse one canonical id per day instead of inserting a new mismatched row.
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      if (conversationId) {
-        await supabase
+      if (session?.user) {
+        const { data, error } = await supabase
           .from("dolly_conversations")
-          .update({ messages: msgs, updated_at: new Date().toISOString() })
-          .eq("id", conversationId);
-      } else {
-        const { data } = await supabase
-          .from("dolly_conversations")
-          .insert({
-            user_id: session.user.id,
-            day: todayKey,
-            messages: msgs,
-          })
+          .upsert(
+            { user_id: session.user.id, day, messages: msgs, updated_at: new Date().toISOString() },
+            { onConflict: "user_id,day" }
+          )
           .select("id")
           .single();
-
-        if (data) setConversationId(data.id);
+        if (!error && data?.id) id = data.id;
       }
     } catch (err) {
       console.error("Save conversation error (Supabase):", err);
     }
-  }, [conversationId, viewingDay, currentUserId]);
+
+    // Stable local id when offline / signed out.
+    if (!id) id = generateConvoId();
+    conversationIdRef.current = id;
+    setConversationId(id);
+
+    // Mirror to localStorage under the same id; drop any stale entry for the
+    // same day so history stays deduplicated.
+    try {
+      const lsKey = getDollyLsKey(currentUserId);
+      const existing = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
+      for (const k of Object.keys(existing)) {
+        if (k !== id && existing[k]?.day === day) delete existing[k];
+      }
+      existing[id] = { messages: msgs, updated_at: new Date().toISOString(), day };
+      const entries = Object.entries(existing).sort((a, b) => b[1].updated_at.localeCompare(a[1].updated_at));
+      const out: Record<string, { messages: Message[]; updated_at: string; day?: string }> = {};
+      entries.slice(0, 50).forEach(([k, v]) => { out[k] = v; });
+      localStorage.setItem(lsKey, JSON.stringify(out));
+    } catch { /* localStorage full or unavailable */ }
+  }, [viewingDay, currentUserId]);
 
   // Send message
   async function handleSend(text?: string) {
@@ -485,10 +484,12 @@ export default function DollyTab() {
         const lsData = JSON.parse(localStorage.getItem(getDollyLsKey(currentUserId)) || "{}") as Record<string, { messages: Message[]; updated_at: string; day?: string }>;
         for (const [convoKey, val] of Object.entries(lsData)) {
           if (!val?.messages?.length) continue;
-          const alreadyInList = convos.some(c => c.id === convoKey);
+          // day field may be inside val (new format) or the key itself may be a date (old format)
+          const day = val.day || (convoKey.match(/^\d{4}-\d{2}-\d{2}$/) ? convoKey : new Date(val.updated_at).toISOString().split("T")[0]);
+          // Dedup by id AND by day (one conversation per day) so legacy
+          // mismatched-id entries don't show alongside the Supabase row.
+          const alreadyInList = convos.some(c => c.id === convoKey || c.day === day);
           if (!alreadyInList) {
-            // day field may be inside val (new format) or the key itself may be a date (old format)
-            const day = val.day || (convoKey.match(/^\d{4}-\d{2}-\d{2}$/) ? convoKey : new Date(val.updated_at).toISOString().split("T")[0]);
             convos.push({ id: convoKey, day, messages: val.messages, updated_at: val.updated_at });
           }
         }
@@ -535,6 +536,7 @@ export default function DollyTab() {
     }
     setMessages(convo.messages);
     setConversationId(convo.id);
+    conversationIdRef.current = convo.id;
     setViewingDay(convo.day);
     setShowHistory(false);
   }
@@ -564,6 +566,7 @@ export default function DollyTab() {
     if (convo.id === conversationId) {
       setMessages([]);
       setConversationId(null);
+      conversationIdRef.current = null;
       setViewingDay(null);
     }
   }
