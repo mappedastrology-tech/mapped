@@ -109,6 +109,7 @@ export default function DollyTab() {
 
   // History drawer state
   const [showHistory, setShowHistory] = useState(false);
+  const [showLeavePrompt, setShowLeavePrompt] = useState(false);
   const [pastConversations, setPastConversations] = useState<PastConversation[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingDay, setViewingDay] = useState<string | null>(null); // which day's chat is loaded
@@ -459,8 +460,31 @@ export default function DollyTab() {
     }
     setMessages([]);
     setConversationId(null);
+    conversationIdRef.current = null;
     setIsStreaming(false);
     setViewingDay(null);
+    setShowLeavePrompt(false);
+  }
+
+  // "Discard" from the leave prompt: remove the current reading, then start new.
+  async function discardCurrentAndNew() {
+    const id = conversationIdRef.current;
+    const day = viewingDay || new Date().toISOString().split("T")[0];
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        if (id) await supabase.from("dolly_conversations").delete().eq("id", id).eq("user_id", session.user.id);
+        else await supabase.from("dolly_conversations").delete().eq("day", day).eq("user_id", session.user.id);
+      }
+    } catch { /* ignore */ }
+    try {
+      const lsKey = getDollyLsKey(currentUserId);
+      const ls = JSON.parse(localStorage.getItem(lsKey) || "{}") as Record<string, { day?: string }>;
+      for (const k of Object.keys(ls)) { if (k === id || ls[k]?.day === day) delete ls[k]; }
+      localStorage.setItem(lsKey, JSON.stringify(ls));
+    } catch { /* ignore */ }
+    setPastConversations((prev) => prev.filter((c) => c.id !== id && c.day !== day));
+    handleNewChat();
   }
 
   // Load conversation history list
@@ -813,7 +837,7 @@ export default function DollyTab() {
         </div>
         {messages.length > 0 && (
           <button
-            onClick={handleNewChat}
+            onClick={() => setShowLeavePrompt(true)}
             className="shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors"
             style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
           >
@@ -821,6 +845,38 @@ export default function DollyTab() {
           </button>
         )}
       </div>
+
+      {/* Leave prompt — offer to keep or discard the current reading. */}
+      {showLeavePrompt && (
+        <div
+          onClick={() => setShowLeavePrompt(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
+          >
+            <p style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>
+              It&rsquo;s kept in your history so you can reopen it anytime. Save it, or discard it before starting fresh.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { setShowLeavePrompt(false); handleNewChat(); }}
+                style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "var(--lavender)", color: "#1a1020", border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+              >
+                Save &amp; start new
+              </button>
+              <button
+                onClick={discardCurrentAndNew}
+                style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "transparent", color: "var(--foreground-muted)", border: "1px solid var(--border-card)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-5 py-4">

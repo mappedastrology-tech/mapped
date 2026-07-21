@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { supabase } from "@/lib/supabase";
 import { getTarotHistoryKey } from "@/lib/completionSync";
+import { ORACLE_DECKS } from "@/lib/oracleDecks";
 
 type Card = [name: string, keyword: string, meaning: string];
 const DECK: Card[] = [
@@ -43,8 +44,23 @@ const LABELS = ["Where you've been", "Where you are", "Where you're headed"];
 const BACK = "/tarot/classic/backside.webp";
 const cardImg = (ci: number) => `/tarot/classic/major-${ci}.webp`;
 
-function shuffle(): number[] {
-  const a = Array.from({ length: DECK.length }, (_, i) => i);
+// Unified card model so the classic tarot deck and the oracle decks share one
+// draw/render path.
+type UCard = { name: string; keyword: string; meaning: string; image: string };
+type WebDeck = { id: string; label: string; back: string; cards: UCard[] };
+const CLASSIC_CARDS: UCard[] = DECK.map((c, i) => ({ name: c[0], keyword: c[1], meaning: c[2], image: cardImg(i) }));
+const WEB_DECKS: WebDeck[] = [
+  { id: "classic", label: "Classic Tarot", back: BACK, cards: CLASSIC_CARDS },
+  ...ORACLE_DECKS.map((d) => ({
+    id: d.id,
+    label: d.name,
+    back: d.backImage,
+    cards: d.cards.map((c) => ({ name: c.animal, keyword: c.keyword, meaning: c.meaning, image: c.image })),
+  })),
+];
+
+function shuffle(n: number): number[] {
+  const a = Array.from({ length: n }, (_, i) => i);
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
@@ -76,8 +92,11 @@ const nowIso = (): string => new Date().toISOString();
 
 export default function WebTarot() {
   const { theme, toggle } = useWebTheme();
+  const [deckId, setDeckId] = useState<string>("classic");
+  const deck = WEB_DECKS.find((d) => d.id === deckId) ?? WEB_DECKS[0];
+  const cards = deck.cards;
   const [slots, setSlots] = useState<(number | null)[]>([null, null, null]);
-  const [order, setOrder] = useState<number[]>(() => Array.from({ length: DECK.length }, (_, i) => i));
+  const [order, setOrder] = useState<number[]>(() => Array.from({ length: CLASSIC_CARDS.length }, (_, i) => i));
   const [over, setOver] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const stars = useMemo(() => panelStars(70417), []);
@@ -89,11 +108,17 @@ export default function WebTarot() {
   useEffect(() => {
     try {
       const st = JSON.parse(localStorage.getItem("mapped:web-tarot") || "null");
-      if (st && Array.isArray(st.slots) && st.slots.length === 3 && Array.isArray(st.order)) {
-        setSlots(st.slots); setOrder(st.order); return;
+      if (st) {
+        const savedId = typeof st.deckId === "string" && WEB_DECKS.some((d) => d.id === st.deckId) ? st.deckId : "classic";
+        const d = WEB_DECKS.find((x) => x.id === savedId) ?? WEB_DECKS[0];
+        if (savedId !== "classic") setDeckId(savedId);
+        if (Array.isArray(st.slots) && st.slots.length === 3 && Array.isArray(st.order) && st.order.length === d.cards.length) {
+          setSlots(st.slots); setOrder(st.order); return;
+        }
+        setOrder(shuffle(d.cards.length)); return;
       }
     } catch { /* ignore */ }
-    setOrder(shuffle());
+    setOrder(shuffle(CLASSIC_CARDS.length));
   }, []);
 
   useEffect(() => {
@@ -103,38 +128,48 @@ export default function WebTarot() {
   }, []);
 
   const drawn = slots.filter((x) => x != null).length;
-  const remaining = DECK.length - drawn;
-  const save = (s: (number | null)[], o: number[]) => { try { localStorage.setItem("mapped:web-tarot", JSON.stringify({ slots: s, order: o })); } catch { /* */ } };
+  const remaining = cards.length - drawn;
+  const save = (s: (number | null)[], o: number[]) => { try { localStorage.setItem("mapped:web-tarot", JSON.stringify({ deckId, slots: s, order: o })); } catch { /* */ } };
+
+  const switchDeck = (id: string) => {
+    if (id === deckId) return;
+    const d = WEB_DECKS.find((x) => x.id === id) ?? WEB_DECKS[0];
+    const s: (number | null)[] = [null, null, null];
+    const o = shuffle(d.cards.length);
+    setDeckId(id); setSlots(s); setOrder(o); setOver(null); setDragging(false); readingIdRef.current = null;
+    try { localStorage.setItem("mapped:web-tarot", JSON.stringify({ deckId: id, slots: s, order: o })); } catch { /* */ }
+  };
 
   // Write the current spread into the shared tarot history so Dolly sees it
   // instantly — same key/shape the mobile Tarot page uses (newest-first).
   const recordPull = (s: (number | null)[]) => {
     try {
-      const cards = s
-        .map((ci, idx) => (ci == null ? null : { name: DECK[ci][0], keywords: [DECK[ci][1]], reversed: false, position: LABELS[idx] }))
+      const picked = s
+        .map((ci, idx) => (ci == null ? null : { name: cards[ci].name, keywords: [cards[ci].keyword], reversed: false, position: LABELS[idx] }))
         .filter(Boolean);
-      if (!cards.length) return;
+      if (!picked.length) return;
       const key = getTarotHistoryKey(userIdRef.current);
       let hist: unknown[] = [];
       try { const raw = localStorage.getItem(key); if (raw) hist = JSON.parse(raw) || []; } catch { /* */ }
       if (!Array.isArray(hist)) hist = [];
       if (!readingIdRef.current) readingIdRef.current = newReadingId();
-      const entry = { id: readingIdRef.current, date: nowIso(), deck: "classic", spreadName: "Past · Present · Future", cards };
+      const spreadName = deck.id === "classic" ? "Past · Present · Future" : `${deck.label} — Past · Present · Future`;
+      const entry = { id: readingIdRef.current, date: nowIso(), deck: deck.id, spreadName, cards: picked };
       const rest = (hist as Array<Record<string, unknown>>).filter((h) => h && h.id !== readingIdRef.current);
       localStorage.setItem(key, JSON.stringify([entry, ...rest].slice(0, 50)));
     } catch { /* non-fatal — Dolly just won't see this pull */ }
   };
 
   const drawInto = (idx: number) => {
-    if (slots[idx] != null || drawn >= DECK.length) { setOver(null); setDragging(false); return; }
+    if (slots[idx] != null || drawn >= cards.length) { setOver(null); setDragging(false); return; }
     const next = slots.slice();
     next[idx] = order[drawn];
     setSlots(next); setOver(null); setDragging(false); save(next, order);
     recordPull(next);
   };
-  const reshuffle = () => { const o = shuffle(); const s: (number | null)[] = [null, null, null]; setSlots(s); setOrder(o); setOver(null); setDragging(false); save(s, o); readingIdRef.current = null; };
+  const reshuffle = () => { const o = shuffle(cards.length); const s: (number | null)[] = [null, null, null]; setSlots(s); setOrder(o); setOver(null); setDragging(false); save(s, o); readingIdRef.current = null; };
 
-  const reading = slots.map((ci, idx) => (ci == null ? null : { label: LABELS[idx], card: DECK[ci] })).filter(Boolean) as { label: string; card: Card }[];
+  const reading = slots.map((ci, idx) => (ci == null ? null : { label: LABELS[idx], card: cards[ci] })).filter(Boolean) as { label: string; card: UCard }[];
 
   return (
     <WebShell current="tarot" theme={theme} onToggleTheme={toggle} footerTagline="The cards are a mirror, not a map.">
@@ -143,6 +178,27 @@ export default function WebTarot() {
           <p style={{ fontFamily: "var(--script)", fontSize: 34, color: "var(--brass)", margin: "0 0 4px" }}>draw your day</p>
           <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 54, lineHeight: 1.05, margin: "0 0 14px", color: "var(--fg)" }}>Tarot</h1>
           <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--fg2)", margin: 0 }}>Drag a card from the deck into each place in the spread. Past, present, and where you&rsquo;re headed — read in plain language.</p>
+        </div>
+
+        {/* deck selector — classic tarot + oracle decks */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", margin: "0 auto 30px" }}>
+          {WEB_DECKS.map((d) => {
+            const active = d.id === deck.id;
+            return (
+              <button
+                key={d.id}
+                onClick={() => switchDeck(d.id)}
+                style={{
+                  fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 600, padding: "9px 18px", borderRadius: 999, cursor: "pointer",
+                  background: active ? "var(--brass)" : "rgba(255,255,255,0.06)",
+                  color: active ? "#1a1020" : "var(--fg2)",
+                  border: `1px solid ${active ? "var(--brass)" : "var(--hair)"}`,
+                }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* SPREAD TABLE */}
@@ -155,14 +211,14 @@ export default function WebTarot() {
               <div style={{ position: "relative", width: 170, height: 290, margin: "0 auto" }}>
                 {remaining > 0 ? (
                   <>
-                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${BACK}') center/cover`, transform: "rotate(4deg)", boxShadow: "0 10px 24px rgba(0,0,0,0.45)" }} />
-                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${BACK}') center/cover`, transform: "rotate(2deg)", boxShadow: "0 10px 24px rgba(0,0,0,0.45)" }} />
+                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${deck.back}') center/cover`, transform: "rotate(4deg)", boxShadow: "0 10px 24px rgba(0,0,0,0.45)" }} />
+                    <span aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${deck.back}') center/cover`, transform: "rotate(2deg)", boxShadow: "0 10px 24px rgba(0,0,0,0.45)" }} />
                     <div
                       draggable
                       onDragStart={(e) => { try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "deck"); } catch { /* */ } setDragging(true); }}
                       onDragEnd={() => { setDragging(false); setOver(null); }}
                       className={`mp-deck${dragging ? " drag" : ""}`}
-                      style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${BACK}') center/cover`, cursor: "grab", boxShadow: "0 12px 30px rgba(0,0,0,0.5)", border: "1px solid rgba(201,169,97,0.25)", animation: "mp-deckfloat 5s ease-in-out infinite" }}
+                      style={{ position: "absolute", inset: 0, borderRadius: 12, background: `url('${deck.back}') center/cover`, cursor: "grab", boxShadow: "0 12px 30px rgba(0,0,0,0.5)", border: "1px solid rgba(201,169,97,0.25)", animation: "mp-deckfloat 5s ease-in-out infinite" }}
                     />
                   </>
                 ) : (
@@ -177,7 +233,7 @@ export default function WebTarot() {
             <div style={{ flex: "1 1 560px", display: "flex", gap: 18, justifyContent: "center" }}>
               {slots.map((ci, idx) => {
                 const filled = ci != null;
-                const card = filled ? DECK[ci as number] : null;
+                const card = filled ? cards[ci as number] : null;
                 return (
                   <div key={idx} style={{ flex: 1, maxWidth: 190, textAlign: "center" }}>
                     <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 15, color: "var(--brass)", margin: "0 0 12px", minHeight: 20 }}>{LABELS[idx]}</p>
@@ -190,15 +246,15 @@ export default function WebTarot() {
                       style={{ position: "relative", width: "100%", aspectRatio: "0.57", borderRadius: 12, transition: "box-shadow .18s ease", ...(filled ? { background: "transparent" } : { background: "rgba(0,0,0,0.25)", border: "1px dashed var(--hair)" }) }}
                     >
                       {filled ? (
-                        <img src={cardImg(ci as number)} alt={card![0]} className="mp-reveal" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }} />
+                        <img src={card!.image} alt={card!.name} className="mp-reveal" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }} />
                       ) : (
                         <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)", fontSize: 30 }}>✧</span>
                       )}
                     </div>
                     {filled && (
                       <>
-                        <p style={{ fontFamily: "var(--deco)", fontSize: 17, fontWeight: 600, color: "#f3ecd8", margin: "12px 0 2px" }}>{card![0]}</p>
-                        <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{card![1]}</p>
+                        <p style={{ fontFamily: "var(--deco)", fontSize: 17, fontWeight: 600, color: "#f3ecd8", margin: "12px 0 2px" }}>{card!.name}</p>
+                        <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{card!.keyword}</p>
                       </>
                     )}
                   </div>
@@ -217,8 +273,8 @@ export default function WebTarot() {
                 <div key={r.label} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
                   <span style={{ flex: "0 0 auto", width: 80, fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 14, color: "var(--brass)", paddingTop: 2 }}>{r.label}</span>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--fg)", margin: "0 0 4px" }}>{r.card[0]} · <span style={{ fontWeight: 500, color: "var(--muted)" }}>{r.card[1]}</span></p>
-                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--fg2)", margin: 0, textWrap: "pretty" }}>{r.card[2]}</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--fg)", margin: "0 0 4px" }}>{r.card.name} · <span style={{ fontWeight: 500, color: "var(--muted)" }}>{r.card.keyword}</span></p>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--fg2)", margin: 0, textWrap: "pretty" }}>{r.card.meaning}</p>
                   </div>
                 </div>
               ))}

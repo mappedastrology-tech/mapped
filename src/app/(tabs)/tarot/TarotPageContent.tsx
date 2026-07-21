@@ -1813,9 +1813,9 @@ function DeckRow({ tag, name, sub, count, covers, gradient, onClick }: {
     <button
       onClick={onClick}
       className="w-full text-left active:scale-[0.99] transition-transform"
-      style={{ border: "0.5px solid rgba(201,169,97,0.16)", borderRadius: 22, background: "#4a2540", padding: "18px 18px 18px 16px", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 6px 22px rgba(0,0,0,0.34)" }}
+      style={{ border: "0.5px solid rgba(201,169,97,0.16)", borderRadius: 22, background: "#4a2540", padding: "18px 18px 18px 16px", display: "flex", alignItems: "center", gap: 22, boxShadow: "0 6px 22px rgba(0,0,0,0.34)" }}
     >
-      <span className="shrink-0 relative block" style={{ width: 118, height: 150 }}>
+      <span className="shrink-0 relative block" style={{ width: 132, height: 150 }}>
         {covers.length > 0 ? (
           covers.slice(0, 3).map((img, i) => (
             // eslint-disable-next-line @next/next/no-img-element
