@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
+import { supabase } from "@/lib/supabase";
 
 // U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const SIGN_GLYPH: Record<string, string> = {
@@ -43,9 +44,48 @@ export default function WebDolly() {
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Chart loaded from Supabase for signed-in users (fallback when it isn't
+  // already cached in sessionStorage by the chart page this session).
+  const chartRef = useRef<unknown>(null);
+  const userNameRef = useRef<string>("");
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, typing]);
+
+  // Connect Dolly to the signed-in user's saved chart even if they haven't
+  // opened the chart page this session (which is what fills sessionStorage).
+  // Mirrors the mobile Dolly tab so web users aren't told "I can't see your chart".
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof window !== "undefined" && sessionStorage.getItem("chartResult")) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        if (!userId) return;
+        const { data: c } = await supabase
+          .from("charts")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (cancelled || !c) return;
+        const chart = {
+          bigThree: c.big_three,
+          planets: c.planets || [],
+          houses: c.houses || [],
+          specialPoints: c.special_points || [],
+          birthDate: c.birth_date,
+          birthTime: c.birth_time,
+        };
+        chartRef.current = chart;
+        userNameRef.current = c.name || "";
+        try { sessionStorage.setItem("chartResult", JSON.stringify(chart)); } catch { /* storage may be unavailable */ }
+      } catch { /* not signed in or no saved chart — Dolly will say so honestly */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const knows = bt ? `Knows: Sun ${SIGN_GLYPH[bt.sun] ?? ""} · Moon ${SIGN_GLYPH[bt.moon] ?? ""} · ${bt.rising} rising` : "Reading your sky";
 
@@ -57,7 +97,7 @@ export default function WebDolly() {
     setInput("");
     setTyping(true);
 
-    let chart: unknown = null, transits: unknown = null;
+    let chart: unknown = chartRef.current, transits: unknown = null;
     try { const c = sessionStorage.getItem("chartResult"); if (c) chart = JSON.parse(c); } catch { /* */ }
     try { const t = sessionStorage.getItem("mapped:transits"); if (t) transits = JSON.parse(t); } catch { /* */ }
 
@@ -75,7 +115,7 @@ export default function WebDolly() {
       const res = await authedFetch("/api/dolly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: [], userName: "" }),
+        body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: [], userName: userNameRef.current }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
