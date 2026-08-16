@@ -20,6 +20,8 @@ import { dirname, join } from "node:path";
 import { scoresWithBaseline, rawTraitSums, traitsWithBaseline, rankLibrary } from "../../src/lib/resonance/engine.ts";
 import { ARCHETYPES } from "../../src/lib/resonance/archetypes.ts";
 import { ANIMAL_GUIDES } from "../../src/lib/resonance/animals.ts";
+import { DEITIES } from "../../src/lib/resonance/deities.ts";
+import { CHARACTERS } from "../../src/lib/resonance/characters.ts";
 import { TRAIT_ORDER } from "../../src/lib/resonance/traits.ts";
 import { sampleInput } from "./cohort.mts";
 
@@ -100,19 +102,27 @@ inputs.forEach((inp, u) => {
 });
 const archOffsets = solveOffsets(archSims, AK, "archetype");
 
-// --- Pass 2b: animal similarity matrix + offsets (same math, user traits first). ---
-const animalIds = ANIMAL_GUIDES.map((a) => a.id);
-const NK = animalIds.length;
-const animalCol = new Map(animalIds.map((id, i) => [id, i]));
-console.log(`Scoring ${N} × ${NK} animal guides…`);
-const animalSims = new Float64Array(N * NK);
-inputs.forEach((inp, u) => {
-  const traits = traitsWithBaseline(inp, baseline, spread);
-  if (!traits) return;
-  const base = u * NK;
-  for (const { id, s } of rankLibrary(traits, ANIMAL_GUIDES)) animalSims[base + (animalCol.get(id) as number)] = s;
-});
-const animalOffsets = solveOffsets(animalSims, NK, "animal");
+// --- Passes 2b+: secondary libraries (animals, deities, characters). Same math,
+// but the match runs on the user's final trait vector (baseline+spread applied). ---
+const userTraits = inputs.map((inp) => traitsWithBaseline(inp, baseline, spread));
+
+function libraryOffsets(label: string, entries: { id: string; traits: typeof ARCHETYPES[number]["traits"] }[]): { ids: string[]; offs: number[] } {
+  const ids = entries.map((e) => e.id);
+  const K = ids.length;
+  const colMap = new Map(ids.map((id, i) => [id, i]));
+  console.log(`Scoring ${N} × ${K} ${label}…`);
+  const sims = new Float64Array(N * K);
+  userTraits.forEach((traits, u) => {
+    if (!traits) return;
+    const base = u * K;
+    for (const { id, s } of rankLibrary(traits, entries)) sims[base + (colMap.get(id) as number)] = s;
+  });
+  return { ids, offs: solveOffsets(sims, K, label) };
+}
+
+const animal = libraryOffsets("animal guides", ANIMAL_GUIDES);
+const deity = libraryOffsets("deities", DEITIES);
+const character = libraryOffsets("characters", CHARACTERS);
 
 // --- Emit calibration.ts ---
 const fmtOffsets = (idList: string[], offs: number[]) =>
@@ -123,7 +133,9 @@ const fmtOffsets = (idList: string[], offs: number[]) =>
     .join("\n");
 
 const archBody = fmtOffsets(archIds, archOffsets);
-const animalBody = fmtOffsets(animalIds, animalOffsets);
+const animalBody = fmtOffsets(animal.ids, animal.offs);
+const deityBody = fmtOffsets(deity.ids, deity.offs);
+const characterBody = fmtOffsets(character.ids, character.offs);
 const baselineBody = TRAIT_ORDER.map((t) => `  ${JSON.stringify(t)}: ${baseline[t].toFixed(4)},`).join("\n");
 const spreadBody = TRAIT_ORDER.map((t) => `  ${JSON.stringify(t)}: ${spread[t].toFixed(4)},`).join("\n");
 const version = `cohort-N${N}-iter${ITERS}`;
@@ -179,9 +191,27 @@ ${animalBody}
 export function animalOffset(id: string): number {
   return ANIMAL_OFFSET[id] ?? 0;
 }
+
+/** deity id → additive score offset (same balancing as archetypes). Missing id ⇒ 0. */
+export const DEITY_OFFSET: Record<string, number> = {
+${deityBody}
+};
+
+export function deityOffset(id: string): number {
+  return DEITY_OFFSET[id] ?? 0;
+}
+
+/** character id → additive score offset (same balancing as archetypes). Missing id ⇒ 0. */
+export const CHARACTER_OFFSET: Record<string, number> = {
+${characterBody}
+};
+
+export function characterOffset(id: string): number {
+  return CHARACTER_OFFSET[id] ?? 0;
+}
 `;
 
 const here = dirname(fileURLToPath(import.meta.url));
 writeFileSync(join(here, "../../src/lib/resonance/calibration.ts"), out);
 
-console.log(`\nWrote ${AK} archetype + ${NK} animal offsets → src/lib/resonance/calibration.ts (${version})`);
+console.log(`\nWrote ${AK} archetype + ${animal.ids.length} animal + ${deity.ids.length} deity + ${character.ids.length} character offsets → calibration.ts (${version})`);
