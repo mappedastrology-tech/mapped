@@ -33,20 +33,25 @@ const TARGET = 1 / K;
 console.log(`Sampling ${N} charts…`);
 const inputs = Array.from({ length: N }, () => sampleInput());
 
-// --- Pass 1: trait baseline = mean raw sum per trait (re-centres population). ---
+// --- Pass 1: per-trait mean (baseline) and σ (spread) of raw sums. ---
 const baseline = Object.fromEntries(TRAIT_ORDER.map((t) => [t, 0])) as Record<string, number>;
+const sq = Object.fromEntries(TRAIT_ORDER.map((t) => [t, 0])) as Record<string, number>;
 for (const inp of inputs) {
   const rs = rawTraitSums(inp);
-  for (const t of TRAIT_ORDER) baseline[t] += rs[t];
+  for (const t of TRAIT_ORDER) { baseline[t] += rs[t]; sq[t] += rs[t] * rs[t]; }
 }
-for (const t of TRAIT_ORDER) baseline[t] /= N;
+const spread = Object.fromEntries(TRAIT_ORDER.map((t) => [t, 1])) as Record<string, number>;
+for (const t of TRAIT_ORDER) {
+  baseline[t] /= N;
+  spread[t] = Math.max(Math.sqrt(Math.max(0, sq[t] / N - baseline[t] * baseline[t])), 4); // floor so a near-constant trait can't explode
+}
 
-// --- Pass 2: similarity matrix under that baseline (N × K). ---
+// --- Pass 2: similarity matrix under that baseline + spread (N × K). ---
 console.log(`Scoring ${N} × ${K} archetypes under baseline…`);
 const sims = new Float64Array(N * K);
 inputs.forEach((inp, u) => {
   const base = u * K;
-  for (const { id, s } of scoresWithBaseline(inp, baseline)) sims[base + (col.get(id) as number)] = s;
+  for (const { id, s } of scoresWithBaseline(inp, baseline, spread)) sims[base + (col.get(id) as number)] = s;
 });
 
 // --- Iterative price adjustment. ---
@@ -102,6 +107,9 @@ const body = entries.map(([id, o]) => `  ${JSON.stringify(id)}: ${o.toFixed(6)},
 const baselineBody = TRAIT_ORDER
   .map((t) => `  ${JSON.stringify(t)}: ${baseline[t].toFixed(4)},`)
   .join("\n");
+const spreadBody = TRAIT_ORDER
+  .map((t) => `  ${JSON.stringify(t)}: ${spread[t].toFixed(4)},`)
+  .join("\n");
 const version = `cohort-N${N}-iter${ITERS}`;
 
 const out = `/**
@@ -123,6 +131,11 @@ const out = `/**
  */
 
 export const CALIBRATION_VERSION = ${JSON.stringify(version)};
+
+/** trait id → cohort σ of raw sums. Divided out before the squash to equalise per-trait width. Missing ⇒ fallback. */
+export const TRAIT_SPREAD: Record<string, number> = {
+${spreadBody}
+};
 
 /**
  * trait id → mean raw sum across the cohort. Subtracted before the logistic

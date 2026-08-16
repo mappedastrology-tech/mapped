@@ -14,7 +14,7 @@ import {
 } from "./traits";
 import { ARCHETYPES, Archetype } from "./archetypes";
 import { getArchetypeContent, composeShading, type ArchetypeContent } from "./content";
-import { archOffset, TRAIT_BASELINE } from "./calibration";
+import { archOffset, TRAIT_BASELINE, TRAIT_SPREAD } from "./calibration";
 import {
   TIER_WEIGHT, SIGN_TRAITS, NUMBER_TRAITS, HD_TYPE_TRAITS,
   HD_AUTHORITY_TRAITS, HD_LINE_TRAITS, MASTER_TRAITS, KARMIC_TRAITS,
@@ -56,7 +56,11 @@ interface ExtractedFeature {
   deltas: TraitDeltas;
 }
 
-const SIGMA = 23; // contrast knob (spec §4.2) — tuned against the cohort for trait sd ~14–18
+// Contrast knob (spec §4.2). After per-trait whitening the squash input is
+// unit-variance, so TEMP is a single dimensionless width tuned for output sd ~16.
+const TEMP = 1.4;
+// Fallback per-trait spread used before calibration writes real values.
+const SPREAD_FALLBACK = 24;
 
 const TRAIT_WEIGHT: Record<TraitId, number> = (() => {
   const w = {} as Record<TraitId, number>;
@@ -169,17 +173,26 @@ function rawSums(features: ExtractedFeature[]): TraitVec {
 }
 
 /**
- * Squash raw sums to the 0–100 trait space. The hand-authored deltas lean
- * net-positive (most placements push traits up, few down), so without centring
- * the whole population piles up near the top of many traits (everyone reads as
- * "magnetic", "caring") and the radar flattens. Subtracting a baked per-trait
- * baseline (the cohort's mean raw sum) re-centres the population at 50, which is
- * what gives the trait spread its width. baseline defaults to 0 (uncentred).
+ * Squash raw sums to the 0–100 trait space, standardised per trait. The hand-
+ * authored deltas lean net-positive and cover traits unevenly, so without
+ * correction (a) the population piles up high on many traits (everyone reads
+ * "magnetic"/"caring") and (b) heavily-fed traits (order, endurance) swing far
+ * wider than sparsely-fed ones (memory, transformation). Subtracting the baked
+ * per-trait baseline (cohort mean) re-centres everyone at 50, and dividing by
+ * the baked per-trait spread (cohort σ) equalises the width — so every trait
+ * reads on the same scale and the radar is legible. Both maps default to a
+ * neutral fallback before calibration runs.
  */
-function squash(raw: TraitVec, baseline: Partial<Record<TraitId, number>>): TraitVec {
+function squash(
+  raw: TraitVec,
+  baseline: Partial<Record<TraitId, number>>,
+  spread: Partial<Record<TraitId, number>>,
+): TraitVec {
   const traits = {} as TraitVec;
   for (const t of TRAIT_ORDER) {
-    traits[t] = Math.round(100 / (1 + Math.exp(-(raw[t] - (baseline[t] ?? 0)) / SIGMA)));
+    const s = spread[t] || SPREAD_FALLBACK;
+    const z = (raw[t] - (baseline[t] ?? 0)) / s;
+    traits[t] = Math.round(100 / (1 + Math.exp(-z / TEMP)));
   }
   return traits;
 }
@@ -268,10 +281,11 @@ function sig4(name: string): string {
 export function scoresWithBaseline(
   input: ResonanceInput,
   baseline: Partial<Record<TraitId, number>>,
+  spread: Partial<Record<TraitId, number>>,
 ): { id: string; s: number }[] {
   const features = extractFeatures(input);
   if (features.length === 0) return [];
-  const traits = squash(rawSums(features), baseline);
+  const traits = squash(rawSums(features), baseline, spread);
   const salUser = salienced(traits);
   return ARCHETYPES.map((a: Archetype) => ({ id: a.id, s: similarity(salUser, a.traits) }));
 }
@@ -280,7 +294,7 @@ export function computeResonance(input: ResonanceInput): ResonanceResult | null 
   const features = extractFeatures(input);
   if (features.length === 0) return null;
 
-  const traits = squash(rawSums(features), TRAIT_BASELINE);
+  const traits = squash(rawSums(features), TRAIT_BASELINE, TRAIT_SPREAD);
   const facets = facetScores(traits);
 
   const salUser = salienced(traits);
