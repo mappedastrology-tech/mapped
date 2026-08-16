@@ -122,6 +122,9 @@ function JournalPage() {
   const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt | null>(null);
   const [composeText, setComposeText] = useState("");
   const [composeTitle, setComposeTitle] = useState("");
+  // True when compose was opened via the home-page check-in deep link, so the
+  // back button returns to the app home rather than the journal's own home tab.
+  const [composeFromHome, setComposeFromHome] = useState(false);
   const [isBurn, setIsBurn] = useState(false);
   const [promptCycleCount, setPromptCycleCount] = useState(0);
   const [cycledIds, setCycledIds] = useState<string[]>([]);
@@ -239,6 +242,7 @@ function JournalPage() {
       setComposeText("");
       setSelectedMoods([]);
       setView("compose");
+      setComposeFromHome(true);
       // Clean URL
       window.history.replaceState({}, "", "/journal");
     } else if (generateParam) {
@@ -252,6 +256,7 @@ function JournalPage() {
       setComposeText("");
       setSelectedMoods([]);
       setView("compose");
+      setComposeFromHome(true);
 
       // Fire AI prompt generation in background
       setAiPromptLoading(true);
@@ -368,6 +373,7 @@ function JournalPage() {
     setIsBurn(false);
     setSelectedMoods([]);
     setComposeImage(null);
+    setComposeFromHome(false);
     usedVoiceRef.current = false;
     try { recognitionRef.current?.stop(); } catch { /* */ }
     setIsRecording(false);
@@ -580,7 +586,7 @@ function JournalPage() {
         <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
         {/* Header — back · New entry · Save */}
         <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border-card)" }}>
-          <button onClick={() => setView("home")} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
+          <button onClick={() => { if (composeFromHome) { setComposeFromHome(false); router.push("/home"); } else { setView("home"); } }} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
           <span className="text-[12px] uppercase font-semibold" style={{ letterSpacing: "0.14em", color: "var(--foreground-muted)" }}>New entry</span>
