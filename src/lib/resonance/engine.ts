@@ -267,7 +267,7 @@ export interface ResonanceResult {
   engineVersion: string;
 }
 
-export const ENGINE_VERSION = "1.1.0"; // full chart + balanced-assignment calibration
+export const ENGINE_VERSION = "1.2.0"; // full chart + 4-library balanced-assignment calibration
 export const DATA_VERSION = "archetypes@1.1.0";
 
 function dominantTrait(deltas: TraitDeltas): TraitId {

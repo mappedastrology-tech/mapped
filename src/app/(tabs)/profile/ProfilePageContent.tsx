@@ -15,7 +15,7 @@ import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
 import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
 import { computeResonance, type Placement } from "@/lib/resonance/engine";
-import { persistAssignment } from "@/lib/resonance/persist";
+import { persistAllAssignments } from "@/lib/resonance/persist";
 import { TRAIT_ORDER } from "@/lib/resonance/traits";
 import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
@@ -220,15 +220,16 @@ export default function ProfilePageContent() {
   const deity = useMemo(() => (resonance ? computeDeity(resonance.traits) : null), [resonance]);
   const character = useMemo(() => (resonance ? computeCharacter(resonance.traits) : null), [resonance]);
 
-  // Store the assignment once (immutable snapshot). Fire-and-forget — the page
-  // already renders from the deterministic compute above.
+  // Store all four assignments once (immutable snapshots, one current row per
+  // library). Fire-and-forget — the page already renders from the deterministic
+  // compute above.
   useEffect(() => {
     if (!resonance || !userId) return;
-    persistAssignment(supabase, userId, resonance, {
+    persistAllAssignments(supabase, userId, resonance, { animal, deity, character }, {
       mode: row?.unknownTime ? "no-birth-time" : "full",
       confidence: row?.unknownTime ? 0.74 : 1.0,
     });
-  }, [resonance, userId, row?.unknownTime]);
+  }, [resonance, animal, deity, character, userId, row?.unknownTime]);
 
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
