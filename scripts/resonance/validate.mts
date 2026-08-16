@@ -12,69 +12,12 @@
  * upgrade to timestamp-sampling (spec §7.1) for the natural joint distribution.
  */
 
-import { computeResonance, type ResonanceInput } from "../../src/lib/resonance/engine.ts";
+import { computeResonance } from "../../src/lib/resonance/engine.ts";
 import { ARCHETYPES } from "../../src/lib/resonance/archetypes.ts";
 import { TRAIT_ORDER } from "../../src/lib/resonance/traits.ts";
+import { sampleInput } from "./cohort.mts";
 
 const N = Number(process.argv[2] ?? 30000);
-
-const SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-const AUTHORITIES = ["emotional", "sacral", "splenic", "ego", "self-projected", "mental", "lunar"];
-// HD type population skew (spec §3.2).
-const HD_TYPES: [string, number][] = [["Generator", 0.37], ["Manifesting Generator", 0.33], ["Projector", 0.20], ["Manifestor", 0.09], ["Reflector", 0.01]];
-
-const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-function weighted(pairs: [string, number][]): string {
-  let r = Math.random();
-  for (const [v, w] of pairs) { if ((r -= w) <= 0) return v; }
-  return pairs[pairs.length - 1][0];
-}
-function sampleNumber(): number {
-  const r = Math.random();
-  if (r < 0.04) return pick([11, 22, 33]);       // masters, rare
-  return 1 + Math.floor(Math.random() * 9);       // 1..9
-}
-
-// Realistic-ish placement sampling. Random independent signs+houses for every
-// body flattens distinctiveness (pure noise averages everyone to the centroid),
-// which real charts don't do: houses derive from the rising sign, and the inner
-// planets never stray far from the Sun. Model that so the cohort reflects real
-// birth data rather than white noise.
-const SIGN_IDX = (s: string) => SIGNS.indexOf(s);
-const IDX_SIGN = (i: number) => SIGNS[((i % 12) + 12) % 12];
-const near = (base: string, span: number) => IDX_SIGN(SIGN_IDX(base) + (Math.floor(Math.random() * (2 * span + 1)) - span));
-// Whole-sign houses: the rising sign is the 1st house, each following sign the next.
-const wholeSignHouse = (sign: string, rising: string) => (((SIGN_IDX(sign) - SIGN_IDX(rising) + 12) % 12) + 1);
-
-function samplePlacements(sun: string, moon: string, rising: string): { name: string; sign: string; house: number }[] {
-  const signs: Record<string, string> = {
-    Sun: sun,
-    Moon: moon,
-    Mercury: near(sun, 1),   // Mercury: within one sign of the Sun
-    Venus: near(sun, 2),     // Venus: within two signs
-    Mars: pick(SIGNS),
-    Jupiter: pick(SIGNS),
-    Saturn: pick(SIGNS),
-    Uranus: pick(SIGNS),
-    Neptune: pick(SIGNS),
-    Pluto: pick(SIGNS),
-    "North Node": pick(SIGNS),
-    Chiron: pick(SIGNS),
-  };
-  return Object.entries(signs).map(([name, sign]) => ({ name, sign, house: wholeSignHouse(sign, rising) }));
-}
-
-function sampleInput(): ResonanceInput {
-  const sun = pick(SIGNS), moon = pick(SIGNS), rising = pick(SIGNS);
-  return {
-    sun, moon, rising,
-    lifePath: sampleNumber(), expression: sampleNumber(), soulUrge: sampleNumber(),
-    hdType: weighted(HD_TYPES),
-    hdAuthority: pick(AUTHORITIES),
-    hdLines: [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)] as [number, number],
-    placements: samplePlacements(sun, moon, rising),
-  };
-}
 
 const counts = new Map<string, number>();
 for (const a of ARCHETYPES) counts.set(a.id, 0);

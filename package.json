@@ -9,6 +9,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "resonance:validate": "tsx scripts/resonance/validate.mts",
+    "resonance:calibrate": "tsx scripts/resonance/calibrate.mts",
     "test": "npx tsx --test \"tests/*.test.ts\"",
     "check": "npm run lint && npm run typecheck",
     "clean:dupes": "node scripts/clean-dupes.mjs",

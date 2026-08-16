@@ -14,6 +14,7 @@ import {
 } from "./traits";
 import { ARCHETYPES, Archetype } from "./archetypes";
 import { getArchetypeContent, composeShading, type ArchetypeContent } from "./content";
+import { archOffset, TRAIT_BASELINE } from "./calibration";
 import {
   TIER_WEIGHT, SIGN_TRAITS, NUMBER_TRAITS, HD_TYPE_TRAITS,
   HD_AUTHORITY_TRAITS, HD_LINE_TRAITS, MASTER_TRAITS, KARMIC_TRAITS,
@@ -55,7 +56,7 @@ interface ExtractedFeature {
   deltas: TraitDeltas;
 }
 
-const SIGMA = 24; // contrast knob (spec §4.2) — tuned against the cohort for trait sd ~14–18
+const SIGMA = 23; // contrast knob (spec §4.2) — tuned against the cohort for trait sd ~14–18
 
 const TRAIT_WEIGHT: Record<TraitId, number> = (() => {
   const w = {} as Record<TraitId, number>;
@@ -157,16 +158,35 @@ const ORDINALS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9
 function ordinal(n: number): string { return ORDINALS[n] ?? `${n}th`; }
 function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-/** Build the 0–100 trait vector from features. */
-function buildTraits(features: ExtractedFeature[]): TraitVec {
+/** Sum the weighted feature deltas into a raw (pre-squash) trait vector. */
+function rawSums(features: ExtractedFeature[]): TraitVec {
   const raw = zeroVec();
   for (const f of features) {
     const w = TIER_WEIGHT[f.tier];
     for (const t of TRAIT_ORDER) raw[t] += (f.deltas[t] ?? 0) * w;
   }
+  return raw;
+}
+
+/**
+ * Squash raw sums to the 0–100 trait space. The hand-authored deltas lean
+ * net-positive (most placements push traits up, few down), so without centring
+ * the whole population piles up near the top of many traits (everyone reads as
+ * "magnetic", "caring") and the radar flattens. Subtracting a baked per-trait
+ * baseline (the cohort's mean raw sum) re-centres the population at 50, which is
+ * what gives the trait spread its width. baseline defaults to 0 (uncentred).
+ */
+function squash(raw: TraitVec, baseline: Partial<Record<TraitId, number>>): TraitVec {
   const traits = {} as TraitVec;
-  for (const t of TRAIT_ORDER) traits[t] = Math.round(100 / (1 + Math.exp(-raw[t] / SIGMA)));
+  for (const t of TRAIT_ORDER) {
+    traits[t] = Math.round(100 / (1 + Math.exp(-(raw[t] - (baseline[t] ?? 0)) / SIGMA)));
+  }
   return traits;
+}
+
+/** Raw (pre-squash) trait sums for one input — exposed for the calibrator's baseline pass. */
+export function rawTraitSums(input: ResonanceInput): TraitVec {
+  return rawSums(extractFeatures(input));
 }
 
 /**
@@ -223,7 +243,7 @@ export interface ResonanceResult {
   engineVersion: string;
 }
 
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.1.0"; // full chart + balanced-assignment calibration
 export const DATA_VERSION = "archetypes@1.1.0";
 
 function dominantTrait(deltas: TraitDeltas): TraitId {
@@ -239,17 +259,40 @@ function sig4(name: string): string {
   return name.replace(/^The\s+/i, "").slice(0, 4).toUpperCase();
 }
 
+/**
+ * Per-archetype cosine similarity for one input under a given trait baseline.
+ * Uncalibrated (no offsets). Exposed for the offline calibrator (spec §4.6),
+ * which sweeps baselines and solves the offsets; the app ranks with the baked
+ * baseline + offsets in computeResonance below.
+ */
+export function scoresWithBaseline(
+  input: ResonanceInput,
+  baseline: Partial<Record<TraitId, number>>,
+): { id: string; s: number }[] {
+  const features = extractFeatures(input);
+  if (features.length === 0) return [];
+  const traits = squash(rawSums(features), baseline);
+  const salUser = salienced(traits);
+  return ARCHETYPES.map((a: Archetype) => ({ id: a.id, s: similarity(salUser, a.traits) }));
+}
+
 export function computeResonance(input: ResonanceInput): ResonanceResult | null {
   const features = extractFeatures(input);
   if (features.length === 0) return null;
 
-  const traits = buildTraits(features);
+  const traits = squash(rawSums(features), TRAIT_BASELINE);
   const facets = facetScores(traits);
 
   const salUser = salienced(traits);
+  // Rank by the calibrated score (raw similarity minus the archetype's balancing
+  // offset) so the 96 cells stay evenly reachable; keep the raw similarity `s`
+  // for the displayed match strength.
   const ranked = ARCHETYPES
-    .map((a: Archetype) => ({ a, s: similarity(salUser, a.traits) }))
-    .sort((x, y) => y.s - x.s);
+    .map((a: Archetype) => {
+      const s = similarity(salUser, a.traits);
+      return { a, s, cal: s - archOffset(a.id) };
+    })
+    .sort((x, y) => y.cal - x.cal);
 
   const primary = ranked[0];
   // Secondary must differ from primary in ≥2 facets (spec §4.7 diversity rule).
