@@ -13,7 +13,7 @@ import {
   FacetId, FACET_ORDER, facetScores, zeroVec, TRAIT_PHRASE,
 } from "./traits";
 import { ARCHETYPES, Archetype } from "./archetypes";
-import { getArchetypeContent, type ArchetypeContent } from "./content";
+import { getArchetypeContent, composeShading, type ArchetypeContent } from "./content";
 import {
   TIER_WEIGHT, SIGN_TRAITS, NUMBER_TRAITS, HD_TYPE_TRAITS,
   HD_AUTHORITY_TRAITS, HD_LINE_TRAITS, MASTER_TRAITS, KARMIC_TRAITS,
@@ -122,7 +122,7 @@ export interface EvidenceLine { feature: string; trait: TraitId; copy: string; }
 
 export interface ResonanceResult {
   primary: { id: string; name: string; tagline: string; score: number; content: ArchetypeContent | null };
-  secondary: { id: string; name: string; tagline: string; score: number } | null;
+  secondary: { id: string; name: string; tagline: string; score: number; content: ArchetypeContent | null; shading: string | null } | null;
   traits: TraitVec;
   facets: Record<FacetId, number>;
   signature: string;
@@ -178,7 +178,14 @@ export function computeResonance(input: ResonanceInput): ResonanceResult | null 
 
   return {
     primary: { id: primary.a.id, name: primary.a.name, tagline: primary.a.tagline, score: Math.round(primary.s * 100), content: getArchetypeContent(primary.a.id) },
-    secondary: secondary ? { id: secondary.a.id, name: secondary.a.name, tagline: secondary.a.tagline, score: Math.round(secondary.s * 100) } : null,
+    secondary: secondary ? {
+      id: secondary.a.id,
+      name: secondary.a.name,
+      tagline: secondary.a.tagline,
+      score: Math.round(secondary.s * 100),
+      content: getArchetypeContent(secondary.a.id),
+      shading: composeShading(primary.a.name, secondary.a.id),
+    } : null,
     traits,
     facets,
     signature,

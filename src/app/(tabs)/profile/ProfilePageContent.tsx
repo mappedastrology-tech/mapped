@@ -396,6 +396,46 @@ export default function ProfilePageContent() {
         </>
       )}
 
+      {/* Secondary — how it colours the primary */}
+      {resonance?.secondary && (
+        <>
+          <SectionLabel>Shaded by {resonance.secondary.name}</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px dashed var(--brass)" }}
+          >
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {resonance.secondary.tagline}
+            </p>
+            {resonance.secondary.shading && (
+              <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+                {resonance.secondary.shading}
+              </p>
+            )}
+            {resonance.secondary.content && (
+              <div className="flex flex-col gap-3 mt-1">
+                <div>
+                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--brass)" }}>
+                    What it adds
+                  </p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    {resonance.secondary.content.essence}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                    Its shadow in you
+                  </p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    {resonance.secondary.content.shadowSide}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Everything you are */}
       <SectionLabel>Everything you are</SectionLabel>
       <div className="flex flex-col gap-3">

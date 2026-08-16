@@ -208,3 +208,18 @@ export function getArchetypeContent(id: string): ArchetypeContent | null {
   if (!a) return null;
   return composeContent(a.domain, a.mode, a.name);
 }
+
+/**
+ * How the secondary archetype *colours* the primary (spec §1.1 — the secondary
+ * shades, it doesn't lead). Composed from the secondary's domain + mode so all
+ * 9,120 ordered pairs get a coherent passage.
+ */
+export function composeShading(primaryName: string, secondaryId: string): string | null {
+  const a = ARCHETYPE_BY_ID[secondaryId];
+  if (!a) return null;
+  const d = DOMAIN[a.domain];
+  const m = MODE[a.mode];
+  const primaryShort = primaryName.replace(/^The\s+/i, "");
+  const stance = m.stance.replace(/^and you meet it/i, "it meets the world").replace(/\.\s*$/, "");
+  return `Beneath your ${primaryShort} runs a second current — ${a.name}: ${d.self}, and ${stance}. It doesn't lead, but it colours how you move — the texture people feel once they know you past the first read.`;
+}
