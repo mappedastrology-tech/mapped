@@ -13,7 +13,10 @@ import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
-import { ELEMENT_LABEL, STANCE_LABEL, type Element } from "@/lib/archetype/types";
+import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
+import { computeResonance } from "@/lib/resonance/engine";
+import { TRAIT_ORDER } from "@/lib/resonance/traits";
+import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { masterLabel } from "@/lib/numerologyMeanings";
 
 const PHOTO_KEY = "mapped:profile-photo";
@@ -150,6 +153,38 @@ export default function ProfilePageContent() {
     });
   }, [row, numerology, hd]);
 
+  // Resonance engine — the 96-archetype / 6-facet result. Deterministic and
+  // computed from the fixed chart, so it never regenerates or costs credits.
+  const resonance = useMemo(() => {
+    if (!row?.bigThree) return null;
+    const nums = [
+      numerology?.lifePath, numerology?.expression, numerology?.soulUrge,
+      numerology?.personality, numerology?.maturity, numerology?.birthday,
+    ];
+    const masters: number[] = [];
+    const karmics: number[] = [];
+    for (const n of nums) {
+      if (!n) continue;
+      if ([11, 22, 33].includes(n.value) && !masters.includes(n.value)) masters.push(n.value);
+      const kd = (n as { karmicDebt?: number | null }).karmicDebt;
+      if (kd && !karmics.includes(kd)) karmics.push(kd);
+    }
+    return computeResonance({
+      sun: row.bigThree.sun,
+      moon: row.bigThree.moon,
+      rising: row.unknownTime ? null : row.bigThree.rising,
+      lifePath: numerology?.lifePath.value ?? null,
+      expression: numerology?.expression.value ?? null,
+      soulUrge: numerology?.soulUrge.value ?? null,
+      hdType: hd?.type ?? null,
+      hdAuthority: hd?.authority ?? null,
+      hdLines: hd?.profileLines ?? null,
+      hdDefinition: hd?.definitionName ?? null,
+      masters,
+      karmics,
+    });
+  }, [row, numerology, hd]);
+
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -199,7 +234,6 @@ export default function ProfilePageContent() {
     .join("")
     .toUpperCase();
 
-  const archetype = result?.archetype ?? null;
   const element = result?.element ?? null;
 
   return (
@@ -256,12 +290,12 @@ export default function ProfilePageContent() {
         </div>
       )}
 
-      {/* Archetype hero */}
-      {archetype && element && (
+      {/* Archetype hero — the resonance engine result + hexagonal radar */}
+      {resonance && (
         <div
           className="rounded-3xl px-5 py-6 mb-6 text-center relative overflow-hidden"
           style={{
-            background: `linear-gradient(160deg, ${ELEMENT_TINT[element]}, var(--background-card))`,
+            background: element ? `linear-gradient(160deg, ${ELEMENT_TINT[element]}, var(--background-card))` : "var(--background-card)",
             border: "1px solid var(--brass)",
           }}
         >
@@ -272,36 +306,57 @@ export default function ProfilePageContent() {
             className="text-[30px] leading-tight mb-1"
             style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
           >
-            {archetype.name}
+            {resonance.primary.name}
           </h2>
-          <p className="text-[12px] italic mb-4" style={{ color: "var(--foreground-secondary)" }}>
-            {archetype.tagline}
+          <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+            {resonance.primary.tagline}
           </p>
-          <p className="text-[13.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-secondary)" }}>
-            {archetype.description}
-          </p>
-          <div className="flex items-center justify-center gap-2 text-[10px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-            <span>{ELEMENT_LABEL[element]}</span>
-            <span>·</span>
-            <span>{STANCE_LABEL[archetype.stance]}</span>
+
+          <div className="flex justify-center mb-1">
+            <ResonanceRadar facets={resonance.facets} size={244} />
           </div>
+
+          {resonance.secondary && (
+            <p className="text-[10px] tracking-[0.14em] uppercase mb-3" style={{ color: "var(--foreground-faint)" }}>
+              Shaded by {resonance.secondary.name}
+            </p>
+          )}
+
+          {resonance.evidence.length > 0 && (
+            <div className="text-left flex flex-col gap-2 mt-2">
+              {resonance.evidence.map((e) => {
+                const rest = e.copy.startsWith(e.feature)
+                  ? e.copy.slice(e.feature.length).replace(/^\s*—\s*/, "")
+                  : e.copy;
+                return (
+                  <p key={e.feature} className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    <span style={{ color: "var(--brass)", fontWeight: 600 }}>{e.feature}</span> — {rest}
+                  </p>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Top traits */}
-      {archetype && (
+      {/* Strongest traits */}
+      {resonance && (
         <>
-          <SectionLabel>Top traits</SectionLabel>
+          <SectionLabel>Strongest traits</SectionLabel>
           <div className="flex flex-wrap gap-2 mb-6">
-            {archetype.traits.map((t) => (
-              <span
-                key={t}
-                className="px-3 py-1.5 rounded-full text-[12px] font-medium"
-                style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--foreground)" }}
-              >
-                {t}
-              </span>
-            ))}
+            {TRAIT_ORDER
+              .map((t) => ({ t, v: resonance.traits[t] }))
+              .sort((a, b) => b.v - a.v)
+              .slice(0, 6)
+              .map(({ t, v }) => (
+                <span
+                  key={t}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium capitalize"
+                  style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--foreground)" }}
+                >
+                  {t} · {v}
+                </span>
+              ))}
           </div>
         </>
       )}
