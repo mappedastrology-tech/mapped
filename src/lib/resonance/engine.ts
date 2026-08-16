@@ -41,7 +41,7 @@ interface ExtractedFeature {
   deltas: TraitDeltas;
 }
 
-const SIGMA = 45; // contrast knob (spec §4.2)
+const SIGMA = 24; // contrast knob (spec §4.2) — tuned against the cohort for trait sd ~14–18
 
 const TRAIT_WEIGHT: Record<TraitId, number> = (() => {
   const w = {} as Record<TraitId, number>;
@@ -99,14 +99,28 @@ function buildTraits(features: ExtractedFeature[]): TraitVec {
   return traits;
 }
 
-/** Decorrelated cosine over the centred (deviation-from-50) vectors. */
-function similarity(user: TraitVec, entry: TraitVec): number {
+/**
+ * Distinctiveness weighting (spec §4.4). Amplify traits where the user deviates
+ * from population-typical (50) and mute traits where they're average — so a
+ * match lands on what makes someone unusual, not what everyone shares. v1 uses a
+ * fixed spread proxy (12) rather than baked per-trait population σ; capped at 3×.
+ */
+function salienced(user: TraitVec): number[] {
+  return TRAIT_ORDER.map((t) => {
+    const dev = user[t] - 50;
+    const sal = 1 + 0.9 * Math.min(Math.abs(dev) / 10, 3);
+    return sal * dev;
+  });
+}
+
+/** Decorrelated cosine over the salience-weighted user vector vs a centred entry. */
+function similarity(salUser: number[], entry: TraitVec): number {
   let dot = 0, nu = 0, ne = 0;
-  for (const t of TRAIT_ORDER) {
+  TRAIT_ORDER.forEach((t, i) => {
     const w = TRAIT_WEIGHT[t];
-    const u = user[t] - 50, e = entry[t] - 50;
+    const u = salUser[i], e = entry[t] - 50;
     dot += w * u * e; nu += w * u * u; ne += w * e * e;
-  }
+  });
   if (nu === 0 || ne === 0) return 0;
   return dot / (Math.sqrt(nu) * Math.sqrt(ne));
 }
@@ -130,7 +144,8 @@ export interface ResonanceResult {
   engineVersion: string;
 }
 
-const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.0.0";
+export const DATA_VERSION = "archetypes@1.1.0";
 
 function dominantTrait(deltas: TraitDeltas): TraitId {
   let best: TraitId = TRAIT_ORDER[0], mag = -1;
@@ -152,8 +167,9 @@ export function computeResonance(input: ResonanceInput): ResonanceResult | null 
   const traits = buildTraits(features);
   const facets = facetScores(traits);
 
+  const salUser = salienced(traits);
   const ranked = ARCHETYPES
-    .map((a: Archetype) => ({ a, s: similarity(traits, a.traits) }))
+    .map((a: Archetype) => ({ a, s: similarity(salUser, a.traits) }))
     .sort((x, y) => y.s - x.s);
 
   const primary = ranked[0];

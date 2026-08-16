@@ -15,6 +15,7 @@ import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
 import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
 import { computeResonance } from "@/lib/resonance/engine";
+import { persistAssignment } from "@/lib/resonance/persist";
 import { TRAIT_ORDER } from "@/lib/resonance/traits";
 import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { masterLabel } from "@/lib/numerologyMeanings";
@@ -184,6 +185,16 @@ export default function ProfilePageContent() {
       karmics,
     });
   }, [row, numerology, hd]);
+
+  // Store the assignment once (immutable snapshot). Fire-and-forget — the page
+  // already renders from the deterministic compute above.
+  useEffect(() => {
+    if (!resonance || !userId) return;
+    persistAssignment(supabase, userId, resonance, {
+      mode: row?.unknownTime ? "no-birth-time" : "full",
+      confidence: row?.unknownTime ? 0.74 : 1.0,
+    });
+  }, [resonance, userId, row?.unknownTime]);
 
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
