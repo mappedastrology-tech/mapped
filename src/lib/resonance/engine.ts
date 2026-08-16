@@ -17,7 +17,15 @@ import { getArchetypeContent, composeShading, type ArchetypeContent } from "./co
 import {
   TIER_WEIGHT, SIGN_TRAITS, NUMBER_TRAITS, HD_TYPE_TRAITS,
   HD_AUTHORITY_TRAITS, HD_LINE_TRAITS, MASTER_TRAITS, KARMIC_TRAITS,
+  HOUSE_TRAITS, ELEMENT_TRAITS, SIGN_ELEMENT, PLANET_SIGN_TIER, PLANET_HOUSE_TIER,
 } from "./weights";
+
+/** A single body from the full chart — a planet or special point by sign/house. */
+export interface Placement {
+  name: string;                     // "Sun", "Mercury", "North Node", "Chiron", …
+  sign?: string | null;
+  house?: number | null;            // 1–12
+}
 
 export interface ResonanceInput {
   sun?: string | null;
@@ -32,7 +40,13 @@ export interface ResonanceInput {
   hdDefinition?: string | null;     // e.g. "Single", "Split"
   masters?: number[];               // master numbers present (11/22/33)
   karmics?: number[];               // karmic debts present (13/14/16/19)
+  placements?: Placement[];         // full chart: planets + special points by sign/house
 }
+
+/** Bodies counted toward the dominant-element tally (the ten traditional planets). */
+const ELEMENT_BODIES = new Set([
+  "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+]);
 
 interface ExtractedFeature {
   id: string;
@@ -84,8 +98,64 @@ export function extractFeatures(input: ResonanceInput): ExtractedFeature[] {
   if (input.masters?.length) out.push(feat("num.master", `Master number ${input.masters.join("/")}`, 3, MASTER_TRAITS));
   if (input.karmics?.length) out.push(feat("num.karmic", `Karmic debt ${input.karmics.join("/")}`, 4, KARMIC_TRAITS));
 
+  // Full chart — planet-by-sign, planet-by-house, and dominant-element balance.
+  // These populate trait regions the Big-3 alone can't reach (houses are the
+  // individual life-area layer; outer planets by house, nodes, Chiron).
+  if (input.placements?.length) {
+    const elementCount: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
+
+    for (const p of input.placements) {
+      const sign = p.sign ?? undefined;
+      const house = toHouse(p.house);
+
+      // Planet-by-sign (personal planets + Jupiter/Saturn; Sun/Moon/Rising already
+      // come from the Big 3, outer-planet signs are generational and skipped).
+      const signTier = PLANET_SIGN_TIER[p.name];
+      if (signTier && sign && SIGN_TRAITS[sign]) {
+        out.push(feat(`astro.${p.name}.sign.${sign}`, `${sign} ${p.name}`, signTier, SIGN_TRAITS[sign]));
+      }
+
+      // North Node by sign — the karmic direction (tier 3), even though it isn't
+      // in PLANET_SIGN_TIER's personal set.
+      if (p.name === "North Node" && sign && SIGN_TRAITS[sign]) {
+        out.push(feat(`astro.northnode.sign.${sign}`, `North Node in ${sign}`, 3, SIGN_TRAITS[sign]));
+      }
+
+      // Planet-by-house — the life area a body emphasises.
+      const houseTier = PLANET_HOUSE_TIER[p.name];
+      if (houseTier && house && HOUSE_TRAITS[house]) {
+        out.push(feat(`astro.${p.name}.house.${house}`, `${p.name} in the ${ordinal(house)} house`, houseTier, HOUSE_TRAITS[house]));
+      }
+
+      // Element tally from the ten traditional planets.
+      if (ELEMENT_BODIES.has(p.name) && sign) {
+        const el = SIGN_ELEMENT[sign];
+        if (el) elementCount[el] += 1;
+      }
+    }
+
+    // Dominant element (needs a clear lead: ≥4 bodies and strictly ahead).
+    let domEl = ""; let domN = 0; let tie = false;
+    for (const el of Object.keys(elementCount)) {
+      if (elementCount[el] > domN) { domEl = el; domN = elementCount[el]; tie = false; }
+      else if (elementCount[el] === domN) { tie = true; }
+    }
+    if (domEl && domN >= 4 && !tie && ELEMENT_TRAITS[domEl]) {
+      out.push(feat(`astro.element.${domEl}`, `${cap(domEl)}-dominant chart`, 3, ELEMENT_TRAITS[domEl]));
+    }
+  }
+
   return out.filter((f): f is ExtractedFeature => f != null);
 }
+
+function toHouse(h: number | null | undefined): number | null {
+  const n = Number(h);
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+}
+
+const ORDINALS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
+function ordinal(n: number): string { return ORDINALS[n] ?? `${n}th`; }
+function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 /** Build the 0–100 trait vector from features. */
 function buildTraits(features: ExtractedFeature[]): TraitVec {
@@ -113,6 +183,15 @@ function salienced(user: TraitVec): number[] {
   });
 }
 
+/**
+ * Archetype-population mean per trait. The 96 archetypes aren't centred on 50 —
+ * DOMAIN_BASE / MODE_MOD lean net-positive on common traits, so the archetype
+ * cloud has an off-centre centroid. Comparing a user against `entry - 50` lets
+ * whichever archetype sits nearest that centroid (path×sovereign, "The Road")
+ * absorb everyone in the mushy middle while specialists stay unreachable.
+ * Centring each archetype on the *archetype* mean removes that bias so a match
+ * lands on the axes where an archetype is genuinely distinctive.
+ */
 /** Decorrelated cosine over the salience-weighted user vector vs a centred entry. */
 function similarity(salUser: number[], entry: TraitVec): number {
   let dot = 0, nu = 0, ne = 0;

@@ -75,3 +75,50 @@ export const HD_LINE_TRAITS: Record<number, TraitDeltas> = {
 /** Master-number modifier (tier 3) and karmic-debt modifier (tier 4). */
 export const MASTER_TRAITS: TraitDeltas = { transcendence: 12, vision: 10, intuition: 6 };
 export const KARMIC_TRAITS: TraitDeltas = { shadow: 12, transformation: 10, intensity: 6 };
+
+/**
+ * House placement (1–12) — the life area a planet emphasises. Houses are
+ * individual (not generational), so they populate trait regions the Big-3 alone
+ * never reaches (e.g. the 4th/8th/10th feed WHEEL's memory/transformation/time).
+ */
+export const HOUSE_TRAITS: Record<number, TraitDeltas> = {
+  1: { initiative: 16, display: 10, sovereignty: 8 },
+  2: { embodiment: 16, endurance: 12, order: 8 },
+  3: { expression: 16, analysis: 12, adaptability: 10 },
+  4: { care: 14, memory: 16, loyalty: 10, concealment: 8 },
+  5: { display: 16, expression: 10, magnetism: 10, initiative: 8 },
+  6: { craft: 16, order: 12, care: 10, analysis: 8 },
+  7: { magnetism: 14, care: 10, loyalty: 10, adaptability: 8 },
+  8: { shadow: 18, transformation: 18, intensity: 12, concealment: 10 },
+  9: { vision: 16, transcendence: 14, adaptability: 10, autonomy: 8 },
+  10: { sovereignty: 16, order: 12, endurance: 10, display: 8 },
+  11: { vision: 14, autonomy: 12, magnetism: 10, disruption: 10 },
+  12: { transcendence: 16, concealment: 12, intuition: 12, shadow: 8 },
+};
+
+/** Dominant-element reinforcement (from the count of planets in each element). */
+export const ELEMENT_TRAITS: Record<string, TraitDeltas> = {
+  fire: { initiative: 12, intensity: 10, display: 6 },
+  earth: { order: 12, endurance: 10, embodiment: 8 },
+  air: { analysis: 12, expression: 8, adaptability: 8 },
+  water: { intuition: 12, care: 8, shadow: 6 },
+};
+
+export const SIGN_ELEMENT: Record<string, "fire" | "earth" | "air" | "water"> = {
+  Aries: "fire", Leo: "fire", Sagittarius: "fire",
+  Taurus: "earth", Virgo: "earth", Capricorn: "earth",
+  Gemini: "air", Libra: "air", Aquarius: "air",
+  Cancer: "water", Scorpio: "water", Pisces: "water",
+};
+
+/** Which planets contribute a sign feature and at what tier (Sun/Moon/Rising come from the Big 3; outer-by-sign is generational and skipped). */
+export const PLANET_SIGN_TIER: Record<string, 3 | 4> = {
+  Mercury: 3, Venus: 3, Mars: 3, Jupiter: 4, Saturn: 4,
+};
+
+/** Which planets contribute a house feature and at what tier. */
+export const PLANET_HOUSE_TIER: Record<string, 2 | 3 | 4> = {
+  Sun: 2, Moon: 2, Mercury: 3, Venus: 3, Mars: 3,
+  Jupiter: 4, Saturn: 4, Uranus: 4, Neptune: 4, Pluto: 4,
+  "North Node": 3, Chiron: 4,
+};

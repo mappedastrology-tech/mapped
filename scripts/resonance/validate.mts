@@ -35,13 +35,44 @@ function sampleNumber(): number {
   return 1 + Math.floor(Math.random() * 9);       // 1..9
 }
 
+// Realistic-ish placement sampling. Random independent signs+houses for every
+// body flattens distinctiveness (pure noise averages everyone to the centroid),
+// which real charts don't do: houses derive from the rising sign, and the inner
+// planets never stray far from the Sun. Model that so the cohort reflects real
+// birth data rather than white noise.
+const SIGN_IDX = (s: string) => SIGNS.indexOf(s);
+const IDX_SIGN = (i: number) => SIGNS[((i % 12) + 12) % 12];
+const near = (base: string, span: number) => IDX_SIGN(SIGN_IDX(base) + (Math.floor(Math.random() * (2 * span + 1)) - span));
+// Whole-sign houses: the rising sign is the 1st house, each following sign the next.
+const wholeSignHouse = (sign: string, rising: string) => (((SIGN_IDX(sign) - SIGN_IDX(rising) + 12) % 12) + 1);
+
+function samplePlacements(sun: string, moon: string, rising: string): { name: string; sign: string; house: number }[] {
+  const signs: Record<string, string> = {
+    Sun: sun,
+    Moon: moon,
+    Mercury: near(sun, 1),   // Mercury: within one sign of the Sun
+    Venus: near(sun, 2),     // Venus: within two signs
+    Mars: pick(SIGNS),
+    Jupiter: pick(SIGNS),
+    Saturn: pick(SIGNS),
+    Uranus: pick(SIGNS),
+    Neptune: pick(SIGNS),
+    Pluto: pick(SIGNS),
+    "North Node": pick(SIGNS),
+    Chiron: pick(SIGNS),
+  };
+  return Object.entries(signs).map(([name, sign]) => ({ name, sign, house: wholeSignHouse(sign, rising) }));
+}
+
 function sampleInput(): ResonanceInput {
+  const sun = pick(SIGNS), moon = pick(SIGNS), rising = pick(SIGNS);
   return {
-    sun: pick(SIGNS), moon: pick(SIGNS), rising: pick(SIGNS),
+    sun, moon, rising,
     lifePath: sampleNumber(), expression: sampleNumber(), soulUrge: sampleNumber(),
     hdType: weighted(HD_TYPES),
     hdAuthority: pick(AUTHORITIES),
     hdLines: [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)] as [number, number],
+    placements: samplePlacements(sun, moon, rising),
   };
 }
 

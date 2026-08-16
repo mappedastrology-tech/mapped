@@ -14,7 +14,7 @@ import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
 import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
-import { computeResonance } from "@/lib/resonance/engine";
+import { computeResonance, type Placement } from "@/lib/resonance/engine";
 import { persistAssignment } from "@/lib/resonance/persist";
 import { TRAIT_ORDER } from "@/lib/resonance/traits";
 import ResonanceRadar from "@/components/profile/ResonanceRadar";
@@ -31,6 +31,25 @@ interface ChartRow {
   latitude: number | null;
   longitude: number | null;
   bigThree: { sun?: string; moon?: string; rising?: string } | null;
+  placements: Placement[];
+}
+
+/** Pull {name, sign, house} from stored planet/special-point rows (shape varies by source). */
+function toPlacements(...groups: unknown[]): Placement[] {
+  const out: Placement[] = [];
+  for (const g of groups) {
+    if (!Array.isArray(g)) continue;
+    for (const item of g) {
+      if (!item || typeof item !== "object") continue;
+      const o = item as Record<string, unknown>;
+      const name = typeof o.name === "string" ? o.name : null;
+      if (!name) continue;
+      const sign = typeof o.sign === "string" ? o.sign : null;
+      const house = typeof o.house === "number" ? o.house : null;
+      out.push({ name, sign, house });
+    }
+  }
+  return out;
 }
 
 const MODALITY: Record<string, "Cardinal" | "Fixed" | "Mutable"> = {
@@ -85,7 +104,7 @@ export default function ProfilePageContent() {
           (session.user.user_metadata?.name as string | undefined) || "";
         const { data } = await supabase
           .from("charts")
-          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, big_three")
+          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, big_three, planets, special_points")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -99,6 +118,7 @@ export default function ProfilePageContent() {
             latitude: data.latitude,
             longitude: data.longitude,
             bigThree: (data.big_three as ChartRow["bigThree"]) ?? null,
+            placements: toPlacements(data.planets, data.special_points),
           });
           setDisplayName(metaName || data.name || "");
           setFullName(storedFull || metaName || data.name || "");
@@ -118,6 +138,7 @@ export default function ProfilePageContent() {
             latitude: parsed.latitude,
             longitude: parsed.longitude,
             bigThree: parsed.bigThree ?? null,
+            placements: toPlacements(parsed.planets, parsed.specialPoints, parsed.special_points),
           });
           setDisplayName(metaName || parsed.name || "");
           setFullName(storedFull || metaName || parsed.name || "");
@@ -183,6 +204,11 @@ export default function ProfilePageContent() {
       hdDefinition: hd?.definitionName ?? null,
       masters,
       karmics,
+      // When the birth time is unknown, house placements are unreliable — feed
+      // sign features only (drop house data) so we don't invent a life-area layer.
+      placements: row.unknownTime
+        ? row.placements.map((p) => ({ name: p.name, sign: p.sign, house: null }))
+        : row.placements,
     });
   }, [row, numerology, hd]);
 
