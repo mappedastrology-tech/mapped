@@ -18,6 +18,7 @@ import { computeResonance, type Placement } from "@/lib/resonance/engine";
 import { persistAssignment } from "@/lib/resonance/persist";
 import { TRAIT_ORDER } from "@/lib/resonance/traits";
 import ResonanceRadar from "@/components/profile/ResonanceRadar";
+import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
 import { masterLabel } from "@/lib/numerologyMeanings";
 
 const PHOTO_KEY = "mapped:profile-photo";
@@ -211,6 +212,9 @@ export default function ProfilePageContent() {
         : row.placements,
     });
   }, [row, numerology, hd]);
+
+  // Animal Guide — same engine, the animal-guide library (deterministic, free).
+  const animal = useMemo(() => (resonance ? computeAnimalGuide(resonance.traits) : null), [resonance]);
 
   // Store the assignment once (immutable snapshot). Fire-and-forget — the page
   // already renders from the deterministic compute above.
@@ -429,6 +433,52 @@ export default function ProfilePageContent() {
                 </p>
               </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {/* Animal Guide — matched from the same trait vector; provenance on the card */}
+      {animal && (
+        <>
+          <SectionLabel>Your Animal Guide</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <h3
+                className="text-[22px] leading-tight"
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
+              >
+                {animal.guide.name}
+              </h3>
+              <span
+                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
+                title={animal.guide.sources[0]}
+              >
+                {TIER_LABEL[animal.guide.tier]}
+              </span>
+            </div>
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {animal.guide.tagline}
+            </p>
+            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {animal.guide.essence}
+            </p>
+            <div className="mb-3">
+              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                Its shadow in you
+              </p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                {animal.guide.shadow}
+              </p>
+            </div>
+            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              Source — {animal.guide.tradition}: {animal.guide.sources.join("; ")}.
+              {animal.guide.status === "living-open" && " Shown as a comparison, not a claim, out of respect for a living tradition."}
+              {animal.alt && <> · Also close: {animal.alt.name}.</>}
+            </p>
           </div>
         </>
       )}

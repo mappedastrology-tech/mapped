@@ -1,14 +1,15 @@
 /**
  * Resonance calibrator (spec §4.6 — balanced assignment).
  *
- * Raw cosine similarity over-concentrates on the archetypes nearest the
- * population centroid and starves the rest. This solves for an additive price
- * offset per archetype so that assigning by `similarity − offset` spreads the
- * primary win-share evenly across all 96. It's a price-adjustment / auction
- * loop: over-attracting archetypes get their price raised, starved ones lowered,
- * until every share sits inside the target band. The offsets are then baked into
- * src/lib/resonance/calibration.ts as constants — the runtime stays a pure,
- * deterministic function with no cohort at request time.
+ * Raw cosine similarity over-concentrates on the entries nearest the population
+ * centroid and starves the rest. This solves for an additive price offset per
+ * entry so that assigning by `similarity − offset` spreads the primary win-share
+ * evenly. It's a price-adjustment / auction loop: over-attracting entries get
+ * their price raised, starved ones lowered, until every share sits inside the
+ * target band. Runs for BOTH libraries — the 96 archetypes and the 72 animal
+ * guides — plus the per-trait baseline/spread that centres the trait space.
+ * Everything is baked into src/lib/resonance/calibration.ts as constants, so the
+ * runtime stays a pure deterministic function with no cohort at request time.
  *
  * Run:  npx tsx scripts/resonance/calibrate.mts [N] [iters]
  */
@@ -16,20 +17,16 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { scoresWithBaseline, rawTraitSums } from "../../src/lib/resonance/engine.ts";
+import { scoresWithBaseline, rawTraitSums, traitsWithBaseline, rankLibrary } from "../../src/lib/resonance/engine.ts";
 import { ARCHETYPES } from "../../src/lib/resonance/archetypes.ts";
+import { ANIMAL_GUIDES } from "../../src/lib/resonance/animals.ts";
 import { TRAIT_ORDER } from "../../src/lib/resonance/traits.ts";
 import { sampleInput } from "./cohort.mts";
 
 const N = Number(process.argv[2] ?? 40000);
 const ITERS = Number(process.argv[3] ?? 600);
 
-const ids = ARCHETYPES.map((a) => a.id);
-const K = ids.length;
-const col = new Map(ids.map((id, i) => [id, i]));
-const TARGET = 1 / K;
-
-// One fixed cohort, reused for both passes so the baseline and offsets agree.
+// One fixed cohort, reused across all passes so baseline and offsets agree.
 console.log(`Sampling ${N} charts…`);
 const inputs = Array.from({ length: N }, () => sampleInput());
 
@@ -46,88 +43,107 @@ for (const t of TRAIT_ORDER) {
   spread[t] = Math.max(Math.sqrt(Math.max(0, sq[t] / N - baseline[t] * baseline[t])), 4); // floor so a near-constant trait can't explode
 }
 
-// --- Pass 2: similarity matrix under that baseline + spread (N × K). ---
-console.log(`Scoring ${N} × ${K} archetypes under baseline…`);
-const sims = new Float64Array(N * K);
-inputs.forEach((inp, u) => {
-  const base = u * K;
-  for (const { id, s } of scoresWithBaseline(inp, baseline, spread)) sims[base + (col.get(id) as number)] = s;
-});
+/**
+ * Balanced-assignment price solver. `sims` is a flat N×K similarity matrix;
+ * returns a re-centred offset per column so win-shares land in the target band.
+ */
+function solveOffsets(sims: Float64Array, K: number, label: string): number[] {
+  const TARGET = 1 / K;
+  const offset = new Float64Array(K);
+  const counts = new Int32Array(K);
+  const EPS = 0.0004;
+  let lr = 0.012;
+  let lastMax = 1, lastMin = 0;
 
-// --- Iterative price adjustment. ---
-const offset = new Float64Array(K);
-const counts = new Int32Array(K);
-const EPS = 0.0004;
-let lr = 0.012;
-
-function assignAndCount() {
-  counts.fill(0);
-  for (let u = 0; u < N; u++) {
-    const base = u * K;
-    let best = 0, bestVal = sims[base] - offset[0];
-    for (let c = 1; c < K; c++) {
-      const v = sims[base + c] - offset[c];
-      if (v > bestVal) { bestVal = v; best = c; }
+  for (let it = 0; it < ITERS; it++) {
+    counts.fill(0);
+    for (let u = 0; u < N; u++) {
+      const base = u * K;
+      let best = 0, bestVal = sims[base] - offset[0];
+      for (let c = 1; c < K; c++) {
+        const v = sims[base + c] - offset[c];
+        if (v > bestVal) { bestVal = v; best = c; }
+      }
+      counts[best]++;
     }
-    counts[best]++;
+    let maxShare = 0, minShare = 1;
+    for (let c = 0; c < K; c++) {
+      const share = counts[c] / N;
+      if (share > maxShare) maxShare = share;
+      if (share < minShare) minShare = share;
+      offset[c] += lr * Math.log((share + EPS) / TARGET);
+    }
+    lastMax = maxShare; lastMin = minShare;
+    if (it % 100 === 0 || it === ITERS - 1) {
+      console.log(`  [${label}] iter ${String(it).padStart(3)}  max ${(maxShare * 100).toFixed(2)}%  min ${(minShare * 100).toFixed(2)}%`);
+    }
+    if (maxShare <= 0.020 && minShare >= 0.006) { lr *= 0.6; if (lr < 0.001) break; }
   }
+  // Re-centre (a constant shift doesn't change argmax) for tidy numbers.
+  let mean = 0;
+  for (let c = 0; c < K; c++) mean += offset[c];
+  mean /= K;
+  const out = Array.from(offset, (o) => o - mean);
+  console.log(`  [${label}] converged: max ${(lastMax * 100).toFixed(2)}%  min ${(lastMin * 100).toFixed(2)}%`);
+  return out;
 }
 
-let lastMax = 1, lastMin = 0;
-for (let it = 0; it < ITERS; it++) {
-  assignAndCount();
-  let maxShare = 0, minShare = 1;
-  for (let c = 0; c < K; c++) {
-    const share = counts[c] / N;
-    if (share > maxShare) maxShare = share;
-    if (share < minShare) minShare = share;
-    offset[c] += lr * Math.log((share + EPS) / TARGET);
-  }
-  lastMax = maxShare; lastMin = minShare;
-  if (it % 50 === 0 || it === ITERS - 1) {
-    console.log(`iter ${String(it).padStart(3)}  max ${(maxShare * 100).toFixed(2)}%  min ${(minShare * 100).toFixed(2)}%  lr ${lr.toFixed(4)}`);
-  }
-  // Tight internal band (inside the 0.4–2.5% gate) so an independent validation
-  // draw still lands in-gate. Decay the step once we're close to settle it.
-  if (maxShare <= 0.020 && minShare >= 0.006) { lr *= 0.6; if (lr < 0.001) break; }
-}
+// --- Pass 2a: archetype similarity matrix + offsets. ---
+const archIds = ARCHETYPES.map((a) => a.id);
+const AK = archIds.length;
+const archCol = new Map(archIds.map((id, i) => [id, i]));
+console.log(`Scoring ${N} × ${AK} archetypes…`);
+const archSims = new Float64Array(N * AK);
+inputs.forEach((inp, u) => {
+  const base = u * AK;
+  for (const { id, s } of scoresWithBaseline(inp, baseline, spread)) archSims[base + (archCol.get(id) as number)] = s;
+});
+const archOffsets = solveOffsets(archSims, AK, "archetype");
 
-// Re-centre offsets (a constant shift doesn't change argmax) for tidy numbers.
-let mean = 0;
-for (let c = 0; c < K; c++) mean += offset[c];
-mean /= K;
-for (let c = 0; c < K; c++) offset[c] -= mean;
+// --- Pass 2b: animal similarity matrix + offsets (same math, user traits first). ---
+const animalIds = ANIMAL_GUIDES.map((a) => a.id);
+const NK = animalIds.length;
+const animalCol = new Map(animalIds.map((id, i) => [id, i]));
+console.log(`Scoring ${N} × ${NK} animal guides…`);
+const animalSims = new Float64Array(N * NK);
+inputs.forEach((inp, u) => {
+  const traits = traitsWithBaseline(inp, baseline, spread);
+  if (!traits) return;
+  const base = u * NK;
+  for (const { id, s } of rankLibrary(traits, ANIMAL_GUIDES)) animalSims[base + (animalCol.get(id) as number)] = s;
+});
+const animalOffsets = solveOffsets(animalSims, NK, "animal");
 
 // --- Emit calibration.ts ---
-const entries = ids
-  .map((id, i) => [id, offset[i]] as [string, number])
-  .sort((a, b) => a[0].localeCompare(b[0]));
+const fmtOffsets = (idList: string[], offs: number[]) =>
+  idList
+    .map((id, i) => [id, offs[i]] as [string, number])
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([id, o]) => `  ${JSON.stringify(id)}: ${o.toFixed(6)},`)
+    .join("\n");
 
-const body = entries.map(([id, o]) => `  ${JSON.stringify(id)}: ${o.toFixed(6)},`).join("\n");
-const baselineBody = TRAIT_ORDER
-  .map((t) => `  ${JSON.stringify(t)}: ${baseline[t].toFixed(4)},`)
-  .join("\n");
-const spreadBody = TRAIT_ORDER
-  .map((t) => `  ${JSON.stringify(t)}: ${spread[t].toFixed(4)},`)
-  .join("\n");
+const archBody = fmtOffsets(archIds, archOffsets);
+const animalBody = fmtOffsets(animalIds, animalOffsets);
+const baselineBody = TRAIT_ORDER.map((t) => `  ${JSON.stringify(t)}: ${baseline[t].toFixed(4)},`).join("\n");
+const spreadBody = TRAIT_ORDER.map((t) => `  ${JSON.stringify(t)}: ${spread[t].toFixed(4)},`).join("\n");
 const version = `cohort-N${N}-iter${ITERS}`;
 
 const out = `/**
  * GENERATED — do not edit by hand. Produced by \`npm run resonance:calibrate\`.
  *
- * Per-archetype price offset (spec §4.6, balanced assignment). Raw cosine
- * similarity over-concentrates on the few archetypes nearest the population
- * centroid and leaves the "moderate-everything" archetypes unreachable. The
- * calibrator runs a synthetic cohort and solves for an additive offset per
- * archetype such that assigning by \`similarity − offset\` spreads the primary
- * win-share evenly (every archetype reachable, none a black hole). The offsets
- * are baked constants, so the runtime stays a deterministic pure function — no
- * cohort, no global state, same input → same output.
+ * Balanced-assignment calibration (spec §4.6). Raw cosine similarity over-
+ * concentrates on the entries nearest the population centroid and leaves the
+ * "moderate-everything" ones unreachable. The calibrator runs a synthetic cohort
+ * and solves for an additive offset per entry such that assigning by
+ * \`similarity − offset\` spreads the primary win-share evenly (every entry
+ * reachable, none a black hole), for both the archetypes and the animal guides.
+ * Plus a per-trait baseline+spread that centres and equalises the trait space.
+ * All baked as constants, so the runtime stays a deterministic pure function —
+ * no cohort, no global state, same input → same output.
  *
- * A positive offset means "this archetype was over-attracting, penalise it"; a
- * negative offset lifts a previously-starved archetype. Offsets are tiny
- * (cosine-scale), so they only decide genuinely borderline matches — a strong
- * match is unaffected.
+ * A positive offset means "this entry was over-attracting, penalise it"; a
+ * negative offset lifts a previously-starved one. Offsets are tiny (cosine-
+ * scale), so they only decide genuinely borderline matches.
  */
 
 export const CALIBRATION_VERSION = ${JSON.stringify(version)};
@@ -148,17 +164,24 @@ ${baselineBody}
 
 /** archetype id → additive score offset. Missing id ⇒ 0. */
 export const ARCH_OFFSET: Record<string, number> = {
-${body}
+${archBody}
 };
 
 export function archOffset(id: string): number {
   return ARCH_OFFSET[id] ?? 0;
 }
+
+/** animal id → additive score offset (same balancing as archetypes). Missing id ⇒ 0. */
+export const ANIMAL_OFFSET: Record<string, number> = {
+${animalBody}
+};
+
+export function animalOffset(id: string): number {
+  return ANIMAL_OFFSET[id] ?? 0;
+}
 `;
 
 const here = dirname(fileURLToPath(import.meta.url));
-const target = join(here, "../../src/lib/resonance/calibration.ts");
-writeFileSync(target, out);
+writeFileSync(join(here, "../../src/lib/resonance/calibration.ts"), out);
 
-console.log(`\nConverged: max ${(lastMax * 100).toFixed(2)}%  min ${(lastMin * 100).toFixed(2)}%`);
-console.log(`Wrote ${entries.length} offsets → src/lib/resonance/calibration.ts (version ${version})`);
+console.log(`\nWrote ${AK} archetype + ${NK} animal offsets → src/lib/resonance/calibration.ts (${version})`);

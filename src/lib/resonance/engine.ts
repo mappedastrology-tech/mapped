@@ -202,6 +202,17 @@ export function rawTraitSums(input: ResonanceInput): TraitVec {
   return rawSums(extractFeatures(input));
 }
 
+/** Full 0–100 trait vector under an explicit baseline+spread — for the calibrator's animal pass. */
+export function traitsWithBaseline(
+  input: ResonanceInput,
+  baseline: Partial<Record<TraitId, number>>,
+  spread: Partial<Record<TraitId, number>>,
+): TraitVec | null {
+  const features = extractFeatures(input);
+  if (features.length === 0) return null;
+  return squash(rawSums(features), baseline, spread);
+}
+
 /**
  * Distinctiveness weighting (spec §4.4). Amplify traits where the user deviates
  * from population-typical (50) and mute traits where they're average — so a
@@ -288,6 +299,26 @@ export function scoresWithBaseline(
   const traits = squash(rawSums(features), baseline, spread);
   const salUser = salienced(traits);
   return ARCHETYPES.map((a: Archetype) => ({ id: a.id, s: similarity(salUser, a.traits) }));
+}
+
+/**
+ * Rank any content library (archetypes, animal guides, …) against a user's
+ * trait vector by the same decorrelated-cosine + salience match the archetypes
+ * use — the engine is library-agnostic (spec §4). `offset` optionally applies a
+ * per-entry balancing price (as computeResonance does for archetypes).
+ */
+export function rankLibrary(
+  userTraits: TraitVec,
+  entries: { id: string; traits: TraitVec }[],
+  offset?: (id: string) => number,
+): { id: string; s: number; cal: number }[] {
+  const salUser = salienced(userTraits);
+  return entries
+    .map((e) => {
+      const s = similarity(salUser, e.traits);
+      return { id: e.id, s, cal: s - (offset?.(e.id) ?? 0) };
+    })
+    .sort((a, b) => b.cal - a.cal);
 }
 
 export function computeResonance(input: ResonanceInput): ResonanceResult | null {
