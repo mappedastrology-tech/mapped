@@ -361,6 +361,41 @@ export default function ProfilePageContent() {
         </>
       )}
 
+      {/* Your reading — the composed archetype content */}
+      {resonance?.primary.content && (
+        <>
+          <SectionLabel>Your reading</SectionLabel>
+          <div className="flex flex-col gap-3 mb-6">
+            {[
+              { label: "Essence", text: resonance.primary.content.essence },
+              { label: "Your shadow", text: resonance.primary.content.shadowSide, shadow: true },
+              { label: "Growth edge", text: resonance.primary.content.growthEdge },
+              { label: "In love", text: resonance.primary.content.inRelationship },
+              { label: "At work", text: resonance.primary.content.atWork },
+            ].map((b) => (
+              <div
+                key={b.label}
+                className="rounded-2xl p-4"
+                style={{
+                  background: "var(--background-card)",
+                  border: `1px solid ${b.shadow ? "color-mix(in srgb, var(--oxblood-light) 30%, transparent)" : "var(--border-card)"}`,
+                }}
+              >
+                <p
+                  className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1.5"
+                  style={{ color: b.shadow ? "var(--oxblood-light)" : "var(--brass)" }}
+                >
+                  {b.label}
+                </p>
+                <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                  {b.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Everything you are */}
       <SectionLabel>Everything you are</SectionLabel>
       <div className="flex flex-col gap-3">
