@@ -79,3 +79,21 @@ test("I-003: José García gets the correct name numbers (was Ex11/SU8, a false 
   assert.equal(p!.soulUrge.value, 22);
   assert.equal(p!.personality.value, 3);
 });
+
+// ── I-004: UTC offset must resolve DST at the actual birth instant ───────────
+import { getUtcOffsetHours } from "@/lib/astro/calculateChart";
+
+test("I-004: births on a DST-transition day get the offset for their side of the switch", () => {
+  const NY: [number, number] = [40.7128, -74.006];
+  // US spring-forward 2019-03-10 at 02:00 (EST -5 → EDT -4)
+  assert.equal(getUtcOffsetHours(...NY, 2019, 3, 10, 1), -5, "01:00 is still EST");
+  assert.equal(getUtcOffsetHours(...NY, 2019, 3, 10, 8), -4, "08:00 is EDT");
+  // US fall-back 2019-11-03 at 02:00 EDT → 01:00 EST
+  assert.equal(getUtcOffsetHours(...NY, 2019, 11, 3, 0.5), -4, "00:30 is still EDT");
+  assert.equal(getUtcOffsetHours(...NY, 2019, 11, 3, 8), -5, "08:00 is EST");
+  // EU spring-forward 2020-03-29 at 02:00 (CET +1 → CEST +2)
+  assert.equal(getUtcOffsetHours(41.9028, 12.4964, 2020, 3, 29, 1), 1);
+  assert.equal(getUtcOffsetHours(41.9028, 12.4964, 2020, 3, 29, 10), 2);
+  // Backward-compatible default (noon) still works
+  assert.equal(getUtcOffsetHours(...NY, 2019, 3, 10), -4);
+});

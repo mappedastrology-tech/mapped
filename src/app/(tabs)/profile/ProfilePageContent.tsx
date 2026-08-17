@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
@@ -639,6 +640,15 @@ export default function ProfilePageContent() {
             <Row label="Soul Urge" value={masterLabel(numerology.soulUrge.value)} />
             <Row label="Personality" value={masterLabel(numerology.personality.value)} />
             <Row label="Birthday" value={String(numerology.birthday.value)} />
+            {/* The name-based numbers (Expression / Soul Urge / Personality) depend
+                entirely on the exact name used — show it so a wrong or display-only
+                name is visible and fixable, instead of silently producing wrong numbers. */}
+            <p className="text-[11px] leading-relaxed pt-2 mt-1" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              Name numbers calculated from <span style={{ color: "var(--foreground-secondary)" }}>{fullName.trim()}</span>.{" "}
+              <Link href="/numerology" className="underline" style={{ color: "var(--brass)" }}>
+                Not your full birth name? Change it
+              </Link>
+            </p>
           </SystemCard>
         )}
 

@@ -30,26 +30,45 @@ interface ChartInput {
   ayanamsa?: "lahiri" | "krishnamurti" | "raman";
 }
 
-/**
- * Get the UTC offset (in hours, east-positive) for a given location and date.
- * Uses a pure-JS timezone lookup (no filesystem dependencies) and Intl
- * to determine the offset at the specific date (correctly handling DST).
- */
-export function getUtcOffsetHours(lat: number, lon: number, year: number, month: number, day: number): number {
-  const tzName = getTimezoneForCoords(lat, lon);
-  if (!tzName) return 0;
-
-  // Use a noon reference to determine the offset at this date
-  const ref = new Date(Date.UTC(year, month - 1, day, 12, 0));
-  const utcStr = ref.toLocaleString("en-US", { timeZone: "UTC", hour: "numeric", hour12: false, minute: "numeric" });
-  const locStr = ref.toLocaleString("en-US", { timeZone: tzName, hour: "numeric", hour12: false, minute: "numeric" });
-
-  const [utcH, utcM] = utcStr.split(":").map(Number);
-  const [locH, locM] = locStr.split(":").map(Number);
-
+/** Offset (hours, east-positive) of `tzName` at a specific UTC instant. */
+function offsetAtInstant(tzName: string, utcMs: number): number {
+  const ref = new Date(utcMs);
+  const fmt = (tz: string) =>
+    ref.toLocaleString("en-US", { timeZone: tz, hour: "numeric", hour12: false, minute: "numeric" });
+  const [utcH, utcM] = fmt("UTC").split(":").map(Number);
+  const [locH, locM] = fmt(tzName).split(":").map(Number);
   let offset = (locH - utcH) + (locM - utcM) / 60;
   if (offset > 12) offset -= 24;
   if (offset < -12) offset += 24;
+  return offset;
+}
+
+/**
+ * Get the UTC offset (in hours, east-positive) for a given location at a given
+ * LOCAL date and time. Uses a pure-JS timezone lookup (no filesystem
+ * dependencies) and Intl to resolve DST at the actual birth instant.
+ *
+ * `localHour` (decimal, e.g. 2.5 for 02:30) is optional for backward
+ * compatibility; without it we fall back to noon local, which was the old
+ * behaviour. Sampling at noon was wrong for births on a DST-transition day
+ * that fall on the other side of the switch from noon (an hour off → the
+ * Ascendant off ~15°). We resolve the local time to a UTC instant iteratively:
+ * guess the offset at noon, compute the UTC instant for the requested local
+ * time under that guess, re-read the offset at that instant, and repeat once —
+ * two passes converge for every real-world DST rule.
+ */
+export function getUtcOffsetHours(
+  lat: number, lon: number, year: number, month: number, day: number, localHour = 12,
+): number {
+  const tzName = getTimezoneForCoords(lat, lon);
+  if (!tzName) return 0;
+
+  const localMs = Date.UTC(year, month - 1, day, 0, 0) + localHour * 3600_000; // local wall clock, as if UTC
+  let offset = offsetAtInstant(tzName, Date.UTC(year, month - 1, day, 12, 0));  // seed at noon
+  for (let i = 0; i < 2; i++) {
+    const utcGuess = localMs - offset * 3600_000;
+    offset = offsetAtInstant(tzName, utcGuess);
+  }
   return offset;
 }
 
@@ -66,7 +85,7 @@ export function calculateChart(data: ChartInput) {
   // Convert local birth time to UTC using the real timezone for this location.
   // Pure-JS timezone lookup determines the IANA timezone from coordinates,
   // then Intl gives the UTC offset at the specific birth date (handling DST).
-  const tzOffset = getUtcOffsetHours(data.latitude, data.longitude, year, month, day);
+  const tzOffset = getUtcOffsetHours(data.latitude, data.longitude, year, month, day, decimalHour);
   const utcHour = decimalHour - tzOffset;
   const jd = julday(year, month, day, utcHour);
 
