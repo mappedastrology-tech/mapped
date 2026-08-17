@@ -73,13 +73,40 @@ function feat(id: string, label: string, tier: 1 | 2 | 3 | 4, deltas?: TraitDelt
   return deltas ? { id, label, tier, deltas } : null;
 }
 
+/**
+ * Canonical full sign name. The chart engine and the `charts` table store signs
+ * ABBREVIATED ("Gem", "Sco", "Ari") while every weight table here is keyed by
+ * the full name ("Gemini") — without this bridge every zodiac feature was
+ * silently dropped and results were computed from houses/numerology/HD alone.
+ * Accepts either form (and is case-insensitive) so any caller shape works.
+ */
+const SIGN_CANON: Record<string, string> = {
+  ari: "Aries", aries: "Aries",
+  tau: "Taurus", taurus: "Taurus",
+  gem: "Gemini", gemini: "Gemini",
+  can: "Cancer", cancer: "Cancer",
+  leo: "Leo",
+  vir: "Virgo", virgo: "Virgo",
+  lib: "Libra", libra: "Libra",
+  sco: "Scorpio", scorpio: "Scorpio",
+  sag: "Sagittarius", sagittarius: "Sagittarius",
+  cap: "Capricorn", capricorn: "Capricorn",
+  aqu: "Aquarius", aquarius: "Aquarius",
+  pis: "Pisces", pisces: "Pisces",
+};
+export function normSign(s?: string | null): string | null {
+  if (!s) return null;
+  return SIGN_CANON[s.trim().toLowerCase()] ?? null;
+}
+
 /** Flatten the chart into weighted features. */
 export function extractFeatures(input: ResonanceInput): ExtractedFeature[] {
   const out: (ExtractedFeature | null)[] = [];
 
-  if (input.sun) out.push(feat(`astro.sun.${input.sun}`, `${input.sun} Sun`, 1, SIGN_TRAITS[input.sun]));
-  if (input.moon) out.push(feat(`astro.moon.${input.moon}`, `${input.moon} Moon`, 2, SIGN_TRAITS[input.moon]));
-  if (input.rising) out.push(feat(`astro.rising.${input.rising}`, `${input.rising} Rising`, 2, SIGN_TRAITS[input.rising]));
+  const sun = normSign(input.sun), moon = normSign(input.moon), rising = normSign(input.rising);
+  if (sun) out.push(feat(`astro.sun.${sun}`, `${sun} Sun`, 1, SIGN_TRAITS[sun]));
+  if (moon) out.push(feat(`astro.moon.${moon}`, `${moon} Moon`, 2, SIGN_TRAITS[moon]));
+  if (rising) out.push(feat(`astro.rising.${rising}`, `${rising} Rising`, 2, SIGN_TRAITS[rising]));
 
   if (input.lifePath != null) out.push(feat(`num.lifepath.${input.lifePath}`, `Life Path ${input.lifePath}`, 1, NUMBER_TRAITS[input.lifePath]));
   if (input.expression != null) out.push(feat(`num.expression.${input.expression}`, `Expression ${input.expression}`, 2, NUMBER_TRAITS[input.expression]));
@@ -110,7 +137,7 @@ export function extractFeatures(input: ResonanceInput): ExtractedFeature[] {
     const elementCount: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
 
     for (const p of input.placements) {
-      const sign = p.sign ?? undefined;
+      const sign = normSign(p.sign) ?? undefined;
       const house = toHouse(p.house);
 
       // Planet-by-sign (personal planets + Jupiter/Saturn; Sun/Moon/Rising already
@@ -267,7 +294,7 @@ export interface ResonanceResult {
   engineVersion: string;
 }
 
-export const ENGINE_VERSION = "1.2.0"; // full chart + 4-library balanced-assignment calibration
+export const ENGINE_VERSION = "1.3.0"; // sign-name normalisation: zodiac features now actually reach the engine
 export const DATA_VERSION = "archetypes@1.1.0";
 
 function dominantTrait(deltas: TraitDeltas): TraitId {

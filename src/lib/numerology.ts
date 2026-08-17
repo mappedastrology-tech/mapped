@@ -122,11 +122,48 @@ function yIsVowel(word: string[], i: number): boolean {
   return !prevVowel && !nextVowel;
 }
 
+/**
+ * Letters that don't decompose to a base A–Z under Unicode NFD and so need an
+ * explicit transliteration (standard Latin-alphabet conventions). Everything
+ * with a diacritic (é ü ñ ó ø-with-stroke aside, etc.) is handled by NFD +
+ * stripping combining marks below.
+ */
+const TRANSLIT: Record<string, string> = {
+  "Þ": "TH", "þ": "TH",   // thorn
+  "ß": "SS",              // eszett
+  "Æ": "AE", "æ": "AE",
+  "Œ": "OE", "œ": "OE",
+  "Ø": "O",  "ø": "O",    // stroke does not decompose
+  "Đ": "D",  "đ": "D",
+  "Ð": "D",  "ð": "D",    // eth
+  "Ł": "L",  "ł": "L",
+  "Ħ": "H",  "ħ": "H",
+  "Ŧ": "T",  "ŧ": "T",
+  "İ": "I",  "ı": "I",
+  "Ŋ": "N",  "ŋ": "N",
+};
+
+/**
+ * Normalise a name to plain A–Z for letter valuation. Previously this did a
+ * bare `.replace(/[^A-Z]/g, "")`, which silently DELETED every non-ASCII
+ * letter — so "Freya Þórsdóttir" lost Þ and both ó's, "José García" lost the
+ * accented letters, and Expression / Soul Urge / Personality came out wrong
+ * (sometimes producing false master numbers). Transliterate first, then filter.
+ */
+export function normalizeNameLetters(word: string): string {
+  return word
+    .replace(/[À-ɏḀ-ỿ]/g, (ch) => TRANSLIT[ch] ?? ch) // explicit map first
+    .normalize("NFD")                       // é → e + ́
+    .replace(/[̀-ͯ]/g, "")        // drop combining marks
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+}
+
 /** Split a full name into words of {char, isVowel}, dropping non-letters. */
 function parseName(fullName: string): Letter[][] {
   return fullName
     .split(/\s+/)
-    .map((w) => w.toUpperCase().replace(/[^A-Z]/g, ""))
+    .map((w) => normalizeNameLetters(w))
     .filter((w) => w.length > 0)
     .map((word) => {
       const chars = word.split("");

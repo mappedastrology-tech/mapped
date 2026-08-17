@@ -138,21 +138,29 @@ export function calculateChart(data: ChartInput) {
     return { number: i + 1, sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   });
 
-  // Assign house numbers to planets
-  for (const p of [...planets, ...specialPoints]) {
-    // Use the tropical positions for house assignment (houses are tropical internally)
-    p.house = assignHouseFromCusps(p.absPosition, houses);
+  // Assign house numbers to planets. Houses, the Ascendant, and the Midheaven all
+  // depend on the exact birth time (the Ascendant moves ~1° every 4 minutes), so
+  // with an UNKNOWN time they must not be fabricated from the assumed noon —
+  // downstream consumers (Dolly depth, interpretations, exports) would present
+  // them as fact. Planet signs/degrees are kept (noon is the standard convention).
+  if (!data.unknownTime) {
+    for (const p of [...planets, ...specialPoints]) {
+      // Use the tropical positions for house assignment (houses are tropical internally)
+      p.house = assignHouseFromCusps(p.absPosition, houses);
+    }
   }
 
-  // --- Midheaven ---
-  const mcLon = houseData.mc;
-  let midheaven;
-  if (isSidereal) {
-    const sid = applySidereal(mcLon, ayanamsaOffset);
-    midheaven = { sign: sid.sign, signNum: sid.signNum, position: sid.position, absPosition: sid.absPosition };
-  } else {
-    const info = posToSign(mcLon);
-    midheaven = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
+  // --- Midheaven --- (time-dependent; omitted for unknown-time charts)
+  let midheaven: { sign: string; signNum: number; position: number; absPosition: number } | null = null;
+  if (!data.unknownTime) {
+    const mcLon = houseData.mc;
+    if (isSidereal) {
+      const sid = applySidereal(mcLon, ayanamsaOffset);
+      midheaven = { sign: sid.sign, signNum: sid.signNum, position: sid.position, absPosition: sid.absPosition };
+    } else {
+      const info = posToSign(mcLon);
+      midheaven = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
+    }
   }
 
   // --- Vertex (fated point) ---
@@ -187,16 +195,16 @@ export function calculateChart(data: ChartInput) {
   }
   aspects.sort((a, b) => a.orbit - b.orbit);
 
-  // --- Big Three ---
+  // --- Big Three --- (Rising requires an exact birth time; empty when unknown)
   const bigThree = {
     sun: planets[0]?.sign || "",
     moon: planets[1]?.sign || "",
-    rising: houses[0]?.sign || "",
+    rising: data.unknownTime ? "" : (houses[0]?.sign || ""),
   };
 
-  // --- Rising sign cusp check ---
+  // --- Rising sign cusp check --- (meaningless without a real Ascendant)
   let risingCusp = null;
-  const risingPosition = houses[0]?.position ?? 15;
+  const risingPosition = data.unknownTime ? 15 : (houses[0]?.position ?? 15);
   if (risingPosition < 1.0) {
     const prevSign = SIGN_NAMES[(houses[0].signNum - 1 + 12) % 12];
     risingCusp = {
@@ -231,7 +239,9 @@ export function calculateChart(data: ChartInput) {
     specialPoints,
     midheaven,
     vertex,
-    houses,
+    // House cusps are time-dependent — emit none for unknown-time charts so no
+    // consumer can render/interpret an assumed-noon house wheel as real.
+    houses: data.unknownTime ? [] : houses,
     aspects,
     risingCusp,
   };
