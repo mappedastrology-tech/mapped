@@ -23,6 +23,7 @@ import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
+import { useIsDesktop } from "@/lib/useIsDesktop";
 import WebToday from "@/components/web/WebToday";
 import WebAlmanac from "@/components/web/WebAlmanac";
 import WebTarot from "@/components/web/WebTarot";
@@ -72,14 +73,8 @@ export default function TabsLayout({
   // breakpoint after mount (during the auth spinner) so the mobile page is
   // never mounted on desktop — its onboarding/chart redirects must not fire
   // underneath the web layout.
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const apply = () => setIsDesktop(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
+  // (NEXT_PUBLIC_FORCE_MOBILE=1 forces the mobile layout everywhere — see useIsDesktop.)
+  const isDesktop = useIsDesktop();
   const showWeb = !!WebPage && isDesktop;
 
   const syncRan = useRef(false);
