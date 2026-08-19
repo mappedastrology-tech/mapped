@@ -8,7 +8,7 @@
  * the effect swaps to the web page on desktop.
  */
 
-import { useEffect, useState } from "react";
+import { useIsDesktop } from "@/lib/useIsDesktop";
 
 export default function DesktopWebRoute({
   web,
@@ -17,13 +17,6 @@ export default function DesktopWebRoute({
   web: React.ReactNode;
   mobile: React.ReactNode;
 }) {
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const apply = () => setIsDesktop(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
+  const isDesktop = useIsDesktop();
   return <>{isDesktop ? web : mobile}</>;
 }

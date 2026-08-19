@@ -49,7 +49,26 @@ export default function Interpretations({ name, bigThree, onLoaded }: Interpreta
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // The Big 3 never change, so the interpretation is stable — cache it and reuse
+  // it instead of paying Claude to regenerate the same thing on every visit.
+  const cacheKey = `mapped:big3-interp:${(name || "").trim().toLowerCase()}:${bigThree.sun}-${bigThree.moon}-${bigThree.rising}`;
+
   useEffect(() => {
+    let cancelled = false;
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as InterpretationData;
+        if (parsed?.sun && parsed?.moon && parsed?.rising) {
+          setInterpretations(parsed);
+          setIsLoading(false);
+          if (onLoaded) onLoaded(parsed);
+          return;
+        }
+      }
+    } catch { /* ignore bad cache */ }
+
     async function fetchInterpretations() {
       try {
         const response = await fetch("/api/chart/interpret", {
@@ -63,17 +82,23 @@ export default function Interpretations({ name, bigThree, onLoaded }: Interpreta
         }
 
         const data = await response.json();
+        if (cancelled) return;
         setInterpretations(data.interpretations);
+        try { localStorage.setItem(cacheKey, JSON.stringify(data.interpretations)); } catch { /* quota */ }
         if (onLoaded) onLoaded(data.interpretations);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        if (!cancelled) setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
     fetchInterpretations();
-  }, [name, bigThree]);
+    return () => { cancelled = true; };
+    // Keyed on the stable cacheKey (name + Big 3), not the bigThree object
+    // reference, so it doesn't re-fire — or re-pay — on re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
 
   const placements = [
     { key: "sun" as const, label: "Sun", sign: bigThree.sun, icon: "\u2609" },

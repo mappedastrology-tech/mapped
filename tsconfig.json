@@ -47,6 +47,7 @@
     "/tmp/mapped-next-build-5/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts"
   ]
 }

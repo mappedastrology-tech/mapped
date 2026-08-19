@@ -895,6 +895,32 @@ function fmtDateRange(start?: string, end?: string): string {
 /* ═══════════════════════════════════════════
    Data sanitizer — ensures connection data is safe to render
    ═══════════════════════════════════════════ */
+
+// Sign → zodiac index (0–11), accepting both 3-letter and full names, so we can
+// rebuild an absolute ecliptic longitude when a stored record is missing it.
+const SIGN_TO_IDX: Record<string, number> = (() => {
+  const abbr = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
+  const full = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+  const m: Record<string, number> = {};
+  abbr.forEach((s, i) => { m[s] = i; });
+  full.forEach((s, i) => { m[s] = i; });
+  return m;
+})();
+
+/**
+ * Resolve an absolute longitude (0–360). If the stored absPosition is missing,
+ * non-numeric, or a suspicious 0, rebuild it from sign + degree-in-sign. Returns
+ * NaN when it can't be resolved (caller drops those). Without this, a bad record
+ * collapsed every natal point to 0° Aries — making every person's transits identical.
+ */
+function resolveAbs(sign: unknown, position: unknown, absPosition: unknown): number {
+  const pos = typeof position === "number" && isFinite(position) ? position : 0;
+  if (typeof absPosition === "number" && isFinite(absPosition) && absPosition !== 0) return absPosition;
+  const idx = typeof sign === "string" ? SIGN_TO_IDX[sign] : undefined;
+  if (idx != null) return idx * 30 + pos;
+  return typeof absPosition === "number" && isFinite(absPosition) ? absPosition : NaN;
+}
+
 function sanitizeConnection(conn: Connection): Connection {
   const safeNum = (v: unknown): number => (typeof v === "number" && isFinite(v) ? v : 0);
   const safeStr = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : String(v ?? fallback));
@@ -926,16 +952,21 @@ function sanitizeConnection(conn: Connection): Connection {
     return null;
   };
 
-  // Sanitize planets — filter out entries with NaN/missing positions
+  // Sanitize planets — rebuild absPosition from sign+degree when missing so a
+  // bad record doesn't collapse every planet to 0° Aries (which made everyone's
+  // transits identical). Drop planets we genuinely can't resolve.
   const planets = Array.isArray(conn.planets)
     ? conn.planets.filter(p => p && typeof p.name === "string" && typeof p.sign === "string")
-        .map(p => ({ ...p, absPosition: safeNum(p.absPosition), position: safeNum(p.position), house: normalizeHouse(p.house) }))
+        .map(p => ({ ...p, absPosition: resolveAbs(p.sign, p.position, p.absPosition), position: safeNum(p.position), house: normalizeHouse(p.house) }))
+        .filter(p => Number.isFinite(p.absPosition))
     : null;
 
-  // Sanitize houses
+  // Sanitize houses — same absPosition reconstruction so transit house
+  // placement isn't thrown off by zeroed cusps.
   const houses = Array.isArray(conn.houses)
     ? (conn.houses as any[]).filter(h => h && typeof h.sign === "string")
-        .map(h => ({ ...h, absPosition: safeNum(h.absPosition), position: safeNum(h.position) }))
+        .map(h => ({ ...h, absPosition: resolveAbs(h.sign, h.position, h.absPosition), position: safeNum(h.position) }))
+        .filter(h => Number.isFinite(h.absPosition))
     : null;
 
   // Sanitize special_points — same house normalization as planets

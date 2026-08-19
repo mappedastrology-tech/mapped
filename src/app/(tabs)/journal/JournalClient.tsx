@@ -127,6 +127,9 @@ function JournalPage() {
   const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt | null>(null);
   const [composeText, setComposeText] = useState("");
   const [composeTitle, setComposeTitle] = useState("");
+  // True when compose was opened via the home-page check-in deep link, so the
+  // back button returns to the app home rather than the journal's own home tab.
+  const [composeFromHome, setComposeFromHome] = useState(false);
   const [isBurn, setIsBurn] = useState(false);
   const [promptCycleCount, setPromptCycleCount] = useState(0);
   const [cycledIds, setCycledIds] = useState<string[]>([]);
@@ -248,6 +251,7 @@ function JournalPage() {
       setComposeText("");
       setSelectedMoods([]);
       setView("compose");
+      setComposeFromHome(true);
       // Clean URL
       window.history.replaceState({}, "", "/journal");
     } else if (generateParam) {
@@ -261,6 +265,7 @@ function JournalPage() {
       setComposeText("");
       setSelectedMoods([]);
       setView("compose");
+      setComposeFromHome(true);
 
       // Fire AI prompt generation in background
       setAiPromptLoading(true);
@@ -377,6 +382,7 @@ function JournalPage() {
     setIsBurn(false);
     setSelectedMoods([]);
     setComposeImage(null);
+    setComposeFromHome(false);
     usedVoiceRef.current = false;
     try { recognitionRef.current?.stop(); } catch { /* */ }
     setIsRecording(false);
@@ -542,6 +548,7 @@ function JournalPage() {
   }
 
   // "Done" on the release screen (or closing compose) — tear down the overlay.
+  // A compose opened from the home check-in returns to /home instead.
   function closeCompose() {
     if (burnTimerRef.current) clearTimeout(burnTimerRef.current);
     try { recognitionRef.current?.stop(); } catch { /* */ }
@@ -550,7 +557,12 @@ function JournalPage() {
     setBurnStage("idle");
     setIsBurn(false);
     setComposeText("");
-    setView("home");
+    if (composeFromHome) {
+      setComposeFromHome(false);
+      router.push("/home");
+    } else {
+      setView("home");
+    }
   }
 
   // Clear any pending burn timer on unmount.

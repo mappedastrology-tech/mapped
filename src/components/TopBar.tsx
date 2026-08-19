@@ -203,7 +203,7 @@ export default function TopBar() {
     <>
       <header className="lg:hidden sticky top-0 z-40 bg-background/90 backdrop-blur-sm
                          border-b border-foreground/15">
-        <div className="flex items-center justify-between max-w-lg mx-auto px-5 py-3">
+        <div className="relative flex items-center justify-between max-w-lg mx-auto px-5 py-3">
           {/* Hamburger menu button */}
           <button
             onClick={() => setMenuOpen(true)}
@@ -221,8 +221,9 @@ export default function TopBar() {
             </svg>
           </button>
 
-          {/* App logo — tappable to go home */}
-          <Link href="/home" className="flex items-center px-2 py-1 -mx-2 -my-1 rounded-lg active:scale-95 transition-transform" aria-label="Go to home page">
+          {/* App logo — absolutely centered so the wider right-side controls
+              don't push it off-center. */}
+          <Link href="/home" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center px-2 py-1 rounded-lg active:scale-95 transition-transform" aria-label="Go to home page">
             <Logo size="sm" />
           </Link>
 

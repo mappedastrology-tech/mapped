@@ -8,12 +8,20 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
-import { ELEMENT_LABEL, STANCE_LABEL, type Element } from "@/lib/archetype/types";
+import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
+import { computeResonance, type Placement } from "@/lib/resonance/engine";
+import { persistAllAssignments } from "@/lib/resonance/persist";
+import { TRAIT_ORDER } from "@/lib/resonance/traits";
+import ResonanceRadar from "@/components/profile/ResonanceRadar";
+import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
+import { computeDeity, DEITY_TIER_LABEL } from "@/lib/resonance/deities";
+import { computeCharacter } from "@/lib/resonance/characters";
 import { masterLabel } from "@/lib/numerologyMeanings";
 
 const PHOTO_KEY = "mapped:profile-photo";
@@ -27,6 +35,25 @@ interface ChartRow {
   latitude: number | null;
   longitude: number | null;
   bigThree: { sun?: string; moon?: string; rising?: string } | null;
+  placements: Placement[];
+}
+
+/** Pull {name, sign, house} from stored planet/special-point rows (shape varies by source). */
+function toPlacements(...groups: unknown[]): Placement[] {
+  const out: Placement[] = [];
+  for (const g of groups) {
+    if (!Array.isArray(g)) continue;
+    for (const item of g) {
+      if (!item || typeof item !== "object") continue;
+      const o = item as Record<string, unknown>;
+      const name = typeof o.name === "string" ? o.name : null;
+      if (!name) continue;
+      const sign = typeof o.sign === "string" ? o.sign : null;
+      const house = typeof o.house === "number" ? o.house : null;
+      out.push({ name, sign, house });
+    }
+  }
+  return out;
 }
 
 const MODALITY: Record<string, "Cardinal" | "Fixed" | "Mutable"> = {
@@ -81,7 +108,7 @@ export default function ProfilePageContent() {
           (session.user.user_metadata?.name as string | undefined) || "";
         const { data } = await supabase
           .from("charts")
-          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, big_three")
+          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, big_three, planets, special_points")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -95,6 +122,7 @@ export default function ProfilePageContent() {
             latitude: data.latitude,
             longitude: data.longitude,
             bigThree: (data.big_three as ChartRow["bigThree"]) ?? null,
+            placements: toPlacements(data.planets, data.special_points),
           });
           setDisplayName(metaName || data.name || "");
           setFullName(storedFull || metaName || data.name || "");
@@ -114,6 +142,7 @@ export default function ProfilePageContent() {
             latitude: parsed.latitude,
             longitude: parsed.longitude,
             bigThree: parsed.bigThree ?? null,
+            placements: toPlacements(parsed.planets, parsed.specialPoints, parsed.special_points),
           });
           setDisplayName(metaName || parsed.name || "");
           setFullName(storedFull || metaName || parsed.name || "");
@@ -149,6 +178,59 @@ export default function ProfilePageContent() {
       hdType: hd?.type ?? null,
     });
   }, [row, numerology, hd]);
+
+  // Resonance engine — the 96-archetype / 6-facet result. Deterministic and
+  // computed from the fixed chart, so it never regenerates or costs credits.
+  const resonance = useMemo(() => {
+    if (!row?.bigThree) return null;
+    const nums = [
+      numerology?.lifePath, numerology?.expression, numerology?.soulUrge,
+      numerology?.personality, numerology?.maturity, numerology?.birthday,
+    ];
+    const masters: number[] = [];
+    const karmics: number[] = [];
+    for (const n of nums) {
+      if (!n) continue;
+      if ([11, 22, 33].includes(n.value) && !masters.includes(n.value)) masters.push(n.value);
+      const kd = (n as { karmicDebt?: number | null }).karmicDebt;
+      if (kd && !karmics.includes(kd)) karmics.push(kd);
+    }
+    return computeResonance({
+      sun: row.bigThree.sun,
+      moon: row.bigThree.moon,
+      rising: row.unknownTime ? null : row.bigThree.rising,
+      lifePath: numerology?.lifePath.value ?? null,
+      expression: numerology?.expression.value ?? null,
+      soulUrge: numerology?.soulUrge.value ?? null,
+      hdType: hd?.type ?? null,
+      hdAuthority: hd?.authority ?? null,
+      hdLines: hd?.profileLines ?? null,
+      hdDefinition: hd?.definitionName ?? null,
+      masters,
+      karmics,
+      // When the birth time is unknown, house placements are unreliable — feed
+      // sign features only (drop house data) so we don't invent a life-area layer.
+      placements: row.unknownTime
+        ? row.placements.map((p) => ({ name: p.name, sign: p.sign, house: null }))
+        : row.placements,
+    });
+  }, [row, numerology, hd]);
+
+  // Secondary libraries — same engine, deterministic, free (no regeneration).
+  const animal = useMemo(() => (resonance ? computeAnimalGuide(resonance.traits) : null), [resonance]);
+  const deity = useMemo(() => (resonance ? computeDeity(resonance.traits) : null), [resonance]);
+  const character = useMemo(() => (resonance ? computeCharacter(resonance.traits) : null), [resonance]);
+
+  // Store all four assignments once (immutable snapshots, one current row per
+  // library). Fire-and-forget — the page already renders from the deterministic
+  // compute above.
+  useEffect(() => {
+    if (!resonance || !userId) return;
+    persistAllAssignments(supabase, userId, resonance, { animal, deity, character }, {
+      mode: row?.unknownTime ? "no-birth-time" : "full",
+      confidence: row?.unknownTime ? 0.74 : 1.0,
+    });
+  }, [resonance, animal, deity, character, userId, row?.unknownTime]);
 
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -199,7 +281,6 @@ export default function ProfilePageContent() {
     .join("")
     .toUpperCase();
 
-  const archetype = result?.archetype ?? null;
   const element = result?.element ?? null;
 
   return (
@@ -256,12 +337,12 @@ export default function ProfilePageContent() {
         </div>
       )}
 
-      {/* Archetype hero */}
-      {archetype && element && (
+      {/* Archetype hero — the resonance engine result + hexagonal radar */}
+      {resonance && (
         <div
           className="rounded-3xl px-5 py-6 mb-6 text-center relative overflow-hidden"
           style={{
-            background: `linear-gradient(160deg, ${ELEMENT_TINT[element]}, var(--background-card))`,
+            background: element ? `linear-gradient(160deg, ${ELEMENT_TINT[element]}, var(--background-card))` : "var(--background-card)",
             border: "1px solid var(--brass)",
           }}
         >
@@ -272,36 +353,267 @@ export default function ProfilePageContent() {
             className="text-[30px] leading-tight mb-1"
             style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
           >
-            {archetype.name}
+            {resonance.primary.name}
           </h2>
-          <p className="text-[12px] italic mb-4" style={{ color: "var(--foreground-secondary)" }}>
-            {archetype.tagline}
+          <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+            {resonance.primary.tagline}
           </p>
-          <p className="text-[13.5px] leading-relaxed mb-4" style={{ color: "var(--foreground-secondary)" }}>
-            {archetype.description}
-          </p>
-          <div className="flex items-center justify-center gap-2 text-[10px] tracking-[0.1em] uppercase" style={{ color: "var(--foreground-faint)" }}>
-            <span>{ELEMENT_LABEL[element]}</span>
-            <span>·</span>
-            <span>{STANCE_LABEL[archetype.stance]}</span>
+
+          <div className="flex justify-center mb-1">
+            <ResonanceRadar facets={resonance.facets} size={244} />
           </div>
+
+          {resonance.secondary && (
+            <p className="text-[10px] tracking-[0.14em] uppercase mb-3" style={{ color: "var(--foreground-faint)" }}>
+              Shaded by {resonance.secondary.name}
+            </p>
+          )}
+
+          {resonance.evidence.length > 0 && (
+            <div className="text-left flex flex-col gap-2 mt-2">
+              {resonance.evidence.map((e) => {
+                const rest = e.copy.startsWith(e.feature)
+                  ? e.copy.slice(e.feature.length).replace(/^\s*—\s*/, "")
+                  : e.copy;
+                return (
+                  <p key={e.feature} className="text-[12.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    <span style={{ color: "var(--brass)", fontWeight: 600 }}>{e.feature}</span> — {rest}
+                  </p>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Top traits */}
-      {archetype && (
+      {/* Strongest traits */}
+      {resonance && (
         <>
-          <SectionLabel>Top traits</SectionLabel>
+          <SectionLabel>Strongest traits</SectionLabel>
           <div className="flex flex-wrap gap-2 mb-6">
-            {archetype.traits.map((t) => (
-              <span
-                key={t}
-                className="px-3 py-1.5 rounded-full text-[12px] font-medium"
-                style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--foreground)" }}
+            {TRAIT_ORDER
+              .map((t) => ({ t, v: resonance.traits[t] }))
+              .sort((a, b) => b.v - a.v)
+              .slice(0, 6)
+              .map(({ t, v }) => (
+                <span
+                  key={t}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium capitalize"
+                  style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--foreground)" }}
+                >
+                  {t} · {v}
+                </span>
+              ))}
+          </div>
+        </>
+      )}
+
+      {/* Your reading — the composed archetype content */}
+      {resonance?.primary.content && (
+        <>
+          <SectionLabel>Your reading</SectionLabel>
+          <div className="flex flex-col gap-3 mb-6">
+            {[
+              { label: "Essence", text: resonance.primary.content.essence },
+              { label: "Your shadow", text: resonance.primary.content.shadowSide, shadow: true },
+              { label: "Growth edge", text: resonance.primary.content.growthEdge },
+              { label: "In love", text: resonance.primary.content.inRelationship },
+              { label: "At work", text: resonance.primary.content.atWork },
+            ].map((b) => (
+              <div
+                key={b.label}
+                className="rounded-2xl p-4"
+                style={{
+                  background: "var(--background-card)",
+                  border: `1px solid ${b.shadow ? "color-mix(in srgb, var(--oxblood-light) 30%, transparent)" : "var(--border-card)"}`,
+                }}
               >
-                {t}
-              </span>
+                <p
+                  className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1.5"
+                  style={{ color: b.shadow ? "var(--oxblood-light)" : "var(--brass)" }}
+                >
+                  {b.label}
+                </p>
+                <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                  {b.text}
+                </p>
+              </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {/* Animal Guide — matched from the same trait vector; provenance on the card */}
+      {animal && (
+        <>
+          <SectionLabel>Your Animal Guide</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <h3
+                className="text-[22px] leading-tight"
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
+              >
+                {animal.guide.name}
+              </h3>
+              <span
+                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
+                title={animal.guide.sources[0]}
+              >
+                {TIER_LABEL[animal.guide.tier]}
+              </span>
+            </div>
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {animal.guide.tagline}
+            </p>
+            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {animal.guide.essence}
+            </p>
+            <div className="mb-3">
+              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                Its shadow in you
+              </p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                {animal.guide.shadow}
+              </p>
+            </div>
+            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              Source — {animal.guide.tradition}: {animal.guide.sources.join("; ")}.
+              {animal.guide.status === "living-open" && " Shown as a comparison, not a claim, out of respect for a living tradition."}
+              {animal.alt && <> · Also close: {animal.alt.name}.</>}
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Deity — matched from the same trait vector; provenance + tier on the card */}
+      {deity && (
+        <>
+          <SectionLabel>Your Deity</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <h3
+                className="text-[22px] leading-tight"
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
+              >
+                {deity.guide.name}
+              </h3>
+              <span
+                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
+              >
+                {deity.guide.pantheon}
+              </span>
+            </div>
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {deity.guide.tagline}
+            </p>
+            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {deity.guide.essence}
+            </p>
+            <div className="mb-3">
+              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                Its shadow in you
+              </p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                {deity.guide.shadow}
+              </p>
+            </div>
+            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              {DEITY_TIER_LABEL[deity.guide.tier]} — {deity.guide.sources.join("; ")}.
+              {deity.guide.tier === "living-open" && " Shown as a comparison, not a claim, out of respect for a living tradition."}
+              {deity.alt && <> · Also close: {deity.alt.name}.</>}
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Character — public-domain literary/legendary match */}
+      {character && (
+        <>
+          <SectionLabel>Your Character</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <h3
+                className="text-[22px] leading-tight"
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
+              >
+                {character.guide.name}
+              </h3>
+              <span
+                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
+              >
+                {character.guide.work}
+              </span>
+            </div>
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {character.guide.tagline}
+            </p>
+            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {character.guide.essence}
+            </p>
+            <div className="mb-3">
+              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                Its shadow in you
+              </p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                {character.guide.shadow}
+              </p>
+            </div>
+            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              {character.guide.sources.join("; ")}.
+              {character.alt && <> · Also close: {character.alt.name}.</>}
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Secondary — how it colours the primary */}
+      {resonance?.secondary && (
+        <>
+          <SectionLabel>Shaded by {resonance.secondary.name}</SectionLabel>
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "var(--background-card)", border: "1px dashed var(--brass)" }}
+          >
+            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
+              {resonance.secondary.tagline}
+            </p>
+            {resonance.secondary.shading && (
+              <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
+                {resonance.secondary.shading}
+              </p>
+            )}
+            {resonance.secondary.content && (
+              <div className="flex flex-col gap-3 mt-1">
+                <div>
+                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--brass)" }}>
+                    What it adds
+                  </p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    {resonance.secondary.content.essence}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
+                    Its shadow in you
+                  </p>
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+                    {resonance.secondary.content.shadowSide}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -328,6 +640,15 @@ export default function ProfilePageContent() {
             <Row label="Soul Urge" value={masterLabel(numerology.soulUrge.value)} />
             <Row label="Personality" value={masterLabel(numerology.personality.value)} />
             <Row label="Birthday" value={String(numerology.birthday.value)} />
+            {/* The name-based numbers (Expression / Soul Urge / Personality) depend
+                entirely on the exact name used — show it so a wrong or display-only
+                name is visible and fixable, instead of silently producing wrong numbers. */}
+            <p className="text-[11px] leading-relaxed pt-2 mt-1" style={{ color: "var(--foreground-faint)", borderTop: "1px solid var(--border-card)" }}>
+              Name numbers calculated from <span style={{ color: "var(--foreground-secondary)" }}>{fullName.trim()}</span>.{" "}
+              <Link href="/numerology" className="underline" style={{ color: "var(--brass)" }}>
+                Not your full birth name? Change it
+              </Link>
+            </p>
           </SystemCard>
         )}
 

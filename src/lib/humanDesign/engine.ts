@@ -214,7 +214,7 @@ export function computeHumanDesign(input: HdInput): HumanDesignProfile | null {
   const day = Number(dm[3]);
   const decimalHour = Number(tm[1]) + Number(tm[2]) / 60;
 
-  const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day);
+  const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day, decimalHour);
   const jdBirth = julday(year, month, day, decimalHour - tzOffset);
   const jdDesign = findDesignJd(jdBirth);
 
