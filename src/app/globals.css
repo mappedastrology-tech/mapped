@@ -1076,3 +1076,43 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .jt-overlay [style*="animation"], .jt-overlay[style*="animation"] { animation-duration: 0.001s !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE — "Profile - You" design handoff tokens (pf- prefix). The profile
+   reads as brass-on-felt: its card fills and hairlines are brass-tinted rather
+   than the app's purple card set, and it carries a plum tension panel and an
+   amber rarity accent. Night values on :root (app default), day overrides on
+   [data-theme="light"].
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --pf-card: #15101c;
+  --pf-card-bd: rgba(201, 169, 97, 0.12);
+  --pf-hair: rgba(201, 169, 97, 0.13);
+  --pf-line: rgba(201, 169, 97, 0.1);
+  --pf-soft: rgba(255, 255, 255, 0.04);
+  --pf-amber: #d4a13a;
+  --pf-glow: rgba(201, 169, 97, 0.16);
+  --pf-plum: #4a2540;
+  --pf-plum-fg: #f0e6d2;
+  --pf-plum-soft: rgba(240, 230, 210, 0.62);
+}
+[data-theme="light"] {
+  --pf-card: #fdf8ec;
+  --pf-card-bd: rgba(150, 115, 55, 0.22);
+  --pf-hair: rgba(150, 115, 55, 0.22);
+  --pf-line: rgba(120, 92, 52, 0.16);
+  --pf-soft: rgba(80, 60, 30, 0.05);
+  --pf-amber: #9a7322;
+  --pf-glow: rgba(154, 115, 34, 0.14);
+  --pf-plum: #2b2140;
+  --pf-plum-fg: #f0e6d2;
+  --pf-plum-soft: rgba(240, 230, 210, 0.66);
+}
+
+/* Ambient profile animation: hero glow breathes, sigil rings drift. */
+@keyframes pf-breathe { 0%, 100% { opacity: 0.35 } 50% { opacity: 0.75 } }
+@keyframes pf-drift { 0%, 100% { transform: rotate(0deg) } 50% { transform: rotate(3deg) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-page [style*="animation"] { animation: none !important; }
+}

@@ -1,10 +1,20 @@
 "use client";
 
 /**
- * Profile — the user's photo, birth details, and their fused ARCHETYPE (drawn
- * from astrology + numerology + Human Design + palmistry), followed by an
- * "everything you are" board that lists their signals across every system.
- * Reached by tapping the avatar next to the theme toggle.
+ * Profile — "Profile - You" (design_handoff_profile_archetype).
+ *
+ * The profile is deliberately not an account screen: it is a READING. One
+ * archetype synthesized from the user's systems, with the reasoning shown:
+ *   A. Archetype hero — breathing glow, drifting sigil, name, tagline, chips
+ *   B. "How we got here" — weighted source rows linking to each system
+ *   C. "Two more reads" — Chinese zodiac + character (and the app's animal
+ *      guide + deity, same card anatomy)
+ *   D. "You, in four parts" — single-open accordion
+ *   E. Tension panel — where the systems disagree (plum, high contrast)
+ *   F. "Rare in your make-up" — master numbers / karmic debts / rare profiles
+ *   G. "Where you are right now" — personal year + nine-year strip + micro row
+ *   H. "Words that keep coming up" — trait pills
+ * Account controls live on /account (hamburger, top right).
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,19 +23,19 @@ import { supabase } from "@/lib/supabase";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
-import { computeArchetype } from "@/lib/archetype/engine";
-import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
 import { computeResonance, type Placement } from "@/lib/resonance/engine";
 import { persistAllAssignments } from "@/lib/resonance/persist";
 import { TRAIT_ORDER } from "@/lib/resonance/traits";
-import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
 import { computeDeity, DEITY_TIER_LABEL } from "@/lib/resonance/deities";
 import { computeCharacter } from "@/lib/resonance/characters";
-import { masterLabel } from "@/lib/numerologyMeanings";
+import { computeChineseZodiac } from "@/lib/chineseZodiac";
 
 const PHOTO_KEY = "mapped:profile-photo";
 const NAME_KEY = "mapped:numerology-fullname";
+
+// Symbol font stack — required on zodiac/occult glyphs or they render as emoji.
+const GLYPH_STACK = "'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Segoe UI Symbol', serif";
 
 interface ChartRow {
   name: string;
@@ -57,15 +67,9 @@ function toPlacements(...groups: unknown[]): Placement[] {
   return out;
 }
 
-const MODALITY: Record<string, "Cardinal" | "Fixed" | "Mutable"> = {
-  Aries: "Cardinal", Cancer: "Cardinal", Libra: "Cardinal", Capricorn: "Cardinal",
-  Taurus: "Fixed", Leo: "Fixed", Scorpio: "Fixed", Aquarius: "Fixed",
-  Gemini: "Mutable", Virgo: "Mutable", Sagittarius: "Mutable", Pisces: "Mutable",
-};
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** "Nov 7, 1994 · 9:42 PM · Portland, OR" — the identity line under the archetype. */
+/** "Nov 7, 1994 · 9:42 PM · Portland, OR" — the identity line under the chips. */
 function formatBirthLine(dateStr: string, timeStr: string, unknownTime: boolean, city: string | null): string {
   const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
   let line = dateStr;
@@ -80,13 +84,97 @@ function formatBirthLine(dateStr: string, timeStr: string, unknownTime: boolean,
     line += ` · ${h12}:${String(min).padStart(2, "0")} ${ampm}`;
   }
   if (city) {
-    // Geocoder display names can be very long ("Portland, Multnomah County,
-    // Oregon, United States") — keep the first two segments.
+    // Geocoder display names can be very long — keep the first two segments.
     const short = city.split(",").slice(0, 2).map((s) => s.trim()).join(", ");
     if (short) line += ` · ${short}`;
   }
   return line;
 }
+
+/* ─── Numerology cycle helpers ─────────────────────────────────────────────── */
+
+function digitSum(n: number): number {
+  return String(n).split("").reduce((a, c) => a + Number(c), 0);
+}
+function reduce9(n: number): number {
+  while (n > 9) n = digitSum(n);
+  return n;
+}
+/** Personal year for the given calendar year (birth month + day + year, reduced 1–9). */
+function personalYearFor(birthDate: string, year: number): number | null {
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate);
+  if (!dm) return null;
+  return reduce9(Number(dm[2]) + Number(dm[3]) + digitSum(year));
+}
+
+const PY_TITLE: Record<number, string> = {
+  1: "A year to begin", 2: "A year to tend", 3: "A year to say it",
+  4: "A year to build", 5: "A year to move", 6: "A year to hold close",
+  7: "A year to go inward", 8: "A year to claim it", 9: "A year to let go",
+};
+// {arch} = the archetype name without its leading "The".
+const PY_BODY: Record<number, string> = {
+  1: "Year one of a fresh nine. For a {arch} this is the good kind of year — the pull finally has somewhere to go.",
+  2: "The seed year is over; this one is for tending. For a {arch}, the work is patience — let what you started take root before you tug on it.",
+  3: "A year that wants to be spoken. For a {arch}, the risk isn't saying too much — it's polishing the thing instead of showing it.",
+  4: "The foundation year. For a {arch} it will feel slow on purpose — what you make boring and solid now carries the next five.",
+  5: "The hinge of the nine — change arrives whether invited or not. For a {arch}, this is home water; just choose which wave, not every wave.",
+  6: "A year that pulls you toward your people. For a {arch}, the lesson is staying through the ordinary parts, not only the rescues.",
+  7: "The quiet seventh. For a {arch}, going inward isn't retreat — it's where the next run gets its shape.",
+  8: "The harvest year — power, money, weight. For a {arch}, ask for the full price; the year backs you when you don't flinch.",
+  9: "The clearing year. For a {arch}, endings aren't losses here — they're the tide going out so the next nine can come in.",
+};
+const CYCLE_NOTE: Record<number, string> = {
+  1: "Start it", 2: "Let it settle", 3: "Say it out loud",
+  4: "Do the boring part", 5: "Shake it loose", 6: "Tend your people",
+  7: "Go quiet, think", 8: "Push for it", 9: "Let things end",
+};
+
+/* ─── Facet copy — short titles keyed to real data ─────────────────────────── */
+
+const OPERATE_TITLE: Record<string, string> = {
+  "Manifesting Generator": "In bursts, not in lines",
+  Generator: "Steady heat, once it's real",
+  Projector: "By invitation, then all at once",
+  Manifestor: "First moves, no permission",
+  Reflector: "In cycles, not schedules",
+};
+const NEED_TITLE: Record<number, string> = {
+  1: "A lane of your own", 2: "Someone to build beside", 3: "An audience for the spark",
+  4: "Ground that holds", 5: "An exit that stays open", 6: "Somewhere to be needed",
+  7: "Room to go quiet", 8: "Stakes worth the climb", 9: "A cause bigger than you",
+  11: "A signal worth carrying", 22: "Something real to build", 33: "Someone to pour into",
+};
+const SNAG_TITLE: Record<string, string> = {
+  emotional: "Deciding at the peak of the feeling",
+  sacral: "Saying yes past the no",
+  splenic: "Second-guessing the first hit",
+  ego: "Promising more than the tank holds",
+};
+
+/* ─── Rarity copy ──────────────────────────────────────────────────────────── */
+
+const MASTER_COPY: Record<number, { rarity: string; body: string }> = {
+  11: { rarity: "in ~3% of charts", body: "Runs at master voltage — perceptive, magnetic, and more visible than is comfortable." },
+  22: { rarity: "in ~2% of charts", body: "The master builder's number — big blueprints that only count once they stand in the real world." },
+  33: { rarity: "in ~1% of charts", body: "The master teacher's number — a pull toward carrying others that has to be chosen, not obeyed." },
+};
+const KARMIC_COPY: Record<number, { rarity: string; body: string }> = {
+  13: { rarity: "in ~9% of charts", body: "The debt of unfinished work — shortcuts cost double here, and honest labor pays triple." },
+  14: { rarity: "in ~8% of charts", body: "The debt of excess — freedom keeps being the test, and moderation the unglamorous answer." },
+  16: { rarity: "in ~7% of charts", body: "The oldest lesson there is: an identity built on something that has to fall before it can be rebuilt honestly." },
+  19: { rarity: "in ~10% of charts", body: "The debt of standing alone — help has to be accepted, not just admired in other people." },
+};
+const RARE_PROFILES: Record<string, { rarity: string; name: string; body: string }> = {
+  "4/1": { rarity: "in ~2% of designs", name: "Opportunist / Investigator", body: "A fixed foundation profile — one study, one network, one life built deliberately on both." },
+  "6/2": { rarity: "in ~4% of designs", name: "Role Model / Hermit", body: "Meant to live it first and only teach it after — which is why early advice rarely sounds like you." },
+  "6/3": { rarity: "in ~3% of designs", name: "Role Model / Martyr", body: "Wisdom earned by collision — the life tries everything once so the second act can mean something." },
+};
+
+const NUM_WORD: Record<number, string> = {
+  11: "Eleven", 22: "Twenty-two", 33: "Thirty-three",
+  13: "Thirteen", 14: "Fourteen", 16: "Sixteen", 19: "Nineteen",
+};
 
 export default function ProfilePageContent() {
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +183,7 @@ export default function ProfilePageContent() {
   const [fullName, setFullName] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [openFacet, setOpenFacet] = useState<string | null>("operate");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -184,17 +273,6 @@ export default function ProfilePageContent() {
     });
   }, [row]);
 
-  const result = useMemo(() => {
-    if (!row) return null;
-    return computeArchetype({
-      sunSign: row.bigThree?.sun,
-      moonSign: row.bigThree?.moon,
-      risingSign: row.bigThree?.rising,
-      lifePath: numerology?.lifePath.value ?? null,
-      hdType: hd?.type ?? null,
-    });
-  }, [row, numerology, hd]);
-
   // Resonance engine — the 96-archetype / 6-facet result. Deterministic and
   // computed from the fixed chart, so it never regenerates or costs credits.
   const resonance = useMemo(() => {
@@ -236,6 +314,12 @@ export default function ProfilePageContent() {
   const animal = useMemo(() => (resonance ? computeAnimalGuide(resonance.traits) : null), [resonance]);
   const deity = useMemo(() => (resonance ? computeDeity(resonance.traits) : null), [resonance]);
   const character = useMemo(() => (resonance ? computeCharacter(resonance.traits) : null), [resonance]);
+
+  // Chinese zodiac — year/month/hour pillars from the birth moment.
+  const zodiac = useMemo(() => {
+    if (!row) return null;
+    return computeChineseZodiac(row.birthDate, row.birthTime, row.unknownTime);
+  }, [row]);
 
   // Store all four assignments once (immutable snapshots, one current row per
   // library). Fire-and-forget — the page already renders from the deterministic
@@ -296,492 +380,536 @@ export default function ProfilePageContent() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const firstName = (displayName || "").split(/\s+/)[0] || "";
+  // "The Riptide" → "Riptide", for copy like "For a Riptide…"
+  const archShort = resonance ? resonance.primary.name.replace(/^The\s+/i, "") : "";
 
-  const element = result?.element ?? null;
+  /* ── B. Sources — weights renormalized to 100 across available systems ───── */
+  type Source = { system: string; glyph: string; glyphSize: number; baseWeight: number; value: string; contribution: string; href: string };
+  const sources: Source[] = [];
+  if (row?.bigThree?.sun || row?.bigThree?.moon) {
+    const b = row.bigThree!;
+    const parts = [b.sun && `${b.sun} Sun`, b.moon && `${b.moon} Moon`, !row.unknownTime && b.rising && `${b.rising} Rising`].filter(Boolean);
+    sources.push({
+      system: "Astrology", glyph: "♏︎", glyphSize: 19, baseWeight: 35,
+      value: parts.join(" · "),
+      contribution: "Sets the emotional weather — how you feel, love, and are first seen.",
+      href: "/you",
+    });
+  }
+  if (numerology) {
+    sources.push({
+      system: "Numerology", glyph: String(numerology.lifePath.value), glyphSize: 19, baseWeight: 30,
+      value: `Life Path ${numerology.lifePath.value} · Expression ${numerology.expression.value} · Personality ${numerology.personality.value}`,
+      contribution: "Adds the motion — the path your name and birth date keep walking.",
+      href: "/numerology",
+    });
+  }
+  if (hd) {
+    sources.push({
+      system: "Human Design", glyph: "⚡︎", glyphSize: 19, baseWeight: 20,
+      value: `${hd.type} ${hd.profile} · ${hd.authorityName.split(" — ")[0]}`,
+      contribution: "Adds the mechanics — how your energy starts, stalls, and decides.",
+      href: "/human-design",
+    });
+  }
+  if (zodiac) {
+    const zParts = [zodiac.title, `${zodiac.monthAnimal} month`, zodiac.hourAnimal && `${zodiac.hourAnimal} hour`].filter(Boolean);
+    sources.push({
+      system: "Chinese zodiac", glyph: "犬", glyphSize: 19, baseWeight: 15,
+      value: zParts.join(" · "),
+      contribution: "Adds the animal — the temperament your birth year and hour hand down.",
+      href: "/library/reference",
+    });
+  }
+  const weightTotal = sources.reduce((a, s) => a + s.baseWeight, 0);
+  const weights = sources.map((s, i) => {
+    if (weightTotal === 0) return 0;
+    const scaled = sources.map((x) => (x.baseWeight / weightTotal) * 100);
+    const floors = scaled.map(Math.floor);
+    let rem = 100 - floors.reduce((a, n) => a + n, 0);
+    const order = scaled.map((v, j) => ({ j, frac: v - Math.floor(v) })).sort((a, b) => b.frac - a.frac);
+    const bumped = new Set<number>();
+    for (const o of order) { if (rem <= 0) break; bumped.add(o.j); rem--; }
+    return floors[i] + (bumped.has(i) ? 1 : 0);
+  });
+
+  /* ── C. Character stats — top three traits scaled 0–10 ──────────────────── */
+  const charStats = resonance
+    ? TRAIT_ORDER.map((t) => ({ label: t, v: resonance.traits[t] }))
+        .sort((a, b) => b.v - a.v)
+        .slice(0, 3)
+        .map(({ label, v }) => ({ label, n: Math.max(1, Math.min(10, Math.round(v / 10))) }))
+    : [];
+
+  /* ── D. Facets — the four-part read, from the archetype's written content ── */
+  const content = resonance?.primary.content;
+  const facets = content ? [
+    {
+      id: "operate", kicker: "How you operate",
+      title: (hd && OPERATE_TITLE[hd.type]) || "In your own rhythm",
+      body: content.atWork,
+      from: [hd?.type, numerology && `Life Path ${numerology.lifePath.value}`].filter(Boolean).join(" × ") || "Your chart, read together",
+    },
+    {
+      id: "need", kicker: "What you need",
+      title: (numerology && NEED_TITLE[numerology.lifePath.value]) || "Room to become",
+      body: content.growthEdge,
+      from: [row?.bigThree?.moon && `${row.bigThree.moon} Moon`, numerology && `Soul Urge ${numerology.soulUrge.value}`].filter(Boolean).join(" × ") || "Moon × Soul Urge",
+    },
+    {
+      id: "snag", kicker: "Where you snag",
+      title: (hd && SNAG_TITLE[hd.authority]) || "Deciding too fast",
+      body: content.shadowSide,
+      from: [hd && hd.authorityName.split(" — ")[0], row?.bigThree?.sun && `${row.bigThree.sun} Sun`].filter(Boolean).join(" × ") || "Sun × shadow",
+    },
+    {
+      id: "read", kicker: "How others read you",
+      title: numerology?.personality.value === 11 ? "More arriving than you think" : "First impressions run ahead of you",
+      body: content.inRelationship,
+      from: [numerology && `Personality ${numerology.personality.value}`, row?.bigThree?.rising && !row.unknownTime && `${row.bigThree.rising} Rising`].filter(Boolean).join(" × ") || "Personality × Rising",
+    },
+  ] : [];
+
+  /* ── F. Rarities — masters, karmic debts, rare HD profiles ──────────────── */
+  type Rarity = { mark: string; kicker: string; rarity: string; title: string; body: string };
+  const rarities: Rarity[] = [];
+  if (numerology) {
+    const named: Array<[string, { value: number; karmicDebt?: number | null }]> = [
+      ["Life Path", numerology.lifePath], ["Expression", numerology.expression],
+      ["Soul Urge", numerology.soulUrge], ["Personality", numerology.personality],
+      ["Birthday", numerology.birthday],
+    ];
+    const seenMaster = new Set<number>();
+    const seenKarmic = new Set<number>();
+    for (const [label, n] of named) {
+      if (MASTER_COPY[n.value] && !seenMaster.has(n.value)) {
+        seenMaster.add(n.value);
+        rarities.push({ mark: String(n.value), kicker: "Master number", rarity: MASTER_COPY[n.value].rarity, title: `${NUM_WORD[n.value]} in your ${label}`, body: MASTER_COPY[n.value].body });
+      }
+      const kd = n.karmicDebt;
+      if (kd && KARMIC_COPY[kd] && !seenKarmic.has(kd)) {
+        seenKarmic.add(kd);
+        rarities.push({ mark: String(kd), kicker: "Karmic debt", rarity: KARMIC_COPY[kd].rarity, title: `${NUM_WORD[kd]} inside your ${label}`, body: KARMIC_COPY[kd].body });
+      }
+    }
+  }
+  if (hd && RARE_PROFILES[hd.profile]) {
+    const rp = RARE_PROFILES[hd.profile];
+    rarities.push({ mark: hd.profile, kicker: "Rare profile", rarity: rp.rarity, title: rp.name, body: rp.body });
+  }
+  const shownRarities = rarities.slice(0, 4);
+
+  /* ── G. Cycle — personal year / month / day + first live transit ────────── */
+  const now = new Date();
+  const py = row ? personalYearFor(row.birthDate, now.getFullYear()) : null;
+  const pMonth = py ? reduce9(py + now.getMonth() + 1) : null;
+  const pDay = pMonth ? reduce9(pMonth + now.getDate()) : null;
+  let transitNote: string | null = null;
+  try {
+    const transits = JSON.parse(sessionStorage.getItem("mapped:transits") || "[]");
+    if (Array.isArray(transits) && transits[0]?.transitPlanet && transits[0]?.natalPlanet) {
+      transitNote = `${transits[0].transitPlanet} ${transits[0].aspect} your ${transits[0].natalPlanet}`;
+    }
+  } catch { /* ignore */ }
+  const microCycles = [
+    pMonth ? { label: "This month", note: CYCLE_NOTE[pMonth] } : null,
+    pDay ? { label: "Today", note: CYCLE_NOTE[pDay] } : null,
+    transitNote ? { label: "Transit", note: transitNote } : null,
+  ].filter((m): m is { label: string; note: string } => !!m);
+
+  /* ── H. Trait pills — the strongest words in the trait vector ───────────── */
+  const traitPills = resonance
+    ? TRAIT_ORDER.map((t) => ({ t, v: resonance.traits[t] })).sort((a, b) => b.v - a.v).slice(0, 5).map(({ t }) => t)
+    : [];
+
+  const kickerStyle: React.CSSProperties = { fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--foreground-muted)", margin: "0 0 6px" };
+  const subLineStyle: React.CSSProperties = { fontSize: 12.5, lineHeight: 1.6, color: "var(--foreground-muted)", margin: "0 0 14px", textWrap: "pretty" };
+  const glyphTile: React.CSSProperties = { width: 38, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", background: "var(--pf-soft)", border: "0.5px solid var(--pf-hair)", fontFamily: GLYPH_STACK };
+  const readCard: React.CSSProperties = { borderRadius: 16, padding: "15px 14px", background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)", display: "flex", flexDirection: "column", gap: 9 };
 
   return (
-    <main className="flex-1 flex flex-col px-5 py-7 max-w-lg mx-auto w-full">
-      {/* Photo + name */}
-      <div className="flex flex-col items-center text-center mb-6">
+    <main className="pf-page flex-1 flex flex-col max-w-lg mx-auto w-full" style={{ padding: "0 22px 40px" }}>
+
+      {/* Utility row — photo (left) · settings (right). Account controls live on /account. */}
+      <div className="flex items-center justify-between pt-4">
         <button
           onClick={() => fileRef.current?.click()}
-          className="relative w-28 h-28 rounded-full overflow-hidden active:scale-[0.98] transition-transform"
-          style={{ border: "1.5px solid var(--brass)", backgroundColor: "var(--background-card)" }}
-          aria-label="Change profile photo"
+          className="relative w-[46px] h-[46px] rounded-full overflow-hidden active:scale-[0.97] transition-transform"
+          style={{ border: "1px solid var(--pf-hair)", background: "var(--pf-soft)" }}
+          aria-label={photo ? "Change profile photo" : "Add profile photo"}
         >
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt="Your profile" className="w-full h-full object-cover" />
           ) : (
-            <span
-              className="w-full h-full flex items-center justify-center text-[34px]"
-              style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}
-            >
+            <span className="w-full h-full flex items-center justify-center text-[16px]" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>
               {initials}
             </span>
           )}
-          <span
-            className="absolute bottom-0 inset-x-0 py-1 text-[9px] tracking-[0.1em] uppercase font-semibold"
-            style={{ backgroundColor: "rgba(0,0,0,0.45)", color: "#f0e6d2" }}
-          >
-            {photo ? "Change" : "Add photo"}
-          </span>
         </button>
         <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
-
-        <p className="mt-4" style={{ fontFamily: "var(--font-script)", fontSize: 26, lineHeight: 1, color: "var(--brass)", margin: "16px 0 2px" }}>
-          This is you,
-        </p>
-        <h1
-          className="text-[30px]"
-          style={{ fontFamily: "var(--font-heading)", fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.1, color: "var(--foreground)" }}
+        <Link
+          href="/account"
+          aria-label="Settings"
+          className="w-[46px] h-[46px] rounded-full flex items-center justify-center"
+          style={{ border: "1px solid var(--pf-hair)" }}
         >
-          {displayName || "Your Profile"}
-        </h1>
-        {row && !resonance && (
-          <p className="text-[13px] mt-2" style={{ color: "var(--foreground-secondary)" }}>
-            {formatBirthLine(row.birthDate, row.birthTime, row.unknownTime, row.cityName)}
-          </p>
-        )}
+          <span className="flex flex-col gap-1">
+            <span className="block w-[18px] rounded-[2px]" style={{ height: 1.6, background: "var(--foreground)" }} />
+            <span className="block w-[18px] rounded-[2px]" style={{ height: 1.6, background: "var(--foreground)" }} />
+            <span className="block w-[18px] rounded-[2px]" style={{ height: 1.6, background: "var(--foreground)" }} />
+          </span>
+        </Link>
       </div>
 
       {!row && (
-        <div
-          className="rounded-2xl px-4 py-5 text-center"
-          style={{ backgroundColor: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
-        >
+        <div className="rounded-2xl px-4 py-5 text-center mt-6" style={{ background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)" }}>
           <p className="text-[13px]" style={{ color: "var(--foreground-secondary)" }}>
             Add your birth details to unlock your archetype and everything you are.
           </p>
         </div>
       )}
 
-      {/* Archetype hero — celestial ornament, centered reading, radar, identity chips */}
+      {/* ===== A. ARCHETYPE HERO ===== */}
       {resonance && (
-        <div
-          className="rounded-[22px] px-5 pt-6 pb-[22px] mb-6 text-center relative overflow-hidden"
-          style={{
-            background: element ? `linear-gradient(160deg, ${ELEMENT_TINT[element]}, var(--background-card))` : "var(--background-card)",
-            border: "0.5px solid color-mix(in srgb, var(--brass) 45%, transparent)",
-          }}
-        >
-          {/* scattered sparkles */}
-          {[[8, 14, 0.35], [88, 8, 0.5], [14, 78, 0.3], [92, 62, 0.35], [78, 30, 0.25]].map(([x, y, o], i) => (
-            <svg key={i} aria-hidden className="absolute" style={{ left: `${x}%`, top: `${y}%`, opacity: o }} width="10" height="10" viewBox="-5 -5 10 10">
-              <path d="M0 -5 L1.1 -1.1 L5 0 L1.1 1.1 L0 5 L-1.1 1.1 L-5 0 L-1.1 -1.1 Z" fill="var(--brass)" />
-            </svg>
-          ))}
-
-          {/* celestial ornament — orbit arcs, apex node, crescent */}
-          <div className="flex justify-center mb-2" aria-hidden>
-            <svg width="216" height="84" viewBox="0 0 216 84" fill="none">
-              <circle cx="108" cy="158" r="126" stroke="var(--brass)" strokeWidth="1.2" opacity="0.55" />
-              <circle cx="108" cy="158" r="102" stroke="var(--brass)" strokeWidth="1" opacity="0.3" />
-              <line x1="108" y1="32" x2="108" y2="16" stroke="var(--brass)" strokeWidth="1" opacity="0.6" />
-              <circle cx="108" cy="10" r="3.4" fill="var(--brass)" opacity="0.9" />
-              <g transform="translate(53, 52) scale(0.9)" opacity="0.8">
-                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="var(--brass)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </g>
-              <circle cx="160" cy="58" r="2" fill="var(--brass)" opacity="0.6" />
-            </svg>
-          </div>
-
-          <p className="text-[10px] uppercase font-bold mb-2 relative" style={{ letterSpacing: "0.28em", color: "var(--brass)" }}>
-            Your Archetype
-          </p>
-          <h2
-            className="text-[32px] leading-tight mb-2 relative"
-            style={{ fontFamily: "var(--font-heading)", fontWeight: 500, letterSpacing: "-0.01em", color: "var(--foreground)" }}
-          >
-            {resonance.primary.name}
-          </h2>
-          <p
-            className="mx-auto mb-4 relative"
-            style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 19, lineHeight: 1.45, color: "var(--foreground-secondary)", maxWidth: 320, textWrap: "pretty" }}
-          >
-            {resonance.primary.tagline}
-          </p>
-
-          <div className="flex justify-center mb-1 relative">
-            <ResonanceRadar facets={resonance.facets} size={244} />
-          </div>
-
-          {resonance.secondary && (
-            <p className="text-[10px] tracking-[0.14em] uppercase mb-4 relative" style={{ color: "var(--foreground-faint)" }}>
-              Shaded by {resonance.secondary.name}
+        <div className="relative text-center" style={{ padding: "14px 0 0" }}>
+          <div
+            aria-hidden
+            className="absolute rounded-full pointer-events-none"
+            style={{ top: -4, left: "50%", width: 360, height: 340, transform: "translateX(-50%)", background: "radial-gradient(circle, var(--pf-glow) 0%, transparent 66%)", animation: "pf-breathe 9s ease-in-out infinite" }}
+          />
+          <div className="relative z-[2]">
+            <p className="m-0 text-[9.5px] font-bold uppercase" style={{ letterSpacing: "0.26em", color: "var(--brass)" }}>
+              {firstName ? `${firstName}’s archetype` : "Your archetype"}
             </p>
-          )}
 
-          {/* identity chips — sun · life path · HD type */}
-          <div className="flex flex-wrap justify-center gap-2 mb-4 relative">
-            {[
-              row?.bigThree?.sun ? `${row.bigThree.sun} Sun` : null,
-              numerology ? `Life Path ${numerology.lifePath.value}` : null,
-              hd?.type || null,
-            ].filter((c): c is string => !!c).map((chip) => (
-              <span
-                key={chip}
-                className="px-[13px] py-[7px] rounded-full text-[10px] font-bold uppercase whitespace-nowrap"
-                style={{ letterSpacing: "0.12em", color: "var(--brass)", background: "color-mix(in srgb, var(--brass) 10%, transparent)", border: "0.5px solid color-mix(in srgb, var(--brass) 35%, transparent)" }}
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-
-          {/* birth line */}
-          {row && (
-            <p className="text-[13px] relative m-0" style={{ color: "color-mix(in srgb, var(--brass) 75%, var(--foreground))" }}>
-              {formatBirthLine(row.birthDate, row.birthTime, row.unknownTime, row.cityName)}
-            </p>
-          )}
-
-          {resonance.evidence.length > 0 && (
-            <div className="text-left flex flex-col gap-2 mt-5 pt-4 relative" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--brass) 25%, transparent)" }}>
-              {resonance.evidence.map((e) => {
-                const rest = e.copy.startsWith(e.feature)
-                  ? e.copy.slice(e.feature.length).replace(/^\s*—\s*/, "")
-                  : e.copy;
-                return (
-                  <p key={e.feature} className="text-[12.5px] leading-relaxed m-0" style={{ color: "var(--foreground-secondary)" }}>
-                    <span style={{ color: "var(--brass)", fontWeight: 600 }}>{e.feature}</span> — {rest}
-                  </p>
-                );
-              })}
+            {/* Sigil */}
+            <div className="relative mx-auto" style={{ width: 190, height: 190, margin: "18px auto 0" }}>
+              <svg viewBox="0 0 190 190" className="block w-full h-full">
+                <defs>
+                  <radialGradient id="pfCore" cx="50%" cy="42%" r="60%">
+                    <stop offset="0%" stopColor="#f6ecd3" />
+                    <stop offset="55%" stopColor="#d9bd85" />
+                    <stop offset="100%" stopColor="#9d7c42" />
+                  </radialGradient>
+                </defs>
+                <g style={{ animation: "pf-drift 22s ease-in-out infinite", transformOrigin: "95px 95px" }}>
+                  <circle cx="95" cy="95" r="86" fill="none" stroke="var(--pf-hair)" strokeWidth="1" />
+                  <circle cx="95" cy="95" r="68" fill="none" stroke="var(--pf-hair)" strokeWidth="0.8" strokeDasharray="2 8" strokeLinecap="round" />
+                </g>
+                <line x1="95" y1="26" x2="95" y2="95" stroke="var(--pf-hair)" strokeWidth="0.8" />
+                <line x1="35" y1="130" x2="95" y2="95" stroke="var(--pf-hair)" strokeWidth="0.8" />
+                <line x1="155" y1="130" x2="95" y2="95" stroke="var(--pf-hair)" strokeWidth="0.8" />
+                <circle cx="95" cy="26" r="4.5" fill="var(--brass)" />
+                <circle cx="35" cy="130" r="4.5" fill="var(--brass)" />
+                <circle cx="155" cy="130" r="4.5" fill="var(--brass)" />
+                <circle cx="95" cy="95" r="40" fill="url(#pfCore)" opacity="0.16" />
+                <circle cx="95" cy="95" r="40" fill="none" stroke="var(--brass)" strokeWidth="1.2" strokeOpacity="0.55" />
+                <text x="95" y="99" textAnchor="middle" dominantBaseline="middle" fontFamily="Bodoni Moda, serif" fontSize="34" fill="var(--foreground)">☾</text>
+              </svg>
             </div>
-          )}
+
+            <h1 className="m-0" style={{ fontFamily: "var(--font-heading)", fontSize: 42, fontWeight: 500, lineHeight: 1.05, letterSpacing: "0.01em", color: "var(--foreground)", marginTop: 14 }}>
+              {resonance.primary.name}
+            </h1>
+            <p className="m-0" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontStyle: "italic", fontSize: 17, color: "var(--foreground-secondary)", marginTop: 10 }}>
+              {resonance.primary.tagline}
+            </p>
+            {content?.essence && (
+              <p className="mx-auto" style={{ fontSize: 14, lineHeight: 1.75, color: "var(--foreground-secondary)", margin: "16px auto 0", maxWidth: 330, textWrap: "pretty" }}>
+                {content.essence}
+              </p>
+            )}
+
+            <div className="flex justify-center flex-wrap gap-1.5" style={{ marginTop: 16 }}>
+              {[
+                row?.bigThree?.sun ? `${row.bigThree.sun} Sun` : null,
+                numerology ? `Life Path ${numerology.lifePath.value}` : null,
+                hd?.type || null,
+              ].filter((c): c is string => !!c).map((chip) => (
+                <span key={chip} className="uppercase font-bold" style={{ fontSize: 9.5, letterSpacing: "0.14em", color: "var(--brass)", padding: "5px 12px", borderRadius: 99, border: "0.5px solid var(--pf-hair)", background: "var(--pf-soft)" }}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+            {row && (
+              <p className="m-0" style={{ fontSize: 11, letterSpacing: "0.02em", color: "var(--foreground-faint)", marginTop: 14 }}>
+                {formatBirthLine(row.birthDate, row.birthTime, row.unknownTime, row.cityName)}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Strongest traits */}
       {resonance && (
-        <>
-          <SectionLabel>Strongest traits</SectionLabel>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {TRAIT_ORDER
-              .map((t) => ({ t, v: resonance.traits[t] }))
-              .sort((a, b) => b.v - a.v)
-              .slice(0, 6)
-              .map(({ t, v }) => (
-                <span
-                  key={t}
-                  className="px-[13px] py-2 rounded-full text-[11px] font-semibold capitalize"
-                  style={{ backgroundColor: "color-mix(in srgb, var(--brass) 12%, transparent)", border: "0.5px solid color-mix(in srgb, var(--brass) 35%, transparent)", color: "var(--foreground)" }}
-                >
-                  {t} · {v}
-                </span>
-              ))}
-          </div>
-        </>
-      )}
+        <div className="flex flex-col" style={{ gap: 32, paddingTop: 34 }}>
 
-      {/* Your reading — the composed archetype content */}
-      {resonance?.primary.content && (
-        <>
-          <SectionLabel>Your reading</SectionLabel>
-          <div className="flex flex-col gap-3 mb-6">
-            {[
-              { label: "Essence", text: resonance.primary.content.essence },
-              { label: "Your shadow", text: resonance.primary.content.shadowSide, shadow: true },
-              { label: "Growth edge", text: resonance.primary.content.growthEdge },
-              { label: "In love", text: resonance.primary.content.inRelationship },
-              { label: "At work", text: resonance.primary.content.atWork },
-            ].map((b) => (
-              <div
-                key={b.label}
-                className="rounded-2xl p-4"
-                style={{
-                  background: "var(--background-card)",
-                  border: `1px solid ${b.shadow ? "color-mix(in srgb, var(--oxblood-light) 30%, transparent)" : "var(--border-card)"}`,
-                }}
-              >
-                <p
-                  className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1.5"
-                  style={{ color: b.shadow ? "var(--oxblood-light)" : "var(--brass)" }}
-                >
-                  {b.label}
-                </p>
-                <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                  {b.text}
-                </p>
+          {/* ===== B. HOW WE GOT HERE ===== */}
+          {sources.length > 0 && (
+            <div>
+              <p style={kickerStyle}>How we got here</p>
+              <p style={subLineStyle}>
+                {sources.length === 1 ? "One system for now — add birth details to widen the read." : `${["", "", "Two", "Three", "Four"][sources.length]} systems, read together. Where they agree becomes your archetype; where they argue becomes your tension.`}
+              </p>
+              <div className="flex flex-col" style={{ gap: 9 }}>
+                {sources.map((s, i) => (
+                  <Link key={s.system} href={s.href} className="flex items-start" style={{ gap: 13, borderRadius: 16, padding: "15px 16px", background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)" }}>
+                    <span className="shrink-0" style={{ ...glyphTile, width: 40, height: 40, fontSize: s.glyphSize }}>{s.glyph}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-baseline justify-between" style={{ gap: 10 }}>
+                        <span className="uppercase font-bold" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--brass)" }}>{s.system}</span>
+                        <span className="shrink-0" style={{ fontSize: 11, color: "var(--foreground-faint)" }}>weighted {weights[i]}%</span>
+                      </span>
+                      <span className="block" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 16.5, color: "var(--foreground)", marginTop: 3 }}>{s.value}</span>
+                      <span className="block" style={{ fontSize: 12.5, lineHeight: 1.6, color: "var(--foreground-secondary)", marginTop: 5, textWrap: "pretty" }}>{s.contribution}</span>
+                    </span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-faint)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ marginTop: 4 }}><path d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                ))}
               </div>
-            ))}
-          </div>
-        </>
-      )}
+              {numerology && (
+                <p style={{ fontSize: 11, lineHeight: 1.6, color: "var(--foreground-faint)", margin: "10px 2px 0" }}>
+                  Name numbers read from <span style={{ color: "var(--foreground-secondary)" }}>{fullName.trim()}</span>.{" "}
+                  <Link href="/numerology" className="underline" style={{ color: "var(--brass)" }}>Not your full birth name? Change it</Link>
+                </p>
+              )}
+              {row?.unknownTime && (
+                <p style={{ fontSize: 11, lineHeight: 1.6, color: "var(--foreground-faint)", margin: "6px 2px 0" }}>
+                  Your Human Design, Rising sign, and secret animal need an exact birth time — add one to complete the picture.
+                </p>
+              )}
+            </div>
+          )}
 
-      {/* Animal Guide — matched from the same trait vector; provenance on the card */}
-      {animal && (
-        <>
-          <SectionLabel>Your Animal Guide</SectionLabel>
-          <div
-            className="rounded-2xl p-4 mb-6"
-            style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
-          >
-            <div className="flex items-baseline justify-between gap-3 mb-1">
-              <h3
-                className="text-[22px] leading-tight"
-                style={{ fontFamily: "var(--font-heading)", fontWeight: 500, color: "var(--foreground)" }}
-              >
-                {animal.guide.name}
-              </h3>
-              <span
-                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
-                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
-                title={animal.guide.sources[0]}
-              >
-                {TIER_LABEL[animal.guide.tier]}
-              </span>
-            </div>
-            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {animal.guide.tagline}
-            </p>
-            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {animal.guide.essence}
-            </p>
-            <div className="mb-3">
-              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
-                Its shadow in you
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                {animal.guide.shadow}
-              </p>
-            </div>
-            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "0.5px solid var(--border-card)" }}>
-              Source — {animal.guide.tradition}: {animal.guide.sources.join("; ")}.
-              {animal.guide.status === "living-open" && " Shown as a comparison, not a claim, out of respect for a living tradition."}
-              {animal.alt && <> · Also close: {animal.alt.name}.</>}
-            </p>
-          </div>
-        </>
-      )}
+          {/* ===== C. TWO MORE READS ===== */}
+          {(zodiac || character || animal || deity) && (
+            <div>
+              <p style={kickerStyle}>{zodiac && character ? "More reads" : "Two more reads"}</p>
+              <p style={subLineStyle}>Your birth year and hour add an animal. All the systems together add a character, a guide, and a deity.</p>
+              <div className="grid grid-cols-2 items-stretch" style={{ gap: 9 }}>
 
-      {/* Deity — matched from the same trait vector; provenance + tier on the card */}
-      {deity && (
-        <>
-          <SectionLabel>Your Deity</SectionLabel>
-          <div
-            className="rounded-2xl p-4 mb-6"
-            style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
-          >
-            <div className="flex items-baseline justify-between gap-3 mb-1">
-              <h3
-                className="text-[22px] leading-tight"
-                style={{ fontFamily: "var(--font-heading)", fontWeight: 500, color: "var(--foreground)" }}
-              >
-                {deity.guide.name}
-              </h3>
-              <span
-                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
-                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
-              >
-                {deity.guide.pantheon}
-              </span>
-            </div>
-            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {deity.guide.tagline}
-            </p>
-            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {deity.guide.essence}
-            </p>
-            <div className="mb-3">
-              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
-                Its shadow in you
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                {deity.guide.shadow}
-              </p>
-            </div>
-            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "0.5px solid var(--border-card)" }}>
-              {DEITY_TIER_LABEL[deity.guide.tier]} — {deity.guide.sources.join("; ")}.
-              {deity.guide.tier === "living-open" && " Shown as a comparison, not a claim, out of respect for a living tradition."}
-              {deity.alt && <> · Also close: {deity.alt.name}.</>}
-            </p>
-          </div>
-        </>
-      )}
+                {zodiac && (
+                  <div style={readCard}>
+                    <span className="uppercase font-bold" style={{ fontSize: 8.5, letterSpacing: "0.16em", color: "var(--brass)" }}>Chinese zodiac</span>
+                    <span style={{ ...glyphTile, fontSize: 19 }}>犬</span>
+                    <span style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{zodiac.title}</span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--foreground-secondary)", textWrap: "pretty" }}>{zodiac.line}</span>
+                    <span className="flex flex-col" style={{ gap: 5, marginTop: "auto", paddingTop: 11, borderTop: "0.5px solid var(--pf-line)" }}>
+                      {[
+                        { label: "Element", value: zodiac.element },
+                        { label: "Inner animal", value: zodiac.monthAnimal },
+                        { label: "Secret animal", value: zodiac.hourAnimal ?? "Needs birth time" },
+                      ].map((z) => (
+                        <span key={z.label} className="flex items-baseline justify-between" style={{ gap: 8 }}>
+                          <span className="uppercase" style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>{z.label}</span>
+                          <span style={{ fontSize: 11.5, color: "var(--foreground-secondary)", textAlign: "right" }}>{z.value}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
 
-      {/* Character — public-domain literary/legendary match */}
-      {character && (
-        <>
-          <SectionLabel>Your Character</SectionLabel>
-          <div
-            className="rounded-2xl p-4 mb-6"
-            style={{ background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
-          >
-            <div className="flex items-baseline justify-between gap-3 mb-1">
-              <h3
-                className="text-[22px] leading-tight"
-                style={{ fontFamily: "var(--font-heading)", fontWeight: 500, color: "var(--foreground)" }}
-              >
-                {character.guide.name}
-              </h3>
-              <span
-                className="text-[9px] tracking-[0.12em] uppercase font-semibold px-2 py-1 rounded-full whitespace-nowrap"
-                style={{ backgroundColor: "rgba(201,169,97,0.16)", color: "var(--brass)" }}
-              >
-                {character.guide.work}
-              </span>
-            </div>
-            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {character.guide.tagline}
-            </p>
-            <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {character.guide.essence}
-            </p>
-            <div className="mb-3">
-              <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
-                Its shadow in you
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                {character.guide.shadow}
-              </p>
-            </div>
-            <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--foreground-faint)", borderTop: "0.5px solid var(--border-card)" }}>
-              {character.guide.sources.join("; ")}.
-              {character.alt && <> · Also close: {character.alt.name}.</>}
-            </p>
-          </div>
-        </>
-      )}
+                {character && (
+                  <div style={readCard}>
+                    <span className="uppercase font-bold" style={{ fontSize: 8.5, letterSpacing: "0.16em", color: "var(--brass)" }}>Character</span>
+                    <span style={{ ...glyphTile, fontSize: 17 }}>⚔</span>
+                    <span style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{character.guide.name}</span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--foreground-secondary)", textWrap: "pretty" }}>{character.guide.tagline}</span>
+                    <span className="flex flex-col" style={{ gap: 7, marginTop: "auto", paddingTop: 11, borderTop: "0.5px solid var(--pf-line)" }}>
+                      {charStats.map((s) => (
+                        <span key={s.label} className="flex flex-col" style={{ gap: 4 }}>
+                          <span className="flex items-baseline justify-between" style={{ gap: 8 }}>
+                            <span className="uppercase" style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>{s.label}</span>
+                            <span className="font-bold" style={{ fontSize: 10.5, color: "var(--foreground-secondary)" }}>{s.n}</span>
+                          </span>
+                          <span className="block overflow-hidden" style={{ height: 3, borderRadius: 99, background: "var(--pf-line)" }}>
+                            <span className="block" style={{ height: 3, borderRadius: 99, width: `${s.n * 10}%`, background: "var(--brass)" }} />
+                          </span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
 
-      {/* Secondary — how it colours the primary */}
-      {resonance?.secondary && (
-        <>
-          <SectionLabel>Shaded by {resonance.secondary.name}</SectionLabel>
-          <div
-            className="rounded-2xl p-4 mb-6"
-            style={{ background: "var(--background-card)", border: "0.5px dashed color-mix(in srgb, var(--brass) 60%, transparent)" }}
-          >
-            <p className="text-[12px] italic mb-3" style={{ color: "var(--foreground-secondary)" }}>
-              {resonance.secondary.tagline}
-            </p>
-            {resonance.secondary.shading && (
-              <p className="text-[13.5px] leading-relaxed mb-3" style={{ color: "var(--foreground-secondary)" }}>
-                {resonance.secondary.shading}
-              </p>
-            )}
-            {resonance.secondary.content && (
-              <div className="flex flex-col gap-3 mt-1">
-                <div>
-                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--brass)" }}>
-                    What it adds
-                  </p>
-                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                    {resonance.secondary.content.essence}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] tracking-[0.14em] uppercase font-semibold mb-1" style={{ color: "var(--oxblood-light)" }}>
-                    Its shadow in you
-                  </p>
-                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                    {resonance.secondary.content.shadowSide}
-                  </p>
-                </div>
+                {animal && (
+                  <div style={readCard}>
+                    <span className="uppercase font-bold" style={{ fontSize: 8.5, letterSpacing: "0.16em", color: "var(--brass)" }}>Animal guide</span>
+                    <span style={{ ...glyphTile, fontSize: 18 }}>♞</span>
+                    <span style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{animal.guide.name}</span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--foreground-secondary)", textWrap: "pretty" }}>{animal.guide.tagline}</span>
+                    <span className="flex flex-col" style={{ gap: 5, marginTop: "auto", paddingTop: 11, borderTop: "0.5px solid var(--pf-line)" }}>
+                      {[
+                        { label: "Tier", value: TIER_LABEL[animal.guide.tier] },
+                        ...(animal.alt ? [{ label: "Also close", value: animal.alt.name }] : []),
+                      ].map((z) => (
+                        <span key={z.label} className="flex items-baseline justify-between" style={{ gap: 8 }}>
+                          <span className="uppercase" style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>{z.label}</span>
+                          <span style={{ fontSize: 11.5, color: "var(--foreground-secondary)", textAlign: "right" }}>{z.value}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+
+                {deity && (
+                  <div style={readCard}>
+                    <span className="uppercase font-bold" style={{ fontSize: 8.5, letterSpacing: "0.16em", color: "var(--brass)" }}>Deity</span>
+                    <span style={{ ...glyphTile, fontSize: 18 }}>☤</span>
+                    <span style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 18, color: "var(--foreground)", lineHeight: 1.1 }}>{deity.guide.name}</span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--foreground-secondary)", textWrap: "pretty" }}>{deity.guide.tagline}</span>
+                    <span className="flex flex-col" style={{ gap: 5, marginTop: "auto", paddingTop: 11, borderTop: "0.5px solid var(--pf-line)" }}>
+                      {[
+                        { label: "Pantheon", value: deity.guide.pantheon },
+                        { label: "Tier", value: DEITY_TIER_LABEL[deity.guide.tier].split(" — ")[0] },
+                      ].map((z) => (
+                        <span key={z.label} className="flex items-baseline justify-between" style={{ gap: 8 }}>
+                          <span className="uppercase" style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--foreground-faint)" }}>{z.label}</span>
+                          <span style={{ fontSize: 11.5, color: "var(--foreground-secondary)", textAlign: "right" }}>{z.value}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+
               </div>
-            )}
-          </div>
-        </>
-      )}
+            </div>
+          )}
 
-      {/* Everything you are */}
-      <SectionLabel>Everything you are</SectionLabel>
-      <div className="flex flex-col gap-3">
-        {row?.bigThree && (row.bigThree.sun || row.bigThree.moon) && (
-          <SystemCard title="Astrology">
-            {row.bigThree.sun && <Row label="Sun" value={row.bigThree.sun} />}
-            {row.bigThree.moon && <Row label="Moon" value={row.bigThree.moon} />}
-            {row.bigThree.rising && !row.unknownTime && <Row label="Rising" value={row.bigThree.rising} />}
-            {element && <Row label="Element" value={ELEMENT_LABEL[element]} accent />}
-            {row.bigThree.sun && MODALITY[row.bigThree.sun] && (
-              <Row label="Modality" value={MODALITY[row.bigThree.sun]} />
-            )}
-          </SystemCard>
-        )}
+          {/* ===== D. YOU, IN FOUR PARTS ===== */}
+          {facets.length > 0 && (
+            <div>
+              <p style={{ ...kickerStyle, margin: "0 0 14px" }}>You, in four parts</p>
+              <div className="flex flex-col" style={{ gap: 9 }}>
+                {facets.map((f) => {
+                  const open = openFacet === f.id;
+                  return (
+                    <div key={f.id} className="overflow-hidden" style={{ borderRadius: 16, background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)" }}>
+                      <button
+                        onClick={() => setOpenFacet((cur) => (cur === f.id ? null : f.id))}
+                        aria-expanded={open}
+                        className="flex items-center w-full text-left"
+                        style={{ gap: 12, padding: "15px 16px", background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        <span className="flex-1 min-w-0">
+                          <span className="block uppercase font-bold" style={{ fontSize: 9, letterSpacing: "0.18em", color: "var(--brass)" }}>{f.kicker}</span>
+                          <span className="block" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 17.5, color: "var(--foreground)", marginTop: 3 }}>{f.title}</span>
+                        </span>
+                        <span className="shrink-0" style={{ fontSize: 15, color: "var(--brass)", transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s" }}>›</span>
+                      </button>
+                      {open && (
+                        <div style={{ padding: "0 16px 16px" }}>
+                          <div style={{ height: 1, background: "var(--pf-line)", margin: "0 0 13px" }} />
+                          <p className="m-0" style={{ fontSize: 13.5, lineHeight: 1.75, color: "var(--foreground-secondary)", textWrap: "pretty" }}>{f.body}</p>
+                          <p className="m-0" style={{ fontSize: 11, letterSpacing: "0.04em", color: "var(--foreground-faint)", marginTop: 12 }}>{f.from}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-        {numerology && (
-          <SystemCard title="Numerology">
-            <Row label="Life Path" value={masterLabel(numerology.lifePath.value)} accent />
-            <Row label="Expression" value={masterLabel(numerology.expression.value)} />
-            <Row label="Soul Urge" value={masterLabel(numerology.soulUrge.value)} />
-            <Row label="Personality" value={masterLabel(numerology.personality.value)} />
-            <Row label="Birthday" value={String(numerology.birthday.value)} />
-            {/* The name-based numbers (Expression / Soul Urge / Personality) depend
-                entirely on the exact name used — show it so a wrong or display-only
-                name is visible and fixable, instead of silently producing wrong numbers. */}
-            <p className="text-[11px] leading-relaxed pt-2 mt-1" style={{ color: "var(--foreground-faint)", borderTop: "0.5px solid var(--border-card)" }}>
-              Name numbers calculated from <span style={{ color: "var(--foreground-secondary)" }}>{fullName.trim()}</span>.{" "}
-              <Link href="/numerology" className="underline" style={{ color: "var(--brass)" }}>
-                Not your full birth name? Change it
-              </Link>
-            </p>
-          </SystemCard>
-        )}
+          {/* ===== E. TENSION ===== */}
+          {resonance.secondary && (
+            <div style={{ borderRadius: 20, padding: 20, background: "var(--pf-plum)", border: "0.5px solid var(--pf-card-bd)" }}>
+              <p className="m-0 uppercase font-bold" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#c9a961" }}>Where your systems disagree</p>
+              <p className="m-0" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 22, color: "var(--pf-plum-fg)", marginTop: 8 }}>
+                {resonance.secondary.tagline}
+              </p>
+              {(resonance.secondary.shading || resonance.secondary.content?.essence) && (
+                <p className="m-0" style={{ fontSize: 13, lineHeight: 1.7, color: "var(--pf-plum-soft)", marginTop: 11, textWrap: "pretty" }}>
+                  {resonance.secondary.shading || resonance.secondary.content?.essence}
+                </p>
+              )}
+              <div className="flex items-center" style={{ gap: 10, marginTop: 16 }}>
+                <span className="flex-1" style={{ height: 5, borderRadius: 99, background: "linear-gradient(90deg, #c9a961, rgba(201,169,97,0.15))" }} />
+                <span className="uppercase" style={{ fontSize: 10, letterSpacing: "0.12em", color: "rgba(240,230,210,0.55)" }}>{resonance.secondary.name}</span>
+              </div>
+            </div>
+          )}
 
-        {hd && (
-          <SystemCard title="Human Design">
-            <Row label="Type" value={hd.type} accent />
-            <Row label="Strategy" value={hd.strategy} />
-            <Row label="Authority" value={hd.authorityName.split(" — ")[0]} />
-            <Row label="Profile" value={`${hd.profile} · ${hd.profileName.split(" / ")[0]}`} />
-            <Row label="Definition" value={hd.definitionName.replace(" Definition", "")} />
-          </SystemCard>
-        )}
+          {/* ===== F. RARE IN YOUR MAKE-UP ===== */}
+          {shownRarities.length > 0 && (
+            <div>
+              <p style={kickerStyle}>Rare in your make-up</p>
+              <p style={subLineStyle}>The markers the algorithm weighted most heavily — few charts carry them.</p>
+              <div className="flex flex-col" style={{ gap: 9 }}>
+                {shownRarities.map((r) => (
+                  <div key={`${r.kicker}${r.mark}`} className="flex items-start" style={{ gap: 12, borderRadius: 15, padding: "14px 16px", background: "var(--pf-card)", border: "0.5px solid rgba(212,161,58,0.28)", borderLeft: "2.5px solid var(--pf-amber)" }}>
+                    <span className="shrink-0 flex items-center justify-center rounded-full" style={{ width: 34, height: 34, fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 15, color: "var(--pf-amber)", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>{r.mark}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center flex-wrap" style={{ gap: 7 }}>
+                        <span className="uppercase font-bold" style={{ fontSize: 8.5, letterSpacing: "0.16em", color: "var(--pf-amber)" }}>{r.kicker}</span>
+                        <span style={{ fontSize: 8.5, letterSpacing: "0.06em", color: "var(--foreground-faint)" }}>{r.rarity}</span>
+                      </span>
+                      <span className="block" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 16, color: "var(--foreground)", marginTop: 2 }}>{r.title}</span>
+                      <span className="block" style={{ fontSize: 12.5, lineHeight: 1.6, color: "var(--foreground-secondary)", marginTop: 5, textWrap: "pretty" }}>{r.body}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {row?.unknownTime && (
-          <p className="text-[11px] leading-relaxed px-1" style={{ color: "var(--foreground-faint)" }}>
-            Your Human Design and Rising sign need an exact birth time — add one to complete the picture.
+          {/* ===== G. WHERE YOU ARE RIGHT NOW ===== */}
+          {py && (
+            <div>
+              <p style={{ ...kickerStyle, margin: "0 0 14px" }}>Where you are right now</p>
+              <div style={{ borderRadius: 18, background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)", padding: "18px 18px 16px" }}>
+                <div className="flex items-center" style={{ gap: 13 }}>
+                  <span className="shrink-0 flex items-center justify-center rounded-full" style={{ width: 46, height: 46, fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 24, color: "var(--pf-amber)", background: "var(--pf-soft)", border: "1px solid var(--pf-hair)" }}>{py}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block uppercase font-bold" style={{ fontSize: 9, letterSpacing: "0.2em", color: "var(--brass)" }}>Personal Year · {now.getFullYear()}</span>
+                    <span className="block" style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontWeight: 500, fontSize: 19.5, color: "var(--foreground)", marginTop: 2 }}>{PY_TITLE[py]}</span>
+                  </span>
+                </div>
+                <p className="m-0" style={{ fontSize: 12.5, lineHeight: 1.65, color: "var(--foreground-secondary)", marginTop: 12, textWrap: "pretty" }}>
+                  {PY_BODY[py].replace("{arch}", archShort || "soul like yours")}
+                </p>
+                <div className="flex" style={{ gap: 4, marginTop: 16 }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                    <span key={n} className="flex-1 flex flex-col items-center" style={{ gap: 6 }}>
+                      <span className="w-full" style={{ height: 4, borderRadius: 99, background: n === py ? "var(--pf-amber)" : n < py ? "var(--brass)" : "var(--pf-line)" }} />
+                      <span style={{ fontSize: 9.5, fontWeight: n === py ? 700 : 400, color: n === py ? "var(--pf-amber)" : "var(--foreground-faint)" }}>{n}</span>
+                    </span>
+                  ))}
+                </div>
+                {microCycles.length > 0 && (
+                  <div className="flex" style={{ gap: 8, marginTop: 16, paddingTop: 14, borderTop: "0.5px solid var(--pf-line)" }}>
+                    {microCycles.map((m) => (
+                      <span key={m.label} className="flex-1 flex flex-col" style={{ gap: 3, padding: "11px 12px", borderRadius: 12, background: "var(--pf-soft)" }}>
+                        <span className="uppercase" style={{ fontSize: 8.5, letterSpacing: "0.12em", color: "var(--foreground-faint)" }}>{m.label}</span>
+                        <span style={{ fontSize: 12.5, color: "var(--foreground-secondary)" }}>{m.note}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ===== H. WORDS THAT KEEP COMING UP ===== */}
+          {traitPills.length > 0 && (
+            <div>
+              <p style={{ ...kickerStyle, margin: "0 0 12px" }}>Words that keep coming up</p>
+              <div className="flex flex-wrap" style={{ gap: 8 }}>
+                {traitPills.map((t) => (
+                  <span key={t} className="capitalize" style={{ padding: "9px 15px", borderRadius: 99, background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)", fontSize: 12.5, color: "var(--foreground-secondary)" }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-center m-0" style={{ fontSize: 11, lineHeight: 1.6, color: "var(--foreground-faint)", textWrap: "pretty" }}>
+            Your archetype re-runs whenever your birth details or name change.
           </p>
-        )}
-      </div>
 
-      <div className="h-6" />
+        </div>
+      )}
     </main>
-  );
-}
-
-const ELEMENT_TINT: Record<Element, string> = {
-  fire: "rgba(122,48,40,0.30)",
-  earth: "rgba(45,64,41,0.30)",
-  air: "rgba(90,74,138,0.26)",
-  water: "rgba(26,37,72,0.34)",
-};
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-3" style={{ fontFamily: "var(--font-heading)", fontSize: 18, fontWeight: 500, color: "var(--foreground)", margin: "0 0 12px" }}>
-      {children}
-    </h2>
-  );
-}
-
-function SystemCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-2xl px-4 py-3.5"
-      style={{ backgroundColor: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
-    >
-      <p className="text-[10px] tracking-[0.16em] uppercase font-bold mb-2.5" style={{ color: "var(--foreground-faint)" }}>
-        {title}
-      </p>
-      <div className="flex flex-col gap-2">{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
-        {label}
-      </span>
-      <span
-        className="text-[13px] font-semibold text-right"
-        style={{ color: accent ? "var(--brass)" : "var(--foreground)" }}
-      >
-        {value}
-      </span>
-    </div>
   );
 }
