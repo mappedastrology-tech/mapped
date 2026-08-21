@@ -1054,3 +1054,65 @@ input, select, textarea {
    ring needs !important to win over it. */
 .mp-person > span:first-child { transition: box-shadow .15s ease; }
 .mp-person:hover > span:first-child { box-shadow: 0 0 0 3px var(--brass), 0 8px 22px rgba(0, 0, 0, 0.5) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOURNAL — compose overlay, burn ceremony (candle → embers → release) and the
+   voice-to-text listening sheet. Motion values lifted from the Journal design
+   handoff. Prefixed jt- so they never collide with the mp- web keyframes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes jt-push { from { transform: translateY(18px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+@keyframes jt-fade-slow { from { opacity: 0 } to { opacity: 1 } }
+@keyframes jt-fade-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes jt-fade-in { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes jt-glowfade { 0% { opacity: 0 } 45% { opacity: 1 } 100% { opacity: 0.42 } }
+@keyframes jt-candlelife { 0% { opacity: 0; transform: translateX(-50%) translateY(34px) } 16% { opacity: 1; transform: translateX(-50%) translateY(0) } 60% { opacity: 1; transform: translateX(-50%) translateY(0) } 100% { opacity: 0; transform: translateX(-50%) translateY(-6px) } }
+@keyframes jt-candleflick { 0%,100% { transform: scaleY(1); opacity: 0.97 } 50% { transform: scaleY(1.014); opacity: 1 } }
+@keyframes jt-glowpulse { 0%,100% { opacity: 0.55; transform: translate(-50%,-50%) scale(0.97) } 50% { opacity: 0.85; transform: translate(-50%,-50%) scale(1.05) } }
+@keyframes jt-ember { 0% { opacity: 0; transform: translateY(0) scale(1) } 8% { opacity: 1 } 72% { opacity: 0.85 } 100% { opacity: 0; transform: translateY(-860px) scale(0.35) } }
+@keyframes jt-spark { 0% { opacity: 0; transform: translate(0,0) scale(1) } 12% { opacity: 1 } 65% { opacity: 0.85 } 100% { opacity: 0; transform: translate(8px,-320px) scale(0.2) } }
+@keyframes jt-pulse { 0% { transform: scale(0.85); opacity: 0.4 } 100% { transform: scale(1.75); opacity: 0 } }
+@keyframes jt-bar { 0%,100% { transform: scaleY(0.28) } 50% { transform: scaleY(1) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .jt-overlay [style*="animation"], .jt-overlay[style*="animation"] { animation-duration: 0.001s !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE — "Profile - You" design handoff tokens (pf- prefix). The profile
+   reads as brass-on-felt: its card fills and hairlines are brass-tinted rather
+   than the app's purple card set, and it carries a plum tension panel and an
+   amber rarity accent. Night values on :root (app default), day overrides on
+   [data-theme="light"].
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --pf-card: #15101c;
+  --pf-card-bd: rgba(201, 169, 97, 0.12);
+  --pf-hair: rgba(201, 169, 97, 0.13);
+  --pf-line: rgba(201, 169, 97, 0.1);
+  --pf-soft: rgba(255, 255, 255, 0.04);
+  --pf-amber: #d4a13a;
+  --pf-glow: rgba(201, 169, 97, 0.16);
+  --pf-plum: #4a2540;
+  --pf-plum-fg: #f0e6d2;
+  --pf-plum-soft: rgba(240, 230, 210, 0.62);
+}
+[data-theme="light"] {
+  --pf-card: #fdf8ec;
+  --pf-card-bd: rgba(150, 115, 55, 0.22);
+  --pf-hair: rgba(150, 115, 55, 0.22);
+  --pf-line: rgba(120, 92, 52, 0.16);
+  --pf-soft: rgba(80, 60, 30, 0.05);
+  --pf-amber: #9a7322;
+  --pf-glow: rgba(154, 115, 34, 0.14);
+  --pf-plum: #2b2140;
+  --pf-plum-fg: #f0e6d2;
+  --pf-plum-soft: rgba(240, 230, 210, 0.66);
+}
+
+/* Ambient profile animation: hero glow breathes, sigil rings drift. */
+@keyframes pf-breathe { 0%, 100% { opacity: 0.35 } 50% { opacity: 0.75 } }
+@keyframes pf-drift { 0%, 100% { transform: rotate(0deg) } 50% { transform: rotate(3deg) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-page [style*="animation"] { animation: none !important; }
+}

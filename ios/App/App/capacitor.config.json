@@ -1,0 +1,19 @@
+{
+  "appId": "com.mappedastrology.app",
+  "appName": "Mapped",
+  "webDir": ".next-app",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "url": "https://mapped-astrology.netlify.app"
+  },
+  "ios": {
+    "backgroundColor": "#0e0a14",
+    "contentInset": "always"
+  },
+  "android": {
+    "backgroundColor": "#0e0a14"
+  },
+  "packageClassList": [],
+  "_DEV_MODE_WARNING": "server.url makes the app load the live website instead of the bundled files. DEV ONLY — remove server.url before submitting to the App Store (Apple Guideline 4.2 rejects remote-only wrappers) and ship a real bundle instead. See PLATFORMS.md."
+}

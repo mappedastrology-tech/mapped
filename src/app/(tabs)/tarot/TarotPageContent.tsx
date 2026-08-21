@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { getTarotHistoryKey } from "@/lib/completionSync";
 import {
   ALL_CARDS, SPREADS, ORACLE_DECKS, SUIT_INFO,
-  shuffleDeck, drawCards, getCardImagePath, CARD_BACK_IMAGE,
+  shuffleDeck, shuffleArray, drawCards, getCardImagePath, CARD_BACK_IMAGE,
   type TarotCard, type TarotSpread, type DrawnCard, type OracleDeck,
 } from "@/lib/tarot";
 import { tarotMeanings } from "@/lib/tarotMeanings";
@@ -263,7 +263,7 @@ export default function TarotTab() {
   const handleStartSpread = useCallback((spread: TarotSpread) => {
     setSelectedSpread(spread);
     if (isOracleDeck && activeOracleDeck) {
-      const shuffled = [...activeOracleDeck.cards].sort(() => Math.random() - 0.5);
+      const shuffled = shuffleArray(activeOracleDeck.cards);
       setShuffledOracleCards(shuffled);
       setPickedOracleCards([]);
     } else {
@@ -325,7 +325,7 @@ export default function TarotTab() {
   /* ─── Freestyle fan pick ─── */
   const handleStartFreestyle = useCallback(() => {
     if (isOracleDeck && activeOracleDeck) {
-      const shuffled = [...activeOracleDeck.cards].sort(() => Math.random() - 0.5);
+      const shuffled = shuffleArray(activeOracleDeck.cards);
       setShuffledOracleCards(shuffled);
       setPickedOracleCards([]);
     }

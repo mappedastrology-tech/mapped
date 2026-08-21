@@ -1,0 +1,60 @@
+# Netlify configuration for Mapped.
+#
+# Netlify ignores vercel.json entirely, so the daily notifications cron is
+# recreated as a Scheduled Function (netlify/functions/notifications-cron.mts).
+#
+# Long-cache the static card/moon/background art. These files are
+# content-addressed by name and only change when replaced, so a long TTL keeps
+# repeat visits (and the CDN in front of this site) from re-fetching ~56MB of
+# imagery. Put Cloudflare in front of the domain and these become near-free.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Next.js build output — hashed filenames, safe to cache forever.
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Card art, moon phases, textures, fonts. Replaced by name when they change.
+[[headers]]
+  for = "/tarot/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/oracle/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/backgrounds/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/moons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The service worker must never be cached, or clients get stuck on an old
+# push handler and notifications silently stop updating.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

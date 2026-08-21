@@ -14,10 +14,17 @@
     "check": "npm run lint && npm run typecheck",
     "clean:dupes": "node scripts/clean-dupes.mjs",
     "predeploy": "npm run clean:dupes && npm run check",
-    "deploy": "npx vercel --prod"
+    "deploy": "npx vercel --prod",
+    "build:app": "node scripts/build-app.mjs",
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@supabase/supabase-js": "^2.101.1",
     "astronomy-engine": "^2.1.19",
     "geo-tz": "^8.1.6",
@@ -26,12 +33,15 @@
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "0.35.3",
     "stripe": "^22.2.0",
     "topojson-client": "^3.1.0",
     "web-push": "^3.6.7",
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@netlify/functions": "^6.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

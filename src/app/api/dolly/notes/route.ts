@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 /**
  * POST /api/dolly/notes

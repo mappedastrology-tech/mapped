@@ -4,6 +4,7 @@ import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import ToastProvider from "@/components/Toast";
 import ErrorMonitorInit from "@/components/ErrorMonitorInit";
+import ApiBaseInit from "@/components/ApiBaseInit";
 
 // NOTE: We're using system fonts + CSS @import for Google Fonts
 // instead of next/font, because next/font downloads fonts at build time
@@ -75,6 +76,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="min-h-dvh flex flex-col antialiased" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+        <ApiBaseInit />
         <ErrorMonitorInit />
         <ThemeProvider>
           <ToastProvider>
