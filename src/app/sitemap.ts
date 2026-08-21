@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
 
+// Fully static — both are derived from constants, and the app build
+// (output: "export") requires metadata routes to declare it.
+export const dynamic = "force-static";
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-olive.vercel.app";
 
 /** Only the publicly indexable pages belong in the sitemap. */

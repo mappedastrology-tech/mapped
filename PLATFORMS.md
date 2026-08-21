@@ -49,11 +49,37 @@ Good news: the app is already close.
 
 Remaining work for the app build:
 
-- [ ] Env-switched `next.config.ts` (`APP_BUILD=1` → `output: 'export'`, `images.unoptimized`)
-- [ ] Build step that excludes `src/app/api` from the app build
-- [ ] Point the app at the Netlify API via `NEXT_PUBLIC_API_BASE`
-      (relative `fetch("/api/…")` has no origin inside Capacitor)
-- [ ] Capacitor project + iOS/Android shells
+- [x] Env-switched `next.config.ts` (`APP_BUILD=1` → `output: 'export'`, `images.unoptimized`)
+- [x] Build step excluding server-only routes (`scripts/build-app.mjs`)
+- [x] `NEXT_PUBLIC_API_BASE` rewrite (`src/lib/apiBase.ts`)
+- [x] Capacitor config + dependencies
+- [ ] `npx cap add ios` / `npx cap add android` — needs macOS + Xcode /
+      Android Studio, so it runs on your machine, not in CI
+- [ ] APNs + FCM push
+- [ ] Icons, splash screens, store listings
+
+**Phase 1 is proven end to end:** `npm run build:app` produces 215 static
+pages in `.next-app/`, and the web build still emits all 28 API routes.
+
+### Building the apps
+
+```bash
+# 1. Static export against the deployed API
+NEXT_PUBLIC_API_BASE=https://mapped-astrology.netlify.app npm run build:app
+
+# 2. One-time, on a Mac with Xcode / Android Studio installed
+npx cap add ios
+npx cap add android
+
+# 3. Copy the bundle into the native shells, then open them
+npm run cap:sync
+npm run cap:ios       # or: npm run cap:android
+```
+
+`build-app.mjs` moves `src/app/api` and `src/app/auth/callback` aside for the
+duration of the build and restores them afterwards, including on crash or
+Ctrl-C. If a run is ever killed hard, the next run recovers them automatically
+from `.app-build-parked/`.
 
 ## Push notifications differ per platform
 
