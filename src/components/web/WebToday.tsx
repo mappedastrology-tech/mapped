@@ -13,6 +13,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { useLiveSky, useBigThree } from "./useLiveSky";
+import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
+import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
 
 type Key = "sky" | "chart" | "tarot" | "ritual" | "journal" | "numbers";
 const DEFAULT: Key[] = ["sky", "chart", "tarot", "ritual", "journal", "numbers"];
@@ -143,6 +145,24 @@ export default function WebToday() {
   // Live sky + chart (falls back to the sample copy until computed client-side)
   const sky = useLiveSky();
   const bt = useBigThree();
+
+  // Real daily tarot card — per (account, day) via the salted seed, replacing
+  // the hardcoded sample ("The Star" for everyone).
+  const [dailyCard, setDailyCard] = useState<{ src: string; name: string; kw: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const salt = await getCardSalt().catch(() => 0);
+      if (cancelled) return;
+      const card = ALL_CARDS[mixDailySeed(new Date(), salt) % ALL_CARDS.length];
+      setDailyCard({
+        src: getCardImagePath(card.id) || CARD_BACK_IMAGE,
+        name: card.name,
+        kw: card.uprightKeywords.slice(0, 2).join(" · ").toLowerCase(),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const bannerEyebrow = sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Waxing Gibbous · 73% · Moon in Scorpio";
   const bannerTitle = sky ? `The Moon in ${sky.moonSign}` : "Depth over noise today";
   const bannerBody = sky
@@ -163,6 +183,9 @@ export default function WebToday() {
         { kind: "text", text: `Sun in ${bt.sun}, Moon in ${bt.moon}, ${bt.rising} rising — your core placements.` },
         { kind: "rows", rows: [["Sun", bt.sun], ["Moon", bt.moon], ["Rising", bt.rising]] },
       ];
+    }
+    if (key === "tarot" && dailyCard) {
+      return [{ kind: "card", src: dailyCard.src, name: dailyCard.name, kw: dailyCard.kw }];
     }
     return W[key].body;
   };

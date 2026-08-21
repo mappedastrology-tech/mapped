@@ -693,14 +693,19 @@ export const SPREADS: TarotSpread[] = [
    Deck Shuffling & Drawing
    ═══════════════════════════════════════════ */
 
+/** Fisher-Yates shuffle — unbiased, unlike sort(() => Math.random() - 0.5). */
+export function shuffleArray<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /** Fisher-Yates shuffle */
 export function shuffleDeck(cards: TarotCard[]): TarotCard[] {
-  const deck = [...cards];
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
+  return shuffleArray(cards);
 }
 
 /** Draw n cards from a shuffled deck, with random reversed orientation */
