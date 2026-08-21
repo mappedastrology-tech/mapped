@@ -71,3 +71,9 @@ broken_name*
 /android/local.properties
 /android/captures/
 /android/app/release/
+
+# Capacitor's generated ios/.gitignore excludes App/App/public and config.xml,
+# assuming every clone runs `cap sync` (which needs Node). Both are referenced
+# by the Xcode project, so without them a fresh clone fails to build. A
+# placeholder index.html and the config are force-tracked instead; `cap sync`
+# overwrites the placeholder with the real bundle and git ignores the rest.
