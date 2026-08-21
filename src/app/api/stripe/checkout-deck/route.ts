@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { STORE_DECK_BY_ID } from "@/lib/deckStore";
+import { STORE_DECK_BY_ID, resolveStripePrice } from "@/lib/deckStore";
 
 export async function POST(request: Request) {
   try {
@@ -39,12 +39,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "This deck isn't available yet" }, { status: 400 });
     }
 
-    const priceId = process.env[deck.stripePriceEnv];
+    // Env override wins; otherwise the catalog's baked price id matching the
+    // server's Stripe key mode (live vs test).
+    const priceId = resolveStripePrice(deck);
     if (!priceId) {
-      return NextResponse.json(
-        { error: `Deck not configured (missing ${deck.stripePriceEnv})` },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Deck not configured" }, { status: 500 });
     }
 
     const supabaseAdmin = createClient(

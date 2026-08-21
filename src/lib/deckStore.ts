@@ -22,9 +22,23 @@ export interface StoreDeck {
   description: string;        // longer store copy
   cardCount: number;
   priceCents: number;         // display price; Stripe Price is the source of truth
-  stripePriceEnv: string;     // name of the env var holding the Stripe price id
+  stripePriceEnv: string;     // optional env-var override for the Stripe price id
+  stripePriceLive: string;    // live-mode Price id (created in the Mapped Stripe account)
+  stripePriceTest: string;    // test-mode Price id (same account, sandbox)
   coverImage: string;         // /public path — swap in real art
   status: DeckStatus;
+}
+
+/**
+ * Resolve the Stripe Price id for a deck: an env override wins; otherwise pick
+ * live vs test to match the server's STRIPE_SECRET_KEY mode (sk_live_… ⇒ live).
+ * Price ids aren't secrets — they're safe in source; only the secret key is.
+ */
+export function resolveStripePrice(deck: StoreDeck): string | undefined {
+  const override = process.env[deck.stripePriceEnv];
+  if (override) return override;
+  const isLive = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live");
+  return isLive ? deck.stripePriceLive : deck.stripePriceTest;
 }
 
 export const STORE_DECKS: StoreDeck[] = [
@@ -37,6 +51,8 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 44,
     priceCents: 499,
     stripePriceEnv: "STRIPE_PRICE_DECK_BOTANICAL",
+    stripePriceLive: "price_1U6wPsRdq07zsKMQAHWMLzL2",
+    stripePriceTest: "price_1U6wR0Rdq07zsKMQXinoDEPF",
     coverImage: "/images/dried-flower-bouquet.png",
     status: "available",
   },
@@ -49,6 +65,8 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 48,
     priceCents: 499,
     stripePriceEnv: "STRIPE_PRICE_DECK_CELESTIAL",
+    stripePriceLive: "price_1U6wQVRdq07zsKMQvlsIUz3D",
+    stripePriceTest: "price_1U6wR8Rdq07zsKMQWDHEN9Qx",
     coverImage: "/images/cosmic-eye.png",
     status: "available",
   },
@@ -61,6 +79,8 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 40,
     priceCents: 399,
     stripePriceEnv: "STRIPE_PRICE_DECK_SEA",
+    stripePriceLive: "price_1U6wQdRdq07zsKMQxCzWM3tC",
+    stripePriceTest: "price_1U6wRHRdq07zsKMQerrs4epb",
     coverImage: "/images/angel-fish-grayscale.png",
     status: "coming-soon",
   },
@@ -73,6 +93,8 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 36,
     priceCents: 399,
     stripePriceEnv: "STRIPE_PRICE_DECK_CRYSTAL",
+    stripePriceLive: "price_1U6wQkRdq07zsKMQRHr2Y8Yg",
+    stripePriceTest: "price_1U6wRNRdq07zsKMQrVnsmKaB",
     coverImage: "/images/crystal-ball.png",
     status: "coming-soon",
   },

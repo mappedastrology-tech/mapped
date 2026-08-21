@@ -1,45 +1,43 @@
-# Deck Store — Stripe setup
+# Deck Store — Stripe status
 
-The Deck Store (Tarot tab → "Deck Store") is live in the code and ready to sell
-one-time oracle-deck purchases. It reuses your existing Stripe account, webhook,
-and customer records. To turn it on you only need to create the products in
-Stripe and add their price ids as env vars.
+## ✅ Already done for you (via your connected Stripe account)
 
-## One-time setup (~10 minutes)
+All Stripe products and prices are CREATED — in both live mode and test mode —
+and their price ids are baked into the app (`src/lib/deckStore.ts`). The server
+automatically uses the test-mode prices while `STRIPE_SECRET_KEY` is a test key
+(`sk_test_…`) and the live ones when you switch to a live key. No env vars
+needed.
 
-1. **Create the products** — Stripe Dashboard → Product catalog → "+ Add product",
-   one per deck:
+| Deck | Live price | Test price |
+|---|---|---|
+| Botanical Oracle · $4.99 | price_1U6wPsRdq07zsKMQAHWMLzL2 | price_1U6wR0Rdq07zsKMQXinoDEPF |
+| Celestial Oracle · $4.99 | price_1U6wQVRdq07zsKMQvlsIUz3D | price_1U6wR8Rdq07zsKMQWDHEN9Qx |
+| Sea Oracle · $3.99 | price_1U6wQdRdq07zsKMQxCzWM3tC | price_1U6wRHRdq07zsKMQerrs4epb |
+| Crystal Oracle · $3.99 | price_1U6wQkRdq07zsKMQRHr2Y8Yg | price_1U6wRNRdq07zsKMQrVnsmKaB |
 
-   | Product name | Price | Type |
-   |---|---|---|
-   | Botanical Oracle Deck | $4.99 | One-off |
-   | Celestial Oracle Deck | $4.99 | One-off |
-   | Sea Oracle Deck | $3.99 | One-off |
-   | Crystal Oracle Deck | $3.99 | One-off |
+Your app currently runs Stripe in TEST MODE (the only webhook endpoint on the
+account is the test-mode one at /api/stripe/webhook — which is already set to
+receive checkout.session.completed, so deck fulfillment works now). You can
+test the whole store today: buy with card 4242 4242 4242 4242, any future
+expiry/CVC.
 
-   ("One-off", NOT recurring — these are purchases, not subscriptions. Prices
-   are what the app displays today; change them in `src/lib/deckStore.ts` too
-   if you pick different ones.)
+## Going LIVE later (the one manual bit)
 
-2. **Copy each Price ID** (starts with `price_…`, shown on the product page).
+When you're ready to take real money (this applies to your subscription too,
+not just decks — live mode currently has NO webhook, so live purchases would
+never be fulfilled):
 
-3. **Add env vars** — Vercel → mapped → Settings → Environment Variables
-   (Production; add Preview too if you test there):
+1. Stripe Dashboard (live mode) → Developers → Webhooks → Add endpoint:
+   `https://mapped-olive.vercel.app/api/stripe/webhook`
+   events: `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted`. Copy its signing secret (`whsec_…`).
+2. Vercel env vars (Production): set `STRIPE_SECRET_KEY` to your live
+   `sk_live_…` key and `STRIPE_WEBHOOK_SECRET` to that live signing secret.
+   (Also `STRIPE_PRICE_ID` for the subscription, if that's still a test price.)
+3. Redeploy. The deck store flips to live prices automatically.
 
-   ```
-   STRIPE_PRICE_DECK_BOTANICAL = price_xxx
-   STRIPE_PRICE_DECK_CELESTIAL = price_xxx
-   STRIPE_PRICE_DECK_SEA       = price_xxx
-   STRIPE_PRICE_DECK_CRYSTAL   = price_xxx
-   ```
-
-4. **Redeploy** (env vars need a fresh build).
-
-That's it — your existing `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
-already cover the store. The webhook endpoint you configured for subscriptions
-(`/api/stripe/webhook`) also fulfils deck purchases; just make sure
-`checkout.session.completed` is among its enabled events (it already is if
-subscriptions work).
+(I tried to create the live webhook for you; my safety layer blocks creating
+live payment infrastructure, so that one click is yours.)
 
 ## How it works
 
