@@ -24,6 +24,8 @@ import {
 import { tarotMeanings } from "@/lib/tarotMeanings";
 import { type OracleCard, type OracleDeckInfo } from "@/lib/stitchedAnimalOracle";
 import { ORACLE_DECKS as ORACLE_DECK_REGISTRY, getOracleDeck } from "@/lib/oracleDecks";
+import { STORE_DECK_BY_ID } from "@/lib/deckStore";
+import DeckStore from "@/components/tarot/DeckStore";
 import { shareReadingAsImage } from "@/lib/shareCard";
 import Image from "next/image";
 
@@ -61,6 +63,37 @@ export default function TarotTab() {
   /* ─── Core State ─── */
   const [view, setView] = useState<View>("decks");
   const [deckTab, setDeckTab] = useState<DeckTab>("my-decks");
+  const [justPurchasedDeck, setJustPurchasedDeck] = useState<string | null>(null);
+  const [ownedStoreDecks, setOwnedStoreDecks] = useState<string[]>([]);
+
+  // Store deep-links: ?deck_purchased=<id> (back from Stripe success) opens the
+  // store with a success banner; ?store=1 (checkout cancelled) reopens the store.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const purchased = params.get("deck_purchased");
+      if (purchased) { setDeckTab("store"); setJustPurchasedDeck(purchased); }
+      else if (params.get("store")) setDeckTab("store");
+      if (purchased || params.get("store")) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Owned premium (store) decks — shown in My Decks alongside the free decks.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || !alive) return;
+      const { data } = await supabase
+        .from("purchased_decks")
+        .select("deck_id")
+        .eq("user_id", session.user.id);
+      if (alive && data) setOwnedStoreDecks(data.map((r) => r.deck_id as string));
+    })();
+    return () => { alive = false; };
+  }, [justPurchasedDeck]);
   const [selectedDeck, setSelectedDeck] = useState<string>("classic-tarot");
   const [selectedSpread, setSelectedSpread] = useState<TarotSpread | null>(null);
   const [shuffledDeck, setShuffledDeck] = useState<TarotCard[]>([]);
@@ -716,14 +749,46 @@ export default function TarotTab() {
       <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
         <div className="text-center pt-1 pb-1">
           <p style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 400, letterSpacing: "0.16em", textTransform: "uppercase", lineHeight: 1.1, color: "var(--foreground)" }}>Tarot</p>
-          <p style={{ fontFamily: "var(--font-script)", fontSize: 38, lineHeight: 1, marginTop: -2, color: "var(--brass)" }}>choose your deck</p>
-          <p className="text-[11.5px] leading-relaxed mx-auto mt-3" style={{ maxWidth: 300, color: "var(--foreground-muted)" }}>
-            Pick a deck to read from. Each carries its own voice — then you&rsquo;ll choose how to lay the cards.
+          <p style={{ fontFamily: "var(--font-script)", fontSize: 38, lineHeight: 1, marginTop: -2, color: "var(--brass)" }}>
+            {deckTab === "store" ? "the deck store" : "choose your deck"}
           </p>
+          {deckTab === "my-decks" && (
+            <p className="text-[11.5px] leading-relaxed mx-auto mt-3" style={{ maxWidth: 300, color: "var(--foreground-muted)" }}>
+              Pick a deck to read from. Each carries its own voice — then you&rsquo;ll choose how to lay the cards.
+            </p>
+          )}
         </div>
 
+        {/* My Decks / Store tabs */}
+        <div
+          className="flex mx-auto mt-4 rounded-full p-1"
+          style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
+          role="tablist"
+        >
+          {(["my-decks", "store"] as const).map((tab) => (
+            <button
+              key={tab}
+              role="tab"
+              aria-selected={deckTab === tab}
+              onClick={() => setDeckTab(tab)}
+              className="px-5 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.06em] transition-colors"
+              style={deckTab === tab
+                ? { backgroundColor: "var(--brass)", color: "var(--btn-ink)" }
+                : { color: "var(--foreground-muted)" }}
+            >
+              {tab === "my-decks" ? "My Decks" : "Deck Store"}
+            </button>
+          ))}
+        </div>
+
+        {deckTab === "store" && (
+          <div className="mt-6">
+            <DeckStore justPurchased={justPurchasedDeck} />
+          </div>
+        )}
+
         {/* Decks — plum horizontal cards with fanned cover */}
-        <div className="flex flex-col gap-4 mt-7">
+        <div className={deckTab === "store" ? "hidden" : "flex flex-col gap-4 mt-7"}>
           <DeckRow
             tag="Tarot · 78 cards"
             name="Classic Tarot"
@@ -755,17 +820,38 @@ export default function TarotTab() {
               onClick={() => { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
             />
           ))}
+          {/* Premium decks bought in the Deck Store. Playable once their cards
+              land in the oracle registry; until then they show as owned. */}
+          {ownedStoreDecks.map((id) => {
+            const sd = STORE_DECK_BY_ID[id];
+            if (!sd) return null;
+            const playable = ORACLE_DECK_REGISTRY.some((d) => d.id === id);
+            return (
+              <DeckRow
+                key={id}
+                tag={`Oracle · ${sd.cardCount} cards · Owned`}
+                name={sd.name}
+                sub={playable ? sd.tagline : `${sd.tagline} — cards arriving in the next update.`}
+                count={`${sd.cardCount} cards`}
+                covers={[sd.coverImage]}
+                onClick={() => {
+                  if (!playable) return;
+                  setSelectedDeck(id); setPendingSpreadId(null); setQuestion(""); setView("spreads");
+                }}
+              />
+            );
+          })}
         </div>
 
-        {/* ─── Past Readings ─── */}
-        {readingHistory.length === 0 && (
+        {/* ─── Past Readings (hidden while browsing the store) ─── */}
+        {deckTab === "my-decks" && readingHistory.length === 0 && (
           <div className="mt-8 text-center py-6">
             <p className="text-muted text-[12px] leading-relaxed">
               Your readings will appear here once you pull your first cards.
             </p>
           </div>
         )}
-        {readingHistory.length > 0 && (
+        {deckTab === "my-decks" && readingHistory.length > 0 && (
           <div className="mt-8">
             <button
               onClick={() => setShowHistory(!showHistory)}

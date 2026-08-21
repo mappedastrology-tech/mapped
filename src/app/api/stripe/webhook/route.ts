@@ -53,6 +53,43 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.supabase_user_id;
 
+        // ── One-time DECK purchase (store) ──────────────────────────────
+        // mode=payment sessions with a deck_id are deck-store orders. They
+        // must NOT fall through to the subscription branch below (which
+        // would wrongly set tier="mid" for a $4.99 deck).
+        const deckId = session.metadata?.deck_id;
+        if (session.mode === "payment" && deckId) {
+          if (userId) {
+            await supabaseAdmin.from("purchased_decks").upsert(
+              {
+                user_id: userId,
+                deck_id: deckId,
+                stripe_session_id: session.id,
+                stripe_payment_intent:
+                  typeof session.payment_intent === "string"
+                    ? session.payment_intent
+                    : session.payment_intent?.id ?? null,
+                amount_cents: session.amount_total ?? null,
+                currency: session.currency ?? "usd",
+              },
+              { onConflict: "user_id,deck_id" },
+            );
+            // Remember the Stripe customer for future purchases.
+            if (session.customer) {
+              await supabaseAdmin
+                .from("profiles")
+                .update({
+                  stripe_customer_id: getCustomerId(
+                    session.customer as string | Stripe.Customer | Stripe.DeletedCustomer,
+                  ),
+                })
+                .eq("id", userId)
+                .is("stripe_customer_id", null);
+            }
+          }
+          break;
+        }
+
         if (!userId) {
           // Try to get user ID from subscription metadata
           if (session.subscription) {
