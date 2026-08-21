@@ -59,22 +59,48 @@ figures, human hands, costume on a body`.
 
 ## 3. Renamed archetypes — 8 new plates
 
-These were renamed because the old names read as mundane objects rather than identities. The existing plate no longer matches the new name, so each needs a fresh subject. **Same filename** — the new plate replaces the old one in place.
+**Why the renames.** The original naming rule was *"The" + one concrete noun — a
+force, an object, or a piece of the physical world*. That rule reliably produces
+objects, and an object is not an archetype: "you are The Solder" doesn't land.
+The test each name now has to pass is **"can you say *you are The X* and have it
+read as an identity?"** — which The Wildfire passes (a force with agency) and
+The Confluence fails (a geographic feature).
+
+27 names were changed in two moves:
+
+1. **Objects → the figure who uses them** (14). The loom plate is now **The
+   Weaver**, the blueprint is **The Architect**, the ferry is **The Ferryman**.
+   *These keep their existing plates* — the tool is exactly what that figure is
+   pictured with, so the art was already right; only the name was wrong.
+   Cartographer · Joiner · Librarian · Healer · Spinner · Weaver · Sentinel ·
+   Prospector · Journeyman · Sculptor · Architect · Ferryman · Chronicler ·
+   Archivist.
+
+2. **Mundane or passive nouns → beings and roles** (13). Five of these also keep
+   their plates (**The Vessel** ← Basin, **The Mason** ← Mortar, **The Miner** ←
+   Shaft, **The Tinker** ← Solder, **The Forger** ← Scrap). The remaining **8
+   need new art** — listed below.
+
+Everything else was already carrying real charge (The Vault, The Undertow, The
+Mask, The Cuckoo, The Marrow) and was left alone.
+
+> One name was withdrawn on cultural grounds: an earlier draft used *The Hoodoo*
+> for stone/trickster. Hoodoo is a living African-American spiritual tradition,
+> so borrowing it as a personality label is exactly what the cultural gate
+> forbids elsewhere in this app. It is now **The Drifter**.
 
 ### Replace these 8
 
 | File | New name | Was | Subject | Palette |
 |---|---|---|---|---|
 | `arch.flame.mender.png` | **The Lamplighter** | The Coal | a brass lamplighter's pole with its small flame lit, leaning against nothing | brass, flame gold, night blue |
-| `arch.tide.builder.png` | **The Confluence** | The Channel | two river currents meeting and braiding into one wider flow, seen from above | river green, silt tan, white seam |
-| `arch.wind.kindler.png` | **The Inkling** | The Draft | a single leaf lifting off a still surface on the first stir of air | leaf ochre, pale grey, cream |
-| `arch.root.kindler.png` | **The Descent** | The Shaft | a stone spiral stair turning down into darkness, the bottom unseen | stone grey, moss, black |
-| `arch.root.mender.png` | **The Alchemist** | The Loam | a glass alembic and retort with dark matter transmuting to gold at the neck | glass green, gold, soot black |
+| `arch.tide.builder.png` | **The Harbour** | The Channel | a stone harbour arm curving around still water, mooring rings set into it | wet stone grey, harbour green, iron |
+| `arch.wind.kindler.png` | **The Muse** | The Draft | a lyre with one string still vibrating, laid on nothing | olive wood, gut string cream, bronze |
+| `arch.stone.trickster.png` | **The Drifter** | The Sand | a wind-carved dune ridge with its crest smoking away in the wind | sand ochre, shadow tan, pale sky |
+| `arch.root.mender.png` | **The Alchemist** | The Loam | a glass alembic and retort, dark matter turning to gold at the neck | glass green, gold, soot black |
 | `arch.thread.mender.png` | **The Mother** | The Stitch | a hand-carved wooden cradle, rockers worn smooth, a folded blanket inside | warm oak, wool cream, soft shadow |
 | `arch.thread.trickster.png` | **The Changeling** | The Tangle | a carved wooden poppet left in a nest of straw where a child should be | pale birch, straw gold, grey |
-| `arch.wheel.builder.png` | **The Orrery** | The Calendar | a brass orrery, its arms and spheres arrested mid-orbit | brass, patina green, ivory sphere |
-
-> The other 5 renames (**The Vessel** ← Basin, **The Mason** ← Mortar, **The Hoodoo** ← Sand, **The Seam** ← Solder, **The Salvage** ← Scrap) keep their existing plates — the art still fits the new name. No action needed.
+| `arch.wheel.builder.png` | **The Clockmaker** | The Calendar | an open clock movement, escapement and gear train exposed, mid-tick | brass, steel blue, jewel red |
 
 ---
 

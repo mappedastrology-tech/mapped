@@ -55,17 +55,17 @@ const MODE_MOD: Record<ModeId, TraitDeltas> = {
 /** Names — "Archetype Names v2", positional grid. */
 const NAMES: Record<DomainId, Record<ModeId, string>> = {
   flame: { kindler: "The Spark", builder: "The Hearth", warden: "The Ember", breaker: "The Wildfire", seer: "The Beacon", mender: "The Lamplighter", trickster: "The Smoke", sovereign: "The Furnace" },
-  tide: { kindler: "The Spring", builder: "The Confluence", warden: "The Vessel", breaker: "The Flood", seer: "The Mirror", mender: "The Rain", trickster: "The Undertow", sovereign: "The Tide" },
-  stone: { kindler: "The Quarry", builder: "The Wall", warden: "The Bedrock", breaker: "The Fault", seer: "The Map", mender: "The Mason", trickster: "The Hoodoo", sovereign: "The Keystone" },
-  wind: { kindler: "The Inkling", builder: "The Frame", warden: "The Library", breaker: "The Gale", seer: "The Lens", mender: "The Clearing", trickster: "The Riddle", sovereign: "The Compass" },
-  root: { kindler: "The Descent", builder: "The Crypt", warden: "The Gate", breaker: "The Pit", seer: "The Marrow", mender: "The Alchemist", trickster: "The Mask", sovereign: "The Vault" },
-  star: { kindler: "The Dawn", builder: "The Temple", warden: "The Altar", breaker: "The Comet", seer: "The Constellation", mender: "The Balm", trickster: "The Mirage", sovereign: "The Zenith" },
-  thread: { kindler: "The Spindle", builder: "The Loom", warden: "The Nest", breaker: "The Shears", seer: "The Web", mender: "The Mother", trickster: "The Changeling", sovereign: "The Knot" },
-  crown: { kindler: "The Banner", builder: "The Fortress", warden: "The Rampart", breaker: "The Breach", seer: "The Watchtower", mender: "The Treaty", trickster: "The Cuckoo", sovereign: "The Throne" },
-  forge: { kindler: "The Ore", builder: "The Anvil", warden: "The Guild", breaker: "The Chisel", seer: "The Blueprint", mender: "The Seam", trickster: "The Salvage", sovereign: "The Hammer" },
-  path: { kindler: "The Threshold", builder: "The Bridge", warden: "The Ferry", breaker: "The Frontier", seer: "The Lodestar", mender: "The Waystone", trickster: "The Crossroads", sovereign: "The Road" },
-  bell: { kindler: "The Chime", builder: "The Record", warden: "The Archive", breaker: "The Alarm", seer: "The Echo", mender: "The Hymn", trickster: "The Rumor", sovereign: "The Toll" },
-  wheel: { kindler: "The Seed", builder: "The Orrery", warden: "The Almanac", breaker: "The Eclipse", seer: "The Hourglass", mender: "The Thaw", trickster: "The Spiral", sovereign: "The Crucible" },
+  tide: { kindler: "The Spring", builder: "The Harbour", warden: "The Vessel", breaker: "The Flood", seer: "The Mirror", mender: "The Rain", trickster: "The Undertow", sovereign: "The Tide" },
+  stone: { kindler: "The Quarry", builder: "The Wall", warden: "The Bedrock", breaker: "The Fault", seer: "The Cartographer", mender: "The Mason", trickster: "The Drifter", sovereign: "The Keystone" },
+  wind: { kindler: "The Muse", builder: "The Joiner", warden: "The Librarian", breaker: "The Gale", seer: "The Lens", mender: "The Clearing", trickster: "The Riddle", sovereign: "The Compass" },
+  root: { kindler: "The Miner", builder: "The Crypt", warden: "The Gate", breaker: "The Pit", seer: "The Marrow", mender: "The Alchemist", trickster: "The Mask", sovereign: "The Vault" },
+  star: { kindler: "The Dawn", builder: "The Temple", warden: "The Altar", breaker: "The Comet", seer: "The Constellation", mender: "The Healer", trickster: "The Mirage", sovereign: "The Zenith" },
+  thread: { kindler: "The Spinner", builder: "The Weaver", warden: "The Nest", breaker: "The Shears", seer: "The Web", mender: "The Mother", trickster: "The Changeling", sovereign: "The Knot" },
+  crown: { kindler: "The Banner", builder: "The Fortress", warden: "The Sentinel", breaker: "The Breach", seer: "The Watchtower", mender: "The Treaty", trickster: "The Cuckoo", sovereign: "The Throne" },
+  forge: { kindler: "The Prospector", builder: "The Anvil", warden: "The Journeyman", breaker: "The Sculptor", seer: "The Architect", mender: "The Tinker", trickster: "The Forger", sovereign: "The Hammer" },
+  path: { kindler: "The Threshold", builder: "The Bridge", warden: "The Ferryman", breaker: "The Frontier", seer: "The Lodestar", mender: "The Waystone", trickster: "The Crossroads", sovereign: "The Road" },
+  bell: { kindler: "The Chime", builder: "The Chronicler", warden: "The Archivist", breaker: "The Alarm", seer: "The Echo", mender: "The Hymn", trickster: "The Rumor", sovereign: "The Toll" },
+  wheel: { kindler: "The Seed", builder: "The Clockmaker", warden: "The Almanac", breaker: "The Eclipse", seer: "The Hourglass", mender: "The Thaw", trickster: "The Spiral", sovereign: "The Crucible" },
 };
 
 const DOMAIN_ESSENCE: Record<DomainId, string> = {
