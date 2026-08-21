@@ -1,0 +1,59 @@
+# Builds the static export the native apps bundle, and publishes it as a
+# downloadable artifact.
+#
+# Why: the ~82MB web bundle is build output, so it is not committed. Without
+# it a fresh clone opens in Xcode to a white screen. Running the export needs
+# Node, which the Mac used for signing may not have — so CI builds it instead
+# and you download the result.
+#
+# Use: Actions → "Build app bundle" → Run workflow → download `app-bundle`,
+# unzip it into ios/App/App/public/ (and android/app/src/main/assets/public/).
+
+name: Build app bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "API origin the app calls"
+        required: true
+        default: "https://mapped-astrology.netlify.app"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "ios/**"
+      - "android/**"
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build static export
+        env:
+          # The export inlines NEXT_PUBLIC_* at build time. Supabase values are
+          # public by design (the anon key is RLS-gated); no secrets here.
+          NEXT_PUBLIC_API_BASE: ${{ github.event.inputs.api_base || 'https://mapped-astrology.netlify.app' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+        run: npm run build:app
+
+      - name: Copy the bundle into the native projects
+        run: npx cap sync
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle
+          path: ios/App/App/public
+          retention-days: 14

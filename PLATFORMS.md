@@ -129,3 +129,59 @@ refinement rather than construction.
 | Google Play Console | $25 one-time |
 | Netlify | Free tier; Cloudflare in front for the ~56MB of art |
 | Upstash Redis | Free tier — **required** before traffic, see `DEPLOY.md` |
+
+## Running the apps locally
+
+The native projects (`ios/`, `android/`) are committed, but the ~82MB web
+bundle they serve is **not** — it is build output. A fresh clone therefore has
+an empty `ios/App/App/public/`, and Xcode will run to a white screen until the
+bundle is in place.
+
+Three ways to get it there, in order of preference.
+
+### A. Build it locally (needs Node)
+
+```bash
+NEXT_PUBLIC_API_BASE=https://mapped-astrology.netlify.app npm run build:app
+npx cap sync
+```
+
+### B. Download it from CI (no Node needed)
+
+GitHub → **Actions → "Build app bundle" → Run workflow**. When it finishes,
+download the `app-bundle` artifact and unzip its contents into
+`ios/App/App/public/`.
+
+### C. Dev mode — point the app at the live site (fastest, temporary)
+
+Lets the shell run with no bundle at all. Edit
+`ios/App/App/capacitor.config.json` and add a `url` inside `server`:
+
+```json
+"server": {
+  "androidScheme": "https",
+  "iosScheme": "https",
+  "url": "https://mapped-astrology.netlify.app",
+  "cleartext": false
+}
+```
+
+> **Remove this before submitting.** An app that only loads a remote URL has no
+> offline behaviour and is exactly the "thin wrapper" Apple rejects under
+> Guideline 4.2. Dev convenience only.
+
+## Opening the project in Xcode
+
+1. Clone the repo (GitHub Desktop is fine — no terminal needed).
+2. Get the bundle in place via A, B, or C above.
+3. Open **`ios/App/App.xcodeproj`**.
+   (After a `pod install` there will also be an `App.xcworkspace` — once it
+   exists, always open the **workspace**, not the project.)
+4. Select the **App** target → **Signing & Capabilities** → tick *Automatically
+   manage signing* → choose your team. The bundle identifier is
+   `com.mappedastrology.app`.
+5. Pick a simulator (e.g. iPhone 15) from the device dropdown.
+6. Press **⌘R**.
+
+A physical device additionally needs the phone plugged in, trusted, and
+Developer Mode enabled (Settings → Privacy & Security → Developer Mode).

@@ -1,0 +1,17 @@
+{
+	"appId": "com.mappedastrology.app",
+	"appName": "Mapped",
+	"webDir": ".next-app",
+	"server": {
+		"androidScheme": "https",
+		"iosScheme": "https"
+	},
+	"ios": {
+		"backgroundColor": "#0e0a14",
+		"contentInset": "always"
+	},
+	"android": {
+		"backgroundColor": "#0e0a14"
+	},
+	"packageClassList": []
+}

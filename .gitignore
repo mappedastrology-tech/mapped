@@ -59,10 +59,12 @@ broken_name*
 # hold native config, icons, and signing settings. Only the generated bits are
 # ignored: the web bundle copied in by `cap sync`, and native build output.
 /ios/App/App/public/
+!/ios/App/App/capacitor.config.json
 /ios/App/Pods/
 /ios/App/App.xcworkspace/
 /ios/DerivedData/
 /android/app/src/main/assets/public/
+!/android/app/src/main/assets/capacitor.config.json
 /android/app/build/
 /android/build/
 /android/.gradle/
