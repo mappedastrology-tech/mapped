@@ -22,7 +22,7 @@ import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { computeNumerology } from "@/lib/numerology";
 import { computeHumanDesign } from "@/lib/humanDesign/engine";
 import { computeArchetype } from "@/lib/archetype/engine";
-import { ELEMENT_LABEL, type Element } from "@/lib/archetype/types";
+import { ELEMENT_LABEL } from "@/lib/archetype/types";
 import { computeResonance, systemShares, type Placement } from "@/lib/resonance/engine";
 import { persistAllAssignments } from "@/lib/resonance/persist";
 import { TRAIT_ORDER, TRAIT_PHRASE } from "@/lib/resonance/traits";
@@ -30,6 +30,7 @@ import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
 import { computeDeity, DEITY_TIER_LABEL } from "@/lib/resonance/deities";
 import { computeCharacter } from "@/lib/resonance/characters";
+import { computeChineseZodiac, ANIMAL_TRAIT, ELEMENT_TRAIT } from "@/lib/chineseZodiac";
 import { masterLabel } from "@/lib/numerologyMeanings";
 
 const PHOTO_KEY = "mapped:profile-photo";
@@ -86,6 +87,8 @@ export default function ProfilePageContent() {
   const fileRef = useRef<HTMLInputElement>(null);
   /** Single-open accordion for "You, in four parts". */
   const [openFacet, setOpenFacet] = useState<string | null>("shadow");
+  /** Which "more reads" card is expanded into its detail sheet. */
+  const [openRead, setOpenRead] = useState<ReadDetail | null>(null);
 
   useEffect(() => {
     try {
@@ -238,6 +241,13 @@ export default function ProfilePageContent() {
   const deity = useMemo(() => (resonance ? computeDeity(resonance.traits) : null), [resonance]);
   const character = useMemo(() => (resonance ? computeCharacter(resonance.traits) : null), [resonance]);
 
+  // Chinese zodiac — real lunisolar calculation (year from Chinese New Year,
+  // month from the solar terms, hour from the double-hours).
+  const zodiac = useMemo(
+    () => (row ? computeChineseZodiac(row.birthDate, row.unknownTime ? null : row.birthTime) : null),
+    [row],
+  );
+
   // Store all four assignments once (immutable snapshots, one current row per
   // library). Fire-and-forget — the page already renders from the deterministic
   // compute above.
@@ -335,6 +345,14 @@ export default function ProfilePageContent() {
       href: "/human-design",
       value: `${hd.type} ${hd.profile} · ${hd.authorityName?.split(" — ")[0] ?? ""}`.trim(),
       contribution: "How you're built to decide, and what to wait for.",
+    },
+    zodiac && {
+      key: "chineseZodiac",
+      label: "Chinese zodiac",
+      glyph: "\u516D",
+      href: "/library",
+      value: `${zodiac.yearName} \u00B7 ${zodiac.innerAnimal} month \u00B7 ${zodiac.secretAnimal} hour`,
+      contribution: "Your year, month, and hour animals \u2014 the outer, inner, and secret self.",
     },
   ].filter(Boolean) as { key: string; label: string; glyph: string; href: string; value: string; contribution: string }[];
 
@@ -482,7 +500,7 @@ export default function ProfilePageContent() {
           <section>
             <Kicker>How we got here</Kicker>
             <SubLine>
-              Three systems, read together. Where they agree becomes your archetype;
+              Four systems, read together. Where they agree becomes your archetype;
               where they argue becomes your tension.
             </SubLine>
             <div className="flex flex-col gap-[9px]">
@@ -523,28 +541,78 @@ export default function ProfilePageContent() {
 
           {/* ═══ C. Three more reads ═══ */}
           <section>
-            <Kicker>Three more reads</Kicker>
-            <SubLine>The same pattern, matched against three other libraries.</SubLine>
+            <Kicker>Four more reads</Kicker>
+            <SubLine>The same pattern, matched against four other systems. Tap any card to read it in full.</SubLine>
             <div className="grid grid-cols-2 gap-[9px] items-stretch">
               {animal && (
-                <ReadCard kicker="Animal guide" glyph="❦" title={animal.guide.name} body={animal.guide.tagline}>
+                <ReadCard kicker="Animal guide" glyph="\u2766" title={animal.guide.name} body={animal.guide.tagline}
+                  onOpen={() => setOpenRead({
+                    kind: "Animal guide", title: animal.guide.name, tagline: animal.guide.tagline,
+                    body: animal.guide.essence, shadow: animal.guide.shadow,
+                    meta: [
+                      { label: "Source", value: TIER_LABEL[animal.guide.tier] },
+                      { label: "Tradition", value: animal.guide.tradition },
+                      ...(animal.alt ? [{ label: "Also close", value: animal.alt.name }] : []),
+                    ],
+                    sources: animal.guide.sources,
+                    note: animal.guide.status === "living-open"
+                      ? "Shown as a comparison, not a claim, out of respect for a living tradition."
+                      : null,
+                  })}>
                   <FooterRow label="Source" value={TIER_LABEL[animal.guide.tier]} />
-                  <FooterRow label="Tradition" value={animal.guide.tradition.split(";")[0]} />
                 </ReadCard>
               )}
               {deity && (
-                <ReadCard kicker="Deity" glyph="✶" title={deity.guide.name} body={deity.guide.tagline}>
+                <ReadCard kicker="Deity" glyph="\u2736" title={deity.guide.name} body={deity.guide.tagline}
+                  onOpen={() => setOpenRead({
+                    kind: "Deity", title: deity.guide.name, tagline: deity.guide.tagline,
+                    body: deity.guide.essence, shadow: deity.guide.shadow,
+                    meta: [
+                      { label: "Pantheon", value: deity.guide.pantheon },
+                      { label: "Source", value: DEITY_TIER_LABEL[deity.guide.tier] },
+                      ...(deity.alt ? [{ label: "Also close", value: deity.alt.name }] : []),
+                    ],
+                    sources: deity.guide.sources,
+                    note: deity.guide.tier === "living-open"
+                      ? "Shown as a comparison, not a claim, out of respect for a living tradition."
+                      : null,
+                  })}>
                   <FooterRow label="Pantheon" value={deity.guide.pantheon} />
-                  <FooterRow label="Source" value={DEITY_TIER_LABEL[deity.guide.tier]} />
                 </ReadCard>
               )}
               {character && (
-                <div className="col-span-2">
-                  <ReadCard kicker="Character" glyph="⚔" title={character.guide.name} body={character.guide.tagline}>
-                    <FooterRow label="From" value={character.guide.work} />
-                    <FooterRow label="Author" value={character.guide.author} />
-                  </ReadCard>
-                </div>
+                <ReadCard kicker="Character" glyph="\u2694" title={character.guide.name} body={character.guide.tagline}
+                  onOpen={() => setOpenRead({
+                    kind: "Character", title: character.guide.name, tagline: character.guide.tagline,
+                    body: character.guide.essence, shadow: character.guide.shadow,
+                    meta: [
+                      { label: "From", value: character.guide.work },
+                      { label: "Author", value: character.guide.author },
+                      ...(character.alt ? [{ label: "Also close", value: character.alt.name }] : []),
+                    ],
+                    sources: character.guide.sources, note: null,
+                  })}>
+                  <FooterRow label="From" value={character.guide.work} />
+                </ReadCard>
+              )}
+              {zodiac && (
+                <ReadCard kicker="Chinese zodiac" glyph="\u516D" title={zodiac.yearName} body={ANIMAL_TRAIT[zodiac.animal].split("\u2014")[0].trim()}
+                  onOpen={() => setOpenRead({
+                    kind: "Chinese zodiac", title: zodiac.yearName, tagline: `${zodiac.innerAnimal} month \u00B7 ${zodiac.secretAnimal} hour`,
+                    body: `${ANIMAL_TRAIT[zodiac.animal]} ${ELEMENT_TRAIT[zodiac.element]}`,
+                    shadow: null,
+                    meta: [
+                      { label: "Outer (year)", value: `${zodiac.element} ${zodiac.animal}` },
+                      { label: "Inner (month)", value: zodiac.innerAnimal },
+                      { label: "Secret (hour)", value: zodiac.secretAnimal },
+                      { label: "Polarity", value: zodiac.polarity },
+                      { label: "Zodiac year began", value: zodiac.newYear },
+                    ],
+                    sources: ["Sexagenary cycle; year set by Chinese New Year, month by the solar terms, hour by the double-hours"],
+                    note: row?.unknownTime ? "Your hour animal needs an exact birth time \u2014 add one to complete it." : null,
+                  })}>
+                  <FooterRow label="Element" value={zodiac.element} />
+                </ReadCard>
               )}
             </div>
           </section>
@@ -741,6 +809,8 @@ export default function ProfilePageContent() {
         </div>
       )}
 
+      {openRead && <ReadSheet detail={openRead} onClose={() => setOpenRead(null)} />}
+
       <style jsx global>{`
         @keyframes pf-breathe { 0%,100% { opacity:.35 } 50% { opacity:.75 } }
         @keyframes pf-drift { 0%,100% { transform:rotate(0deg) } 50% { transform:rotate(3deg) } }
@@ -798,12 +868,17 @@ function SubLine({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ReadCard({ kicker, glyph, title, body, children }: {
-  kicker: string; glyph: string; title: string; body: string; children?: React.ReactNode;
+function ReadCard({ kicker, glyph, title, body, children, onOpen }: {
+  kicker: string; glyph: string; title: string; body: string;
+  children?: React.ReactNode; onOpen?: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-[9px] h-full"
-      style={{ borderRadius: 16, padding: "15px 14px", background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col gap-[9px] h-full w-full text-left active:scale-[0.985] transition-transform"
+      style={{ borderRadius: 16, padding: "15px 14px", background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
+    >
       <p className="text-[8.5px] font-bold uppercase" style={{ letterSpacing: "0.16em", color: "var(--brass)" }}>{kicker}</p>
       <span className="flex items-center justify-center"
         style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-card)", color: "var(--brass)", fontSize: 18 }}>
@@ -811,11 +886,78 @@ function ReadCard({ kicker, glyph, title, body, children }: {
       </span>
       <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, lineHeight: 1.1, color: "var(--foreground)" }}>{title}</p>
       <p className="text-[12.5px]" style={{ lineHeight: 1.55, color: "var(--foreground-secondary)" }}>{body}</p>
-      {children && (
-        <div className="flex flex-col gap-[5px] mt-auto pt-[11px]" style={{ borderTop: "0.5px solid var(--border-card)" }}>
-          {children}
+      <div className="flex flex-col gap-[5px] mt-auto pt-[11px] w-full" style={{ borderTop: "0.5px solid var(--border-card)" }}>
+        {children}
+        <span className="text-[10px] mt-0.5" style={{ color: "var(--brass)" }}>Read more \u2192</span>
+      </div>
+    </button>
+  );
+}
+
+/** Payload for the expanded detail sheet behind each "more reads" card. */
+interface ReadDetail {
+  kind: string;
+  title: string;
+  tagline: string;
+  body: string;
+  shadow: string | null;
+  meta: { label: string; value: string }[];
+  sources: string[];
+  note: string | null;
+}
+
+function ReadSheet({ detail, onClose }: { detail: ReadDetail; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={detail.title}>
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(2px)" }} />
+      <div className="relative w-full max-w-lg max-h-[86vh] overflow-y-auto"
+        style={{ background: "var(--background-elevated)", borderTopLeftRadius: 24, borderTopRightRadius: 24, border: "0.5px solid var(--border-card)", padding: "10px 22px 30px" }}>
+        <div className="sticky top-0 flex justify-center pb-3 pt-1" style={{ background: "var(--background-elevated)" }}>
+          <span style={{ width: 42, height: 4, borderRadius: 99, background: "var(--border-card)" }} />
         </div>
-      )}
+        <p className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>{detail.kind}</p>
+        <h3 className="mt-1" style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 500, lineHeight: 1.1, color: "var(--foreground)" }}>
+          {detail.title}
+        </h3>
+        <p className="text-[13px] italic mt-1.5" style={{ color: "var(--brass)" }}>{detail.tagline}</p>
+        <p className="text-[14px] mt-4" style={{ lineHeight: 1.75, color: "var(--foreground-secondary)" }}>{detail.body}</p>
+
+        {detail.shadow && (
+          <div className="mt-4" style={{ borderRadius: 14, padding: "13px 15px", background: "var(--background-card)", border: "0.5px solid color-mix(in srgb, var(--oxblood-light) 34%, transparent)" }}>
+            <p className="text-[9px] font-bold uppercase mb-1" style={{ letterSpacing: "0.16em", color: "var(--oxblood-light)" }}>Its shadow in you</p>
+            <p className="text-[13px]" style={{ lineHeight: 1.65, color: "var(--foreground-secondary)" }}>{detail.shadow}</p>
+          </div>
+        )}
+
+        {detail.meta.length > 0 && (
+          <div className="flex flex-col gap-2 mt-4" style={{ borderRadius: 14, padding: "13px 15px", background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}>
+            {detail.meta.map((m) => (
+              <div key={m.label} className="flex items-baseline justify-between gap-3">
+                <span className="text-[9px] uppercase flex-shrink-0" style={{ letterSpacing: "0.12em", color: "var(--foreground-faint)" }}>{m.label}</span>
+                <span className="text-[12.5px] text-right" style={{ color: "var(--foreground-secondary)" }}>{m.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[11px] mt-4" style={{ lineHeight: 1.6, color: "var(--foreground-faint)" }}>
+          {detail.sources.join("; ")}.{detail.note ? ` ${detail.note}` : ""}
+        </p>
+
+        <button onClick={onClose} className="w-full mt-5 py-3 rounded-full text-[14px] font-bold"
+          style={{ backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}>
+          Close
+        </button>
+      </div>
     </div>
   );
 }
