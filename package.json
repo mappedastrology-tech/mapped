@@ -26,12 +26,14 @@
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "0.35.3",
     "stripe": "^22.2.0",
     "topojson-client": "^3.1.0",
     "web-push": "^3.6.7",
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

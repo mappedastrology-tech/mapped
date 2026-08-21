@@ -32,66 +32,119 @@ npm run typecheck  # TypeScript only
 
 ---
 
-## At launch: Netlify migration plan
+## Migrating to Netlify
 
-Netlify supports Next.js 16 with zero config via its OpenNext adapter — no code changes needed for the app itself.
+### Reality check on Next.js support
+
+The Next.js 16 docs (`node_modules/next/dist/docs/01-app/01-getting-started/17-deploying.md`)
+list only **Vercel and Bun** as *verified* adapters. Cloudflare and Netlify are
+under "Other Platforms" — they ship their own Next.js integrations that are
+"not built on the public Adapter API and are not verified by the Next.js team,
+so feature support and compatibility may vary."
+
+In practice this app is a good candidate anyway: no middleware, no ISR /
+`revalidate`, no `use cache`. All 28 API routes run on the Node runtime. But
+smoke-test after the first deploy rather than assuming zero-config.
+
+The same docs also state the baseline plainly: *"To run Next.js, your platform
+needs a Node.js server. That's it."* If Netlify's adapter ever fights us, any
+host that runs `next start` (Render, Railway, Fly, a VPS) is a safe fallback
+with full feature fidelity.
+
+### What's already in the repo
+
+| File | Purpose |
+|---|---|
+| `netlify.toml` | Build config + long-cache headers for the ~56MB of card/moon/texture art, and a no-cache header for `/sw.js` |
+| `netlify/functions/notifications-cron.mts` | Scheduled Function replacing the Vercel cron (daily 14:00 UTC) |
+| `sharp` in dependencies | Required for self-hosted Image Optimization |
+
+`vercel.json` is left in place so the Vercel deploy keeps working until DNS is
+cut over. Netlify ignores it.
 
 ### Step 1: Connect the repo
 
-1. Sign up / log in at https://app.netlify.com
-2. **Add new site → Import an existing project** → connect GitHub → pick `mappedastrology-tech/mapped`
-3. Netlify auto-detects Next.js. Build command: `npm run build`. No publish directory override needed.
+1. Log in at https://app.netlify.com
+2. **Add new site → Import an existing project** → GitHub → `mappedastrology-tech/mapped`
+3. Netlify auto-detects Next.js and reads `netlify.toml`. Leave the defaults.
 
 ### Step 2: Environment variables
 
-Site configuration → Environment variables → add the same four vars listed above. Mark `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` as secret.
+Site configuration → Environment variables. Mark everything except the
+`NEXT_PUBLIC_*` pair as secret.
 
-### Step 3: Replace the Vercel cron
+**Required:**
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ANTHROPIC_API_KEY`
 
-Netlify ignores `vercel.json`. Recreate the daily notifications job as a Netlify Scheduled Function:
+**Push notifications** (see the Push notifications section):
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT`
+- `CRON_SECRET` — the scheduled function sends this as a bearer token, and
+  `/api/cron/notifications` fails closed without it
 
-Create `netlify/functions/notifications-cron.mts`:
+**Cost control (do this before any real traffic):**
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
-```ts
-import type { Config } from "@netlify/functions";
+Without Redis, `checkRateLimitDurable` falls back to in-memory counting. On
+serverless each instance keeps its own counter, so a burst spread across
+instances walks straight through the limit — and every one of those requests
+is a paid Anthropic call. This is the single largest surprise-bill vector in
+the app, well ahead of hosting.
 
-export default async () => {
-  await fetch(`${process.env.URL}/api/cron/notifications`);
-};
+### Step 3: Put Cloudflare in front
 
-export const config: Config = {
-  schedule: "0 14 * * *", // daily 14:00 UTC — same as vercel.json
-};
-```
+`public/` is ~56MB (18MB oracle, 15MB images, 11MB backgrounds, 6.8MB tarot).
+Bandwidth, not compute, is what scales with users.
 
-Note: scheduled functions have a 30-second execution limit and only run on the published deploy (not previews).
+Point the domain's DNS at Cloudflare (free plan) with proxying enabled. Static
+art is then served from their edge on unmetered bandwidth, and the origin
+barely sees repeat traffic. Combined with the cache headers in `netlify.toml`,
+this is the main defence against a bandwidth-driven bill.
 
-### Step 4: Deploy flow on Netlify
+### Step 4: Verify
 
-Netlify deploys automatically on every push to `main`:
+1. `https://<site>/api/notifications` → `{"configured": true}` once VAPID keys are set
+2. Trigger the scheduled function once from Netlify's UI (Functions → notifications-cron)
+   and check the log line for a `200`
+3. Hard-refresh the app and confirm the service worker re-registers (DevTools → Application → Service Workers)
 
-```bash
-npm run check                  # gate locally first
-git add -A && git commit -m "your change"
-git push
-```
+### Step 5: Cut over and decommission
 
-The GitHub Actions CI (`.github/workflows/ci.yml`) runs the same lint + typecheck on every push, so broken code is flagged even if you skip the local check.
-
-### Step 5: Custom domain
-
-Netlify → Domain management → add your launch domain. Netlify provisions HTTPS automatically.
-
-### Step 6: Post-migration checklist
-
-- [ ] Update Supabase Auth → URL Configuration → Site URL + redirect URLs to the new domain
-- [ ] Verify the notifications cron fired (Netlify → Logs → Functions)
-- [ ] Update the uptime monitor (Claude scheduled task `mapped-uptime-monitor`) to ping the new domain instead of mapped-olive.vercel.app
-- [ ] Test sign-in, onboarding, chart, tarot, push notifications on the new domain
-- [ ] Keep the Vercel deployment up for a few days as fallback, then delete the project
-- [ ] Delete `vercel.json` and `wrangler.toml` (old Cloudflare remnant) once Netlify is confirmed stable
+Only after the Netlify site is verified: move DNS, watch for a day, then
+delete the Vercel project so it can't bill.
 
 ---
+
+## Push notifications
+
+The full pipeline (opt-in UI, `public/sw.js`, `push_subscriptions` table with
+RLS, `/api/cron/notifications` sender) is built. It needs keys.
+
+Generate a VAPID pair:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+`VAPID_SUBJECT` (`mailto:…`) and a random `CRON_SECRET`, then **redeploy** —
+the public key is inlined at build time, so a redeploy is required.
+
+Check `/api/notifications` reports `"configured": true`, then re-enable
+notifications in the app so a keyed subscription replaces the old keyless one.
+
+**iOS:** web push only works when the site is added to the Home Screen and
+opened from that icon — never from a Safari tab.
+
+**App Store builds:** this repo has no native wrapper (no Capacitor/Expo). A
+plain Next.js app cannot ship to the App Store as-is, and web push does not
+work inside a native wrapper — that requires APNs through the native layer.
+Web push serves the web/PWA audience only.
 
 ## Supabase notes
 

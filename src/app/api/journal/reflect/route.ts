@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createMessageResilient } from "@/lib/aiModel";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 /**
  * POST /api/journal/reflect

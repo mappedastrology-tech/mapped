@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { FALLBACK_MODEL } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 /**
  * POST /api/dolly/memory
