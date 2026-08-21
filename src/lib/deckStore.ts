@@ -1,102 +1,78 @@
 /**
- * Deck Store catalog — the premium oracle decks sold in the Tarot tab's Store.
+ * Deck Store catalog — the oracle decks sold in the Tarot tab's Store.
  *
- * The two launch decks (Stitched Animal, Bird) stay free for everyone; the
- * store sells NEW premium decks as one-time purchases (own forever). Each
- * entry maps to one Stripe Product+Price — put the live price id in
- * `stripePriceEnv`'s env var (see DECK_STORE_SETUP.md). A deck with
- * `status: "coming-soon"` renders in the store but can't be bought yet, so the
- * storefront can ship before every deck's art/cards are finished.
+ * The store sells the app's REAL oracle decks (Stitched Animal, Bird) as
+ * one-time purchases — own forever. Classic Tarot stays free. Each entry maps
+ * to one Stripe Product+Price; card data/images come from the oracle registry
+ * (src/lib/oracleDecks.ts), so the store shows real card photos and sample
+ * meanings, and a purchased deck is instantly playable.
+ *
+ * Price resolution: an env override wins; otherwise the baked price id that
+ * matches the server's STRIPE_SECRET_KEY mode. The app currently runs Stripe
+ * in TEST mode — test products exist for both decks. Live products must be
+ * created before switching to live keys (see DECK_STORE_SETUP.md).
  *
  * Ownership lives in the `purchased_decks` table (one row per user per deck,
- * written by the Stripe webhook). Free decks never appear there — they're
- * owned implicitly.
+ * written by the Stripe webhook).
  */
 
 export type DeckStatus = "available" | "coming-soon";
 
 export interface StoreDeck {
-  id: string;                 // deck id, also used as ORACLE deck id once playable
+  id: string;                 // oracle registry deck id — purchased decks are playable
   name: string;
   tagline: string;            // one-liner under the name
   description: string;        // longer store copy
   cardCount: number;
   priceCents: number;         // display price; Stripe Price is the source of truth
   stripePriceEnv: string;     // optional env-var override for the Stripe price id
-  stripePriceLive: string;    // live-mode Price id (created in the Mapped Stripe account)
-  stripePriceTest: string;    // test-mode Price id (same account, sandbox)
-  coverImage: string;         // /public path — swap in real art
+  stripePriceLive: string;    // live-mode Price id ("" until created — blocks live sale safely)
+  stripePriceTest: string;    // test-mode Price id
+  coverImage: string;
   status: DeckStatus;
 }
 
 /**
  * Resolve the Stripe Price id for a deck: an env override wins; otherwise pick
  * live vs test to match the server's STRIPE_SECRET_KEY mode (sk_live_… ⇒ live).
- * Price ids aren't secrets — they're safe in source; only the secret key is.
+ * Returns undefined when the mode's price doesn't exist yet (deck unsellable).
  */
 export function resolveStripePrice(deck: StoreDeck): string | undefined {
   const override = process.env[deck.stripePriceEnv];
   if (override) return override;
   const isLive = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live");
-  return isLive ? deck.stripePriceLive : deck.stripePriceTest;
+  const id = isLive ? deck.stripePriceLive : deck.stripePriceTest;
+  return id || undefined;
 }
 
 export const STORE_DECKS: StoreDeck[] = [
   {
-    id: "botanical-oracle",
-    name: "Botanical Oracle",
-    tagline: "Wisdom pressed between the pages.",
+    id: "stitched-animal",
+    name: "Stitched Animal Oracle",
+    tagline: "Soft hands, sharp wisdom.",
     description:
-      "44 cards of flowers, roots, and healing herbs — each carrying the folk meaning gardeners and herbalists have passed down for centuries. Draw one when you need to know what season you're actually in.",
-    cardCount: 44,
-    priceCents: 499,
-    stripePriceEnv: "STRIPE_PRICE_DECK_BOTANICAL",
-    stripePriceLive: "price_1U6wPsRdq07zsKMQAHWMLzL2",
-    stripePriceTest: "price_1U6wR0Rdq07zsKMQXinoDEPF",
-    coverImage: "/images/dried-flower-bouquet.png",
-    status: "available",
-  },
-  {
-    id: "celestial-oracle",
-    name: "Celestial Oracle",
-    tagline: "The night sky, dealt into your hands.",
-    description:
-      "48 cards of moons, comets, constellations, and eclipses. A deck for the big questions — timing, fate, and the long arc of things. Pairs naturally with your chart and transits.",
-    cardCount: 48,
-    priceCents: 499,
-    stripePriceEnv: "STRIPE_PRICE_DECK_CELESTIAL",
-    stripePriceLive: "price_1U6wQVRdq07zsKMQvlsIUz3D",
-    stripePriceTest: "price_1U6wR8Rdq07zsKMQWDHEN9Qx",
-    coverImage: "/images/cosmic-eye.png",
-    status: "available",
-  },
-  {
-    id: "sea-oracle",
-    name: "Sea Oracle",
-    tagline: "Messages from the deep.",
-    description:
-      "40 cards of tides, shells, storms, and creatures of the deep — for readings about feeling, intuition, and what moves underneath the surface of a situation.",
-    cardCount: 40,
-    priceCents: 399,
-    stripePriceEnv: "STRIPE_PRICE_DECK_SEA",
-    stripePriceLive: "price_1U6wQdRdq07zsKMQxCzWM3tC",
-    stripePriceTest: "price_1U6wRHRdq07zsKMQerrs4epb",
-    coverImage: "/images/angel-fish-grayscale.png",
-    status: "coming-soon",
-  },
-  {
-    id: "crystal-oracle",
-    name: "Crystal Oracle",
-    tagline: "Stone-clear answers.",
-    description:
-      "36 cards of crystals and minerals, each with its traditional association and a grounded, practical read. For when you want an answer with edges.",
+      "36 hand-stitched animal guides, each carrying its own counsel — from the Rabbit's sensitivity to the Fox's instinct. Warm, direct readings with no reversals: what you draw is what's speaking. The gentlest deck in Mapped, and the best one to learn oracle reading on.",
     cardCount: 36,
-    priceCents: 399,
-    stripePriceEnv: "STRIPE_PRICE_DECK_CRYSTAL",
-    stripePriceLive: "price_1U6wQkRdq07zsKMQRHr2Y8Yg",
-    stripePriceTest: "price_1U6wRNRdq07zsKMQrVnsmKaB",
-    coverImage: "/images/crystal-ball.png",
-    status: "coming-soon",
+    priceCents: 555,
+    stripePriceEnv: "STRIPE_PRICE_DECK_STITCHED_ANIMAL",
+    stripePriceLive: "", // create the live product before going live (see DECK_STORE_SETUP.md)
+    stripePriceTest: "price_1U6waTRdq07zsKMQbdKZfs3n",
+    coverImage: "/oracle/stitched-animal/1.webp",
+    status: "available",
+  },
+  {
+    id: "bird",
+    name: "The Bird Oracle",
+    tagline: "Seventy-two wings, seven suits, one sky.",
+    description:
+      "A 72-card oracle in seven suits, each bird carrying wisdom drawn from observation and myth. Reads upright and reversed, so every card has two voices — a deeper, more layered deck for readers who want nuance and shadow in their pulls.",
+    cardCount: 72,
+    priceCents: 555,
+    stripePriceEnv: "STRIPE_PRICE_DECK_BIRD",
+    stripePriceLive: "", // create the live product before going live (see DECK_STORE_SETUP.md)
+    stripePriceTest: "price_1U6wbBRdq07zsKMQRmUcFfjW",
+    coverImage: "/oracle/bird/1.webp",
+    status: "available",
   },
 ];
 

@@ -1,43 +1,42 @@
 # Deck Store — Stripe status
 
-## ✅ Already done for you (via your connected Stripe account)
+## Current lineup
 
-All Stripe products and prices are CREATED — in both live mode and test mode —
-and their price ids are baked into the app (`src/lib/deckStore.ts`). The server
-automatically uses the test-mode prices while `STRIPE_SECRET_KEY` is a test key
-(`sk_test_…`) and the live ones when you switch to a live key. No env vars
-needed.
+The store sells the app's two REAL oracle decks at **$5.55** each (one-time,
+own forever): Stitched Animal Oracle (36 cards) and The Bird Oracle (72
+cards). Classic Tarot stays free. The store shows real card photos, and each
+deck opens a detail page (browsable card strip + three sample cards with
+keywords/meanings) so buyers can judge the deck's voice before purchase.
+Unowned oracle decks appear locked in My Decks and route to the store.
 
-| Deck | Live price | Test price |
+## ✅ Done via your connected Stripe account (TEST mode — what the app runs)
+
+| Deck | Price | Test price id |
 |---|---|---|
-| Botanical Oracle · $4.99 | price_1U6wPsRdq07zsKMQAHWMLzL2 | price_1U6wR0Rdq07zsKMQXinoDEPF |
-| Celestial Oracle · $4.99 | price_1U6wQVRdq07zsKMQvlsIUz3D | price_1U6wR8Rdq07zsKMQWDHEN9Qx |
-| Sea Oracle · $3.99 | price_1U6wQdRdq07zsKMQxCzWM3tC | price_1U6wRHRdq07zsKMQerrs4epb |
-| Crystal Oracle · $3.99 | price_1U6wQkRdq07zsKMQRHr2Y8Yg | price_1U6wRNRdq07zsKMQrVnsmKaB |
+| Stitched Animal Oracle | $5.55 | price_1U6waTRdq07zsKMQbdKZfs3n |
+| The Bird Oracle | $5.55 | price_1U6wbBRdq07zsKMQRmUcFfjW |
 
-Your app currently runs Stripe in TEST MODE (the only webhook endpoint on the
-account is the test-mode one at /api/stripe/webhook — which is already set to
-receive checkout.session.completed, so deck fulfillment works now). You can
-test the whole store today: buy with card 4242 4242 4242 4242, any future
-expiry/CVC.
+Test the full flow today with card 4242 4242 4242 4242 (any future expiry/CVC):
+buy → return banner → deck unlocked in My Decks → row in purchased_decks →
+subscription tier untouched. The test webhook already covers fulfillment.
 
-## Going LIVE later (the one manual bit)
+(The earlier four concept decks — Botanical/Celestial/Sea/Crystal — are out of
+the storefront; their Stripe products can sit unused or be archived in the
+dashboard. Re-add any of them later as a catalog entry once it has cards.)
 
-When you're ready to take real money (this applies to your subscription too,
-not just decks — live mode currently has NO webhook, so live purchases would
-never be fulfilled):
+## Going LIVE (two manual bits — my safety layer can't create live payment infrastructure)
 
-1. Stripe Dashboard (live mode) → Developers → Webhooks → Add endpoint:
-   `https://mapped-olive.vercel.app/api/stripe/webhook`
-   events: `checkout.session.completed`, `customer.subscription.updated`,
-   `customer.subscription.deleted`. Copy its signing secret (`whsec_…`).
-2. Vercel env vars (Production): set `STRIPE_SECRET_KEY` to your live
-   `sk_live_…` key and `STRIPE_WEBHOOK_SECRET` to that live signing secret.
-   (Also `STRIPE_PRICE_ID` for the subscription, if that's still a test price.)
-3. Redeploy. The deck store flips to live prices automatically.
-
-(I tried to create the live webhook for you; my safety layer blocks creating
-live payment infrastructure, so that one click is yours.)
+1. Stripe Dashboard (live mode) → Product catalog: create the two products
+   ("Stitched Animal Oracle Deck", "Bird Oracle Deck"), one-off $5.55 each.
+   Paste their price_… ids into `stripePriceLive` in `src/lib/deckStore.ts`
+   (or set env vars STRIPE_PRICE_DECK_STITCHED_ANIMAL / STRIPE_PRICE_DECK_BIRD).
+   Until then the live ids are "" and live sales are safely refused.
+2. Dashboard (live mode) → Developers → Webhooks → Add endpoint
+   `https://mapped-olive.vercel.app/api/stripe/webhook` with events
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted` — live mode currently has NO webhook, which
+   also blocks live subscription fulfillment. Then set live STRIPE_SECRET_KEY +
+   STRIPE_WEBHOOK_SECRET in Vercel and redeploy.
 
 ## How it works
 

@@ -24,7 +24,6 @@ import {
 import { tarotMeanings } from "@/lib/tarotMeanings";
 import { type OracleCard, type OracleDeckInfo } from "@/lib/stitchedAnimalOracle";
 import { ORACLE_DECKS as ORACLE_DECK_REGISTRY, getOracleDeck } from "@/lib/oracleDecks";
-import { STORE_DECK_BY_ID } from "@/lib/deckStore";
 import DeckStore from "@/components/tarot/DeckStore";
 import { shareReadingAsImage } from "@/lib/shareCard";
 import Image from "next/image";
@@ -797,17 +796,25 @@ export default function TarotTab() {
             covers={["major-0", "major-8", "major-13"].map((id) => getCardImagePath(id)!).filter(Boolean)}
             onClick={() => { setSelectedDeck("classic-tarot"); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
           />
-          {ORACLE_DECK_REGISTRY.map((deck) => (
-            <DeckRow
-              key={deck.id}
-              tag={`Oracle · ${deck.cardCount} cards`}
-              name={deck.name}
-              sub={deck.description}
-              count={`${deck.cardCount} cards`}
-              covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.png`)}
-              onClick={() => { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
-            />
-          ))}
+          {/* Oracle decks are sold in the Deck Store — playable when owned,
+              otherwise shown locked with a path to the store. */}
+          {ORACLE_DECK_REGISTRY.map((deck) => {
+            const isOwned = ownedStoreDecks.includes(deck.id);
+            return (
+              <DeckRow
+                key={deck.id}
+                tag={isOwned ? `Oracle · ${deck.cardCount} cards` : `Oracle · ${deck.cardCount} cards · In the Deck Store`}
+                name={deck.name}
+                sub={isOwned ? deck.description : `${deck.description.split(".")[0]}. Tap to see the cards and unlock it.`}
+                count={`${deck.cardCount} cards`}
+                covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.png`)}
+                onClick={() => {
+                  if (isOwned) { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }
+                  else setDeckTab("store");
+                }}
+              />
+            );
+          })}
           {oracleDecks.filter((d) => d.purchased).map((deck) => (
             <DeckRow
               key={deck.id}
@@ -820,27 +827,6 @@ export default function TarotTab() {
               onClick={() => { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }}
             />
           ))}
-          {/* Premium decks bought in the Deck Store. Playable once their cards
-              land in the oracle registry; until then they show as owned. */}
-          {ownedStoreDecks.map((id) => {
-            const sd = STORE_DECK_BY_ID[id];
-            if (!sd) return null;
-            const playable = ORACLE_DECK_REGISTRY.some((d) => d.id === id);
-            return (
-              <DeckRow
-                key={id}
-                tag={`Oracle · ${sd.cardCount} cards · Owned`}
-                name={sd.name}
-                sub={playable ? sd.tagline : `${sd.tagline} — cards arriving in the next update.`}
-                count={`${sd.cardCount} cards`}
-                covers={[sd.coverImage]}
-                onClick={() => {
-                  if (!playable) return;
-                  setSelectedDeck(id); setPendingSpreadId(null); setQuestion(""); setView("spreads");
-                }}
-              />
-            );
-          })}
         </div>
 
         {/* ─── Past Readings (hidden while browsing the store) ─── */}

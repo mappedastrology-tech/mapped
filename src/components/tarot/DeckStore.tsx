@@ -1,18 +1,19 @@
 "use client";
 
 /**
- * Deck Store — the premium-oracle-deck storefront inside the Tarot tab.
+ * Deck Store — the oracle-deck storefront inside the Tarot tab.
  *
- * Lists STORE_DECKS with cover, price, and a Buy button that starts a Stripe
- * Checkout (one-time payment, own forever) via /api/stripe/checkout-deck.
- * Ownership is read from purchased_decks; owned decks show "Owned", and
- * coming-soon decks render but can't be bought. The two launch decks
- * (Stitched Animal, Bird) are free and never appear here.
+ * Sells the app's real oracle decks (one-time purchase, own forever) with real
+ * card photos. Tapping a deck opens a detail view — a browsable strip of actual
+ * cards plus three sample cards with their keywords and meanings — enough to
+ * know the deck's voice before buying. Checkout via /api/stripe/checkout-deck;
+ * ownership from purchased_decks.
  */
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { STORE_DECKS, formatPrice, type StoreDeck } from "@/lib/deckStore";
+import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
 
 interface Props {
   /** Deck id from ?deck_purchased= — shows the success banner. */
@@ -24,6 +25,7 @@ export default function DeckStore({ justPurchased }: Props) {
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [openDeck, setOpenDeck] = useState<StoreDeck | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -71,51 +73,180 @@ export default function DeckStore({ justPurchased }: Props) {
     }
   }
 
+  /* ─────────────────────────── Detail view ─────────────────────────── */
+  if (openDeck) {
+    const registry = getOracleDeck(openDeck.id);
+    const cards: OracleCard[] = registry?.cards ?? [];
+    // Spread three sample cards across the deck so the preview shows its range.
+    const samples = cards.length >= 3
+      ? [cards[0], cards[Math.floor(cards.length / 2)], cards[cards.length - 1]]
+      : cards;
+    const isOwned = owned.has(openDeck.id);
+
+    return (
+      <div className="flex flex-col gap-5">
+        <button
+          onClick={() => setOpenDeck(null)}
+          className="self-start text-[12px] font-semibold tracking-[0.08em] uppercase"
+          style={{ color: "var(--brass)" }}
+        >
+          ← Deck Store
+        </button>
+
+        <div className="text-center">
+          <h3 className="text-[22px] leading-tight" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
+            {openDeck.name}
+          </h3>
+          <p className="text-[12px] italic mt-1" style={{ color: "var(--brass)" }}>{openDeck.tagline}</p>
+          <p className="text-[10.5px] tracking-[0.12em] uppercase mt-1.5" style={{ color: "var(--foreground-faint)" }}>
+            {openDeck.cardCount} cards · one-time purchase
+          </p>
+        </div>
+
+        {/* Real card photos — browsable strip */}
+        {cards.length > 0 && (
+          <div className="-mx-5 px-5 overflow-x-auto">
+            <div className="flex gap-2.5 pb-1" style={{ width: "max-content" }}>
+              {cards.slice(0, 10).map((c) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={c.id}
+                  src={c.image}
+                  alt={c.animal}
+                  className="h-40 w-auto rounded-xl flex-shrink-0"
+                  style={{ border: "1px solid var(--border-card)" }}
+                  loading="lazy"
+                />
+              ))}
+              {cards.length > 10 && (
+                <div
+                  className="h-40 w-24 rounded-xl flex-shrink-0 flex items-center justify-center text-center px-2"
+                  style={{ border: "1px dashed var(--border-card)", color: "var(--foreground-faint)" }}
+                >
+                  <span className="text-[11px] leading-snug">+{cards.length - 10} more cards</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+          {openDeck.description}
+        </p>
+
+        {/* Sample cards — the deck's actual voice */}
+        {samples.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-semibold" style={{ color: "var(--brass)" }}>
+              A taste of the deck
+            </p>
+            {samples.map((c) => (
+              <div
+                key={c.id}
+                className="flex gap-3 rounded-2xl p-3"
+                style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.image} alt="" className="w-14 h-20 object-cover rounded-lg flex-shrink-0" style={{ border: "1px solid var(--border-card)" }} loading="lazy" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
+                    {c.animal} <span className="font-normal italic" style={{ color: "var(--brass)" }}>· {c.keyword}</span>
+                  </p>
+                  <p className="text-[12px] leading-relaxed mt-1 line-clamp-3" style={{ color: "var(--foreground-secondary)" }}>
+                    {c.meaning}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl px-4 py-3 text-[13px]" role="alert"
+            style={{ backgroundColor: "color-mix(in srgb, var(--oxblood-light) 12%, transparent)", border: "1px solid var(--oxblood-light)", color: "var(--foreground)" }}>
+            {error}
+          </div>
+        )}
+
+        <div className="sticky bottom-4 pt-1">
+          {isOwned ? (
+            <div className="w-full text-center px-4 py-3 rounded-full text-[14px] font-semibold"
+              style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--brass)", border: "1px solid var(--brass)" }}>
+              ✓ You own this deck — it&rsquo;s in My Decks
+            </div>
+          ) : (
+            <button
+              onClick={() => buy(openDeck)}
+              disabled={buying === openDeck.id}
+              className="w-full px-5 py-3 rounded-full text-[15px] font-bold active:scale-[0.99] transition-transform disabled:opacity-60"
+              style={{ backgroundColor: "var(--brass)", color: "var(--btn-ink)", boxShadow: "0 6px 22px color-mix(in srgb, var(--brass) 30%, transparent)" }}
+            >
+              {buying === openDeck.id ? "Opening checkout…" : `Buy ${openDeck.name} · ${formatPrice(openDeck.priceCents)}`}
+            </button>
+          )}
+          <p className="text-[10.5px] text-center mt-2" style={{ color: "var(--foreground-faint)" }}>
+            One-time purchase · yours forever · secure checkout by Stripe
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────── Store grid ─────────────────────────── */
   return (
     <div className="flex flex-col gap-4">
       {justPurchased && (
-        <div
-          className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed"
-          style={{ backgroundColor: "rgba(201,169,97,0.14)", border: "1px solid var(--brass)", color: "var(--foreground)" }}
-        >
+        <div className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed"
+          style={{ backgroundColor: "rgba(201,169,97,0.14)", border: "1px solid var(--brass)", color: "var(--foreground)" }}>
           ✧ Your new deck is yours forever — it now lives in My Decks.
         </div>
       )}
       {error && (
-        <div
-          className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed"
-          style={{ backgroundColor: "color-mix(in srgb, var(--oxblood-light) 12%, transparent)", border: "1px solid var(--oxblood-light)", color: "var(--foreground)" }}
-          role="alert"
-        >
+        <div className="rounded-2xl px-4 py-3 text-[13px]" role="alert"
+          style={{ backgroundColor: "color-mix(in srgb, var(--oxblood-light) 12%, transparent)", border: "1px solid var(--oxblood-light)", color: "var(--foreground)" }}>
           {error}
         </div>
       )}
 
       <p className="text-[11.5px] leading-relaxed text-center mx-auto" style={{ maxWidth: 300, color: "var(--foreground-muted)" }}>
-        New voices for your readings. Buy once, keep forever — every deck works
-        with all your spreads and with Dolly.
+        New voices for your readings. Tap a deck to see its cards — buy once,
+        keep forever.
       </p>
 
       {STORE_DECKS.map((deck) => {
         const isOwned = owned.has(deck.id);
-        const comingSoon = deck.status === "coming-soon";
+        const registry = getOracleDeck(deck.id);
+        const covers = (registry?.cards ?? []).slice(0, 3).map((c) => c.image);
         return (
-          <div
+          <button
             key={deck.id}
-            className="rounded-2xl overflow-hidden"
+            onClick={() => { setError(null); setOpenDeck(deck); }}
+            className="text-left rounded-2xl overflow-hidden active:scale-[0.995] transition-transform"
             style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}
           >
             <div className="flex gap-4 p-4">
-              {/* Cover */}
-              <div
-                className="w-20 h-28 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
-                style={{ background: "linear-gradient(160deg, rgba(201,169,97,0.18), rgba(0,0,0,0.25))", border: "1px solid var(--border-card)" }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={deck.coverImage} alt="" className="max-w-full max-h-full object-contain p-1.5" style={comingSoon ? { filter: "grayscale(0.6)", opacity: 0.7 } : undefined} />
+              {/* Fanned real-card cover */}
+              <div className="relative w-24 h-28 flex-shrink-0">
+                {covers.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={src}
+                    src={src}
+                    alt=""
+                    className="absolute h-24 w-auto rounded-lg"
+                    style={{
+                      border: "1px solid var(--border-card)",
+                      left: i * 14,
+                      top: i * 4,
+                      transform: `rotate(${(i - 1) * 7}deg)`,
+                      zIndex: i,
+                      boxShadow: "0 3px 10px rgba(0,0,0,0.25)",
+                    }}
+                    loading="lazy"
+                  />
+                ))}
               </div>
 
-              {/* Copy */}
               <div className="flex-1 min-w-0 flex flex-col">
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="text-[16px] leading-tight" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
@@ -126,39 +257,25 @@ export default function DeckStore({ justPurchased }: Props) {
                   </span>
                 </div>
                 <p className="text-[11.5px] italic mt-0.5" style={{ color: "var(--brass)" }}>{deck.tagline}</p>
-                <p className="text-[12px] leading-relaxed mt-1.5 line-clamp-3" style={{ color: "var(--foreground-secondary)" }}>
-                  {deck.description}
-                </p>
-
-                <div className="mt-auto pt-3">
+                <div className="mt-auto pt-3 flex items-center justify-between">
                   {isOwned ? (
-                    <span
-                      className="inline-block px-4 py-1.5 rounded-full text-[12px] font-semibold"
-                      style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--brass)", border: "1px solid var(--brass)" }}
-                    >
+                    <span className="inline-block px-4 py-1.5 rounded-full text-[12px] font-semibold"
+                      style={{ backgroundColor: "rgba(201,169,97,0.14)", color: "var(--brass)", border: "1px solid var(--brass)" }}>
                       ✓ Owned
                     </span>
-                  ) : comingSoon ? (
-                    <span
-                      className="inline-block px-4 py-1.5 rounded-full text-[12px] font-medium"
-                      style={{ backgroundColor: "var(--background)", color: "var(--foreground-faint)", border: "1px solid var(--border-card)" }}
-                    >
-                      Coming soon
-                    </span>
                   ) : (
-                    <button
-                      onClick={() => buy(deck)}
-                      disabled={buying === deck.id}
-                      className="px-5 py-2 rounded-full text-[13px] font-bold active:scale-[0.98] transition-transform disabled:opacity-60"
-                      style={{ backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}
-                    >
-                      {buying === deck.id ? "Opening checkout…" : `Buy · ${formatPrice(deck.priceCents)}`}
-                    </button>
+                    <span className="inline-block px-4 py-1.5 rounded-full text-[13px] font-bold"
+                      style={{ backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}>
+                      {formatPrice(deck.priceCents)}
+                    </span>
                   )}
+                  <span className="text-[11px]" style={{ color: "var(--foreground-faint)" }}>
+                    Tap to explore →
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         );
       })}
 
