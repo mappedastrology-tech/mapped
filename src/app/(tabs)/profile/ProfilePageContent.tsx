@@ -349,6 +349,27 @@ export default function ProfilePageContent() {
           <p className="text-[9px] tracking-[0.28em] uppercase font-semibold mb-2" style={{ color: "var(--brass)" }}>
             Your Archetype
           </p>
+
+          {/* Archetype plate — the painted natural-history-plate artwork. The art
+              lives on a white ground by design, so it sits on a cream "plate"
+              tile (museum-plate presentation). onError hides the plate for any
+              archetype whose art hasn't landed yet (e.g. a pending re-export). */}
+          <div className="flex justify-center mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/archetypes/${resonance.primary.id}.webp`}
+              alt={resonance.primary.name}
+              className="w-40 h-40 rounded-2xl object-cover"
+              style={{
+                backgroundColor: "#faf7f0",
+                border: "1px solid var(--brass)",
+                boxShadow: "0 6px 24px rgba(0,0,0,0.28)",
+                padding: 6,
+              }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          </div>
+
           <h2
             className="text-[30px] leading-tight mb-1"
             style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--foreground)" }}
