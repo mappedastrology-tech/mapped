@@ -90,6 +90,7 @@ import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
 import FlipCard from "@/components/FlipCard";
 import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
+import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
@@ -180,6 +181,10 @@ export default function HomeTab() {
   const [tarotRevealed, setTarotRevealed] = useState(false);
   const [oracleRevealed, setOracleRevealed] = useState(false);
   const [cardStateHydrated, setCardStateHydrated] = useState(false);
+  // Per-account salt for the daily draw — resolved before the card UI shows so
+  // the card identity never swaps mid-view. Without it every account drew the
+  // identical card (the seed was date-only).
+  const [cardSalt, setCardSalt] = useState(0);
 
   useEffect(() => {
     try {
@@ -197,7 +202,10 @@ export default function HomeTab() {
         setOracleDeckId(savedDeck);
       }
     } catch { /* SSR or localStorage unavailable */ }
-    setCardStateHydrated(true);
+    getCardSalt()
+      .then(setCardSalt)
+      .catch(() => { /* keep 0 — date-only fallback */ })
+      .finally(() => setCardStateHydrated(true));
   }, []);
 
   // Account-synced oracle deck — overrides the local value if the user picked
@@ -367,12 +375,9 @@ export default function HomeTab() {
   }, [retroDismissKey]);
 
   // Deterministic daily seed — same value all day, changes at midnight
-  const dailySeed = useMemo(() => {
-    const y = today.getFullYear();
-    const m = today.getMonth();
-    const d = today.getDate();
-    return ((y * 367 + m * 31 + d * 13) * 2654435761) >>> 0;
-  }, [today]);
+  // Per-(user, day) seed — same card all day for one account, different across
+  // accounts (cardSalt mixes in the user id / device salt).
+  const dailySeed = useMemo(() => mixDailySeed(today, cardSalt), [today, cardSalt]);
 
   // Daily quote (cached in localStorage)
   const dailyQuote = useMemo(() => {
@@ -1263,11 +1268,12 @@ export default function HomeTab() {
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <FlipCard revealed={tarotRevealed} back={CARD_BACK_IMAGE} face={tarotFaceSrc} faceAlt={dailyTarot.name} />
+                {/* Face gated on hydration so the per-account card never flashes the unsalted draw */}
+                <FlipCard revealed={cardStateHydrated && tarotRevealed} back={CARD_BACK_IMAGE} face={tarotFaceSrc} faceAlt={dailyTarot.name} />
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: tarotRevealed ? 15 : 12, opacity: tarotRevealed ? 1 : 0.65 }}>
-                  {tarotRevealed ? dailyTarot.name : "Tap to pull"}
+                  {cardStateHydrated && tarotRevealed ? dailyTarot.name : "Tap to pull"}
                 </p>
-                {tarotRevealed && (
+                {cardStateHydrated && tarotRevealed && (
                   <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
                     {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
                   </p>
@@ -1292,11 +1298,11 @@ export default function HomeTab() {
                 className="block mx-auto"
                 style={{ width: "60%", background: "none", border: "none", padding: 0, cursor: "pointer" }}
               >
-                <FlipCard revealed={oracleRevealed} back={ORACLE_BACK} face={dailyOracle.image} faceAlt={dailyOracle.animal} />
+                <FlipCard revealed={cardStateHydrated && oracleRevealed} back={ORACLE_BACK} face={dailyOracle.image} faceAlt={dailyOracle.animal} />
                 <p className="text-center mt-3.5" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)", fontSize: oracleRevealed ? 15 : 12, opacity: oracleRevealed ? 1 : 0.65 }}>
-                  {oracleRevealed ? dailyOracle.animal : "Tap to pull"}
+                  {cardStateHydrated && oracleRevealed ? dailyOracle.animal : "Tap to pull"}
                 </p>
-                {oracleRevealed && (
+                {cardStateHydrated && oracleRevealed && (
                   <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
                     {dailyOracle.keyword}
                   </p>

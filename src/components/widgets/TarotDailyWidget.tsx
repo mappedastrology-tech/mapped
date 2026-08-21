@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ALL_CARDS } from "@/lib/tarot";
+import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
 
 interface Card {
   name: string;
@@ -14,22 +15,20 @@ export default function TarotDailyWidget() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Deterministic seed based on date
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const day = today.getDate();
-    const seed = ((year * 367 + month * 31 + day * 13) * 2654435761) >>> 0;
-
-    // Pick a card based on seed
-    const cardIndex = seed % ALL_CARDS.length;
-    const tarotCard = ALL_CARDS[cardIndex];
-
-    setCard({
-      name: tarotCard.name,
-      meaning: tarotCard.uprightMeaning,
-    });
-    setIsLoading(false);
+    let cancelled = false;
+    (async () => {
+      // Deterministic per (user, day) — the salt keeps accounts distinct.
+      const salt = await getCardSalt().catch(() => 0);
+      if (cancelled) return;
+      const seed = mixDailySeed(new Date(), salt);
+      const tarotCard = ALL_CARDS[seed % ALL_CARDS.length];
+      setCard({
+        name: tarotCard.name,
+        meaning: tarotCard.uprightMeaning,
+      });
+      setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   if (isLoading) {
