@@ -334,6 +334,36 @@ export function scoresWithBaseline(
  * use — the engine is library-agnostic (spec §4). `offset` optionally applies a
  * per-entry balancing price (as computeResonance does for archetypes).
  */
+/**
+ * How much each source system actually contributed to this result, as
+ * percentages summing to 100. Computed from the same weighted feature
+ * magnitudes the matcher uses (Σ|delta| × tier weight per system), so the
+ * "weighted N%" shown on the profile is the engine's real arithmetic rather
+ * than a decorative number. Systems contributing nothing are omitted.
+ */
+export function systemShares(input: ResonanceInput): { system: "astrology" | "numerology" | "humanDesign"; pct: number }[] {
+  const totals = { astrology: 0, numerology: 0, humanDesign: 0 };
+  for (const f of extractFeatures(input)) {
+    const mag = TRAIT_ORDER.reduce((s, t) => s + Math.abs(f.deltas[t] ?? 0), 0) * TIER_WEIGHT[f.tier];
+    if (f.id.startsWith("astro.")) totals.astrology += mag;
+    else if (f.id.startsWith("num.")) totals.numerology += mag;
+    else if (f.id.startsWith("hd.")) totals.humanDesign += mag;
+  }
+  const sum = totals.astrology + totals.numerology + totals.humanDesign;
+  if (sum <= 0) return [];
+  const raw = (Object.keys(totals) as (keyof typeof totals)[])
+    .map((k) => ({ system: k, exact: (totals[k] / sum) * 100 }))
+    .filter((r) => r.exact > 0);
+  // Round to integers that still sum to 100 (largest-remainder).
+  const floored = raw.map((r) => ({ ...r, pct: Math.floor(r.exact) }));
+  let left = 100 - floored.reduce((s, r) => s + r.pct, 0);
+  floored.sort((a, b) => (b.exact - b.pct) - (a.exact - a.pct));
+  for (let i = 0; i < floored.length && left > 0; i++, left--) floored[i].pct++;
+  return floored
+    .sort((a, b) => b.pct - a.pct)
+    .map(({ system, pct }) => ({ system, pct }));
+}
+
 export function rankLibrary(
   userTraits: TraitVec,
   entries: { id: string; traits: TraitVec }[],
