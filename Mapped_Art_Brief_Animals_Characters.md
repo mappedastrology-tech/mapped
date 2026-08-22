@@ -22,6 +22,13 @@ a fresh chat every 8–12 images).
 
 **Re-use The Anvil as the style anchor** so all four sets stay one collection.
 
+> ⚠️ **Anchor the style, not the subject.** In the first run of this brief, seven
+> plates came back with the anvil itself painted into them. Add this line to
+> every prompt: *"The reference image is for PAINT STYLE ONLY — brushwork,
+> lighting, edge quality, white ground. Do not include an anvil, a blacksmith's
+> tool, or any part of the reference's subject. The only subject is the one
+> described below."*
+
 ### The one addition for these sets
 
 The archetypes are objects and forces. Animals are living subjects, and
