@@ -1018,7 +1018,7 @@ export default function AlmanacPageContent() {
   // Moon-phase artwork lives at /public root; a few phase keys map to different filenames.
   const moonImageSrc = `/moons/${(
     { new: "new-moon", full: "full-moon", "last-quarter": "third-quarter" } as Record<string, string>
-  )[sky.moonPhase.phase] ?? sky.moonPhase.phase}.png`;
+  )[sky.moonPhase.phase] ?? sky.moonPhase.phase}.webp`;
 
   // Generate astrological reason lines for good-for items
   const goodForReasons = useMemo(() => {

@@ -76,12 +76,12 @@ function loadRitualPrefs(): Record<string, boolean> {
 /** Maps element/category keys → image filenames in /public/ritual icons/ */
 const RITUAL_ICON_MAP: Record<string, string> = {
   // elements
-  fire: "fire.png", water: "water.png", earth: "earth.png", air: "air.png", spirit: "spirit.png",
+  fire: "fire.webp", water: "water.webp", earth: "earth.webp", air: "air.webp", spirit: "spirit.webp",
   // categories
-  love: "heart.png", career: "career.png", health: "health.png", wealth: "wealth.png",
-  creativity: "creativity.png", protection: "protection.png", growth: "growth.png",
-  peace: "peace.png", clarity: "clarity.png", release: "release.png",
-  manifestation: "manifestation.png", foundation: "rock.png",
+  love: "heart.webp", career: "career.webp", health: "health.webp", wealth: "wealth.webp",
+  creativity: "creativity.webp", protection: "protection.webp", growth: "growth.webp",
+  peace: "peace.webp", clarity: "clarity.webp", release: "release.webp",
+  manifestation: "manifestation.webp", foundation: "rock.webp",
 };
 
 /** Reusable icon component that renders watercolor PNGs from /ritual icons/ */

@@ -22,7 +22,7 @@ const SIGN_GLYPH: Record<string, string> = {
   Libra: "♎︎", Scorpio: "♏︎", Sagittarius: "♐︎", Capricorn: "♑︎", Aquarius: "♒︎", Pisces: "♓︎",
 };
 
-const AVATAR = "/images/crystal-ball.png";
+const AVATAR = "/images/crystal-ball.webp";
 type Msg = { from: "dolly" | "you"; text: string };
 const QA: { q: string; a: string }[] = [
   { q: "What does my Cancer sun mean?", a: "Your Cancer Sun is the tender, protective core of you — you lead with feeling and you look after people almost by instinct. It means home, memory, and belonging matter deeply. Your gift is emotional intelligence; your work is learning that softness is strength, not a leak." },

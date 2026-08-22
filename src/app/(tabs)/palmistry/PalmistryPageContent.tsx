@@ -1056,7 +1056,9 @@ function PalmImage({ hand, dim = false }: { hand: Hand; dim?: boolean }) {
   return (
     <div className="relative mx-auto" style={{ maxWidth: 230, transform: hand === "left" ? "scaleX(-1)" : undefined }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/hand-cutout.png" alt="" draggable={false} className="w-full h-auto select-none" style={{ opacity: dim ? 0.4 : 1 }} />
+      <img
+              width={1254}
+              height={1254} src="/images/hand-cutout.webp" alt="" draggable={false} className="w-full h-auto select-none" style={{ opacity: dim ? 0.4 : 1 }} />
     </div>
   );
 }

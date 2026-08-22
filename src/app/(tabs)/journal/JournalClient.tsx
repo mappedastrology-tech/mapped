@@ -971,7 +971,9 @@ function JournalPage() {
             <div aria-hidden className="absolute" style={{ left: "50%", bottom: 14, transform: "translateX(-50%)", width: 138, height: 244, opacity: 0, animation: "jt-candlelife 3s ease-in-out forwards" }}>
               <div className="absolute" style={{ left: "50%", top: 20, width: 230, height: 230, borderRadius: "50%", background: "radial-gradient(50% 50% at 50% 50%, rgba(255,166,76,0.5), transparent 66%)", animation: "jt-glowpulse 2.6s ease-in-out infinite" }} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/candle.png" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transformOrigin: "50% 100%", animation: "jt-candleflick 2.4s ease-in-out infinite", filter: "drop-shadow(0 0 18px rgba(255,150,60,0.32))" }} />
+              <img
+              width={463}
+              height={815} src="/images/candle.webp" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transformOrigin: "50% 100%", animation: "jt-candleflick 2.4s ease-in-out infinite", filter: "drop-shadow(0 0 18px rgba(255,150,60,0.32))" }} />
             </div>
             <div aria-hidden className="absolute inset-0 overflow-hidden" style={{ opacity: 0, animation: "jt-fade-slow 0.7s ease-out 1.2s both, jt-fade-out 0.7s ease-in 2.4s forwards" }}>
               {Array.from({ length: 16 }).map((_, i) => {

@@ -21,13 +21,19 @@ const GLOW = "drop-shadow(0 12px 30px rgba(0,0,0,0.45))";
 const FEATURES = [
   { title: "The Almanac", tag: "Daily", href: "/almanac", cta: "Read the day",
     desc: "Moon phase, void-of-course windows, best days for planting, fishing, rest — timed to your sky.",
-    render: () => <img src="/moons/full-moon.png" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
+    render: () => <img
+              width={600}
+              height={600} src="/moons/full-moon.webp" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
   { title: "Maps", tag: "Live", href: "/maps", cta: "See your orbit",
     desc: "Your whole world, mapped as a constellation. Drag to roam the people in your orbit and tap anyone for your compatibility.",
-    render: () => <img src="/images/cloud-sunset-pink.png" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 190, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
+    render: () => <img
+              width={864}
+              height={1440} src="/images/cloud-sunset-pink.webp" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 190, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
   { title: "The Library", tag: "Learn", href: "/library", cta: "Start learning",
     desc: "Every sign, house, planet and aspect — explained plainly. Play the element-sorting game to make it stick.",
-    render: () => <img src="/images/zodiac-wheel-fragment-1.png" alt="" style={{ position: "absolute", left: "50%", top: "50%", height: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
+    render: () => <img
+              width={864}
+              height={1440} src="/images/zodiac-wheel-fragment-1.webp" alt="" style={{ position: "absolute", left: "50%", top: "50%", height: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
   { title: "Tarot", tag: "Draw", href: "/tarot", cta: "Draw a card",
     desc: "Pull a daily card or lay a full spread. Drag cards from the deck and read them in your own words.",
     render: () => (
@@ -43,10 +49,14 @@ const FEATURES = [
     ) },
   { title: "The Journal", tag: "Reflect", href: "/journal", cta: "Open the journal",
     desc: "Sky-timed prompts, ritual notes, and tarot reflections — a private record of your inner weather.",
-    render: () => <img src="/images/dried-flower-bouquet.png" alt="" style={{ position: "absolute", left: "50%", top: "50%", height: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
+    render: () => <img
+              width={864}
+              height={1440} src="/images/dried-flower-bouquet.webp" alt="" style={{ position: "absolute", left: "50%", top: "50%", height: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
   { title: "Ask Dolly", tag: "Guide", href: "/dolly", cta: "Meet Dolly",
     desc: "A warm astrological guide who knows your placements and answers in plain, kind language.",
-    render: () => <img src="/images/crystal-ball.png" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
+    render: () => <img
+              width={864}
+              height={1440} src="/images/crystal-ball.webp" alt="" style={{ position: "absolute", left: "50%", top: "50%", width: 150, transform: "translate(-50%,-50%)", filter: GLOW }} /> },
 ];
 
 type WidgetKey = "sky" | "chart" | "tarot" | "ritual" | "journal" | "numbers";
@@ -148,8 +158,12 @@ export default function WebLanding() {
         </div>
         <div style={{ position: "relative", height: 520 }}>
           <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "48%", transform: "translate(-50%,-50%)", width: 440, height: 440, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--brass) 30%, transparent), transparent 62%)" }} />
-          <img src="/moons/waxing-gibbous.png" alt="The moon tonight" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 360, height: 360, objectFit: "contain", filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.5))", animation: "mp-floaty 9s ease-in-out infinite" }} />
-          <img src="/images/parchment-stars-pair.png" alt="" aria-hidden="true" style={{ position: "absolute", right: 6, top: 14, width: 120, opacity: 0.9, animation: "mp-floaty 7s ease-in-out infinite", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))" }} />
+          <img
+              width={600}
+              height={600} src="/moons/waxing-gibbous.webp" alt="The moon tonight" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 360, height: 360, objectFit: "contain", filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.5))", animation: "mp-floaty 9s ease-in-out infinite" }} />
+          <img
+              width={864}
+              height={1440} src="/images/parchment-stars-pair.webp" alt="" aria-hidden="true" style={{ position: "absolute", right: 6, top: 14, width: 120, opacity: 0.9, animation: "mp-floaty 7s ease-in-out infinite", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))" }} />
           <div style={{ position: "absolute", left: 0, bottom: 24, padding: "16px 20px", borderRadius: 18, background: "color-mix(in srgb, var(--card) 88%, transparent)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", boxShadow: "0 10px 30px var(--shadow)", maxWidth: 230 }}>
             <p style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 5px" }}>Tonight</p>
             <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, margin: "0 0 4px", color: "var(--fg)" }}>Waxing Gibbous · 73%</p>
@@ -332,7 +346,9 @@ export default function WebLanding() {
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {cStars.map((st, i) => <span key={i} style={st} />)}
           </div>
-          <img src="/images/cosmic-eye.png" alt="" aria-hidden="true" style={{ position: "absolute", right: 40, top: "50%", transform: "translateY(-50%)", width: 150, opacity: 0.5 }} />
+          <img
+              width={864}
+              height={1440} src="/images/cosmic-eye.webp" alt="" aria-hidden="true" style={{ position: "absolute", right: 40, top: "50%", transform: "translateY(-50%)", width: 150, opacity: 0.5 }} />
           <div style={{ position: "relative" }}>
             <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 46, lineHeight: 1.08, margin: "0 0 16px", color: "#f3ecd8" }}>
               The sky is already talking.<br /><span style={{ fontStyle: "italic" }}>Start listening today.</span>

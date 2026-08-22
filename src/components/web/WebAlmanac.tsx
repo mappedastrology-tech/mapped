@@ -161,7 +161,7 @@ export default function WebAlmanac() {
           </div>
           <div style={{ position: "relative", width: 250, height: 250 }}>
             <div style={{ position: "absolute", inset: -20, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />
-            <img src={sky?.moonImg ?? "/moons/waxing-gibbous.png"} alt={sky?.moonLabel ?? "Moon tonight"} style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
+            <img src={sky?.moonImg ?? "/moons/waxing-gibbous.webp"} alt={sky?.moonLabel ?? "Moon tonight"} style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
           </div>
         </div>
 

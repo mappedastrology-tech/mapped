@@ -15,7 +15,7 @@ import { getOnThisDay } from "@/lib/onThisDay";
 
 const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// Moon-phase enum → /moons/*.png filename.
+// Moon-phase enum → /moons/*.webp filename.
 const MOON_FILE: Record<string, string> = {
   "new": "new-moon",
   "waxing-crescent": "waxing-crescent",
@@ -33,7 +33,7 @@ export interface LiveSky {
   weekday: string;        // "Wednesday"
   longDate: string;       // "July 1, 2026"
   moonLabel: string;      // "Waxing Gibbous"
-  moonImg: string;        // /moons/*.png for the current phase
+  moonImg: string;        // /moons/*.webp for the current phase
   illumination: number;   // 0-100
   moonSign: string;       // "Scorpio"
   moonSignTheme: string;  // sun-sign theme sentence
@@ -63,7 +63,7 @@ export function useLiveSky(): LiveSky | null {
         weekday: d.toLocaleDateString("en-US", { weekday: "long" }),
         longDate: d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
         moonLabel: s.moonPhase.label,
-        moonImg: `/moons/${MOON_FILE[s.moonPhase.phase] ?? "waxing-gibbous"}.png`,
+        moonImg: `/moons/${MOON_FILE[s.moonPhase.phase] ?? "waxing-gibbous"}.webp`,
         illumination: s.moonPhase.illumination,
         moonSign: s.moonSign,
         moonSignTheme: s.sunSignTheme,

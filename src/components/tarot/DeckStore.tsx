@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { STORE_DECKS, formatPrice, type StoreDeck } from "@/lib/deckStore";
 import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
+import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
 
 interface Props {
   /** Deck id from ?deck_purchased= — shows the success banner. */
@@ -231,10 +232,18 @@ export default function DeckStore({ justPurchased }: Props) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     key={src}
-                    src={src}
+                    src={cardThumb(src)}
+                    onError={onCardThumbError}
                     alt=""
-                    className="absolute h-24 w-auto rounded-lg"
+                    className="absolute rounded-lg"
                     style={{
+                      // Fixed box rather than `h-24 w-auto`: with only a height,
+                      // the width is 0 until the file lands and the fan shoves
+                      // itself sideways on arrival. 54x96 is the 9:16 these
+                      // cards are drawn at, and matches the deck-list fan.
+                      width: 54,
+                      height: 96,
+                      objectFit: "cover",
                       border: "1px solid var(--border-card)",
                       left: i * 14,
                       top: i * 4,

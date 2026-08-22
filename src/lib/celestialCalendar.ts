@@ -780,18 +780,18 @@ export function getMoonPhase(date: Date): MoonPhaseInfo {
  * Maps phase keys from getMoonPhase() to the uploaded images in /moons/.
  */
 const MOON_PHASE_IMAGES: Record<string, string> = {
-  "new": "/moons/new-moon.png",
-  "waxing-crescent": "/moons/waxing-crescent.png",
-  "first-quarter": "/moons/first-quarter.png",
-  "waxing-gibbous": "/moons/waxing-gibbous.png",
-  "full": "/moons/full-moon.png",
-  "waning-gibbous": "/moons/waning-gibbous.png",
-  "last-quarter": "/moons/third-quarter.png",
-  "waning-crescent": "/moons/waning-crescent.png",
+  "new": "/moons/new-moon.webp",
+  "waxing-crescent": "/moons/waxing-crescent.webp",
+  "first-quarter": "/moons/first-quarter.webp",
+  "waxing-gibbous": "/moons/waxing-gibbous.webp",
+  "full": "/moons/full-moon.webp",
+  "waning-gibbous": "/moons/waning-gibbous.webp",
+  "last-quarter": "/moons/third-quarter.webp",
+  "waning-crescent": "/moons/waning-crescent.webp",
 };
 
 export function getMoonPhaseImage(phase: string): string {
-  return MOON_PHASE_IMAGES[phase] || "/moons/full-moon.png";
+  return MOON_PHASE_IMAGES[phase] || "/moons/full-moon.webp";
 }
 
 // Nakshatra from real Moon longitude (astronomy-engine) converted to sidereal

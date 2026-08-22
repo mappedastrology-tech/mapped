@@ -166,7 +166,7 @@ export default function ShareCard({
           {/* Logo / branding */}
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <img
-              src="/logo-light.png"
+              src="/logo-light.webp"
               alt="Mapped"
               width={170}
               height={48}

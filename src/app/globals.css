@@ -26,7 +26,7 @@
   /* Use the same dark-felt starfield the rest of the app's dark mode uses, so
      Learn/Library match the home screen exactly. Light mode falls back to the
      plain cream background (no image), mirroring the body. */
-  background-image: url('/backgrounds/dark-felt.png');
+  background-image: url('/backgrounds/dark-felt.webp');
   background-size: 512px;
   background-repeat: repeat;
 
@@ -401,7 +401,7 @@
 
 /* Day mode body — soft celestial parchment behind the whole app */
 [data-theme="light"] body {
-  background-image: url('/backgrounds/parchment-bg.png');
+  background-image: url('/backgrounds/parchment-bg.webp');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
@@ -544,7 +544,7 @@
 
 body {
   background-color: var(--background);
-  background-image: url('/backgrounds/dark-felt.png');
+  background-image: url('/backgrounds/dark-felt.webp');
   background-size: 512px;
   background-repeat: repeat;
   color: var(--foreground);
@@ -989,7 +989,7 @@ input, select, textarea {
   --fg:#e8dfc4; --fg2:#c4b8a0; --muted:#988b78; --faint:#7a6f5c;
   --brass:#c9a961; --brass-hi:#e2c785; --terra:#b5654a; --go:#7ba055;
   --hair:rgba(201,169,97,0.14); --line:rgba(255,255,255,0.06); --soft:rgba(255,255,255,0.035);
-  --felt:url('/backgrounds/dark-felt.png'); --felt-op:1; --hero-plum:#3a2233;
+  --felt:url('/backgrounds/dark-felt.webp'); --felt-op:1; --hero-plum:#3a2233;
   --btn-ink:#1a1420; --shadow:rgba(0,0,0,0.5); --bubble-you:#3a2233;
 }
 .mp-web[data-theme="day"] {
@@ -997,7 +997,7 @@ input, select, textarea {
   --fg:#2c2216; --fg2:#4a3e29; --muted:#5f5138; --faint:#7d6c4c;
   --brass:#9a7322; --brass-hi:#7d5c16; --terra:#a4502f; --go:#5d7d3c;
   --hair:rgba(150,115,55,0.24); --line:rgba(80,60,30,0.10); --soft:rgba(80,60,30,0.035);
-  --felt:url('/backgrounds/parchment-bg.png'); --felt-op:0.55; --hero-plum:#3a2036;
+  --felt:url('/backgrounds/parchment-bg.webp'); --felt-op:0.55; --hero-plum:#3a2036;
   --btn-ink:#f7efdc; --shadow:rgba(120,90,40,0.14); --bubble-you:#efe1c4;
 }
 .mp-web a { color: var(--brass); text-decoration: none; }

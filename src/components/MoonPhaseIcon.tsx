@@ -37,7 +37,7 @@ export default function MoonPhaseIcon({ phase, size = 64, className = "" }: Moon
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/moons/${file}.png`}
+      src={`/moons/${file}.webp`}
       alt={phase}
       width={size}
       height={size}

@@ -29,7 +29,9 @@ function NightSkyBackground() {
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/night-sky.png"
+              width={1023}
+              height={1537}
+        src="/night-sky.webp"
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
         style={{ opacity: 0.85 }}

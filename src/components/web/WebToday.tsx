@@ -168,7 +168,7 @@ export default function WebToday() {
   const bannerBody = sky
     ? `${sky.moonSignTheme}${sky.vocStart ? ` Void of course after ${sky.vocStart} — let new plans settle until tomorrow.` : ""}`
     : "A day that rewards focus, honesty, and finishing what you started. Void of course after 2:32 pm — let new plans settle until tomorrow.";
-  const bannerMoon = sky?.moonImg ?? "/moons/waxing-gibbous.png";
+  const bannerMoon = sky?.moonImg ?? "/moons/waxing-gibbous.webp";
 
   // Per-widget live overrides for the dashboard cards
   const liveBody = (key: Key): BodyPart[] => {

@@ -27,6 +27,7 @@ import { ORACLE_DECKS as ORACLE_DECK_REGISTRY, getOracleDeck } from "@/lib/oracl
 import DeckStore from "@/components/tarot/DeckStore";
 import { shareReadingAsImage } from "@/lib/shareCard";
 import Image from "next/image";
+import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
 
 /* ─── Types ─── */
 type View = "decks" | "spreads" | "intention" | "picking" | "spread-view" | "card-detail" | "freestyle-fan";
@@ -807,7 +808,7 @@ export default function TarotTab() {
                 name={deck.name}
                 sub={isOwned ? deck.description : `${deck.description.split(".")[0]}. Tap to see the cards and unlock it.`}
                 count={`${deck.cardCount} cards`}
-                covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.png`)}
+                covers={[0, 1, 2].map((i) => deck.cards[Math.min(i, deck.cards.length - 1)]?.image || `/oracle/${deck.id}/${i + 1}.webp`)}
                 onClick={() => {
                   if (isOwned) { setSelectedDeck(deck.id); setPendingSpreadId(null); setQuestion(""); setView("spreads"); }
                   else setDeckTab("store");
@@ -1919,8 +1920,11 @@ function DeckRow({ tag, name, sub, count, covers, gradient, onClick }: {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={img}
+              src={cardThumb(img)}
+              onError={onCardThumbError}
               alt=""
+              width={74}
+              height={118}
               style={{ position: "absolute", top: 8, left: 12 + i * 20, width: 74, height: 118, objectFit: "cover", borderRadius: 8, transform: `rotate(${(i - 1) * 8}deg)`, boxShadow: "0 6px 14px -6px rgba(0,0,0,0.7)", border: "0.5px solid rgba(154,115,34,0.4)", zIndex: i }}
             />
           ))

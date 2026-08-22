@@ -223,7 +223,9 @@ export default function NightSky({
 
       {/* Backdrop: the app's original night-sky image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/night-sky.png" alt="" aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }} />
+      <img
+              width={1023}
+              height={1537} src="/night-sky.webp" alt="" aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,5,15,0.25) 0%, rgba(5,5,15,0.45) 55%, rgba(5,5,15,0.72) 100%)" }} />
 
       {/* Header overlay */}

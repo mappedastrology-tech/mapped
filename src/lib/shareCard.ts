@@ -599,7 +599,7 @@ export async function generatePalmShareCard(data: PalmShareCardData): Promise<Bl
   // Palm image — the app's hand graphic (same one used across the palmistry UI),
   // in place of an emoji.
   ctx.textAlign = "center";
-  const handImg = await loadImage("/images/hand-cutout.png");
+  const handImg = await loadImage("/images/hand-cutout.webp");
   if (handImg && handImg.width > 0) {
     const targetH = 165;
     const hW = targetH * (handImg.width / handImg.height);

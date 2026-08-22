@@ -3,8 +3,8 @@
 /**
  * Logo — the Mapped brand mark.
  *
- * /logo-dark.png  = cream text (for dark backgrounds)
- * /logo-light.png = dark text  (for light/cream backgrounds)
+ * /logo-dark.webp  = cream text (for dark backgrounds)
+ * /logo-light.webp = dark text  (for light/cream backgrounds)
  *
  * Auto-detects theme from <html data-theme> and picks the right logo.
  * Can be overridden with the `variant` prop.
@@ -30,8 +30,8 @@ const SIZES = {
   lg: { width: 220, height: 48 },
 } as const;
 
-const LOGO_LIGHT = "/logo-light.png"; // dark text — for cream/light backgrounds
-const LOGO_DARK = "/logo-dark.png";   // cream text — for dark backgrounds
+const LOGO_LIGHT = "/logo-light.webp"; // dark text — for cream/light backgrounds
+const LOGO_DARK = "/logo-dark.webp";   // cream text — for dark backgrounds
 
 export default function Logo({ size = "md", className = "", inlineStyles = false, variant }: LogoProps) {
   const s = SIZES[size];
