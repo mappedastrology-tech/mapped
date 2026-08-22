@@ -922,14 +922,26 @@ input, select, textarea {
   color: var(--brass);
 }
 
-/* ═══ FONT FACES ═══ */
+/* ═══ FONT FACES ═══
+   The text faces use font-display: optional, not swap. With swap the browser
+   paints fallback metrics first and re-lays-out when the real face arrives —
+   on /learn that moved the greeting and everything under it by 6-9px, which
+   was a 0.134 CLS on its own. `optional` gives the font a short window and
+   then commits to whatever it has for that page load, so there is no second
+   layout. The three faces used above the fold are preloaded in layout.tsx so
+   they normally win that window, and inside the native app they are on disk
+   and always do.
+
+   The two symbol faces stay on swap: their glyphs are zodiac/astro symbols
+   with no meaningful fallback, so never swapping them in would leave the
+   wrong characters on screen permanently. */
 
 @font-face {
   font-family: 'Ahsing';
   src: url('/fonts/ahsing-regular.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -937,7 +949,7 @@ input, select, textarea {
   src: url('/fonts/le-jour-serif.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -945,7 +957,7 @@ input, select, textarea {
   src: url('/fonts/le-jour-script.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -969,7 +981,7 @@ input, select, textarea {
   src: url('/fonts/js-chanok-normal.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

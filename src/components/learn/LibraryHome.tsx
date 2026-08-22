@@ -7,7 +7,7 @@ import { DOMAINS, ALL_COURSES, getCourse, courseLessons } from "@/lib/learn/regi
 import { searchReference } from "@/lib/learn/reference";
 import { getAllProgress } from "@/lib/learn/progress";
 import { getDueReviewCount } from "@/lib/learn/reviewStore";
-import { loadEngagement, type Engagement } from "@/lib/learn/engagement";
+import { loadEngagement, emptyEngagement, type Engagement } from "@/lib/learn/engagement";
 import { getDailyGoal } from "@/lib/learn/goals";
 import { evaluateAchievements } from "@/lib/learn/achievements";
 import type { Course, CourseProgress, ReferenceEntry } from "@/lib/learn/types";
@@ -61,7 +61,11 @@ export default function LibraryHome() {
   const { theme } = useTheme();
   const [progress, setProgress] = useState<Record<string, CourseProgress>>({});
   const [dueCount, setDueCount] = useState(0);
-  const [eng, setEng] = useState<Engagement | null>(null);
+  // Seeded with the zero state so the dashboard is present on the first paint.
+  // It used to be gated on the fetch, so it appeared ~14s in (a hung request
+  // here; a few hundred ms in production) and pushed the entire page down 543px
+  // — a 0.38 CLS on its own, where Google calls anything over 0.25 poor.
+  const [eng, setEng] = useState<Engagement>(() => emptyEngagement());
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ReferenceEntry | null>(null);
 

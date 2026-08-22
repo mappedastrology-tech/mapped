@@ -68,6 +68,16 @@ export default function RootLayout({
         {/* Theme script — runs before React hydrates to prevent flash */}
         <Script id="theme-init" src="/theme-init.js" strategy="beforeInteractive" />
 
+        {/*
+          The self-hosted faces are declared font-display: optional (see
+          globals.css), which means the browser commits to whatever it has
+          after a short window rather than re-laying-out the page later.
+          Preloading these three — the ones used above the fold on nearly
+          every screen — is what makes it normally win that window.
+        */}
+        <link rel="preload" as="font" type="font/otf" href="/fonts/le-jour-serif.otf" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/otf" href="/fonts/le-jour-script.otf" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/ttf" href="/fonts/js-chanok-normal.ttf" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
