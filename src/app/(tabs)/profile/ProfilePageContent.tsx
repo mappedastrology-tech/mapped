@@ -559,8 +559,9 @@ export default function ProfilePageContent() {
             <div className="grid grid-cols-2 gap-[9px] items-stretch">
               {animal && (
                 <ReadCard kicker="Animal guide" glyph="\u2766" title={animal.guide.name} body={animal.guide.tagline}
+                  img={`/animals/${animal.guide.id}.webp`}
                   onOpen={() => setOpenRead({
-                    kind: "Animal guide", title: animal.guide.name, tagline: animal.guide.tagline,
+                    kind: "Animal guide", img: `/animals/${animal.guide.id}.webp`, title: animal.guide.name, tagline: animal.guide.tagline,
                     body: animal.guide.essence, shadow: animal.guide.shadow,
                     meta: [
                       { label: "Source", value: TIER_LABEL[animal.guide.tier] },
@@ -595,8 +596,9 @@ export default function ProfilePageContent() {
               )}
               {character && (
                 <ReadCard kicker="Character" glyph="\u2694" title={character.guide.name} body={character.guide.tagline}
+                  img={`/characters/${character.guide.id}.webp`}
                   onOpen={() => setOpenRead({
-                    kind: "Character", title: character.guide.name, tagline: character.guide.tagline,
+                    kind: "Character", img: `/characters/${character.guide.id}.webp`, title: character.guide.name, tagline: character.guide.tagline,
                     body: character.guide.essence, shadow: character.guide.shadow,
                     meta: [
                       { label: "From", value: character.guide.work },
@@ -881,9 +883,9 @@ function SubLine({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ReadCard({ kicker, glyph, title, body, children, onOpen }: {
+function ReadCard({ kicker, glyph, title, body, children, onOpen, img }: {
   kicker: string; glyph: string; title: string; body: string;
-  children?: React.ReactNode; onOpen?: () => void;
+  children?: React.ReactNode; onOpen?: () => void; img?: string;
 }) {
   return (
     <button
@@ -893,10 +895,16 @@ function ReadCard({ kicker, glyph, title, body, children, onOpen }: {
       style={{ borderRadius: 16, padding: "15px 14px", background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
     >
       <p className="text-[8.5px] font-bold uppercase" style={{ letterSpacing: "0.16em", color: "var(--brass)" }}>{kicker}</p>
-      <span className="flex items-center justify-center"
-        style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-card)", color: "var(--brass)", fontSize: 18 }}>
-        {glyph}
-      </span>
+      {img ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={img} alt="" aria-hidden className="self-center" style={{ width: 92, height: 92, objectFit: "contain" }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      ) : (
+        <span className="flex items-center justify-center"
+          style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-card)", color: "var(--brass)", fontSize: 18 }}>
+          {glyph}
+        </span>
+      )}
       <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, lineHeight: 1.1, color: "var(--foreground)" }}>{title}</p>
       <p className="text-[12.5px]" style={{ lineHeight: 1.55, color: "var(--foreground-secondary)" }}>{body}</p>
       <div className="flex flex-col gap-[5px] mt-auto pt-[11px] w-full" style={{ borderTop: "0.5px solid var(--border-card)" }}>
@@ -910,6 +918,7 @@ function ReadCard({ kicker, glyph, title, body, children, onOpen }: {
 /** Payload for the expanded detail sheet behind each "more reads" card. */
 interface ReadDetail {
   kind: string;
+  img?: string;
   title: string;
   tagline: string;
   body: string;
@@ -937,6 +946,13 @@ function ReadSheet({ detail, onClose }: { detail: ReadDetail; onClose: () => voi
         <div className="sticky top-0 flex justify-center pb-3 pt-1" style={{ background: "var(--background-elevated)" }}>
           <span style={{ width: 42, height: 4, borderRadius: 99, background: "var(--border-card)" }} />
         </div>
+        {detail.img && (
+          <div className="flex justify-center mb-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={detail.img} alt="" aria-hidden style={{ width: 150, height: 150, objectFit: "contain" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          </div>
+        )}
         <p className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>{detail.kind}</p>
         <h3 className="mt-1" style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 500, lineHeight: 1.1, color: "var(--foreground)" }}>
           {detail.title}
