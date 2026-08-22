@@ -1940,10 +1940,21 @@ export default function AlmanacPageContent() {
           icon={ALMANAC_ICONS.garden}
           preview={`${plantingCal.todayVerdict.crop} · Score ${plantingCal.todayVerdict.score}/10`}
         >
-          {/* Location + zone — one clean row; tap to correct the zone */}
-          <button
+          {/* Location + zone — one clean row; tap to correct the zone.
+              A div (not a button) so the InfoTip's own button can live inside
+              it without nesting <button> in <button>. */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={showZonePicker}
             onClick={() => setShowZonePicker((v) => !v)}
-            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setShowZonePicker((v) => !v);
+              }
+            }}
+            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left cursor-pointer"
             style={{ background: "var(--background-card)", border: "1px solid var(--border-card)" }}
           >
             <span style={{ color: "var(--terracotta)" }}>
@@ -1962,7 +1973,7 @@ export default function AlmanacPageContent() {
               Zone {gardenZone}
             </span>
             <InfoTip text="Your USDA Hardiness Zone sets your frost dates and what's plantable now. We estimate it from your location — tap the row to set it exactly with your zip code." />
-          </button>
+          </div>
           {showZonePicker && (
             <div className="mt-2 rounded-xl px-4 py-3" style={{ background: "color-mix(in srgb, var(--foreground) 4%, transparent)", border: "1px solid var(--border-card)" }}>
               <label className="block text-[10px] uppercase tracking-[0.12em] font-bold mb-2" style={{ color: "var(--sage)" }}>
