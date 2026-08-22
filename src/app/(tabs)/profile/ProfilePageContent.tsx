@@ -489,6 +489,19 @@ export default function ProfilePageContent() {
           <p className="text-[13px] mt-3 mx-auto" style={{ color: "var(--foreground-secondary)", maxWidth: 300 }}>
             Add your birth details to unlock your archetype and everything you are.
           </p>
+          {/*
+            The sentence above is the only thing on this screen without a chart,
+            and on its own it reads as a dead end — the one tappable element was
+            the photo picker. Every sibling page (You, Human Design, Numerology)
+            sends people to /chart/new from its empty state; match that.
+          */}
+          <Link
+            href="/chart/new"
+            className="inline-flex items-center justify-center mt-6 active:scale-[0.98] transition-transform"
+            style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.01em", padding: "13px 26px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}
+          >
+            Add your birth details
+          </Link>
         </section>
       )}
       <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />

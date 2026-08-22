@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CitySearch, { LocationResult } from "@/components/CitySearch";
 import { supabase } from "@/lib/supabase";
 import { saveChart, updateChart } from "@/lib/saveChart";
+import { goBack } from "@/lib/goBack";
 
 export default function NewChartWrapper() {
   return (
@@ -218,7 +219,7 @@ function NewChart() {
       {/* Top bar: back + sign in */}
       <div className="flex items-center justify-between mb-8">
         <button
-          onClick={() => router.back()}
+          onClick={() => goBack("/home", (href) => router.push(href))}
           className="text-muted text-sm hover:text-foreground transition-colors"
         >
           &larr; back

@@ -18,6 +18,11 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // "no results" and "the lookup failed" look identical to a user unless we say
+  // which happened. Chart creation is the only funnel into the app, and this is
+  // the field it hinges on, so a dropped request has to read as retryable
+  // instead of as "your city isn't in the list".
+  const [status, setStatus] = useState<"ok" | "empty" | "error">("ok");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const justSelected = useRef(false);
 
@@ -41,6 +46,7 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
     if (value.length < 3) {
       setResults([]);
       setIsOpen(false);
+      setStatus("ok");
       return;
     }
 
@@ -51,11 +57,15 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&addressdetails=1`,
           { headers: { "User-Agent": "Mapped-Astrology-App" } }
         );
+        if (!response.ok) throw new Error(`Geocoder returned ${response.status}`);
         const data = await response.json();
         setResults(data);
+        setStatus(data.length > 0 ? "ok" : "empty");
         setIsOpen(data.length > 0);
       } catch {
         setResults([]);
+        setStatus("error");
+        setIsOpen(false);
       } finally {
         setIsLoading(false);
       }
@@ -82,6 +92,20 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
           <div className="w-4 h-4 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
         </div>
+      )}
+
+      {!isLoading && status === "error" && value.length >= 3 && (
+        <p role="status" className="mt-2 text-xs text-terracotta">
+          Couldn&apos;t reach the city lookup. Check your connection and try again — or
+          keep typing to retry.
+        </p>
+      )}
+
+      {!isLoading && status === "empty" && value.length >= 3 && (
+        <p role="status" className="mt-2 text-xs text-muted">
+          No cities matched &ldquo;{value}&rdquo;. Try the city name on its own, or a
+          larger nearby city.
+        </p>
       )}
 
       {isOpen && results.length > 0 && (

@@ -25,6 +25,7 @@ import {
   saveUserLocation,
   type UserLocation,
 } from "@/lib/userLocation";
+import { goBack } from "@/lib/goBack";
 
 export default function AccountPageWrapper() {
   return (
@@ -196,7 +197,7 @@ function EditableField({
         {!editing && (
           <button
             onClick={() => { setEditing(true); setError(null); setSuccess(false); }}
-            className="text-xs text-terracotta/70 hover:text-terracotta transition-colors"
+            className="-mr-3 -my-3.5 px-3 py-3.5 text-xs text-terracotta/70 hover:text-terracotta transition-colors"
           >
             Edit
           </button>
@@ -482,7 +483,7 @@ function LocationSection({ userId }: { userId: string }) {
         {!editing && (
           <button
             onClick={() => { setEditing(true); setError(null); setSuccess(false); setSearch(""); }}
-            className="text-xs text-terracotta/70 hover:text-terracotta transition-colors"
+            className="-mr-3 -my-3.5 px-3 py-3.5 text-xs text-terracotta/70 hover:text-terracotta transition-colors"
           >
             Edit
           </button>
@@ -1542,7 +1543,7 @@ function AccountPage() {
   return (
     <main className="flex-1 flex flex-col px-6 py-8 max-w-lg mx-auto w-full">
       <button
-        onClick={() => router.back()}
+        onClick={() => goBack("/home", (href) => router.push(href))}
         className="text-muted text-sm mb-8 self-start hover:text-foreground transition-colors"
       >
         &larr; back

@@ -524,6 +524,15 @@ export default function HomeTab() {
     } catch {}
   }, [router]);
 
+  // No chart yet → onboarding. This has to be an effect, not a call in the
+  // render body: navigating during render updates the Router while HomeTab is
+  // still rendering, which React reports as "Cannot update a component (Router)
+  // while rendering a different component". The render path below shows a
+  // spinner for the frame or two before the redirect lands.
+  useEffect(() => {
+    if (!isLoading && !hasChart) router.replace("/onboarding");
+  }, [isLoading, hasChart, router]);
+
   // Fetch daily horoscope — simple state machine: idle → loading → done/error
   useEffect(() => {
     if (!hasChart || horoscopeStatus !== "idle") return;
@@ -720,9 +729,6 @@ export default function HomeTab() {
 
   // If no chart exists yet, redirect to onboarding — never show a half-state home page
   if (!hasChart) {
-    if (!isLoading) {
-      router.replace("/onboarding");
-    }
     return (
       <main className="flex-1 flex items-center justify-center min-h-[60vh]">
         <div className="w-6 h-6 border-2 border-brass/30 border-t-brass rounded-full animate-spin" role="status" aria-label="Loading" />

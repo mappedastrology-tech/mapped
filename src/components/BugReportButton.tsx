@@ -16,13 +16,20 @@ export default function BugReportButton() {
 
   return (
     <>
+      {/*
+        Bottom-LEFT on purpose. The bottom-right lane above the tab bar is the
+        app's floating-action-button lane — the journal's voice-to-text mic sits
+        there (right-[18px], bottom 98, 56px hit area). This button is z-40 and
+        that mic is z-30, so sharing the corner meant a global, secondary
+        affordance silently swallowing a screen's primary action.
+      */}
       <button
         type="button"
         data-bugreport-ignore
         onClick={() => setOpen(true)}
         aria-label="Report a bug"
         title="Report a bug"
-        className="fixed bottom-24 right-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
+        className="fixed bottom-24 left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
                    border border-foreground/10 bg-surface/80 text-muted shadow-sm backdrop-blur-sm
                    hover:text-terracotta hover:border-terracotta/30 active:scale-95 transition-all"
       >
