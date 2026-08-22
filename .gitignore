@@ -77,3 +77,6 @@ broken_name*
 # by the Xcode project, so without them a fresh clone fails to build. A
 # placeholder index.html and the config are force-tracked instead; `cap sync`
 # overwrites the placeholder with the real bundle and git ignores the rest.
+
+# Local dev-server log (see .dev.log usage in QA runs)
+.dev.log

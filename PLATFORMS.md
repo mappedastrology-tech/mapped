@@ -6,8 +6,29 @@ Mapped targets four surfaces from one codebase.
 |---|---|---|
 | Mobile web | **Live** | Next.js `(tabs)` layout, served from Netlify |
 | Desktop web | **Live** | `src/components/web/Web*.tsx`, swapped in at `lg+` |
-| iOS app | **Not started** | Capacitor shell around a static export |
-| Android app | **Not started** | Same Capacitor project |
+| iOS app | **Shell added, dev mode** | Capacitor shell around a static export |
+| Android app | **Shell added, dev mode** | Same Capacitor project |
+
+### Which layout renders where
+
+One switch decides this, `lib/useIsDesktop`, and getting it wrong is silent —
+the app keeps working, it just serves the wrong shell.
+
+| Where | Layout | Why |
+|---|---|---|
+| Any browser under 1024px | mobile `(tabs)` | below the `lg` breakpoint |
+| Any browser at 1024px+ | `Web*.tsx` | the desktop site |
+| **Native app, any size** | **mobile `(tabs)`** | see below |
+
+The native case is not the same question as screen width. The iOS target ships
+for iPhone *and* iPad (`TARGETED_DEVICE_FAMILY = "1,2"`), and an iPad in
+landscape is 1024–1366pt. Deciding on width alone means rotating an iPad inside
+the app replaces it with the marketing website — footer, "back to home" links
+and all. `lib/isNativeApp` short-circuits that, so the app is always the app.
+
+`FORCE_MOBILE_DEFAULT` in the same file (or `NEXT_PUBLIC_FORCE_MOBILE=1`) pins
+everything to the mobile layout for QA. While it is on, every `Web*.tsx` screen
+is unreachable at every viewport. Turn it off again when the QA run ends.
 
 ## Architecture: one codebase, two builds
 
