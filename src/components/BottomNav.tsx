@@ -38,12 +38,20 @@ export default function BottomNav() {
   const pathname = usePathname();
   const [showDollyTip, setShowDollyTip] = useState(false);
 
-  // One-time "meet Dolly" coachmark — only if they haven't seen it and aren't
-  // already on the Dolly screen.
+  // One-time "meet Dolly" coachmark — home only.
+  //
+  // It is an absolutely positioned overlay above the nav, so wherever it shows
+  // it covers whatever is beneath it and swallows taps there. Previously it
+  // appeared on every tab until dismissed, which put it on top of the Journal
+  // writing area and the Home "start with these" list — right where a new user
+  // taps first. Restricting it to Home keeps the introduction without blocking
+  // the rest of the app.
   useEffect(() => {
     try {
-      if (localStorage.getItem(DOLLY_TIP_KEY) !== "1" && !pathname.startsWith("/dolly")) {
+      if (localStorage.getItem(DOLLY_TIP_KEY) !== "1" && pathname === "/home") {
         setShowDollyTip(true);
+      } else {
+        setShowDollyTip(false);
       }
     } catch { /* localStorage unavailable */ }
   }, [pathname]);

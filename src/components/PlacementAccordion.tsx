@@ -193,8 +193,13 @@ export default function PlacementAccordion({
               {SIGN_NAMES[sign] || sign}
             </span>
             <span className="text-xs ml-2 placement-card-text-secondary">
-              {position.toFixed(0)}&deg;
-              {house && ` · ${formatHouse(house)}`}
+              {/* A stored chart missing `position` (older or partially written
+                  rows) used to throw here and blank the whole page. Render what
+                  is present instead. */}
+              {[
+                Number.isFinite(position) ? `${position.toFixed(0)}°` : null,
+                house ? formatHouse(house) : null,
+              ].filter(Boolean).join(" · ")}
             </span>
           </div>
           <svg
