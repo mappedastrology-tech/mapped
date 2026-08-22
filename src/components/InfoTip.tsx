@@ -62,6 +62,14 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
 
   return (
     <>
+      {/*
+        The dot stays 16px so it doesn't disturb the line of text it sits in,
+        but 16px is well under the 44px touch floor. The ::before pad is
+        absolutely positioned, so it more than doubles the hit area without
+        changing layout. It stops at 36px rather than a full 44 on purpose:
+        these sit inline in running text, and a 44px overlay would reach far
+        enough to start eating taps meant for the words beside it.
+      */}
       <span
         ref={btnRef}
         role="button"
@@ -71,8 +79,9 @@ export default function InfoTip({ term, explanation }: InfoTipProps) {
           setOpen(!open);
         }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); setOpen(!open); } }}
-        className={`inline-flex items-center justify-center w-4 h-4 rounded-full
+        className={`relative inline-flex items-center justify-center w-4 h-4 rounded-full
                     text-[9px] font-bold ml-1 transition-all flex-shrink-0 cursor-pointer select-none
+                    before:absolute before:content-[''] before:-inset-2.5 before:rounded-full
                     ${open
                       ? "bg-terracotta/30 text-terracotta"
                       : "bg-foreground/8 text-muted hover:bg-foreground/12 hover:text-foreground"

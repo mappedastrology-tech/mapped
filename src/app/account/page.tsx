@@ -1609,7 +1609,7 @@ function AccountPage() {
               {!showChangePassword && (
                 <button
                   onClick={() => setShowChangePassword(true)}
-                  className="text-xs text-terracotta/70 hover:text-terracotta transition-colors"
+                  className="-mr-3 -my-3.5 px-3 py-3.5 text-xs text-terracotta/70 hover:text-terracotta transition-colors"
                 >
                   Change
                 </button>
