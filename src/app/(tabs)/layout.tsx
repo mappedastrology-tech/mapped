@@ -76,6 +76,8 @@ export default function TabsLayout({
   // (NEXT_PUBLIC_FORCE_MOBILE=1 forces the mobile layout everywhere — see useIsDesktop.)
   const isDesktop = useIsDesktop();
   const showWeb = !!WebPage && isDesktop;
+  // Routes that manage their own scroll region instead of scrolling the page.
+  const ownsScroll = pathname === "/dolly";
 
   const syncRan = useRef(false);
 
@@ -153,17 +155,30 @@ export default function TabsLayout({
           <div className="flex flex-col lg:flex-row h-dvh">
             <SideNav />
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                <TopBar />
-                <div className="pb-4 lg:pb-10">
-                  {children}
+              {/* Chat owns its own scrolling: the thread scrolls inside a fixed
+                  frame while the header and composer stay put. Leaving it in
+                  the page scroller would mean two nested scrollers and a
+                  composer that slides away mid-conversation. */}
+              {ownsScroll ? (
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <TopBar />
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    {children}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <TopBar />
+                  <div className="pb-4 lg:pb-10">
+                    {children}
+                  </div>
+                </div>
+              )}
               <BottomNav />
             </div>
           </div>
         )}
-        <BugReportButton />
+        <BugReportButton liftAboveComposer={ownsScroll} />
         {showTour && <AppTour onComplete={handleTourComplete} />}
       </BirthTimeProvider>
     </TierProvider>

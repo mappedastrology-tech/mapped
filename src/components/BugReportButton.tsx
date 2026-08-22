@@ -11,7 +11,7 @@
 import { useState } from "react";
 import BugReportModal from "@/components/BugReportModal";
 
-export default function BugReportButton() {
+export default function BugReportButton({ liftAboveComposer = false }: { liftAboveComposer?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,6 +22,17 @@ export default function BugReportButton() {
         there (right-[18px], bottom 98, 56px hit area). This button is z-40 and
         that mic is z-30, so sharing the corner meant a global, secondary
         affordance silently swallowing a screen's primary action.
+
+        `liftAboveComposer` is for screens with a PINNED bottom composer (chat).
+        There the bottom-left lane is occupied for the whole session, and
+        elementFromPoint at the input's left edge returns this button rather
+        than the input — the same class of bug as above.
+
+        108px centres it on the composer's input pill, and those screens leave a
+        matching left gutter for it, so it sits BESIDE the input rather than on
+        top of it or on top of the thread. (Anywhere higher is inside the
+        scrolling thread, where it would cover whatever happens to scroll under
+        it — on Dolly, the tappable follow-up chips.)
       */}
       <button
         type="button"
@@ -29,9 +40,9 @@ export default function BugReportButton() {
         onClick={() => setOpen(true)}
         aria-label="Report a bug"
         title="Report a bug"
-        className="fixed bottom-24 left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
+        className={`fixed ${liftAboveComposer ? "bottom-[108px]" : "bottom-24"} left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
                    border border-foreground/10 bg-surface/80 text-muted shadow-sm backdrop-blur-sm
-                   hover:text-terracotta hover:border-terracotta/30 active:scale-95 transition-all"
+                   hover:text-terracotta hover:border-terracotta/30 active:scale-95 transition-all`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M8 2l1.5 2.5M16 2l-1.5 2.5" />

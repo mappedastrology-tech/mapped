@@ -16,6 +16,9 @@ import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
+import { useStickToBottom } from "@/lib/useStickToBottom";
+import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
+import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
 
 /* ═══════════════════════════════════════════
    Types
@@ -62,14 +65,21 @@ interface ConnectionContext {
    Suggested prompts
    ═══════════════════════════════════════════ */
 
-const STARTER_PROMPTS = [
-  "What should I know about myself right now?",
-  "What's the sky doing to me today?",
-  "Tell me about my love life based on my chart",
-  "What career path fits my chart?",
-  "What patterns do I keep repeating?",
-  "What's my biggest blind spot?",
+const STARTER_PROMPTS: { text: string; kind: DollyTagKind }[] = [
+  { text: "What should I know about myself right now?", kind: "chart" },
+  { text: "What's the sky doing to me today?", kind: "sky" },
+  { text: "Tell me about my love life based on my chart", kind: "chart" },
+  { text: "What career path fits my chart?", kind: "chart" },
+  { text: "What patterns do I keep repeating?", kind: "card" },
+  { text: "What's my biggest blind spot?", kind: "sky" },
 ];
+
+/** Chip / dot colour per source, matching the design's three accents. */
+const TYPE_COLOR: Record<DollyTagKind, string> = {
+  chart: "var(--journal-accent)",
+  sky: "var(--lavender)",
+  card: "var(--rose, #d99bb0)",
+};
 
 /* ═══════════════════════════════════════════
    Component
@@ -123,21 +133,17 @@ export default function DollyTab() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingDay, setViewingDay] = useState<string | null>(null); // which day's chat is loaded
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   // The active conversation's canonical id, kept in a ref so saves within a
   // session always reuse the same id (state updates are async).
   const conversationIdRef = useRef<string | null>(null);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+  // The thread follows new content only while the reader is already at the
+  // bottom. Scroll up mid-reply and the position holds while Dolly keeps
+  // generating underneath — see useStickToBottom for why scrollIntoView, which
+  // this replaces, could never do that.
+  const { ref: threadRef, pinned, scrollToBottom } = useStickToBottom<HTMLDivElement>(messages);
 
   // Load chart data, transits, connections, and saved conversation
   useEffect(() => {
@@ -341,6 +347,8 @@ export default function DollyTab() {
 
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
+    // Sending is an explicit "take me to the bottom", even if they'd scrolled up.
+    scrollToBottom("auto");
 
     // Create placeholder for streaming response
     const assistantId = `a-${Date.now()}`;
@@ -369,7 +377,7 @@ export default function DollyTab() {
           message: msg,
           history: messages.slice(-20).map(m => ({
             role: m.role,
-            content: m.content,
+            content: m.role === "assistant" ? dollyBody(m.content) : m.content,
           })),
           chart,
           transits,
@@ -433,7 +441,10 @@ export default function DollyTab() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              recentMessages: finalMessages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+              recentMessages: finalMessages.slice(-6).map((m) => ({
+                role: m.role,
+                content: m.role === "assistant" ? dollyBody(m.content) : m.content,
+              })),
             }),
           }).catch(() => {});
         } catch { /* ignore */ }
@@ -930,19 +941,59 @@ export default function DollyTab() {
   // ═══════════════════════════════════════════
   // VIEW: Active Chat
   // ═══════════════════════════════════════════
+
+  // Real sky, not decoration: the divider above the thread reads from the same
+  // ephemeris the almanac uses.
+  const skyLine = (() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const when = hour < 12 ? "This morning" : hour < 18 ? "This afternoon" : "Tonight";
+    try {
+      return `${when} · ${getMoonPhaseLabel(now)} in ${getCurrentMoonSign(now).full}`;
+    } catch {
+      return when;
+    }
+  })();
+
+  const lastMessage = messages[messages.length - 1];
+
   return (
-    <main className="flex-1 flex flex-col max-w-lg lg:max-w-3xl mx-auto w-full">
+    <main className="flex-1 min-h-0 flex flex-col relative max-w-lg lg:max-w-3xl mx-auto w-full">
+      <style>{`
+        @keyframes dl-orb{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+        @keyframes dl-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.06)}}
+        @keyframes dl-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes dl-dot{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+        .dl-thread::-webkit-scrollbar{width:0;height:0}
+        .dl-thread{scrollbar-width:none}
+        .dl-bubble{animation:dl-rise .3s ease both}
+        /* The streaming bubble grows every token; browser scroll anchoring
+           would try to compensate and fight our own scrolling. */
+        .dl-live{overflow-anchor:none}
+        @media (prefers-reduced-motion: reduce){
+          .dl-bubble{animation:none}
+          [class*="dl-"]{animation-duration:.001ms!important}
+        }
+      `}</style>
+
+      {/* Backdrop — a soft glow from the top, behind everything, never tappable. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ background: "radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--lavender) 16%, transparent) 0%, transparent 58%)" }}
+      />
+
       {/* Header — moon-orb avatar + DOLLY */}
-      <style>{`@keyframes dl-orb{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@keyframes dl-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.06)}}`}</style>
-      <div className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: "1px solid var(--border-card)" }}>
+      <div className="relative z-10 flex items-center gap-3 px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-card)" }}>
         <button
           onClick={openHistory}
-          aria-label="Back to conversations"
-          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors active:scale-95"
-          style={{ color: "var(--foreground-muted)" }}
+          aria-label="Conversations"
+          className="shrink-0 rounded-full flex items-center justify-center transition-transform active:scale-95"
+          style={{ width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
         >
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
+            <path d="M8 9h9M8 13h6" />
           </svg>
         </button>
         <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
@@ -959,10 +1010,13 @@ export default function DollyTab() {
         {messages.length > 0 && (
           <button
             onClick={() => setShowLeavePrompt(true)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors"
-            style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
+            aria-label="New chat"
+            className="shrink-0 rounded-full flex items-center justify-center transition-transform active:scale-95"
+            style={{ width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-card)" }}
           >
-            New chat
+            <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+            </svg>
           </button>
         )}
       </div>
@@ -999,87 +1053,182 @@ export default function DollyTab() {
         </div>
       )}
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        {/* Empty state — Dolly greeting bubble + suggestion chips */}
-        {messages.length === 0 && (
-          <div className="flex flex-col gap-[18px]">
-            <div
-              className="max-w-[86%] self-start px-[19px] py-[17px]"
-              style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
-            >
-              <p
-                className="mb-2.5"
-                style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 18, lineHeight: 1.45, color: "rgba(244,236,214,0.96)" }}
-              >
-                {(() => {
-                  const h = new Date().getHours();
-                  const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-                  return `${salutation}, ${userName ? userName.split(" ")[0] : "Seeker"}.`;
-                })()}
-              </p>
-              <p className="text-sm" style={{ lineHeight: 1.65, color: "rgba(240,230,210,0.9)" }}>
-                Your chart, your transits, your relationships — I know it all. What&rsquo;s sitting with you?
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-[9px] self-start max-w-[92%]">
-              {STARTER_PROMPTS.map((prompt, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(prompt)}
-                  className="text-left font-medium transition-all active:scale-[0.98]"
-                  style={{
-                    padding: "9px 15px",
-                    borderRadius: 99,
-                    background: "color-mix(in srgb, var(--journal-accent) 8%, transparent)",
-                    border: "0.5px solid color-mix(in srgb, var(--journal-accent) 28%, transparent)",
-                    color: "var(--journal-accent)",
-                    fontSize: 12.5,
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
+      {/* ── Thread ──────────────────────────────────────────────────────────
+          The ONLY scroll region on this page. It follows new content while
+          you're at the bottom and holds still the moment you scroll up. */}
+      <div ref={threadRef} className="dl-thread relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+        <div className="flex flex-col gap-[18px]">
+          <div className="text-center" style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", opacity: 0.7 }}>
+            {skyLine}
           </div>
-        )}
 
-        {/* Message list */}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`mb-[18px] flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "user" ? (
+          {/* Greeting + starters, until the first message */}
+          {messages.length === 0 && (
+            <>
               <div
-                className="max-w-[82%] px-4 py-3 dl-user-bubble"
-                style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p>
-              </div>
-            ) : (
-              <div
-                className="max-w-[88%] px-[19px] py-[17px]"
+                className="dl-bubble max-w-[88%] self-start px-[19px] py-[17px]"
                 style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
               >
-                <div className="text-sm leading-[1.7] whitespace-pre-wrap" style={{ color: "rgba(240,230,210,0.9)" }}>
-                  {msg.content}
-                  {isStreaming && msg === messages[messages.length - 1] && (
-                    <span className="inline-block w-1.5 h-4 animate-pulse ml-0.5 align-middle" style={{ background: "var(--lavender)" }} />
-                  )}
-                </div>
+                <p
+                  className="mb-2.5"
+                  style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 18, lineHeight: 1.45, color: "rgba(244,236,214,0.96)" }}
+                >
+                  {(() => {
+                    const h = new Date().getHours();
+                    const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+                    return `${salutation}, ${userName ? userName.split(" ")[0] : "Seeker"}.`;
+                  })()}
+                </p>
+                <p className="text-sm" style={{ lineHeight: 1.65, color: "rgba(240,230,210,0.9)" }}>
+                  Your chart, your transits, your relationships — I know it all. What&rsquo;s sitting with you?
+                </p>
               </div>
-            )}
-          </div>
-        ))}
 
-        <div ref={messagesEndRef} />
+              <div style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--foreground-muted)", opacity: 0.75 }}>
+                Try asking
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {STARTER_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt.text}
+                    onClick={() => handleSend(prompt.text)}
+                    className="flex items-center gap-3 w-full text-left transition-transform active:scale-[0.99]"
+                    style={{ padding: "14px 15px", borderRadius: 16, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid rgba(201,206,232,0.16)" }}
+                  >
+                    <span
+                      className="shrink-0 flex items-center justify-center"
+                      style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(255,255,255,0.05)" }}
+                    >
+                      <span className="rounded-full" style={{ width: 7, height: 7, background: TYPE_COLOR[prompt.kind], boxShadow: `0 0 7px ${TYPE_COLOR[prompt.kind]}` }} />
+                    </span>
+                    <span className="flex-1 min-w-0 font-medium" style={{ fontSize: 13.5, lineHeight: 1.4, color: "var(--foreground-secondary, rgba(240,230,210,0.9))" }}>
+                      {prompt.text}
+                    </span>
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Message list */}
+          {messages.map((msg) => {
+            if (msg.role === "user") {
+              return (
+                <div key={msg.id} className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: "var(--journal-on-accent, #161022)" }}>{msg.content}</p>
+                </div>
+              );
+            }
+
+            const live = isStreaming && msg === lastMessage;
+            const { meta, body, metaPending } = parseDollyReply(msg.content);
+
+            // Nothing to show yet (empty placeholder, or the meta line still
+            // arriving) — the dots stand in for the whole bubble.
+            if (!body && !meta && (metaPending || live)) {
+              return (
+                <div
+                  key={msg.id}
+                  className="dl-bubble self-start flex items-center gap-1.5"
+                  style={{ padding: "15px 20px", borderRadius: "6px 20px 20px 20px", background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)" }}
+                  aria-label="Dolly is writing"
+                >
+                  {[0, 0.18, 0.36].map((d) => (
+                    <span key={d} className="rounded-full" style={{ width: 6, height: 6, background: "var(--lavender)", animation: `dl-dot 1.1s ease-in-out ${d}s infinite` }} />
+                  ))}
+                </div>
+              );
+            }
+
+            return (
+              <div key={msg.id} className="flex flex-col gap-[18px]">
+                <div
+                  className={`dl-bubble self-start max-w-[88%] px-[19px] py-[17px] ${live ? "dl-live" : ""}`}
+                  style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
+                >
+                  {!!meta?.tags.length && (
+                    <div className="flex flex-wrap gap-[7px] mb-[13px]">
+                      {meta.tags.map((tag) => (
+                        <span
+                          key={tag.label}
+                          className="inline-flex items-center gap-1.5"
+                          style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.05)", border: `0.5px solid color-mix(in srgb, ${TYPE_COLOR[tag.kind]} 34%, transparent)`, color: "rgba(240,230,210,0.9)" }}
+                        >
+                          <span className="rounded-full" style={{ width: 5, height: 5, background: TYPE_COLOR[tag.kind] }} />
+                          {tag.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {meta?.lead && (
+                    <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 17, lineHeight: 1.45, color: "rgba(244,236,214,0.96)", margin: "0 0 11px" }}>
+                      {meta.lead}
+                    </p>
+                  )}
+                  <div className="text-sm leading-[1.7] whitespace-pre-wrap" style={{ color: "rgba(240,230,210,0.9)" }}>
+                    {body}
+                    {live && (
+                      <span className="inline-block w-1.5 h-4 animate-pulse ml-0.5 align-middle" style={{ background: "var(--lavender)" }} />
+                    )}
+                  </div>
+                </div>
+
+                {/* The action chip and follow-ups only once the reply has
+                    landed — offering a next step mid-sentence reads as a bug. */}
+                {!live && meta?.action && (
+                  <a
+                    href={meta.action.href}
+                    className="self-start inline-flex items-center gap-2"
+                    style={{ padding: "12px 18px", borderRadius: 99, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 28%, transparent)" }}
+                  >
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2c1 3-1 4-1 6 0 1.5 1 2.5 1 2.5s1.2-1 1.2-3c2 1.3 3.3 3.6 3.3 6.3A6.8 6.8 0 0 1 5.2 14C5.2 9 9 7 9 4c0 0 2 1 3-2z" />
+                    </svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{meta.action.label}</span>
+                  </a>
+                )}
+                {!live && !!meta?.follow.length && (
+                  <div className="flex flex-wrap gap-[9px] self-start max-w-[92%]">
+                    {meta.follow.map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => handleSend(f)}
+                        disabled={isStreaming}
+                        className="font-medium transition-transform active:scale-[0.98] disabled:opacity-40"
+                        style={{ padding: "9px 15px", borderRadius: 99, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 28%, transparent)", color: "var(--lavender)", fontSize: 12.5 }}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
+      {/* Jump back to the newest message. Only offered when you've scrolled
+          away — it is the way back, never something that grabs you. */}
+      {!pinned && messages.length > 0 && (
+        <button
+          onClick={() => scrollToBottom()}
+          className="absolute z-20 left-1/2 flex items-center gap-1.5 transition-transform active:scale-95"
+          style={{ bottom: 92, transform: "translateX(-50%)", padding: "8px 15px", borderRadius: 99, background: "var(--card)", border: "0.5px solid var(--border-card)", boxShadow: "0 6px 20px rgba(0,0,0,0.35)", color: "var(--foreground)", fontSize: 12, fontWeight: 600 }}
+        >
+          {isStreaming ? "Dolly is writing" : "Latest"}
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+        </button>
+      )}
+
       {/* Input area */}
-      <div className="px-4 pb-4 pt-2">
-        <div className="flex items-end gap-2 pl-[18px] pr-2 py-2 transition-all" style={{ background: "var(--soft, rgba(255,255,255,0.05))", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
+      <div className="relative z-10 shrink-0 px-4 pb-4 pt-2">
+        <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" style={{ background: "var(--soft, rgba(255,255,255,0.05))", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
           <textarea
             ref={inputRef}
             value={input}
