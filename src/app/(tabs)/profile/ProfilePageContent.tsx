@@ -578,8 +578,9 @@ export default function ProfilePageContent() {
               )}
               {deity && (
                 <ReadCard kicker="Deity" glyph="\u2736" title={deity.guide.name} body={deity.guide.tagline}
+                  img={`/deities/${deity.guide.id}.webp`}
                   onOpen={() => setOpenRead({
-                    kind: "Deity", title: deity.guide.name, tagline: deity.guide.tagline,
+                    kind: "Deity", img: `/deities/${deity.guide.id}.webp`, title: deity.guide.name, tagline: deity.guide.tagline,
                     body: deity.guide.essence, shadow: deity.guide.shadow,
                     meta: [
                       { label: "Pantheon", value: deity.guide.pantheon },
@@ -887,6 +888,11 @@ function ReadCard({ kicker, glyph, title, body, children, onOpen, img }: {
   kicker: string; glyph: string; title: string; body: string;
   children?: React.ReactNode; onOpen?: () => void; img?: string;
 }) {
+  // A library can be wired for art before every plate exists (deities are
+  // mid-production). A missing file falls back to the glyph tile rather than
+  // leaving a hole, so the card looks deliberate either way.
+  const [artFailed, setArtFailed] = useState(false);
+  const showArt = Boolean(img) && !artFailed;
   return (
     <button
       type="button"
@@ -895,10 +901,10 @@ function ReadCard({ kicker, glyph, title, body, children, onOpen, img }: {
       style={{ borderRadius: 16, padding: "15px 14px", background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
     >
       <p className="text-[8.5px] font-bold uppercase" style={{ letterSpacing: "0.16em", color: "var(--brass)" }}>{kicker}</p>
-      {img ? (
+      {showArt ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={img} alt="" aria-hidden className="self-center" style={{ width: 92, height: 92, objectFit: "contain" }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          onError={() => setArtFailed(true)} />
       ) : (
         <span className="flex items-center justify-center"
           style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "0.5px solid var(--border-card)", color: "var(--brass)", fontSize: 18 }}>
@@ -950,7 +956,7 @@ function ReadSheet({ detail, onClose }: { detail: ReadDetail; onClose: () => voi
           <div className="flex justify-center mb-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={detail.img} alt="" aria-hidden style={{ width: 150, height: 150, objectFit: "contain" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+              onError={(e) => { const w = e.currentTarget.parentElement; if (w) w.style.display = "none"; }} />
           </div>
         )}
         <p className="text-[9px] font-bold uppercase" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>{detail.kind}</p>
