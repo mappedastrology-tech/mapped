@@ -1,0 +1,101 @@
+---
+import Base from '../layouts/Base.astro';
+import CTABlock from '../components/CTABlock.astro';
+import { EMAIL } from '../lib/site';
+import { breadcrumbSchema } from '../lib/schema';
+
+const path = '/contact';
+
+const schema = [
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Contact', path },
+  ]),
+];
+---
+
+<Base
+  title="Contact — Sonora"
+  description="Tell me what you are trying to fix. Content and search strategy for startups and B2B software companies."
+  path={path}
+  schema={schema}
+>
+  <section class="section contact">
+    <div class="container">
+      <div class="prose">
+        <h1>Contact</h1>
+        <p class="lead">
+          Or email <a href={`mailto:${EMAIL}`}>{EMAIL}</a> directly.
+        </p>
+      </div>
+
+      <form
+        name="contact"
+        method="POST"
+        action="/thanks"
+        data-netlify="true"
+        netlify-honeypot="fax-number"
+        class="contact-form"
+      >
+        <input type="hidden" name="form-name" value="contact" />
+
+        <p class="hp">
+          <label for="fax-number">Leave this field empty</label>
+          <input id="fax-number" name="fax-number" tabindex="-1" autocomplete="off" />
+        </p>
+
+        <p class="field">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" autocomplete="name" required />
+        </p>
+
+        <p class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+        </p>
+
+        <p class="field">
+          <label for="company">Company URL</label>
+          <input
+            id="company"
+            name="company"
+            type="url"
+            inputmode="url"
+            autocomplete="url"
+            placeholder="https://"
+          />
+        </p>
+
+        <p class="field">
+          <label for="problem">What are you trying to fix?</label>
+          <textarea id="problem" name="problem" rows={6} required></textarea>
+        </p>
+
+        <p class="submit">
+          <button type="submit" class="btn">Send</button>
+        </p>
+      </form>
+    </div>
+  </section>
+
+  <CTABlock />
+</Base>
+
+<style>
+  .contact {
+    padding-block: clamp(56px, 7vw, 96px);
+  }
+
+  .contact .lead {
+    margin-top: 24px;
+  }
+
+  .contact-form {
+    max-width: 560px;
+    margin-top: clamp(40px, 5vw, 56px);
+  }
+
+  .submit {
+    margin-top: 36px;
+  }
+</style>

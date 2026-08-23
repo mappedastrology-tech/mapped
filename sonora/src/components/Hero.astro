@@ -1,0 +1,63 @@
+---
+/**
+ * Homepage hero. The full mark sits above the headline; it is the largest
+ * image on the site and the LCP candidate, so it is eager and prioritised.
+ */
+---
+
+<section class="hero">
+  <div class="container hero-inner">
+    <img
+      src="/brand/sonora-full.webp"
+      alt="Sonora"
+      width="280"
+      height="168"
+      fetchpriority="high"
+      decoding="async"
+      class="mark"
+    />
+    <h1>Nobody browses anymore.</h1>
+    <p class="lead">
+      People ask for the exact thing they want and take the first answer
+      they&rsquo;re given. Sonora is content and search strategy for companies that
+      need to be that answer &mdash; across AI search, traditional search, and every
+      surface in between.
+    </p>
+    <div class="btn-row">
+      <a href="/book" class="btn">Book a call</a>
+      <a href="/method" class="btn-secondary">See the method</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: clamp(56px, 8vw, 104px) clamp(64px, 9vw, 120px);
+  }
+
+  .hero-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .mark {
+    width: min(280px, 62vw);
+    height: auto;
+    margin-bottom: clamp(32px, 4vw, 48px);
+  }
+
+  h1 {
+    max-width: 16ch;
+  }
+
+  .lead {
+    margin-top: 28px;
+    max-width: 60ch;
+  }
+
+  .btn-row {
+    justify-content: center;
+  }
+</style>

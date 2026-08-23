@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+import { breadcrumbSchema } from '../lib/schema';
+---
+
+<Base
+  title="Page not found — Sonora"
+  description="That page doesn't exist. Head back to the homepage or the writing archive."
+  path="/404"
+  noindex={true}
+  schema={[breadcrumbSchema([{ name: 'Home', path: '/' }])]}
+>
+  <section class="section notfound">
+    <div class="container">
+      <div class="prose">
+        <h1>That page doesn&rsquo;t exist.</h1>
+        <p class="lead">Which is the opposite of the problem I usually solve.</p>
+        <p>
+          <a href="/" class="textlink">Back to the homepage</a> or
+          <a href="/blog" class="textlink">read the writing</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .notfound {
+    padding-block: clamp(72px, 10vw, 140px);
+  }
+
+  .notfound .lead {
+    margin-top: 28px;
+  }
+</style>

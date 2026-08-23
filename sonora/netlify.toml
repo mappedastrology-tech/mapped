@@ -1,0 +1,40 @@
+# Netlify configuration for sonoramethod.com
+#
+# If this folder is deployed from its own repository, leave `base` unset.
+# While it lives inside the Mapped repo, set the site's base directory to
+# "sonora" in the Netlify UI (Site configuration -> Build & deploy -> Base
+# directory) so these paths resolve.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Fingerprinted CSS and JS are safe to cache forever.
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Machine-readable files should not be cached aggressively; they change with
+# every post.
+[[headers]]
+  for = "/llms.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=3600"

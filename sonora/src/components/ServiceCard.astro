@@ -1,0 +1,49 @@
+---
+/**
+ * Homepage service card. Title and one-liner only; the detail lives on
+ * /services.
+ */
+interface Props {
+  name: string;
+  oneLiner: string;
+  href: string;
+}
+
+const { name, oneLiner, href } = Astro.props;
+---
+
+<li class="card">
+  <a href={href}>
+    <h3>{name}</h3>
+    <p>{oneLiner}</p>
+  </a>
+</li>
+
+<style>
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--paper);
+    transition: border-color 150ms ease-out, transform 150ms ease-out;
+  }
+
+  .card:hover {
+    border-color: var(--ink);
+  }
+
+  .card a {
+    display: block;
+    height: 100%;
+    padding: 32px 28px 36px;
+  }
+
+  .card h3 {
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    margin-top: 12px;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+</style>

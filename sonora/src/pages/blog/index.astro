@@ -1,0 +1,100 @@
+---
+import Base from '../../layouts/Base.astro';
+import CTABlock from '../../components/CTABlock.astro';
+import PostCard from '../../components/PostCard.astro';
+import NewsletterForm from '../../components/NewsletterForm.astro';
+import { getPublishedPosts, postPath } from '../../lib/posts';
+import { readingTime } from '../../lib/format';
+import { breadcrumbSchema } from '../../lib/schema';
+
+const path = '/blog';
+const posts = await getPublishedPosts();
+
+const schema = [
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Writing', path },
+  ]),
+];
+---
+
+<Base
+  title="Writing on AI search, SEO, and category strategy — Sonora"
+  description="Notes on AI search visibility, content strategy, and building a category. New writing roughly weekly from Taylor Corbett."
+  path={path}
+  schema={schema}
+>
+  <section class="section blog-hero">
+    <div class="container">
+      <div class="prose">
+        <h1>Writing</h1>
+        <p class="lead">
+          Notes on AI search, content strategy, and building a category. Roughly
+          weekly.
+        </p>
+      </div>
+      <div class="signup">
+        <NewsletterForm id="blog-newsletter" variant="page" />
+      </div>
+    </div>
+  </section>
+
+  <section class="section posts" aria-label="All posts">
+    <div class="container">
+      {
+        posts.length > 0 ? (
+          <ul class="post-list">
+            {posts.map((post) => (
+              <PostCard
+                level={2}
+                title={post.data.title}
+                description={post.data.description}
+                date={post.data.date}
+                href={postPath(post)}
+                readingTime={readingTime(post.body ?? '')}
+                detailed={true}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p class="prose">The first post is on its way.</p>
+        )
+      }
+    </div>
+  </section>
+
+  <CTABlock />
+</Base>
+
+<style>
+  .blog-hero {
+    padding-block: clamp(56px, 7vw, 96px) 0;
+  }
+
+  .blog-hero .lead {
+    margin-top: 24px;
+  }
+
+  .signup {
+    margin-top: clamp(36px, 4vw, 48px);
+  }
+
+  .posts {
+    padding-block: clamp(48px, 6vw, 72px) 0;
+  }
+
+  .post-list {
+    display: grid;
+    gap: 40px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 768px) {
+    .post-list {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 48px 56px;
+    }
+  }
+</style>

@@ -1,0 +1,26 @@
+{
+  "name": "sonora",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run assets && astro dev",
+    "start": "npm run dev",
+    "assets": "node scripts/generate-assets.mjs",
+    "prebuild": "npm run assets",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
+    "astro": "^7.2.4"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "sharp": "^0.35.3"
+  }
+}

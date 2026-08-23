@@ -1,0 +1,152 @@
+---
+import Base from '../layouts/Base.astro';
+import CTABlock from '../components/CTABlock.astro';
+import { SERVICE_DETAIL } from '../lib/services-detail';
+import { breadcrumbSchema, serviceSchema } from '../lib/schema';
+
+const path = '/services';
+
+const schema = [
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Services', path },
+  ]),
+  ...SERVICE_DETAIL.map((service) =>
+    serviceSchema({
+      slug: service.slug,
+      name: service.name,
+      description: service.body,
+    })
+  ),
+];
+---
+
+<Base
+  title="Services — Sonora"
+  description="Visibility audits, fractional content leadership, AI visibility monitoring, original research programs, and roadmap execution management."
+  path={path}
+  schema={schema}
+>
+  <section class="section page-hero">
+    <div class="container">
+      <div class="prose">
+        <h1>Services</h1>
+        <p class="lead">
+          Sonora sells strategy and direction. I don&rsquo;t write, design, or
+          build &mdash; I decide what should be made, set the standard it has to
+          meet, and make sure whoever produces it delivers. Most engagements
+          start with the audit, because I&rsquo;m not going to tell you what to do
+          before I know what&rsquo;s true.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {
+    SERVICE_DETAIL.map((service, index) => (
+      <section
+        id={service.slug}
+        class:list={['section service', index % 2 === 0 ? 'surface-ink' : '']}
+        aria-labelledby={`${service.slug}-heading`}
+      >
+        <div class="container">
+          <div class="service-inner" data-reveal>
+            <div class="prose">
+              <p class="eyebrow">{String(index + 1).padStart(2, '0')}</p>
+              <h2 id={`${service.slug}-heading`}>{service.name}</h2>
+              <p>{service.body}</p>
+              {'note' in service && service.note && (
+                <p class="note">{service.note}</p>
+              )}
+            </div>
+
+            <div class="detail">
+              <h3 class="detail-heading">What you get</h3>
+              <ul class="arch-list">
+                {service.includes.map((item) => (
+                  <li>{item}</li>
+                ))}
+              </ul>
+
+              <h3 class="detail-heading best-when">Best when</h3>
+              <p>{service.bestWhen}</p>
+
+              <p class="book">
+                <a href="/book" class="btn">Book a call</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <CTABlock />
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: clamp(56px, 7vw, 96px) clamp(48px, 6vw, 72px);
+  }
+
+  .page-hero .lead {
+    margin-top: 28px;
+  }
+
+  .service-inner {
+    display: grid;
+    gap: clamp(32px, 4vw, 48px);
+  }
+
+  @media (min-width: 900px) {
+    .service-inner {
+      grid-template-columns: 1fr 1fr;
+      gap: 72px;
+      align-items: start;
+    }
+  }
+
+  .eyebrow {
+    margin-bottom: 16px;
+  }
+
+  .service h2 {
+    margin-bottom: 20px;
+  }
+
+  .note {
+    margin-top: 20px;
+    font-size: 1rem;
+    color: var(--surface-muted);
+  }
+
+  .detail-heading {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--surface-muted);
+  }
+
+  .detail ul {
+    margin-top: 16px;
+  }
+
+  .detail li {
+    color: var(--surface-text);
+  }
+
+  .best-when {
+    margin-top: 36px;
+  }
+
+  .best-when + p {
+    margin-top: 12px;
+    max-width: 46ch;
+  }
+
+  .book {
+    margin-top: 36px;
+  }
+</style>

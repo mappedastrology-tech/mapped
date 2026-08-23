@@ -1,0 +1,149 @@
+---
+import NewsletterForm from './NewsletterForm.astro';
+import { EMAIL, LOCATION, SITE_TAGLINE, NAV_LINKS, PLACEHOLDERS, isPlaceholder } from '../lib/site';
+
+const year = 2026;
+const linkedinReady = !isPlaceholder(PLACEHOLDERS.linkedin);
+---
+
+<footer class="site-footer surface-ink">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <img
+          src="/brand/sonora-wordmark-knockout.webp"
+          alt="Sonora"
+          width="150"
+          height="38"
+          loading="lazy"
+          decoding="async"
+        />
+        <p class="tagline">{SITE_TAGLINE}</p>
+        <p class="meta">{LOCATION}.</p>
+      </div>
+
+      <nav aria-label="Footer">
+        <h2 class="col-heading">Sonora</h2>
+        <ul class="footer-links">
+          {NAV_LINKS.map((link) => (
+            <li><a href={link.href}>{link.label}</a></li>
+          ))}
+          <li><a href="/book">Book a call</a></li>
+        </ul>
+      </nav>
+
+      <div>
+        <h2 class="col-heading">Get in touch</h2>
+        <ul class="footer-links">
+          <li><a href={`mailto:${EMAIL}`}>{EMAIL}</a></li>
+          <li>
+            {
+              linkedinReady ? (
+                <a href={PLACEHOLDERS.linkedin} rel="me noopener">LinkedIn</a>
+              ) : (
+                /* Placeholder: replace PLACEHOLDERS.linkedin in src/lib/site.ts. */
+                <span class="pending">LinkedIn — link pending</span>
+              )
+            }
+          </li>
+        </ul>
+        <div class="newsletter-slot">
+          <NewsletterForm id="footer-newsletter" variant="footer" />
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="meta">&copy; {year} Sonora</p>
+      <p class="meta"><a href="/privacy" class="bottom-link">Privacy</a></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding-block: clamp(56px, 7vw, 88px) 32px;
+    margin-top: var(--section-gap);
+  }
+
+  .footer-grid {
+    display: grid;
+    gap: 48px;
+  }
+
+  @media (min-width: 768px) {
+    .footer-grid {
+      grid-template-columns: 1.2fr 0.8fr 1fr;
+      gap: 56px;
+    }
+  }
+
+  .tagline {
+    margin-top: 24px;
+    max-width: 34ch;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--paper);
+  }
+
+  .meta { margin-top: 12px; }
+
+  .col-heading {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--surface-muted);
+    margin-bottom: 20px;
+  }
+
+  .footer-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footer-links li + li { margin-top: 12px; }
+
+  .footer-links a {
+    color: var(--paper);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 120ms ease-out;
+  }
+
+  .footer-links a:hover {
+    text-decoration-color: var(--accent);
+  }
+
+  .pending {
+    color: var(--surface-muted);
+    font-style: italic;
+  }
+
+  .newsletter-slot { margin-top: 32px; }
+
+  .footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 24px;
+    margin-top: clamp(48px, 6vw, 72px);
+    padding-top: 24px;
+    border-top: 1px solid var(--surface-rule);
+  }
+
+  .footer-bottom .meta { margin-top: 0; }
+
+  .bottom-link {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+
+  .bottom-link:hover { text-decoration-color: var(--accent); }
+</style>

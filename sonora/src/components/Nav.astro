@@ -1,0 +1,316 @@
+---
+/**
+ * Site header. Sticky, 72px tall, paper background. The bottom hairline only
+ * appears once the page has scrolled 40px.
+ *
+ * Menu behaviour is progressive: without JavaScript the links render as a
+ * wrapped row under the logo, so every destination stays reachable. The
+ * `js` class on <html> (set by an inline script in Base.astro) switches on the
+ * hamburger and the full-screen overlay.
+ */
+import { NAV_LINKS } from '../lib/site';
+
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+---
+
+<header class="site-header" data-nav>
+  <div class="container header-inner">
+    <a href="/" class="logo" aria-label="Sonora — home">
+      <picture>
+        <source
+          media="(max-width: 639px)"
+          srcset="/brand/sonora-icon.webp"
+          width="36"
+          height="36"
+        />
+        <img
+          src="/brand/sonora-wordmark.webp"
+          alt="Sonora"
+          width="140"
+          height="35"
+          fetchpriority="high"
+          decoding="async"
+        />
+      </picture>
+    </a>
+
+    <button
+      class="menu-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-menu"
+      data-menu-toggle
+    >
+      <span class="visually-hidden">Menu</span>
+      <span class="bars" aria-hidden="true"></span>
+    </button>
+
+    <nav id="site-menu" class="site-nav" aria-label="Primary">
+      <ul class="nav-list">
+        {
+          NAV_LINKS.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                class:list={['nav-link', { current: isCurrent(link.href) }]}
+                aria-current={isCurrent(link.href) ? 'page' : undefined}
+              >
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+        <li class="nav-cta">
+          <a
+            href="/book"
+            class="btn"
+            aria-current={isCurrent('/book') ? 'page' : undefined}
+          >
+            Book a call
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--paper);
+    border-bottom: 1px solid transparent;
+    transition: border-color 150ms ease-out;
+  }
+
+  .site-header[data-scrolled] {
+    border-bottom-color: var(--rule);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: var(--nav-height);
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    display: block;
+    line-height: 0;
+    flex-shrink: 0;
+    /* Both of these sit above the full-screen overlay so the mark stays put
+       and the close button is reachable while the menu is open. */
+    position: relative;
+    z-index: 2;
+  }
+
+  /* The wordmark never renders below 120px wide. */
+  .logo img {
+    width: 140px;
+    height: auto;
+  }
+
+  @media (max-width: 639px) {
+    .logo img {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  .menu-toggle {
+    display: none;
+    position: relative;
+    z-index: 2;
+    background: none;
+    border: 0;
+    padding: 12px;
+    margin-right: -12px;
+    cursor: pointer;
+  }
+
+  .bars,
+  .bars::before,
+  .bars::after {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--ink);
+    transition: transform 200ms ease-out, opacity 150ms ease-out;
+  }
+
+  .bars::before,
+  .bars::after {
+    content: '';
+    position: relative;
+  }
+
+  .bars::before { top: -7px; }
+  .bars::after { top: 5px; }
+
+  .nav-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 28px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-link {
+    display: inline-block;
+    padding: 6px 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--ink);
+    border-bottom: 2px solid transparent;
+  }
+
+  .nav-link:hover {
+    border-bottom-color: var(--rule);
+  }
+
+  .nav-link.current {
+    border-bottom-color: var(--accent);
+  }
+
+  .nav-cta .btn {
+    padding: 12px 22px;
+    font-size: 0.9375rem;
+  }
+
+  /* The current page is marked with a gold underline everywhere, including on
+     the button. */
+  .nav-cta .btn[aria-current='page'] {
+    border-bottom-color: var(--accent);
+  }
+
+  /* Without JS the links stay in the flow and simply wrap. */
+  @media (max-width: 767px) {
+    .site-nav {
+      width: 100%;
+      padding-bottom: 16px;
+    }
+
+    .nav-list {
+      gap: 4px 20px;
+    }
+  }
+
+  /* With JS the hamburger and overlay take over. */
+  :global(html.js) .menu-toggle {
+    display: none;
+  }
+
+  @media (max-width: 767px) {
+    :global(html.js) .menu-toggle {
+      display: block;
+    }
+
+    :global(html.js) .site-nav {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      padding: calc(var(--nav-height) + 40px) var(--gutter) 40px;
+      background: var(--ink);
+      overflow-y: auto;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 200ms ease-out, visibility 200ms ease-out;
+    }
+
+    :global(html.js) .site-header[data-open] .site-nav {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    :global(html.js) .site-header[data-open] .bars {
+      transform: rotate(45deg);
+    }
+
+    :global(html.js) .site-header[data-open] .bars::before {
+      opacity: 0;
+    }
+
+    :global(html.js) .site-header[data-open] .bars::after {
+      top: -2px;
+      transform: rotate(-90deg);
+    }
+
+    :global(html.js) .nav-list {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 28px;
+    }
+
+    :global(html.js) .nav-link {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 1.375rem;
+      line-height: 1.3;
+      color: var(--paper);
+    }
+
+    :global(html.js) .site-header[data-open] .menu-toggle .bars,
+    :global(html.js) .site-header[data-open] .menu-toggle .bars::before,
+    :global(html.js) .site-header[data-open] .menu-toggle .bars::after {
+      background: var(--paper);
+    }
+
+    :global(html.js) .nav-cta .btn {
+      background: var(--paper);
+      color: var(--ink);
+      border-color: var(--paper);
+      font-size: 1.0625rem;
+      padding: 15px 26px;
+    }
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-nav]');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+
+  if (header && toggle) {
+    const setOpen = (open: boolean) => {
+      header.toggleAttribute('data-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      document.body.style.overflow = open ? 'hidden' : '';
+    };
+
+    toggle.addEventListener('click', () => {
+      setOpen(!header.hasAttribute('data-open'));
+    });
+
+    // A link tap inside the overlay should close it.
+    header.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => setOpen(false));
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && header.hasAttribute('data-open')) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+
+    // Leaving the mobile breakpoint while open would trap scrolling.
+    window.matchMedia('(min-width: 768px)').addEventListener('change', (event) => {
+      if (event.matches) setOpen(false);
+    });
+  }
+
+  if (header) {
+    const onScroll = () => {
+      header.toggleAttribute('data-scrolled', window.scrollY > 40);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+</script>

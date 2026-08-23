@@ -1,0 +1,94 @@
+---
+/**
+ * Newsletter signup. Collected by Netlify Forms and exported as CSV until
+ * Taylor picks an email provider — at which point only the `action` and
+ * `data-netlify` attributes change. See the README.
+ */
+interface Props {
+  /** Netlify keys submissions by form name; both instances share one list. */
+  id: string;
+  label?: string;
+  variant?: 'footer' | 'page';
+}
+
+const {
+  id,
+  label = 'New writing, roughly weekly.',
+  variant = 'footer',
+} = Astro.props;
+---
+
+<form
+  name="newsletter"
+  method="POST"
+  action="/thanks"
+  data-netlify="true"
+  netlify-honeypot="company-website"
+  class:list={['newsletter', variant]}
+>
+  <input type="hidden" name="form-name" value="newsletter" />
+  <p class="hp">
+    <label for={`${id}-hp`}>Leave this field empty</label>
+    <input id={`${id}-hp`} name="company-website" tabindex="-1" autocomplete="off" />
+  </p>
+
+  <label for={`${id}-email`}>{label}</label>
+  <div class="row">
+    <input
+      id={`${id}-email`}
+      type="email"
+      name="email"
+      autocomplete="email"
+      placeholder="you@company.com"
+      required
+    />
+    <button type="submit" class="btn">Subscribe</button>
+  </div>
+</form>
+
+<style>
+  .newsletter label {
+    display: block;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    color: var(--surface-text);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .newsletter input[type='email'] {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: 13px 15px;
+    font-size: 1rem;
+    color: var(--ink);
+    background: #FFFDFA;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+
+  .newsletter .btn {
+    padding: 13px 22px;
+    font-size: 0.9375rem;
+  }
+
+  .footer .btn {
+    background: var(--accent);
+    color: var(--ink);
+    border-color: var(--accent);
+  }
+
+  .footer .btn:hover {
+    background: var(--paper);
+    border-color: var(--paper);
+  }
+
+  .page {
+    max-width: 520px;
+  }
+</style>

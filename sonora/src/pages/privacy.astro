@@ -1,0 +1,65 @@
+---
+/**
+ * Linked from the footer. Deliberately short: the site collects almost
+ * nothing, and saying so plainly is the whole document.
+ */
+import Base from '../layouts/Base.astro';
+import { EMAIL } from '../lib/site';
+import { breadcrumbSchema } from '../lib/schema';
+
+const path = '/privacy';
+---
+
+<Base
+  title="Privacy — Sonora"
+  description="What this site collects, which is almost nothing, and what happens to it."
+  path={path}
+  schema={[breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Privacy', path }])]}
+>
+  <section class="section privacy">
+    <div class="container">
+      <div class="prose">
+        <h1>Privacy</h1>
+        <p class="lead">
+          This site collects almost nothing. Here is the whole of it.
+        </p>
+
+        <h2>Analytics</h2>
+        <p>
+          Page views are counted with a privacy-focused analytics tool that sets
+          no cookies, stores no personal data, and does not track visitors across
+          sites. There is no advertising pixel on this site and no third-party
+          tracker beyond the web font service that serves the typefaces.
+        </p>
+
+        <h2>Forms</h2>
+        <p>
+          If you submit the contact form or the newsletter form, the details you
+          enter are stored by the site host so they can be read and replied to.
+          They are not sold, shared, or added to any list other than the one you
+          asked to join. The newsletter has an unsubscribe link in every send.
+        </p>
+
+        <h2>Getting your data removed</h2>
+        <p>
+          Email <a href={`mailto:${EMAIL}`}>{EMAIL}</a> and say what you would
+          like deleted. It gets deleted.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .privacy {
+    padding-block: clamp(56px, 7vw, 96px);
+  }
+
+  .privacy .lead {
+    margin-top: 24px;
+  }
+
+  .privacy h2 {
+    font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+  }
+</style>

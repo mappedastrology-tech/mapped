@@ -1,0 +1,69 @@
+---
+import { render } from 'astro:content';
+import Post from '../../layouts/Post.astro';
+import { getPublishedPosts, postPath, type Post as PostEntry } from '../../lib/posts';
+import { readingTime } from '../../lib/format';
+import { blogPostingSchema, breadcrumbSchema } from '../../lib/schema';
+
+/**
+ * One page per published post. Drafts are filtered out in getPublishedPosts,
+ * so a draft never gets a route.
+ */
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+
+  return posts.map((post, index) => ({
+    params: { slug: post.id },
+    props: {
+      post,
+      // The two posts either side of this one, newest first, wrapping around.
+      related: [posts[index + 1], posts[index + 2] ?? posts[index - 1]].filter(
+        (item): item is PostEntry => Boolean(item) && item !== post
+      ),
+    },
+  }));
+}
+
+interface Props {
+  post: PostEntry;
+  related: PostEntry[];
+}
+
+const { post, related } = Astro.props;
+const { Content } = await render(post);
+
+const path = postPath(post);
+const minutes = readingTime(post.body ?? '');
+
+/* Per-post OG card, generated at build time by scripts/generate-assets.mjs.
+   A post can override it with `image` in its frontmatter. */
+const ogImage = post.data.image ?? `/images/og/${post.id}.png`;
+
+const schema = [
+  blogPostingSchema({
+    path,
+    title: post.data.title,
+    description: post.data.description,
+    date: post.data.date,
+    author: post.data.author,
+    image: ogImage,
+    imageAlt: post.data.imageAlt,
+  }),
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Writing', path: '/blog' },
+    { name: post.data.title, path },
+  ]),
+];
+---
+
+<Post
+  post={post}
+  readingMinutes={minutes}
+  related={related.slice(0, 2)}
+  path={path}
+  ogImage={ogImage}
+  schema={schema}
+>
+  <Content />
+</Post>

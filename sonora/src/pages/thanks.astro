@@ -1,0 +1,42 @@
+---
+import Base from '../layouts/Base.astro';
+import { EMAIL } from '../lib/site';
+import { breadcrumbSchema } from '../lib/schema';
+
+const path = '/thanks';
+---
+
+<Base
+  title="Thank you — Sonora"
+  description="Your message reached Sonora. A reply usually follows within one business day."
+  path={path}
+  noindex={true}
+  schema={[breadcrumbSchema([{ name: 'Home', path: '/' }, { name: 'Thank you', path }])]}
+>
+  <section class="section thanks">
+    <div class="container">
+      <div class="prose">
+        <h1>That came through.</h1>
+        <p class="lead">
+          I read everything myself and usually reply within a business day. If
+          it&rsquo;s urgent, <a href={`mailto:${EMAIL}`}>{EMAIL}</a> reaches the
+          same inbox.
+        </p>
+        <p>
+          <a href="/blog" class="textlink">Read something while you wait</a> or
+          <a href="/" class="textlink">go back to the homepage</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .thanks {
+    padding-block: clamp(72px, 10vw, 140px);
+  }
+
+  .thanks .lead {
+    margin-top: 28px;
+  }
+</style>

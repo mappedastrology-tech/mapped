@@ -1,0 +1,306 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import MethodStages from '../components/MethodStages.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import PostCard from '../components/PostCard.astro';
+import CTABlock from '../components/CTABlock.astro';
+import Arch from '../components/Arch.astro';
+import SectionDivider from '../components/SectionDivider.astro';
+import { SERVICES } from '../lib/site';
+import { getPublishedPosts, postPath } from '../lib/posts';
+import { breadcrumbSchema } from '../lib/schema';
+
+const posts = (await getPublishedPosts()).slice(0, 3);
+
+const schema = [breadcrumbSchema([{ name: 'Home', path: '/' }])];
+---
+
+<Base
+  title="Sonora — Content and Search Strategy for AI-Era Discovery"
+  description="Sonora is a strategic consultancy for startups and B2B software companies. AI search visibility, SEO, content direction, and category positioning."
+  path="/"
+  schema={schema}
+>
+  <Hero />
+
+  <!-- SECTION 2 — The problem -->
+  <section class="section surface-ink" aria-labelledby="problem-heading">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="problem-heading">The room got too loud, so people stopped listening.</h2>
+        <p>
+          The standard response is to make more. More posts, more channels, more
+          volume, on the theory that presence is a numbers game.
+        </p>
+        <p>
+          It isn&rsquo;t. The room is loud enough now that volume is
+          indistinguishable from noise, and noise is the thing buyers are
+          actively filtering out.
+        </p>
+        <p>
+          What they&rsquo;re doing instead is narrowing. They ask one specific
+          question and they want one good answer. That behavior is bad for anyone
+          competing on output and very good for anyone who can be the definitive
+          answer to a narrow question.
+        </p>
+        <p>The work is not to make more. It&rsquo;s to be the answer, in the exact places the question gets asked.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3 — The Method -->
+  <section class="section" aria-labelledby="method-heading">
+    <div class="container">
+      <div class="prose section-intro" data-reveal>
+        <h2 id="method-heading">The Sonora Method</h2>
+        <p class="lead">
+          A sequence, not a playbook. The stages are the same every time. What
+          they produce never is.
+        </p>
+      </div>
+      <MethodStages />
+      <p class="section-link" data-reveal>
+        <a href="/method" class="textlink">Read the full method &rarr;</a>
+      </p>
+    </div>
+  </section>
+
+  <SectionDivider />
+
+  <!-- SECTION 4 — Services -->
+  <section class="section services-section" aria-labelledby="services-heading">
+    <div class="container">
+      <div class="prose section-intro" data-reveal>
+        <h2 id="services-heading">Services</h2>
+        <p class="lead">
+          Strategy and direction. What gets made, what standard it has to meet,
+          and whether it worked.
+        </p>
+      </div>
+      <ul class="service-grid" data-reveal>
+        {
+          SERVICES.map((service) => (
+            <ServiceCard
+              name={service.name}
+              oneLiner={service.oneLiner}
+              href={`/services#${service.slug}`}
+            />
+          ))
+        }
+      </ul>
+      <p class="section-link" data-reveal>
+        <a href="/services" class="textlink">What each engagement includes &rarr;</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- SECTION 5 — Positioning statement -->
+  <section class="section surface-ink positioning" aria-labelledby="positioning-heading">
+    <div class="container">
+      <div class="positioning-inner" data-reveal>
+        <Arch variant="solid" size={260} class="watermark" color="var(--paper)" />
+        <h2 id="positioning-heading">
+          I don&rsquo;t arrive with a deck of recommendations that could have been
+          written about anyone.
+        </h2>
+        <div class="prose positioning-body">
+          <p>
+            There&rsquo;s a version of this service that shows up with a
+            framework, applies it, and leaves. It produces the same twelve
+            recommendations for every client, because the framework was the
+            product and your company was an input.
+          </p>
+          <p>
+            Sonora starts from your data, your sales calls, your churn reasons,
+            and the questions your team gets asked so often they&rsquo;ve stopped
+            noticing them. Those questions are usually the most valuable thing in
+            the building.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6 — About preview -->
+  <section class="section about-preview" aria-labelledby="about-heading">
+    <div class="container about-grid">
+      <img
+        src="/images/taylor-corbett.webp"
+        alt="Taylor Corbett, founder of Sonora"
+        width="400"
+        height="400"
+        loading="lazy"
+        decoding="async"
+        class="headshot"
+      />
+      <div class="prose" data-reveal>
+        <h2 id="about-heading">Fifteen years of figuring out what people are actually looking for.</h2>
+        <p>
+          I started in newsrooms, where the job was to know what a community
+          would search for before they searched for it. I&rsquo;ve since run
+          content strategy for B2B software, communications for a state agency,
+          and editorial teams across a fifty-station network.
+        </p>
+        <p>
+          Sonora is the same instinct applied to a harder problem: the machine
+          that answers the question now sits between you and the person asking
+          it.
+        </p>
+        <p><a href="/about" class="textlink">More about me &rarr;</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 7 — Recent writing -->
+  {
+    posts.length > 0 && (
+      <section class="section writing-section" aria-labelledby="writing-heading">
+        <div class="container">
+          <div class="writing-head" data-reveal>
+            <h2 id="writing-heading">Recent writing</h2>
+            <a href="/blog" class="textlink">All writing &rarr;</a>
+          </div>
+          <ul class="writing-grid" data-reveal>
+            {posts.map((post) => (
+              <PostCard
+                title={post.data.title}
+                description={post.data.description}
+                date={post.data.date}
+                href={postPath(post)}
+              />
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+
+  <CTABlock />
+</Base>
+
+<style>
+  .section-intro {
+    margin-bottom: clamp(40px, 5vw, 64px);
+  }
+
+  .section-intro .lead {
+    margin-top: 20px;
+  }
+
+  .section-link {
+    margin-top: clamp(40px, 4vw, 56px);
+    font-weight: 500;
+  }
+
+  .service-grid {
+    display: grid;
+    gap: 24px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 640px) {
+    .service-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Three-up, then two-up: the last two cards each span the width of one and
+     a half columns on the second row. */
+  @media (min-width: 900px) {
+    .service-grid {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .service-grid > :global(li) {
+      grid-column: span 2;
+    }
+
+    .service-grid > :global(li:nth-child(4)),
+    .service-grid > :global(li:nth-child(5)) {
+      grid-column: span 3;
+    }
+  }
+
+  .positioning {
+    overflow: hidden;
+  }
+
+  .positioning-inner {
+    position: relative;
+    max-width: 56ch;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .positioning-inner :global(.watermark) {
+    position: absolute;
+    right: -40px;
+    bottom: -80px;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+
+  .positioning-inner h2,
+  .positioning-body {
+    position: relative;
+  }
+
+  /* The quote is centred; the paragraphs under it are not. Centred body copy
+     over four lines is hard to read, and line length is the one rule this
+     stylesheet does not bend. */
+  .positioning-body {
+    margin-top: 36px;
+    max-width: 62ch;
+    margin-inline: auto;
+    text-align: left;
+  }
+
+  .about-grid {
+    display: grid;
+    gap: clamp(32px, 5vw, 64px);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .about-grid {
+      grid-template-columns: 400px 1fr;
+      gap: 72px;
+    }
+  }
+
+  /* Square with rounded top corners: the arch, applied to the headshot. */
+  .headshot {
+    width: min(400px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 200px 200px 2px 2px;
+  }
+
+  .writing-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px 32px;
+    margin-bottom: 40px;
+  }
+
+  .writing-grid {
+    display: grid;
+    gap: 32px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 768px) {
+    .writing-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+    }
+  }
+</style>

@@ -1,0 +1,113 @@
+---
+/**
+ * The arch — Sonora's recurring brand device.
+ *
+ * Inline SVG rather than the PNG so it inherits colour, stays sharp at every
+ * size, and costs no extra request. It always points up. It is never animated
+ * and never rotated.
+ *
+ * Variants:
+ *   solid     — filled arch (default)
+ *   outline   — stroked arch, optionally with a number inside
+ *   divider   — a single centred arch used between major sections
+ *   watermark — large, 4% opacity, sits behind a pull quote
+ */
+interface Props {
+  variant?: 'solid' | 'outline' | 'divider' | 'watermark';
+  /** Number rendered inside an outline arch, e.g. "01". */
+  label?: string;
+  /** Rendered width. Height follows the 100:120 aspect ratio. */
+  size?: number;
+  color?: string;
+  class?: string;
+}
+
+const {
+  variant = 'solid',
+  label,
+  size = 32,
+  color,
+  class: className = '',
+} = Astro.props;
+
+const height = Math.round((size * 120) / 100);
+const isOutline = variant === 'outline';
+const fill = color ?? (variant === 'divider' ? 'var(--rule)' : 'var(--accent)');
+---
+
+{
+  variant === 'divider' ? (
+    <div class={`arch-divider ${className}`} aria-hidden="true">
+      <svg
+        width={size}
+        height={height}
+        viewBox="0 0 100 120"
+        fill="none"
+        focusable="false"
+        aria-hidden="true"
+      >
+        <path d="M0 120V50a50 50 0 0 1 100 0v70z" fill={fill} />
+      </svg>
+    </div>
+  ) : isOutline ? (
+    <div class={`arch-outline ${className}`} style={`--arch-size:${size}px`} aria-hidden="true">
+      <svg
+        width={size}
+        height={height}
+        viewBox="0 0 100 120"
+        fill="none"
+        focusable="false"
+        aria-hidden="true"
+      >
+        <path
+          d="M4 118V50a46 46 0 0 1 92 0v68z"
+          fill="none"
+          stroke={color ?? 'var(--accent)'}
+          stroke-width="4"
+        />
+      </svg>
+      {label && <span class="arch-label">{label}</span>}
+    </div>
+  ) : (
+    <svg
+      class={`arch ${className}`}
+      width={size}
+      height={height}
+      viewBox="0 0 100 120"
+      fill="none"
+      focusable="false"
+      aria-hidden="true"
+      style={variant === 'watermark' ? 'opacity:0.04' : undefined}
+    >
+      <path d="M0 120V50a50 50 0 0 1 100 0v70z" fill={fill} />
+    </svg>
+  )
+}
+
+<style>
+  .arch-divider {
+    display: flex;
+    justify-content: center;
+  }
+
+  .arch-outline {
+    position: relative;
+    display: inline-block;
+    line-height: 0;
+  }
+
+  .arch-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 12%;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: calc(var(--arch-size) * 0.42);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--surface-heading);
+  }
+</style>

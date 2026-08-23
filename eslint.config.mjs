@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Sonora marketing site is a separate Astro project with its own
+    // toolchain. It is not part of the Mapped app build.
+    "sonora/**",
   ]),
   {
     rules: {

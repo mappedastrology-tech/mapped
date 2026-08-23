@@ -1,0 +1,197 @@
+---
+/**
+ * Blog post shell. The reading experience is the point: one prose column at
+ * 68 characters, body at 1.125rem, nothing in the margins competing with it.
+ */
+import Base from './Base.astro';
+import AuthorBlock from '../components/AuthorBlock.astro';
+import CTABlock from '../components/CTABlock.astro';
+import PostCard from '../components/PostCard.astro';
+import { formatDate } from '../lib/format';
+import type { Post } from '../lib/posts';
+import { postPath } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  readingMinutes: number;
+  related: Post[];
+  path: string;
+  ogImage: string;
+  schema: object[];
+}
+
+const { post, readingMinutes, related, path, ogImage, schema } = Astro.props;
+const { title, description, date } = post.data;
+---
+
+<Base
+  title={`${title} — Sonora`}
+  description={description}
+  path={path}
+  image={ogImage}
+  ogType="article"
+  schema={schema}
+>
+  <article class="post">
+    <div class="container">
+      <header class="post-header">
+        <p class="meta">
+          <time datetime={date.toISOString()}>{formatDate(date)}</time>
+          <span> &middot; {readingMinutes} min read</span>
+        </p>
+        <h1>{title}</h1>
+      </header>
+
+      <div class="prose post-body">
+        <slot />
+      </div>
+
+      <div class="post-foot">
+        <AuthorBlock />
+      </div>
+    </div>
+  </article>
+
+  {
+    related.length > 0 && (
+      <section class="section related" aria-labelledby="related-heading">
+        <div class="container">
+          <h2 id="related-heading">Recent writing</h2>
+          <ul class="related-list">
+            {related.map((item) => (
+              <PostCard
+                title={item.data.title}
+                description={item.data.description}
+                date={item.data.date}
+                href={postPath(item)}
+              />
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+
+  <CTABlock />
+</Base>
+
+<style>
+  .post {
+    padding-top: clamp(48px, 6vw, 80px);
+  }
+
+  .post-header {
+    max-width: var(--prose-width);
+  }
+
+  .post-header h1 {
+    margin-top: 16px;
+    font-size: clamp(2.25rem, 4.6vw, 3.5rem);
+  }
+
+  .post-body {
+    margin-top: clamp(40px, 5vw, 56px);
+  }
+
+  .post-foot {
+    max-width: var(--prose-width);
+    margin-top: clamp(48px, 6vw, 72px);
+  }
+
+  .related {
+    padding-block: clamp(56px, 7vw, 96px) 0;
+  }
+
+  .related-list {
+    display: grid;
+    gap: 32px;
+    list-style: none;
+    margin: 32px 0 0;
+    padding: 0;
+  }
+
+  @media (min-width: 768px) {
+    .related-list {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+    }
+  }
+</style>
+
+<style is:global>
+  /* Markdown output inside .post-body. Scoped styles cannot reach it because
+     the markdown is rendered by <Content />, not by this component. */
+  .post-body h2 {
+    font-size: clamp(1.625rem, 3vw, 2.125rem);
+  }
+
+  .post-body h3 {
+    font-size: 1.25rem;
+  }
+
+  /* Pull quotes carry the arch watermark: a large arch at 4% opacity, bottom
+     right of the block. Drawn as a masked pseudo-element so the markdown stays
+     plain markdown. */
+  .post-body blockquote {
+    position: relative;
+    margin-block: 2.25em;
+    padding: 4px 0 40px 26px;
+    border-left: 2px solid var(--accent);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  .post-body blockquote::after {
+    content: '';
+    position: absolute;
+    /* Scaled to the quote block so the arch is always whole. A fixed size
+       would show only its rectangular base on a two-line quote. */
+    right: 0;
+    top: 0;
+    height: 100%;
+    aspect-ratio: 100 / 120;
+    background-color: var(--ink);
+    opacity: 0.04;
+    pointer-events: none;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M0 120V50a50 50 0 0 1 100 0v70z'/%3E%3C/svg%3E") no-repeat center / contain;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M0 120V50a50 50 0 0 1 100 0v70z'/%3E%3C/svg%3E") no-repeat center / contain;
+  }
+
+  .post-body blockquote p {
+    position: relative;
+    z-index: 1;
+  }
+
+  .post-body hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin-block: 2.5em;
+  }
+
+  .post-body code {
+    font-size: 0.9375em;
+    background: #F1ECE4;
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+
+  .post-body pre {
+    overflow-x: auto;
+    padding: 20px;
+    border-radius: 2px;
+  }
+
+  .post-body pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .post-body img {
+    border-radius: 2px;
+  }
+</style>

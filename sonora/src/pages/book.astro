@@ -1,0 +1,156 @@
+---
+import Base from '../layouts/Base.astro';
+import { PLACEHOLDERS, isPlaceholder, EMAIL } from '../lib/site';
+import { breadcrumbSchema } from '../lib/schema';
+
+const path = '/book';
+const calLink = PLACEHOLDERS.calcom;
+const calReady = !isPlaceholder(calLink);
+
+const schema = [
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Book a call', path },
+  ]),
+];
+---
+
+<Base
+  title="Book a call — Sonora"
+  description="Thirty minutes. Tell me what you are trying to fix and I will tell you whether I am the right person for it."
+  path={path}
+  schema={schema}
+>
+  <section class="section book">
+    <div class="container">
+      <div class="prose">
+        <h1>Book a call.</h1>
+        <p class="lead">
+          Thirty minutes. Tell me what you&rsquo;re trying to fix and I&rsquo;ll
+          tell you whether I&rsquo;m the right person for it.
+        </p>
+      </div>
+
+      <div class="embed-wrap">
+        {
+          calReady ? (
+            <>
+              <div id="cal-inline" class="cal-inline" />
+              {/* No-JS and embed-blocked fallback. Always in the DOM; hidden
+                  once the embed renders. */}
+              <noscript>
+                <p class="fallback">
+                  <a href={`https://cal.com/${calLink}`} class="btn">
+                    Open the booking page
+                  </a>
+                </p>
+              </noscript>
+            </>
+          ) : (
+            /* PLACEHOLDER — set PLACEHOLDERS.calcom in src/lib/site.ts to
+               Taylor's Cal.com link (e.g. "sonora/intro-call") and this block
+               is replaced by the live embed automatically. */
+            <div class="cal-placeholder">
+              <p class="eyebrow">Booking embed pending</p>
+              <p>
+                The Cal.com embed appears here once the booking link is set. Until
+                then, email <a href={`mailto:${EMAIL}`} class="textlink">{EMAIL}</a>{' '}
+                and we will find a time.
+              </p>
+              <p class="meta">
+                Developer note: set <code>PLACEHOLDERS.calcom</code> in
+                <code>src/lib/site.ts</code>.
+              </p>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  {
+    calReady && (
+      <script is:inline define:vars={{ calLink }}>
+        (function (C, A, L) {
+          let p = function (a, ar) { a.q.push(ar); };
+          let d = C.document;
+          C.Cal = C.Cal || function () {
+            let cal = C.Cal;
+            let ar = arguments;
+            if (!cal.loaded) {
+              cal.ns = {};
+              cal.q = cal.q || [];
+              d.head.appendChild(d.createElement('script')).src = A;
+              cal.loaded = true;
+            }
+            if (ar[0] === L) {
+              const api = function () { p(api, arguments); };
+              const namespace = ar[1];
+              api.q = api.q || [];
+              if (typeof namespace === 'string') {
+                cal.ns[namespace] = cal.ns[namespace] || api;
+                p(cal.ns[namespace], ar);
+                p(cal, ['initNamespace', namespace]);
+              } else {
+                p(cal, ar);
+              }
+              return;
+            }
+            p(cal, ar);
+          };
+        })(window, 'https://app.cal.com/embed/embed.js', 'init');
+
+        Cal('init', { origin: 'https://cal.com' });
+        Cal('inline', {
+          elementOrSelector: '#cal-inline',
+          calLink: calLink,
+          layout: 'month_view',
+        });
+        Cal('ui', { hideEventTypeDetails: false, layout: 'month_view' });
+      </script>
+    )
+  }
+</Base>
+
+<style>
+  .book {
+    padding-block: clamp(56px, 7vw, 96px);
+  }
+
+  .book .lead {
+    margin-top: 28px;
+  }
+
+  .embed-wrap {
+    margin-top: clamp(40px, 5vw, 64px);
+  }
+
+  .cal-inline {
+    width: 100%;
+    min-height: 640px;
+    overflow: auto;
+  }
+
+  .cal-placeholder {
+    max-width: 60ch;
+    padding: 40px 32px;
+    border: 2px dashed var(--rule);
+    border-radius: 2px;
+    background: #F4EFE7;
+  }
+
+  .cal-placeholder p + p {
+    margin-top: 16px;
+  }
+
+  .cal-placeholder code {
+    font-size: 0.9375em;
+    background: #E8E1D6;
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+
+  .fallback {
+    margin-top: 24px;
+  }
+</style>

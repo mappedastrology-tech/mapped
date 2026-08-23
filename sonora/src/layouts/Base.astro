@@ -1,0 +1,124 @@
+---
+/**
+ * The page shell. Every page renders through this.
+ */
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import Seo from '../components/Seo.astro';
+import { PLACEHOLDERS, isPlaceholder } from '../lib/site';
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  image?: string;
+  ogType?: 'website' | 'article';
+  schema?: object[];
+  noindex?: boolean;
+  /** /book has no footer CTA block; it is the destination. */
+  bodyClass?: string;
+}
+
+const { title, description, path, image, ogType, schema, noindex, bodyClass } =
+  Astro.props;
+
+const analyticsReady = !isPlaceholder(PLACEHOLDERS.analyticsSiteId);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Marks the document as JS-capable before first paint. Everything that
+         would otherwise hide content without JavaScript is scoped to html.js. -->
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
+
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0C0A3E" />
+
+    <!-- Google Fonts. Both subsets ship with unicode-range, so browsers fetch
+         the latin block only. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap"
+    />
+
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Sonora — Writing"
+      href="/rss.xml"
+    />
+
+    <Seo
+      title={title}
+      description={description}
+      path={path}
+      image={image}
+      ogType={ogType}
+      schema={schema}
+      noindex={noindex}
+    />
+
+    {
+      /*
+       * ANALYTICS — Plausible, cookieless, no consent banner needed.
+       * Uncomment this and set PLACEHOLDERS.analyticsSiteId in src/lib/site.ts
+       * to the domain shown in the Plausible dashboard (sonoramethod.com).
+       *
+       * <script defer data-domain={PLACEHOLDERS.analyticsSiteId} src="https://plausible.io/js/script.js"></script>
+       */
+      analyticsReady && (
+        <script
+          is:inline
+          defer
+          data-domain={PLACEHOLDERS.analyticsSiteId}
+          src="https://plausible.io/js/script.js"
+        />
+      )
+    }
+  </head>
+
+  <body class={bodyClass}>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <Nav />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      // Fade-and-rise on section entrance. Once per element, never replayed.
+      const targets = document.querySelectorAll<HTMLElement>('[data-reveal]');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!('IntersectionObserver' in window) || reduced) {
+        targets.forEach((element) => element.classList.add('is-visible'));
+      } else {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
+        );
+
+        targets.forEach((element) => observer.observe(element));
+      }
+    </script>
+  </body>
+</html>

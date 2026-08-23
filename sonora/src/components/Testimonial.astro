@@ -1,0 +1,73 @@
+---
+/**
+ * Built, deliberately unused.
+ *
+ * Sonora cannot name clients or employers, so this component takes a quote, a
+ * person's name, and their role — and has no field for a company name by
+ * design. Do not add one. When Taylor has a quote she is cleared to use, drop
+ * this into a page and pass the three props.
+ *
+ * Renders nothing if the quote is empty, so an unfilled instance is safe to
+ * leave in a page.
+ */
+import Arch from './Arch.astro';
+
+interface Props {
+  quote?: string;
+  name?: string;
+  role?: string;
+}
+
+const { quote = '', name = '', role = '' } = Astro.props;
+const hasQuote = quote.trim().length > 0;
+---
+
+{
+  hasQuote && (
+    <figure class="testimonial">
+      <Arch variant="solid" size={140} class="watermark" color="currentColor" />
+      <blockquote>
+        <p>{quote}</p>
+      </blockquote>
+      {(name || role) && (
+        <figcaption class="meta">
+          {name}
+          {name && role ? ', ' : ''}
+          {role}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
+<style>
+  .testimonial {
+    position: relative;
+    max-width: 52ch;
+    padding: 8px 0 40px;
+    overflow: hidden;
+  }
+
+  .testimonial :global(.watermark) {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+
+  blockquote p {
+    position: relative;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+    line-height: 1.35;
+    letter-spacing: -0.02em;
+    color: var(--surface-heading);
+  }
+
+  figcaption {
+    position: relative;
+    margin-top: 20px;
+  }
+</style>

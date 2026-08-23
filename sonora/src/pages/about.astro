@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+import CTABlock from '../components/CTABlock.astro';
+import { breadcrumbSchema, personSchema } from '../lib/schema';
+import { LOCATION } from '../lib/site';
+
+const path = '/about';
+
+const schema = [
+  personSchema(),
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'About', path },
+  ]),
+];
+---
+
+<Base
+  title="About Taylor Corbett — Sonora"
+  description="Fifteen years across newsrooms, state government communications, and B2B software content strategy. Now running content and search strategy independently."
+  path={path}
+  schema={schema}
+>
+  <article class="section page-hero">
+    <div class="container">
+      <img
+        src="/images/taylor-corbett.webp"
+        alt="Taylor Corbett, founder of Sonora"
+        width="520"
+        height="520"
+        fetchpriority="high"
+        decoding="async"
+        class="headshot"
+      />
+
+      <div class="prose about-body">
+        <h1>I&rsquo;ve spent fifteen years figuring out what people are looking for.</h1>
+
+        <p class="lead">
+          I started in television news. The job there was to know what a
+          community would search for before they knew they&rsquo;d search for it
+          &mdash; a shooting, a school closure, a hurricane, a store that might be
+          open. You wrote the thing people needed and you wrote it before they
+          asked. That is still the entire job, and everything since has been a
+          variation on it.
+        </p>
+
+        <p>
+          From there: digital director for a network affiliate, running a team of
+          producers and the audience strategy behind them. Press relations for a
+          state agency, where the work was getting a specific message into
+          publications that had no obligation to carry it. Communications for a
+          technology company most people have in their pocket. Then several years
+          running the entire content function for a B2B software company &mdash;
+          strategy, editorial, search, measurement, and the reporting that went to
+          the board.
+        </p>
+
+        <p>
+          That last role is where the current problem became obvious. We were
+          producing good work and ranking well, and increasingly it didn&rsquo;t
+          matter, because a growing share of buyers were never seeing a results
+          page at all. They asked a model and took the answer. So I built a
+          measurement program to find out what those models were saying about us
+          and about our competitors, and the answers were not flattering, and
+          fixing it turned out to be a different discipline than SEO.
+        </p>
+
+        <p>Sonora is that discipline, run as a practice.</p>
+
+        <h2>How I work</h2>
+
+        <p>
+          I&rsquo;m one person. That&rsquo;s deliberate. You get senior judgment
+          on every decision instead of a partner in the pitch and an associate on
+          the work.
+        </p>
+
+        <p>
+          I set strategy and direction. I don&rsquo;t write your blog posts or
+          build your site &mdash; your team or your contractors do that, and I make
+          sure what they produce is worth having made. If you need someone to
+          execute, I&rsquo;ll tell you honestly and help you find them.
+        </p>
+
+        <p>
+          I&rsquo;d rather tell you something uncomfortable in month one than let
+          you spend a year on the wrong position.
+        </p>
+
+        <h2>Where I am</h2>
+
+        <p>
+          A ranch in the {LOCATION}, with two Australian shepherds who contribute
+          nothing to the work but are on most calls.
+        </p>
+      </div>
+    </div>
+  </article>
+
+  <CTABlock />
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: clamp(48px, 6vw, 80px) clamp(56px, 7vw, 96px);
+  }
+
+  .headshot {
+    width: min(520px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 260px 260px 2px 2px;
+    margin-bottom: clamp(40px, 5vw, 64px);
+  }
+
+  .about-body h1 {
+    font-size: clamp(2.25rem, 4.6vw, 3.5rem);
+  }
+
+  .about-body .lead {
+    margin-top: 32px;
+  }
+
+  .about-body h2 {
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+  }
+</style>

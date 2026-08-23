@@ -1,0 +1,493 @@
+/* ==========================================================================
+   Sonora — global stylesheet
+   The only global CSS in the project. Component-specific rules live in the
+   <style> block of the component that owns them.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+  --ink:      #0C0A3E;  /* primary dark — backgrounds, headings */
+  --accent:   #F3C677;  /* gold — CTAs, links, underlines, arch fills */
+  --paper:    #FAF7F2;  /* warm off-white — page background */
+  --body:     #3A3852;  /* body copy */
+  --muted:    #6E6B85;  /* captions, meta, dates */
+  --rule:     #E2DDD4;  /* hairlines, borders */
+  --rose:     #B33F62;  /* RESERVED — data viz only */
+  --flame:    #F9564F;  /* RESERVED — data viz only */
+
+  --font-heading: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Layout */
+  --content-width: 1180px;
+  --prose-width: 68ch;
+  --gutter: 24px;
+  --section-gap: clamp(72px, 10vw, 140px);
+  --nav-height: 72px;
+
+  /* Surface tokens. Inverted sections reassign these three and everything
+     inside them follows without needing its own override. */
+  --surface: var(--paper);
+  --surface-text: var(--body);
+  --surface-heading: var(--ink);
+  --surface-muted: var(--muted);
+  --surface-rule: var(--rule);
+}
+
+@media (min-width: 768px) {
+  :root { --gutter: 48px; }
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body, h1, h2, h3, h4, p, figure, blockquote, dl, dd, ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul[class], ol[class] { list-style: none; }
+
+img, svg, picture, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   3. Base typography
+   -------------------------------------------------------------------------- */
+
+body {
+  background: var(--paper);
+  color: var(--body);
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--surface-heading);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: clamp(1.875rem, 3.5vw, 2.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: 1.375rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+h4 {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+p { color: var(--surface-text); }
+
+p + p { margin-top: 1.25em; }
+
+strong { font-weight: 600; }
+
+/* Lead paragraph — first paragraph of each page and each major section. */
+.lead {
+  font-size: 1.375rem;
+  line-height: 1.55;
+  color: var(--surface-text);
+}
+
+/* Meta / caption / eyebrow label. */
+.meta {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--surface-muted);
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--surface-muted);
+}
+
+/* --------------------------------------------------------------------------
+   4. Links
+   Body links: ink text, 2px accent underline offset 4px. Hover thickens the
+   underline to 3px. No colour change, ever.
+   -------------------------------------------------------------------------- */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prose a,
+a.textlink {
+  color: var(--surface-heading);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  transition: text-decoration-thickness 120ms ease-out;
+}
+
+.prose a:hover,
+a.textlink:hover {
+  text-decoration-thickness: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Focus
+   -------------------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* On paper, gold alone is a weak focus ring. Pair it with an ink halo so the
+   indicator clears AA non-text contrast on both surfaces. */
+.surface-paper :focus-visible,
+body > :not(.surface-ink) :focus-visible {
+  box-shadow: 0 0 0 4px rgba(12, 10, 62, 0.35);
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 200;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 12px 20px;
+  font-weight: 600;
+  border-radius: 2px;
+  transition: top 120ms ease-out;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   6. Layout
+   -------------------------------------------------------------------------- */
+
+.container {
+  width: 100%;
+  max-width: var(--content-width);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Prose column. Max line length 68 characters — the single most important
+   rule in this stylesheet. */
+.prose {
+  max-width: var(--prose-width);
+}
+
+.prose > * + * { margin-top: 1.25em; }
+.prose > * + h2 { margin-top: 1.6em; }
+.prose > * + h3 { margin-top: 1.5em; }
+.prose h2 + *,
+.prose h3 + * { margin-top: 0.75em; }
+
+.section {
+  padding-block: var(--section-gap);
+}
+
+/* Full-bleed inverted section. Two per long page, per the brand system. */
+.surface-ink {
+  --surface: var(--ink);
+  --surface-text: var(--paper);
+  --surface-heading: var(--paper);
+  --surface-muted: #A9A6C4;
+  --surface-rule: #2A2760;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.surface-ink .prose a,
+.surface-ink a.textlink {
+  color: var(--paper);
+}
+
+.surface-paper {
+  --surface: var(--paper);
+  --surface-text: var(--body);
+  --surface-heading: var(--ink);
+  --surface-muted: var(--muted);
+  --surface-rule: var(--rule);
+  background: var(--paper);
+  color: var(--body);
+}
+
+.grid {
+  display: grid;
+  gap: clamp(32px, 4vw, 56px);
+}
+
+@media (min-width: 768px) {
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* --------------------------------------------------------------------------
+   7. Lists — the arch is the bullet
+   -------------------------------------------------------------------------- */
+
+.prose ul,
+ul.arch-list {
+  list-style: none;
+  padding: 0;
+}
+
+.prose ul > li,
+ul.arch-list > li {
+  position: relative;
+  padding-left: 26px;
+  margin-top: 0.6em;
+}
+
+/* Solid arch, 10px wide, in gold. Drawn as a background image so it never
+   enters the accessibility tree. */
+.prose ul > li::before,
+ul.arch-list > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 10px;
+  height: 12px;
+  background-color: var(--accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M0 120V50a50 50 0 0 1 100 0v70z'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M0 120V50a50 50 0 0 1 100 0v70z'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+.prose ol {
+  padding-left: 1.2em;
+}
+
+.prose ol > li { margin-top: 0.6em; }
+
+/* --------------------------------------------------------------------------
+   8. Buttons
+   -------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 17px 30px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.btn:hover {
+  background: var(--accent);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+/* On ink, the default fill would disappear. Invert it. */
+.surface-ink .btn {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+.surface-ink .btn:hover {
+  background: var(--accent);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.btn-secondary {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--surface-heading);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  padding-block: 17px;
+  transition: text-decoration-thickness 120ms ease-out;
+}
+
+.btn-secondary:hover { text-decoration-thickness: 3px; }
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 28px;
+  margin-top: 40px;
+}
+
+/* --------------------------------------------------------------------------
+   9. Rules, dividers, pull quotes
+   -------------------------------------------------------------------------- */
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--surface-rule);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   10. Forms
+   -------------------------------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-top: 24px;
+}
+
+.field > label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--surface-heading);
+  margin-bottom: 8px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #FFFDFA;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--ink);
+}
+
+.field textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+/* Honeypot. Hidden from people, visible to bots. */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   11. Motion
+   Fade-and-rise on section entrance, once, via IntersectionObserver. The
+   .reveal class is only applied by that script, so with JS off nothing is
+   ever hidden.
+   -------------------------------------------------------------------------- */
+
+/* Elements opt in with data-reveal. The hiding rule is scoped to html.js —
+   set by an inline script before first paint — so with JavaScript off nothing
+   is ever hidden. */
+html.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+html.js [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+/* Print and forced-colors: never let the entrance animation hide content. */
+@media print {
+  html.js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  html.js [data-reveal],
+  html.js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   12. Utilities
+   -------------------------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.center { text-align: center; }
+
+.stack-sm > * + * { margin-top: 12px; }

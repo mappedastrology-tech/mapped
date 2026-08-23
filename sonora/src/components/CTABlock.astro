@@ -1,0 +1,36 @@
+---
+/**
+ * Closing call to action. Appears at the foot of every page except /book.
+ */
+---
+
+<section class="cta surface-ink" data-reveal>
+  <div class="container">
+    <div class="cta-inner">
+      <h2>Let&rsquo;s find out what&rsquo;s actually true.</h2>
+      <p class="lead">Every engagement starts with a diagnostic, not a recommendation.</p>
+      <p class="btn-wrap"><a href="/book" class="btn">Book a call</a></p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta {
+    padding-block: clamp(72px, 9vw, 120px);
+    /* Several pages end on an inverted section. Without this the CTA merges
+       into it and reads as one very long ink block. */
+    border-top: 1px solid var(--surface-rule);
+  }
+
+  .cta-inner {
+    max-width: 44ch;
+  }
+
+  .lead {
+    margin-top: 20px;
+  }
+
+  .btn-wrap {
+    margin-top: 40px;
+  }
+</style>

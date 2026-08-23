@@ -1,0 +1,292 @@
+---
+import Base from '../layouts/Base.astro';
+import CTABlock from '../components/CTABlock.astro';
+import Arch from '../components/Arch.astro';
+import SectionDivider from '../components/SectionDivider.astro';
+import { STAGE_DETAIL } from '../lib/method-page';
+import { FAQS } from '../lib/faq';
+import { breadcrumbSchema, faqSchema } from '../lib/schema';
+
+const path = '/method';
+
+const schema = [
+  breadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Method', path },
+  ]),
+  faqSchema(
+    FAQS.map((faq) => ({ question: faq.question, answer: faq.answer })),
+    path
+  ),
+];
+---
+
+<Base
+  title="The Sonora Method — Content and Search Strategy Framework"
+  description="A four-stage sequence for becoming the answer in AI and traditional search: Listen, Locate, Saturate, Sustain."
+  path={path}
+  schema={schema}
+>
+  <!-- 1. Hero -->
+  <section class="section page-hero">
+    <div class="container">
+      <div class="prose">
+        <h1>The Sonora Method</h1>
+        <p class="lead">
+          A sequence, not a playbook. Four stages, in order, every time. The
+          stages never change. What they produce never repeats.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. The loud room problem -->
+  <section class="section surface-ink" aria-labelledby="loud-room">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="loud-room">The loud room problem</h2>
+        <p>
+          Every company in every category publishes now. The tooling got cheap,
+          then it got free, and the volume went up to match. The standard
+          response to a crowded channel has been to add more of everything, on
+          the theory that presence is a numbers game.
+        </p>
+        <p>
+          It stopped being one a while ago. The room is loud enough that volume
+          is indistinguishable from noise, and buyers have better filters than
+          they used to.
+        </p>
+        <p>
+          What they do instead is narrow. They ask one specific question and they
+          want one good answer. Increasingly they ask a model, and the model
+          returns a synthesis with a handful of citations attached. There is no
+          page two. There is often no page one.
+        </p>
+        <p>
+          That is bad for anyone competing on output. It is very good for anyone
+          who can be the definitive answer to a narrow question.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Why playbooks don't work here -->
+  <section class="section" aria-labelledby="playbooks">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="playbooks">Why playbooks don&rsquo;t work here</h2>
+        <p>
+          A playbook is a set of decisions made in advance by someone who has not
+          seen your data. It travels well and it applies badly. It survives
+          because it can be sold repeatedly with the client&rsquo;s logo swapped
+          in.
+        </p>
+        <p>
+          Answer engine optimization, or AEO &mdash; the practice of getting a
+          company cited inside AI-generated answers rather than ranked in a list
+          of links &mdash; is a poor fit for that model. The work sits downstream
+          of specifics. Which questions your buyers ask in their own words. Which
+          sources a model pulls from when it answers them. Whether your site is
+          legible to a crawler at all. Which competitor already owns the sentence
+          you want. None of that is knowable in advance, and every one of them
+          changes what you should do first.
+        </p>
+        <p>
+          So the method is a sequence. The order is the part that transfers. The
+          content of each stage is yours.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. The four stages, expanded -->
+  {
+    STAGE_DETAIL.map((stage, index) => (
+      <section
+        class:list={['section stage', index % 2 === 0 ? 'surface-ink' : '']}
+        aria-labelledby={`stage-${stage.number}`}
+      >
+        <div class="container">
+          <div class="stage-inner" data-reveal>
+            <div class="numeral">
+              <Arch variant="outline" label={stage.number} size={96} />
+            </div>
+            <div class="prose">
+              <h2 id={`stage-${stage.number}`}>
+                {stage.number} &middot; {stage.name}
+              </h2>
+              {stage.paragraphs.map((paragraph) => (
+                <p>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <SectionDivider />
+
+  <!-- 5. Categories don't create themselves -->
+  <section class="section categories" aria-labelledby="categories">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="categories">Categories don&rsquo;t create themselves</h2>
+        <p class="lead">
+          The most expensive mistake in this work is a company deciding it has
+          created a category because it has started using a phrase.
+        </p>
+        <p>
+          A category exists when other people use the word without being
+          prompted. Not your marketing site. Analysts, competitors, buyers
+          describing their own problem, job listings, and the models that have
+          read all of it. Until then you have a tagline, and a tagline is a claim
+          you are making about yourself.
+        </p>
+        <p>
+          The mechanism is worth being precise about, because it explains why
+          this is slow. A model&rsquo;s answer about your category is assembled
+          from what it has read. If the only places using your term are
+          properties you own, the term reads as proprietary language and gets
+          translated back into the category the rest of the market uses. You get
+          described as a version of the incumbent. That description then feeds
+          the next answer, and the answer after that.
+        </p>
+        <p>
+          Getting out of that loop requires the term to appear in sources you do
+          not own, attached to a definition that stays consistent everywhere it
+          appears. A definition short enough to be quoted. Published somewhere
+          quotable. Repeated without being reworded every time somebody prefers a
+          different adjective. It requires research that gives other people a
+          reason to cite the term while citing the data. And it requires the term
+          to survive contact with sales calls, where the buyer either recognises
+          the problem it names or does not.
+        </p>
+        <p>
+          Most companies should not attempt it. The correct move for the majority
+          is to win a narrow existing question decisively, which is faster and
+          more defensible. Naming a category is right when the existing category
+          actively misdescribes what you do, and the cost of being misdescribed
+          is larger than the cost of the campaign.
+        </p>
+        <p>
+          That is a strategy decision and it should be made deliberately, early,
+          and with someone willing to argue the other side. It is the single most
+          common thing I am hired to argue about.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <SectionDivider />
+
+  <!-- 6. What an engagement looks like -->
+  <section class="section" aria-labelledby="engagement">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="engagement">What an engagement looks like</h2>
+        <p>
+          Most engagements start with an audit, because I am not going to tell
+          you what to do before I know what is true. The audit runs the first two
+          stages: the query set, the AI visibility baseline, the technical
+          teardown, the competitive picture, and a position with a sequenced
+          roadmap attached.
+        </p>
+        <p>
+          After that the shape depends on what you already have. If you have
+          people producing work but nobody setting direction, the engagement is
+          standing direction: strategy, editorial standard, quarterly
+          measurement, and management of whoever executes. If you have a plan and
+          development capacity but nobody to bridge them, the engagement is
+          translating the roadmap into tickets an engineering team will
+          prioritise, then verifying that what shipped did what it was supposed
+          to.
+        </p>
+        <p>
+          I set strategy and direction. I do not write your posts or build your
+          site. Your team or your contractors do that, and my job is deciding
+          what should be made, setting the standard it has to meet, and holding
+          the line on whether it got met.
+        </p>
+        <p>
+          The first thing I will usually tell you is something you did not want
+          to hear about your positioning. That is the value. Everything after it
+          is sequencing.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section surface-ink faq" aria-labelledby="faq-heading">
+    <div class="container">
+      <div class="prose" data-reveal>
+        <h2 id="faq-heading">Common questions</h2>
+        <div class="faq-list">
+          {
+            FAQS.map((faq) => (
+              <div class="faq-item">
+                <h3>{faq.question}</h3>
+                <p>{faq.answer}</p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CTABlock />
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: clamp(56px, 7vw, 96px) clamp(48px, 6vw, 72px);
+  }
+
+  .page-hero .lead {
+    margin-top: 28px;
+  }
+
+  .stage-inner {
+    display: grid;
+    gap: 24px;
+  }
+
+  @media (min-width: 900px) {
+    .stage-inner {
+      grid-template-columns: 120px 1fr;
+      gap: 56px;
+    }
+  }
+
+  .numeral {
+    line-height: 0;
+  }
+
+  .categories {
+    padding-block: clamp(88px, 11vw, 160px);
+  }
+
+  .categories .lead {
+    margin-top: 24px;
+  }
+
+  .faq-list {
+    margin-top: 40px;
+  }
+
+  .faq-item + .faq-item {
+    margin-top: 40px;
+    padding-top: 40px;
+    border-top: 1px solid var(--surface-rule);
+  }
+
+  .faq-item h3 {
+    font-size: 1.25rem;
+  }
+
+  .faq-item p {
+    margin-top: 12px;
+  }
+</style>

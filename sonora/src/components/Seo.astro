@@ -1,0 +1,86 @@
+---
+/**
+ * Every <head> tag that search engines, social cards, and answer engines read.
+ *
+ * Title and description are required. A page without them throws at build
+ * time rather than shipping a duplicate or empty tag — silent SEO breakage is
+ * the failure mode this component exists to prevent.
+ */
+import { SITE_NAME, SITE_URL } from '../lib/site';
+import { buildGraph } from '../lib/schema';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Site-root-relative path, e.g. "/method". Used for canonical and og:url. */
+  path: string;
+  /** Site-root-relative image path. Defaults to the sitewide OG image. */
+  image?: string;
+  ogType?: 'website' | 'article';
+  /** Extra JSON-LD nodes for this page. Organization and WebSite are automatic. */
+  schema?: object[];
+  /** Keeps a page out of search results. Used only on /thanks. */
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  path,
+  image = '/images/og-default.png',
+  ogType = 'website',
+  schema = [],
+  noindex = false,
+} = Astro.props;
+
+if (!title || !title.trim()) {
+  throw new Error(
+    `[Seo] Missing "title" for ${path || 'an unknown page'}. Every page needs a unique title under 60 characters.`
+  );
+}
+
+if (!description || !description.trim()) {
+  throw new Error(
+    `[Seo] Missing "description" for ${path || 'an unknown page'}. Every page needs a unique meta description under 155 characters.`
+  );
+}
+
+if (title.length > 60) {
+  console.warn(
+    `[Seo] Title for ${path} is ${title.length} characters. Search results truncate around 60: "${title}"`
+  );
+}
+
+if (description.length > 155) {
+  console.warn(
+    `[Seo] Description for ${path} is ${description.length} characters. Search results truncate around 155.`
+  );
+}
+
+const canonical = new URL(path, SITE_URL).href;
+const ogImage = new URL(image, SITE_URL).href;
+const jsonLd = JSON.stringify(buildGraph(schema));
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+
+{noindex && <meta name="robots" content="noindex, follow" />}
+
+<meta property="og:site_name" content={SITE_NAME} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={ogType} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />
+
+<script type="application/ld+json" set:html={jsonLd} is:inline />
