@@ -19,6 +19,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CitySearch, { LocationResult } from "@/components/CitySearch";
+import SignPlate from "@/components/SignPlate";
 import { supabase } from "@/lib/supabase";
 import { saveChart } from "@/lib/saveChart";
 import { SIGN_FULL } from "@/lib/knowledge";
@@ -1081,8 +1082,11 @@ export default function OnboardingPage() {
                     <span className="text-[11px] uppercase tracking-widest opacity-70 flex items-center gap-2">
                       <span aria-hidden="true" className="text-[14px] opacity-90">{b.glyph}</span>{b.label}
                     </span>
-                    <span className="text-[18px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-                      {b.sign ? fullSign(b.sign) : "add birth time"}
+                    <span className="flex items-center gap-2.5">
+                      <SignPlate sign={b.sign} size={42} />
+                      <span className="text-[18px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                        {b.sign ? fullSign(b.sign) : "add birth time"}
+                      </span>
                     </span>
                   </div>
                 ))}

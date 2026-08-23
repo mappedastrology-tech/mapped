@@ -15,6 +15,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel, { SIGN_NAMES } from "@/components/ChartWheel";
 import ChartWheelStar from "@/components/ChartWheelStar";
+import SignPlate from "@/components/SignPlate";
 // Interpretations removed — Big 3 section no longer shown
 import PlacementAccordion from "@/components/PlacementAccordion";
 import InfoTip from "@/components/InfoTip";
@@ -1470,8 +1471,9 @@ export default function YouTab() {
             className="flex-1 text-center px-1.5"
             style={{ borderLeft: i === 0 ? "none" : "1px solid var(--border-card)", maxWidth: 130 }}
           >
-            <span className="block leading-none" style={{ fontSize: 19, color: "var(--brass)" }}>{glyph}</span>
-            <span className="block mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 20, letterSpacing: "0.03em", color: "var(--foreground)" }}>{SIGN_NAMES[sign] || sign}</span>
+            <SignPlate sign={sign} size={64} className="mx-auto block" />
+            <span className="block leading-none mt-0.5" style={{ fontSize: 15, color: "var(--brass)" }}>{glyph}</span>
+            <span className="block mt-1" style={{ fontFamily: "var(--font-heading)", fontSize: 19, letterSpacing: "0.03em", color: "var(--foreground)" }}>{SIGN_NAMES[sign] || sign}</span>
             <span className="block mt-1 text-[8.5px] tracking-[0.2em] uppercase font-semibold" style={{ color: "var(--foreground-faint)" }}>{label}</span>
           </div>
         ))}

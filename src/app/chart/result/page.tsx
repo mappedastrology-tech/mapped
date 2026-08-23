@@ -13,6 +13,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel, { SIGN_NAMES } from "@/components/ChartWheel";
+import SignPlate from "@/components/SignPlate";
 import Interpretations from "@/components/Interpretations";
 import AuthModal from "@/components/AuthModal";
 import { saveChart } from "@/lib/saveChart";
@@ -201,8 +202,9 @@ export default function ChartResult() {
         ].map(({ label, sign }) => (
           <div
             key={label}
-            className={`px-4 py-2 rounded-full border text-sm font-medium ${elementBg(sign)}`}
+            className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border text-sm font-medium ${elementBg(sign)}`}
           >
+            <SignPlate sign={sign} size={30} />
             <span className="text-muted">{label}</span>
             <span className="text-muted mx-1.5">&middot;</span>
             <span className={elementColor(sign)}>{SIGN_NAMES[sign] || sign}</span>
