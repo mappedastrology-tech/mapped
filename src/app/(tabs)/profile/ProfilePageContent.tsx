@@ -30,7 +30,7 @@ import ResonanceRadar from "@/components/profile/ResonanceRadar";
 import { computeAnimalGuide, TIER_LABEL } from "@/lib/resonance/animals";
 import { computeDeity, DEITY_TIER_LABEL } from "@/lib/resonance/deities";
 import { computeCharacter } from "@/lib/resonance/characters";
-import { computeChineseZodiac, ANIMAL_TRAIT, ELEMENT_TRAIT } from "@/lib/chineseZodiac";
+import { computeChineseZodiac, ANIMAL_TRAIT, ELEMENT_TRAIT, ZODIAC_ART } from "@/lib/chineseZodiac";
 import { masterLabel } from "@/lib/numerologyMeanings";
 
 const PHOTO_KEY = "mapped:profile-photo";
@@ -558,7 +558,7 @@ export default function ProfilePageContent() {
             <SubLine>The same pattern, matched against four other systems. Tap any card to read it in full.</SubLine>
             <div className="grid grid-cols-2 gap-[9px] items-stretch">
               {animal && (
-                <ReadCard kicker="Animal guide" glyph="\u2766" title={animal.guide.name} body={animal.guide.tagline}
+                <ReadCard kicker="Animal guide" glyph={"\u2766"} title={animal.guide.name} body={animal.guide.tagline}
                   img={`/animals/${animal.guide.id}.webp`}
                   onOpen={() => setOpenRead({
                     kind: "Animal guide", img: `/animals/${animal.guide.id}.webp`, title: animal.guide.name, tagline: animal.guide.tagline,
@@ -577,7 +577,7 @@ export default function ProfilePageContent() {
                 </ReadCard>
               )}
               {deity && (
-                <ReadCard kicker="Deity" glyph="\u2736" title={deity.guide.name} body={deity.guide.tagline}
+                <ReadCard kicker="Deity" glyph={"\u2736"} title={deity.guide.name} body={deity.guide.tagline}
                   img={`/deities/${deity.guide.id}.webp`}
                   onOpen={() => setOpenRead({
                     kind: "Deity", img: `/deities/${deity.guide.id}.webp`, title: deity.guide.name, tagline: deity.guide.tagline,
@@ -596,7 +596,7 @@ export default function ProfilePageContent() {
                 </ReadCard>
               )}
               {character && (
-                <ReadCard kicker="Character" glyph="\u2694" title={character.guide.name} body={character.guide.tagline}
+                <ReadCard kicker="Character" glyph={"\u2694"} title={character.guide.name} body={character.guide.tagline}
                   img={`/characters/${character.guide.id}.webp`}
                   onOpen={() => setOpenRead({
                     kind: "Character", img: `/characters/${character.guide.id}.webp`, title: character.guide.name, tagline: character.guide.tagline,
@@ -612,9 +612,10 @@ export default function ProfilePageContent() {
                 </ReadCard>
               )}
               {zodiac && (
-                <ReadCard kicker="Chinese zodiac" glyph="\u516D" title={zodiac.yearName} body={ANIMAL_TRAIT[zodiac.animal].split("\u2014")[0].trim()}
+                <ReadCard kicker="Chinese zodiac" glyph={"\u516D"} title={zodiac.yearName} body={ANIMAL_TRAIT[zodiac.animal].split("\u2014")[0].trim()}
+                  img={ZODIAC_ART[zodiac.animal]}
                   onOpen={() => setOpenRead({
-                    kind: "Chinese zodiac", title: zodiac.yearName, tagline: `${zodiac.innerAnimal} month \u00B7 ${zodiac.secretAnimal} hour`,
+                    kind: "Chinese zodiac", img: ZODIAC_ART[zodiac.animal], title: zodiac.yearName, tagline: `${zodiac.innerAnimal} month \u00B7 ${zodiac.secretAnimal} hour`,
                     body: `${ANIMAL_TRAIT[zodiac.animal]} ${ELEMENT_TRAIT[zodiac.element]}`,
                     shadow: null,
                     meta: [

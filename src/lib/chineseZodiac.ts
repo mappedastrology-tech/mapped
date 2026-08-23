@@ -109,6 +109,35 @@ export function computeChineseZodiac(
   };
 }
 
+/**
+ * The plate for each sign, under /public/zodiac.
+ *
+ * Nine of the twelve are the same creature the Animal Guides library already
+ * has painted, so those plates were copied across rather than re-commissioned.
+ * They live under their own zodiac/ names deliberately: the two libraries mean
+ * different things, and someone can be matched to the Rat as a guide AND be
+ * born in a Rat year, so each set has to be replaceable without disturbing the
+ * other.
+ *
+ * Rabbit, Goat and Pig have no honest match — the library's nearest animals are
+ * the hare, the wild ram and the wild boar, which are different creatures from
+ * the 兔, 羊 and 猪 of the zodiac — so those three are their own plates.
+ */
+export const ZODIAC_ART: Record<ZodiacAnimal, string> = {
+  Rat: "/zodiac/zodiac.rat.webp",
+  Ox: "/zodiac/zodiac.ox.webp",
+  Tiger: "/zodiac/zodiac.tiger.webp",
+  Rabbit: "/zodiac/zodiac.rabbit.webp",
+  Dragon: "/zodiac/zodiac.dragon.webp",
+  Snake: "/zodiac/zodiac.snake.webp",
+  Horse: "/zodiac/zodiac.horse.webp",
+  Goat: "/zodiac/zodiac.goat.webp",
+  Monkey: "/zodiac/zodiac.monkey.webp",
+  Rooster: "/zodiac/zodiac.rooster.webp",
+  Dog: "/zodiac/zodiac.dog.webp",
+  Pig: "/zodiac/zodiac.pig.webp",
+};
+
 /** Short reading per animal — what the sign is traditionally said to carry. */
 export const ANIMAL_TRAIT: Record<ZodiacAnimal, string> = {
   Rat: "Quick, resourceful, and always three moves ahead — you find the opening others walk past.",
