@@ -4,13 +4,12 @@
  * Ritual page — daily ritual suggestions + browseable catalog by life area.
  *
  * Sections:
- * 1. Rituals/Tarot tab switcher
- * 2. Date context line (weekday · date · moon phase in sign)
- * 3. Today's Ritual — hero card with personalized suggestion
- * 4. Two side-by-side cards: Tonight's Moon (compact) + Ritual Calendar (date + streak)
- * 5. Today's Almanac — preview with good-for items
- * 6. Browse All Rituals — catalog with search + pagination
- * 7. Interactive Event Calendar — expands from Ritual Calendar card
+ * 1. Date context line (weekday · date · moon phase in sign)
+ * 2. Today's Ritual — hero card with personalized suggestion
+ * 3. Two side-by-side cards: Tonight's Moon (compact) + Ritual Calendar (date + streak)
+ * 4. Today's Almanac — preview with good-for items
+ * 5. Browse All Rituals — catalog with search + pagination
+ * 6. Interactive Event Calendar — expands from Ritual Calendar card
  *
  * All colors use CSS custom properties for light/dark theme support.
  */
