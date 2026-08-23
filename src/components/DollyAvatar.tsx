@@ -3,11 +3,16 @@
 import { useState } from "react";
 
 /**
- * Dolly's avatar — her watercolor portrait cropped to a circle.
+ * Dolly's avatar — her watercolour portrait, cropped to a circle.
  *
- * Until the portrait file exists at /dolly.png, this falls back to a moonlit
- * orb (the app's previous Dolly mark), so the UI never shows a broken image.
- * Drop the portrait in as public/dolly.png and it appears everywhere at once.
+ * The portrait is pre-cropped square and face-forward rather than shipped whole
+ * and framed in CSS: the source is a 1024x1536 full portrait, and letting
+ * object-fit crop it down to 44px left her face too small to read. The crop is
+ * baked in, so every size renders the same framing and nothing carries 1536px
+ * of image to draw 44 of them.
+ *
+ * The moonlit orb stays as the fallback, so a missing or failed image degrades
+ * to the app's earlier Dolly mark instead of a hole.
  */
 export default function DollyAvatar({
   size = 44,
@@ -35,12 +40,11 @@ export default function DollyAvatar({
       {!failed && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src="/dolly.png"
+          src="/dolly.webp"
           alt="Dolly"
           draggable={false}
           onError={() => setFailed(true)}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: "50% 18%" }}
         />
       )}
     </div>
