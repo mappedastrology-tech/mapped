@@ -6,7 +6,7 @@ import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import Seo from '../components/Seo.astro';
-import { PLACEHOLDERS, isPlaceholder } from '../lib/site';
+import { GA_MEASUREMENT_ID } from '../lib/site';
 
 interface Props {
   title: string;
@@ -22,8 +22,6 @@ interface Props {
 
 const { title, description, path, image, ogType, schema, noindex, bodyClass } =
   Astro.props;
-
-const analyticsReady = !isPlaceholder(PLACEHOLDERS.analyticsSiteId);
 ---
 
 <!doctype html>
@@ -70,23 +68,22 @@ const analyticsReady = !isPlaceholder(PLACEHOLDERS.analyticsSiteId);
       noindex={noindex}
     />
 
-    {
-      /*
-       * ANALYTICS — Plausible, cookieless, no consent banner needed.
-       * Uncomment this and set PLACEHOLDERS.analyticsSiteId in src/lib/site.ts
-       * to the domain shown in the Plausible dashboard (sonoramethod.com).
-       *
-       * <script defer data-domain={PLACEHOLDERS.analyticsSiteId} src="https://plausible.io/js/script.js"></script>
-       */
-      analyticsReady && (
-        <script
-          is:inline
-          defer
-          data-domain={PLACEHOLDERS.analyticsSiteId}
-          src="https://plausible.io/js/script.js"
-        />
-      )
-    }
+    <!-- Google tag (gtag.js). Loads async, after the document, so it costs
+         nothing on first paint. Note that GA4 sets first-party cookies — the
+         privacy page says so. -->
+    <script
+      is:inline
+      async
+      src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+    ></script>
+    <script is:inline define:vars={{ GA_MEASUREMENT_ID }}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', GA_MEASUREMENT_ID);
+    </script>
   </head>
 
   <body class={bodyClass}>

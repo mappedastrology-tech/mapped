@@ -14,7 +14,7 @@
  */
 import { Resvg } from '@resvg/resvg-js';
 import sharp from 'sharp';
-import { readFile, writeFile, mkdir, readdir, access } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, access, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -140,8 +140,16 @@ async function generateBrand() {
     if (await writeIfMissing(path.join(brandDir, name), render())) written += 1;
   }
 
+  // A marker so `npm run verify` keeps flagging that these are stand-ins.
+  // Overwriting the PNGs with the real artwork is not enough on its own —
+  // delete this file too, or run `npm run assets` after replacing them.
+  const marker = path.join(brandDir, '.placeholder-artwork');
   if (written) {
-    log(`brand: wrote ${written} placeholder file(s) — replace with the real PNGs`);
+    await writeFile(
+      marker,
+      'Generated stand-in artwork. Delete this file once the real PNGs are in place.\n'
+    );
+    log(`brand: wrote ${written} generated file(s) — replace with the real PNGs`);
   } else {
     log('brand: all files present, none overwritten');
   }
@@ -308,6 +316,7 @@ async function generateHeadshot() {
         .resize(800, 800, { fit: 'cover', position: 'top' })
         .webp({ quality: 82 })
         .toFile(target);
+      await rm(path.join(imagesDir, '.placeholder-headshot'), { force: true });
       log(`headshot: converted ${candidate} to taylor-corbett.webp`);
       return;
     }
@@ -320,6 +329,10 @@ async function generateHeadshot() {
 
   const png = renderPng(headshotPlaceholderSvg(), 800);
   await sharp(png).webp({ quality: 82 }).toFile(target);
+  await writeFile(
+    path.join(imagesDir, '.placeholder-headshot'),
+    'Generated stand-in. Removed automatically once a real source image is supplied.\n'
+  );
   log('headshot: placeholder written — drop taylor-corbett-source.jpg in public/images/');
 }
 

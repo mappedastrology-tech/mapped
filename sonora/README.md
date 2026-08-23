@@ -20,24 +20,25 @@ something genuinely needs a developer, it says so.
 
 ---
 
-## What still needs to happen before launch
+## What is still outstanding
 
-These are the things only you can supply. Everything else is built.
+Almost everything is wired up. Two items remain, both artwork.
 
 | # | What | Where it goes |
 |---|------|---------------|
-| 1 | The four logo PNGs | Drop into `public/brand/` using the exact filenames in the table further down |
-| 2 | Your headshot | Save as `public/images/taylor-corbett-source.jpg` |
-| 3 | Your LinkedIn URL | `src/lib/site.ts`, replace `TAYLOR_TO_PROVIDE_LINKEDIN_URL` |
-| 4 | Your Cal.com booking link | `src/lib/site.ts`, replace `TAYLOR_TO_PROVIDE_CALCOM_LINK` |
-| 5 | Analytics site ID | `src/lib/site.ts`, replace `TAYLOR_TO_PROVIDE_ANALYTICS_SITE_ID` |
-| 6 | List of former employer names | `scripts/employer-names.txt`, one per line |
-| 7 | `hello@sonoramethod.com` mailbox | Google Workspace, forwarding to your main inbox |
+| 1 | The four logo PNGs | `public/brand/`, using the filenames in the table further down |
+| 2 | Your headshot | `public/images/taylor-corbett-source.jpg` |
+| 3 | List of former employer names | `scripts/employer-names.txt`, one per line |
+| 4 | `hello@sonoramethod.com` mailbox | Google Workspace, forwarding to your main inbox |
 
-Until each of those is supplied the site still works. It shows an obvious
-placeholder instead — a dashed box on the booking page, "LinkedIn — link
-pending" in the footer, and a grey placeholder where the headshot goes. Nothing
-silently ships as blank.
+The logos currently on the site are **drawn stand-ins**, not your files — the
+wordmark with the arch standing in for the "n", and the sonar rings around it.
+They are built to the same proportions as your real artwork, so nothing on the
+page moves when the real files land. Replacing them is a drag and drop; see
+"The logo files" below.
+
+Already done and live in the code: the booking calendar, Google Analytics, and
+the LinkedIn link.
 
 After launch there are three more, listed at the bottom of this file.
 
@@ -165,13 +166,20 @@ Five files live in `public/brand/`. Four are yours; the fifth is generated.
 | `sonora-arch.png` | Solid arch shape only | Graphic element |
 | `sonora-wordmark-knockout.png` | *Generated* — the wordmark in cream | Footer, on the dark background |
 
-**To install the real logos:** upload your four PNGs to `public/brand/`, using
-exactly those filenames, replacing what is there. That is the only step. The
-favicon, the apple touch icon, the cream footer wordmark, and the social share
-image all regenerate from them on the next build.
+**To install the real logos:**
 
-The files currently in that folder are placeholders drawn to the same
-proportions, so nothing shifts on the page when the real ones land.
+1. Upload your four PNGs to `public/brand/`, using exactly those filenames,
+   replacing what is there.
+2. Delete the file `public/brand/.placeholder-artwork`. That marker is what
+   makes the build keep saying the artwork is a stand-in.
+
+That is the whole process. The favicon, the apple touch icon, the cream footer
+wordmark, the WebP copies the pages actually serve, and the social share image
+all regenerate from your files on the next build.
+
+The files in that folder right now are drawn stand-ins, built to the same
+proportions as your artwork, so nothing shifts on the page when the real ones
+land.
 
 `sonora-icon.png` should have a transparent background. It sits on cream in the
 header and on navy in the mobile menu.
@@ -191,48 +199,37 @@ the top of the crop, so a photo with headroom works best.
 
 ## The booking page
 
-The `/book` page shows a dashed placeholder box until the Cal.com link is set.
-
-Once you have set up Cal.com (account, Google Calendar connected, one 30-minute
-"Intro call" event type, booking questions for company URL and "what are you
-trying to fix", a buffer between meetings), open `src/lib/site.ts` and replace:
+`/book` embeds your Google Calendar appointment schedule directly. Nothing to
+configure — it is already pointed at:
 
 ```
-calcom: 'TAYLOR_TO_PROVIDE_CALCOM_LINK',
+https://calendar.app.google/KB26roAeFacVbngg6
 ```
 
-with your link in `username/event-slug` form — the part of your Cal.com URL after
-`cal.com/`. For example:
+If you ever create a new appointment schedule, open `src/lib/site.ts` and change
+`BOOKING_URL` to the new link. The embed follows automatically.
 
-```
-calcom: 'sonora/intro-call',
-```
+Underneath the calendar there is a line offering a direct link to the booking
+page and your email address. That is deliberate: some browsers and privacy
+extensions block embedded calendars, and when they do, people still need a way
+to book. Do not remove it.
 
-The booking calendar appears on the page automatically.
-
----
+**Worth checking once the site is live:** open `/book` in a browser and confirm
+the calendar itself appears, not just the fallback line. Embedded Google
+calendars occasionally need the schedule's sharing setting to be public.
 
 ## Analytics
 
-The site is built for **Plausible** — cookieless, no consent banner needed, no
-effect on page speed. Create the account, add `sonoramethod.com` as a site, then
-open `src/lib/site.ts` and replace:
+Google Analytics is installed on every page, using your measurement ID
+`G-L1SZMT6MFL`. Nothing to configure. Traffic shows up in your Google Analytics
+dashboard within a day of the site going live.
 
-```
-analyticsSiteId: 'TAYLOR_TO_PROVIDE_ANALYTICS_SITE_ID',
-```
+To change the property later, edit `GA_MEASUREMENT_ID` in `src/lib/site.ts`.
 
-with:
-
-```
-analyticsSiteId: 'sonoramethod.com',
-```
-
-That switches the tracking script on. Nothing else to do. (If you choose Fathom
-instead, the script line in `src/layouts/Base.astro` needs a one-line change —
-that one is a developer job, but a five-minute one.)
-
----
+One thing to be aware of: Google Analytics sets cookies, so the privacy page
+says so plainly. If you ever take visitors from the EU or the UK seriously as an
+audience, a cookie consent banner becomes a legal question worth asking someone
+about. It is not built, and it is not something to guess at.
 
 ## The newsletter
 
@@ -262,6 +259,8 @@ Some rules from the brief are enforced by the code, not by memory:
 - `npm run verify` **fails** if a price, a rate, or a former employer name
   appears anywhere in the built site (once you have filled in
   `scripts/employer-names.txt`).
+- `npm run verify` **fails** if the booking embed loses its fallback link, or if
+  the privacy page stops describing the analytics that are actually installed.
 - The testimonial component has **no field for a company name**. That is
   deliberate. Do not add one.
 
@@ -279,10 +278,11 @@ npm run build     # production build into dist/
 npm run verify    # run the pre-launch checklist against dist/
 ```
 
-`npm run build` runs `scripts/generate-assets.mjs` first. That script writes
-placeholder brand PNGs **only where a file is missing**, derives the favicons and
-the knockout wordmark from the supplied artwork, renders the Open Graph cards
-(default plus one per post, using the fonts in `scripts/fonts/`), and converts
+`npm run build` runs `scripts/generate-assets.mjs` first. That script draws
+stand-in brand artwork **only where a file is missing** (`scripts/brand-svg.mjs`
+holds the geometry, set in Poppins SemiBold via opentype.js), derives the
+favicons, the knockout wordmark and the WebP copies from whatever artwork is
+present, renders the Open Graph cards (default plus one per post), and converts
 the headshot to WebP. It never overwrites artwork it did not create.
 
 `npm run verify` checks, against `dist/`: body copy present with JS disabled,

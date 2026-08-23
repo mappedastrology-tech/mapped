@@ -1,9 +1,8 @@
 ---
 import NewsletterForm from './NewsletterForm.astro';
-import { EMAIL, LOCATION, SITE_TAGLINE, NAV_LINKS, PLACEHOLDERS, isPlaceholder } from '../lib/site';
+import { EMAIL, LOCATION, SITE_TAGLINE, NAV_LINKS, LINKEDIN_URL } from '../lib/site';
 
 const year = 2026;
-const linkedinReady = !isPlaceholder(PLACEHOLDERS.linkedin);
 ---
 
 <footer class="site-footer surface-ink">
@@ -36,16 +35,7 @@ const linkedinReady = !isPlaceholder(PLACEHOLDERS.linkedin);
         <h2 class="col-heading">Get in touch</h2>
         <ul class="footer-links">
           <li><a href={`mailto:${EMAIL}`}>{EMAIL}</a></li>
-          <li>
-            {
-              linkedinReady ? (
-                <a href={PLACEHOLDERS.linkedin} rel="me noopener">LinkedIn</a>
-              ) : (
-                /* Placeholder: replace PLACEHOLDERS.linkedin in src/lib/site.ts. */
-                <span class="pending">LinkedIn — link pending</span>
-              )
-            }
-          </li>
+          <li><a href={LINKEDIN_URL} rel="me noopener">LinkedIn</a></li>
         </ul>
         <div class="newsletter-slot">
           <NewsletterForm id="footer-newsletter" variant="footer" />
@@ -117,11 +107,6 @@ const linkedinReady = !isPlaceholder(PLACEHOLDERS.linkedin);
 
   .footer-links a:hover {
     text-decoration-color: var(--accent);
-  }
-
-  .pending {
-    color: var(--surface-muted);
-    font-style: italic;
   }
 
   .newsletter-slot { margin-top: 32px; }

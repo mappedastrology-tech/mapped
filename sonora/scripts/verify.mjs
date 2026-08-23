@@ -7,7 +7,7 @@
  *
  * Usage: npm run build && npm run verify
  */
-import { readFile, readdir, access } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -305,23 +305,74 @@ if (contact?.includes('netlify-honeypot')) {
   fail('contact form has no honeypot');
 }
 
-heading('Placeholders still in place');
+heading('Client-supplied values');
 const site = await readFile(path.join(root, 'src', 'lib', 'site.ts'), 'utf8');
-for (const key of ['linkedin', 'calcom', 'analyticsSiteId']) {
-  const line = site.match(new RegExp(`${key}: '([^']*)'`))?.[1] ?? '';
-  if (line.startsWith('TAYLOR_TO_PROVIDE')) {
-    warn(`${key} is still a placeholder`);
+const REQUIRED_VALUES = [
+  ['LINKEDIN_URL', /linkedin\.com\/in\//],
+  ['BOOKING_URL', /calendar\.app\.google\//],
+  ['GA_MEASUREMENT_ID', /'G-[A-Z0-9]+'/],
+];
+for (const [name, pattern] of REQUIRED_VALUES) {
+  const line = site.split('\n').find((row) => row.includes(`export const ${name}`)) ?? '';
+  if (pattern.test(line)) {
+    pass(`${name} is set`);
   } else {
-    pass(`${key} is set`);
+    fail(`${name} is missing or malformed in src/lib/site.ts`);
   }
 }
 
+// The tag has to reach the built pages, not just the config file.
+const gaOnEveryPage = [...documents.entries()].every(([, source]) =>
+  source.includes('googletagmanager.com/gtag/js')
+);
+if (gaOnEveryPage) {
+  pass('Google tag present on every page');
+} else {
+  fail('Google tag missing from at least one page');
+}
+
+const book = documents.get('/book');
+if (book?.includes('calendar.app.google') && book.includes('gv=true')) {
+  pass('booking embed points at the Google Calendar schedule');
+} else {
+  fail('booking embed is not wired to the Google Calendar link');
+}
+if (book?.includes('Open the booking page directly')) {
+  pass('booking page has a non-iframe fallback');
+} else {
+  fail('booking page has no fallback if the iframe is blocked');
+}
+
+// The privacy page has to describe the analytics that are actually installed.
+const privacy = documents.get('/privacy');
+if (privacy?.includes('Google Analytics') && /sets cookies/i.test(privacy)) {
+  pass('privacy page describes the cookies GA4 sets');
+} else {
+  fail('privacy page does not match the analytics actually installed');
+}
+
+heading('Brand artwork');
 const brandDir = path.join(root, 'public', 'brand');
-const brandFiles = await readdir(brandDir);
-if (brandFiles.length) {
+const REQUIRED_BRAND = [
+  'sonora-full.png',
+  'sonora-wordmark.png',
+  'sonora-icon.png',
+  'sonora-arch.png',
+];
+for (const file of REQUIRED_BRAND) {
+  if (await exists(path.join(brandDir, file))) {
+    pass(`public/brand/${file}`);
+  } else {
+    fail(`public/brand/${file} is missing`);
+  }
+}
+if (await exists(path.join(brandDir, '.placeholder-artwork'))) {
   warn(
-    'brand PNGs may still be placeholders — confirm public/brand/ holds Taylor’s real files'
+    'brand artwork is still generated, not the supplied PNGs — see README, "The logo files"'
   );
+}
+if (await exists(path.join(root, 'public', 'images', '.placeholder-headshot'))) {
+  warn('headshot is still a placeholder — drop taylor-corbett-source.jpg in public/images/');
 }
 
 heading('Still to do by hand');

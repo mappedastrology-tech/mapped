@@ -23,33 +23,22 @@ export const AUTHOR = {
     'Taylor Corbett runs Sonora, a content and search strategy practice for startups and B2B software companies.',
 };
 
+/** Taylor's public LinkedIn profile. */
+export const LINKEDIN_URL = 'https://www.linkedin.com/in/taylorjcorbett/';
+
 /**
- * ---------------------------------------------------------------------------
- * PLACEHOLDERS — replace these when Taylor sends the real values.
- * Each one is deliberately obvious so it cannot ship by accident. The build
- * prints a warning for every placeholder still in place.
- * ---------------------------------------------------------------------------
+ * Google Calendar appointment schedule. `?gv=true` is what turns the booking
+ * page into an embeddable view; the bare link is what people click if the
+ * iframe is blocked.
  */
-export const PLACEHOLDERS = {
-  /** Taylor's public LinkedIn profile URL. */
-  linkedin: 'TAYLOR_TO_PROVIDE_LINKEDIN_URL',
-  /**
-   * The Cal.com booking link, in `username/event-slug` form.
-   * Example: `sonora/intro-call`
-   */
-  calcom: 'TAYLOR_TO_PROVIDE_CALCOM_LINK',
-  /** Plausible or Fathom site ID. See Base.astro for where it is used. */
-  analyticsSiteId: 'TAYLOR_TO_PROVIDE_ANALYTICS_SITE_ID',
-} as const;
+export const BOOKING_URL = 'https://calendar.app.google/KB26roAeFacVbngg6';
+export const BOOKING_EMBED_URL = `${BOOKING_URL}?gv=true`;
 
-export function isPlaceholder(value: string): boolean {
-  return value.startsWith('TAYLOR_TO_PROVIDE');
-}
+/** Google Analytics 4 measurement ID. */
+export const GA_MEASUREMENT_ID = 'G-L1SZMT6MFL';
 
-/** Only real, resolvable profile URLs belong in JSON-LD `sameAs`. */
-export const SAME_AS: string[] = [PLACEHOLDERS.linkedin].filter(
-  (url) => !isPlaceholder(url)
-);
+/** Profiles that belong in JSON-LD `sameAs`. */
+export const SAME_AS: string[] = [LINKEDIN_URL];
 
 export const NAV_LINKS = [
   { label: 'Method', href: '/method' },
