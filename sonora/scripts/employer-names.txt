@@ -1,7 +1,0 @@
-# Former employer names to grep the built site against.
-#
-# One per line. Comments and blank lines are ignored. `npm run verify` fails if
-# any of these appears anywhere in dist/ — copy, alt text, metadata, or JSON-LD.
-#
-# Taylor: add every company you have worked for, including abbreviations and
-# station call signs. Nothing here is published; the file stays in the repo.
