@@ -103,9 +103,15 @@ function getDollyLsKey(uid?: string | null): string {
   return uid ? `${base}:${uid}` : base;
 }
 
-/** Cache of AI-generated chat summaries, so we summarize each chat only once. */
+/**
+ * Cache of AI-generated chat summaries, so we summarize each chat only once.
+ *
+ * The key carries a version. v2 retires every title generated before replies
+ * were stripped of their meta line — those were written from raw JSON and read
+ * like it, and a cached bad title would otherwise never be revisited.
+ */
 function getDollySummaryKey(uid?: string | null): string {
-  const base = "mapped:dolly-summaries";
+  const base = "mapped:dolly-summaries:v2";
   return uid ? `${base}:${uid}` : base;
 }
 
@@ -638,7 +644,12 @@ export default function DollyTab() {
         const res = await authedFetch("/api/dolly/summarize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: c.messages.slice(0, 12).map((m) => ({ role: m.role, content: m.content })) }),
+          body: JSON.stringify({
+            messages: c.messages.slice(0, 12).map((m) => ({
+              role: m.role,
+              content: m.role === "assistant" ? dollyBody(m.content) : m.content,
+            })),
+          }),
         });
         if (res.ok) {
           const { summary } = await res.json();
@@ -729,13 +740,15 @@ export default function DollyTab() {
     return convo.messages.filter(m => m.role === "user").length;
   }
 
-  // Get last Dolly response for a conversation (for chat list preview)
+  // Get last Dolly response for a conversation (for chat list preview).
+  // dollyBody, not .content: a reply is STORED with its leading meta line so a
+  // reopened conversation still has its chips and follow-ups, but that line is
+  // machinery. Sliced raw, the history list previewed a row of JSON.
   function getLastDollyResponse(convo: PastConversation): string {
     const lastAssistant = [...convo.messages].reverse().find(m => m.role === "assistant");
     if (lastAssistant) {
-      return lastAssistant.content.length > 80
-        ? lastAssistant.content.slice(0, 80) + "..."
-        : lastAssistant.content;
+      const text = dollyBody(lastAssistant.content).trim();
+      return text.length > 80 ? text.slice(0, 80) + "..." : text;
     }
     return "";
   }

@@ -1,13 +1,16 @@
 /**
- * A JSX string attribute does NOT process escape sequences.
+ * JSX does NOT process escape sequences — not in a string attribute, and not in
+ * the text between tags.
  *
- *   glyph="✶"    renders the six characters  \ u 2 7 3 6
- *   glyph={"✶"}  renders  ✶
+ *   glyph="✶"                renders the six characters  \ u 2 7 3 6
+ *   glyph={"✶"}              renders  ✶
+ *   <span>Read more →</span>    renders  Read more \u2192
+ *   <span>Read more {"→"}</span>  renders  Read more →
  *
- * Four of these shipped on the profile page and stayed invisible because every
- * card that used one also had art covering it. The Chinese zodiac card, whose
- * art is still being drawn, put "六" on screen for anyone born in a Rabbit,
- * Goat or Pig year. Cheap to catch, so catch it.
+ * The attribute form shipped on four profile cards and stayed invisible because
+ * each also had art covering the glyph. The FIRST version of this test only
+ * checked attributes, so it passed while "Read more \u2192" sat at the bottom
+ * of every read card in the app. Both shapes are checked now.
  */
 
 import test from "node:test";
@@ -36,6 +39,22 @@ test("no unicode escape sits in a JSX string attribute", () => {
         if (line.slice(0, m.index).includes("<")) {
           offenders.push(`${file}:${i + 1}  ${m[1]}="${m[2]}"  → use ${m[1]}={"${m[2]}"}`);
         }
+      }
+    });
+  }
+
+  assert.deepEqual(offenders, [], `\n${offenders.join("\n")}\n`);
+});
+
+test("no unicode escape sits in JSX text between tags", () => {
+  // Text directly between > and <, with no braces — i.e. literal JSX children.
+  const between = />([^<>{}]*\\u[0-9A-Fa-f]{4}[^<>{}]*)</g;
+  const offenders: string[] = [];
+
+  for (const file of walk("src")) {
+    readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      for (const m of line.matchAll(between)) {
+        offenders.push(`${file}:${i + 1}  >${m[1].trim()}<  → wrap the escape in {"..."}`);
       }
     });
   }

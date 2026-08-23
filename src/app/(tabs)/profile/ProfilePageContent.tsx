@@ -916,7 +916,7 @@ function ReadCard({ kicker, glyph, title, body, children, onOpen, img }: {
       <p className="text-[12.5px]" style={{ lineHeight: 1.55, color: "var(--foreground-secondary)" }}>{body}</p>
       <div className="flex flex-col gap-[5px] mt-auto pt-[11px] w-full" style={{ borderTop: "0.5px solid var(--border-card)" }}>
         {children}
-        <span className="text-[10px] mt-0.5" style={{ color: "var(--brass)" }}>Read more \u2192</span>
+        <span className="text-[10px] mt-0.5" style={{ color: "var(--brass)" }}>Read more {"\u2192"}</span>
       </div>
     </button>
   );

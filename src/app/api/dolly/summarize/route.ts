@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { FALLBACK_MODEL } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
+import { dollyBody } from "@/lib/dollyReply";
 
 export const runtime = "nodejs";
 
@@ -25,9 +26,13 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: "Bad request" }), { status: 400 });
   }
 
+  // Strip Dolly's leading meta line here too, not only on the client. Replies
+  // are stored with it, so anything summarising a raw conversation would be
+  // titling a row of JSON — and a title is the one thing the user reads before
+  // deciding whether to open the chat.
   const text = msgs
     .filter((t) => t?.content)
-    .map((t) => `${t.role === "user" ? "User" : "Dolly"}: ${t.content}`)
+    .map((t) => `${t.role === "user" ? "User" : "Dolly"}: ${t.role === "assistant" ? dollyBody(t.content) : t.content}`)
     .join("\n")
     .trim();
   if (!text) return new Response(JSON.stringify({ summary: "" }), { status: 200 });
