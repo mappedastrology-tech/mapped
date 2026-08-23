@@ -1,5 +1,12 @@
 # Mapped — Art Brief: Chinese Zodiac
 
+> ## ✅ COMPLETE — all twelve signs have art
+> Rabbit, Goat and Pig arrived and are installed. Every one was on-brief: a
+> domestic rabbit rather than a hare, a bearded domestic goat rather than a
+> bighorn ram, a farm pig rather than a tusked boar. Nothing left to draw.
+> The optional element emblems at the end of this doc are still open if you
+> ever want them.
+
 **You need three images, not twelve.**
 
 Nine of the twelve signs are animals your Animal Guides library already has
@@ -9,7 +16,7 @@ the profile is showing real art right now for nine signs out of twelve.
 | Sign | Status |
 |---|---|
 | Rat, Ox, Tiger, Dragon, Snake, Horse, Monkey, Rooster, Dog | ✅ done — reused from the animal library |
-| **Rabbit, Goat, Pig** | ❌ **need new plates** |
+| **Rabbit, Goat, Pig** | ✅ done — drawn to the brief below and installed |
 
 The Dragon is worth calling out: the one in your animal library is already an
 Eastern dragon among clouds, so it is the right dragon for this, not a
