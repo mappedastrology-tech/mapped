@@ -1471,7 +1471,7 @@ export default function YouTab() {
             className="flex-1 text-center px-1.5"
             style={{ borderLeft: i === 0 ? "none" : "1px solid var(--border-card)", maxWidth: 130 }}
           >
-            <SignPlate sign={sign} size={64} className="mx-auto block" />
+            <SignPlate sign={sign} size={64} tile className="mx-auto" />
             <span className="block leading-none mt-0.5" style={{ fontSize: 15, color: "var(--brass)" }}>{glyph}</span>
             <span className="block mt-1" style={{ fontFamily: "var(--font-heading)", fontSize: 19, letterSpacing: "0.03em", color: "var(--foreground)" }}>{SIGN_NAMES[sign] || sign}</span>
             <span className="block mt-1 text-[8.5px] tracking-[0.2em] uppercase font-semibold" style={{ color: "var(--foreground-faint)" }}>{label}</span>

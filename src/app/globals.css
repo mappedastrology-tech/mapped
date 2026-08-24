@@ -52,6 +52,12 @@
 
 /* ═══ BASE (Night mode — default) ═══ */
 :root {
+
+  /* Surface behind a keyed art plate. The plates are painted on white, so the
+     feathered edge carries a little paper with it — invisible on a light page,
+     a faint halo on near-black. The tile gives that edge something lit to sit
+     against. Warmer and lighter than a card on purpose. */
+  --sign-plate-tile: rgba(244, 236, 214, 0.11);
   --background: #0e0a14;
   --background-card: #2a1f35;
   --background-card-hover: #352845;
@@ -278,6 +284,10 @@
 
 /* ═══ DAY MODE — cream canvas with dark content ═══ */
 [data-theme="light"] {
+
+  /* Light theme: the page is already close to the paper the plates were
+     painted on, so the tile only needs to read as a surface, not rescue an edge. */
+  --sign-plate-tile: rgba(74, 37, 64, 0.05);
   --background: #f5f0e1;
   --background-card: #ffffff;
   --background-card-hover: #f0ebe0;

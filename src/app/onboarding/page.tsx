@@ -1083,7 +1083,7 @@ export default function OnboardingPage() {
                       <span aria-hidden="true" className="text-[14px] opacity-90">{b.glyph}</span>{b.label}
                     </span>
                     <span className="flex items-center gap-2.5">
-                      <SignPlate sign={b.sign} size={42} />
+                      <SignPlate sign={b.sign} size={42} tile />
                       <span className="text-[18px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
                         {b.sign ? fullSign(b.sign) : "add birth time"}
                       </span>

@@ -204,7 +204,7 @@ export default function ChartResult() {
             key={label}
             className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border text-sm font-medium ${elementBg(sign)}`}
           >
-            <SignPlate sign={sign} size={30} />
+            <SignPlate sign={sign} size={30} tile />
             <span className="text-muted">{label}</span>
             <span className="text-muted mx-1.5">&middot;</span>
             <span className={elementColor(sign)}>{SIGN_NAMES[sign] || sign}</span>

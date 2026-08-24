@@ -44,18 +44,34 @@ export function signPlateSrc(sign?: string | null): string | null {
 export default function SignPlate({
   sign,
   size = 72,
+  tile = false,
   className = "",
   style,
 }: {
   sign?: string | null;
   size?: number;
+  /**
+   * Sit the plate on a soft tile instead of straight on the page.
+   *
+   * These plates are painted on white and keyed, so the feathered edge holds a
+   * little of the paper it was painted on. Against a light page that is
+   * invisible — it is the same white. Against the dark theme's near-black it
+   * reads as a faint halo tracing the cutout. A tile puts a lit surface back
+   * under the subject, which is what the edge was painted against, and the
+   * fringe stops being a boundary between the art and the void.
+   *
+   * It also gives the plate the presence of an object rather than a floating
+   * cutout, which is why the tile is used even where the halo would not show.
+   */
+  tile?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }) {
   const [failed, setFailed] = useState(false);
   const src = signPlateSrc(sign);
   if (!src || failed) return null;
-  return (
+
+  const img = (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
@@ -63,8 +79,30 @@ export default function SignPlate({
       aria-hidden
       draggable={false}
       onError={() => setFailed(true)}
-      className={className}
-      style={{ width: size, height: size, objectFit: "contain", ...style }}
+      className={tile ? "" : className}
+      style={
+        tile
+          ? { width: "82%", height: "82%", objectFit: "contain" }
+          : { width: size, height: size, objectFit: "contain", ...style }
+      }
     />
+  );
+  if (!tile) return img;
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center ${className}`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.26),
+        background: "var(--sign-plate-tile, rgba(244,236,214,0.10))",
+        border: "0.5px solid var(--border-card)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+        ...style,
+      }}
+    >
+      {img}
+    </span>
   );
 }

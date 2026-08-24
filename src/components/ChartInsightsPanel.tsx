@@ -1,9 +1,15 @@
 "use client";
 
 /**
- * ChartInsightsPanel — displays comprehensive chart analysis results
- * in expandable, beautifully styled sections.
+ * ChartInsightsPanel — the chart's analysis, grouped and collapsible.
+ *
+ * Nine sections used to render expanded and stacked: 13.6 screens of scroll and
+ * ~2,700 words with no contents, no way to skip, and no sense of position. They
+ * are now three named groups of collapsed rows, each row carrying a count, so
+ * the tab opens as something you can read in one look and choose from.
  */
+
+import { useState } from "react";
 
 import {
   type ChartAnalysis,
@@ -343,19 +349,93 @@ function signName(abbr: string): string {
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 
+/**
+ * The explanatory line under a section's title.
+ *
+ * It no longer renders the title. Each section is now inside an accordion whose
+ * button IS the heading — printing the title again a few pixels below it read
+ * as a mistake. `title` stays in the signature because it is what the accordion
+ * is labelled with at the call site in the panel below, and keeping the two in
+ * one place is what stops them drifting apart.
+ */
 function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  void title;
+  if (!subtitle) return null;
   return (
-    <div className="mb-4">
-      <h2
-        className="text-xl text-foreground mb-1"
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        {title}
+    <p className="text-sm mb-4" style={{ color: "var(--insight-muted)" }}>
+      {subtitle}
+    </p>
+  );
+}
+
+/**
+ * One collapsible section.
+ *
+ * Insights used to render all nine sections expanded, one after another: 13.6
+ * screens of continuous scroll and about 2,700 words, with no way to see what
+ * was in it, skip ahead, or tell how far in you were. Closed by default turns
+ * that into a one-screen contents page you choose from.
+ *
+ * The count on the right is what makes a closed row worth reading — "3
+ * patterns", "2 retrograde" tells you whether it is worth opening. A section
+ * with nothing in it never gets rendered at all, so a row on screen always has
+ * something behind it.
+ */
+function InsightSection({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count?: string | null;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="mb-2.5">
+      <h2>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="w-full flex items-center gap-3 text-left transition-colors"
+          style={{
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: "var(--background-card)",
+            border: "0.5px solid var(--border-card)",
+          }}
+        >
+          <span
+            className="flex-1 min-w-0 text-balance"
+            style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)" }}
+          >
+            {title}
+          </span>
+          {count ? (
+            <span
+              className="shrink-0 text-[10px] font-semibold uppercase"
+              style={{ letterSpacing: "0.08em", color: "var(--brass)" }}
+            >
+              {count}
+            </span>
+          ) : null}
+          <svg
+            aria-hidden="true"
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="var(--foreground-muted)" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+            className="shrink-0 transition-transform"
+            style={{ transform: open ? "rotate(180deg)" : "none" }}
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
       </h2>
-      {subtitle ? (
-        <p className="text-sm" style={{ color: "var(--insight-muted)" }}>{subtitle}</p>
-      ) : null}
-    </div>
+      {open ? <div className="pt-4 px-0.5">{children}</div> : null}
+    </section>
   );
 }
 
@@ -1427,37 +1507,125 @@ function SpecialFindingsSection({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="text-[10px] font-bold uppercase mt-7 mb-2.5 first:mt-0"
+      style={{ letterSpacing: "0.18em", color: "var(--foreground-muted)" }}
+    >
+      {children}
+    </p>
+  );
+}
+
+const n = (count: number, one: string, many = `${one}s`) =>
+  `${count} ${count === 1 ? one : many}`;
+
 export default function ChartInsightsPanel({ analysis, planets }: ChartInsightsPanelProps) {
+  // A section is listed only when it has something in it. Each section already
+  // returns null when empty; the same condition decides whether its row exists,
+  // so a row on screen is never a dead end.
+  const notableDignities = analysis.dignities.filter((d) => d.dignity !== "peregrine");
+  const hasHouseMarkers =
+    analysis.angularPlanets.length > 0 ||
+    analysis.cadentPlanets.length > 0 ||
+    analysis.houseEmphasis.length > 0 ||
+    analysis.emptyHouses.length > 0;
+  const rareCount =
+    analysis.mutualReceptions.length +
+    (analysis.finalDispositor ? 1 : 0) +
+    analysis.singletons.length +
+    analysis.unaspectedPlanets.length +
+    analysis.tightAspects.length;
+  const degreeCount = analysis.criticalDegrees.length + analysis.combustPlanets.length;
+
   return (
     <div className="w-full">
-      <PatternsSection patterns={analysis.patterns} planets={planets} />
-      <DignitiesSection dignities={analysis.dignities} planets={planets} />
-      <CriticalDegreesSection
-        criticalDegrees={analysis.criticalDegrees}
-        combustPlanets={analysis.combustPlanets}
-        planets={planets}
-      />
-      <MoonPhaseSection moonPhase={analysis.moonPhase} />
-      <SectSection sect={analysis.sect} />
-      <BalanceSection
-        elementBalance={analysis.elementBalance}
-        modalityBalance={analysis.modalityBalance}
-      />
-      <HouseMarkersSection
-        angularPlanets={analysis.angularPlanets}
-        cadentPlanets={analysis.cadentPlanets}
-        houseEmphasis={analysis.houseEmphasis}
-        emptyHouses={analysis.emptyHouses}
-        planets={planets}
-      />
-      <RetrogradesSection retrogradePlanets={analysis.retrogradePlanets} />
-      <SpecialFindingsSection
-        mutualReceptions={analysis.mutualReceptions}
-        finalDispositor={analysis.finalDispositor}
-        singletons={analysis.singletons}
-        unaspectedPlanets={analysis.unaspectedPlanets}
-        tightAspects={analysis.tightAspects}
-      />
+      {/* Ordered by the question a person actually arrives with: what is unusual
+          about me, then how is this chart put together, then what was the sky
+          doing. The distinctive findings come first because they are the reason
+          to open the tab at all. */}
+      <GroupLabel>What stands out</GroupLabel>
+
+      {rareCount > 0 && (
+        <InsightSection title="Rare findings" count={n(rareCount, "finding")}>
+          <SpecialFindingsSection
+            mutualReceptions={analysis.mutualReceptions}
+            finalDispositor={analysis.finalDispositor}
+            singletons={analysis.singletons}
+            unaspectedPlanets={analysis.unaspectedPlanets}
+            tightAspects={analysis.tightAspects}
+          />
+        </InsightSection>
+      )}
+
+      {analysis.patterns.length > 0 && (
+        <InsightSection title="Your chart patterns" count={n(analysis.patterns.length, "pattern")}>
+          <PatternsSection patterns={analysis.patterns} planets={planets} />
+        </InsightSection>
+      )}
+
+      {degreeCount > 0 && (
+        <InsightSection title="Notable degrees" count={n(degreeCount, "planet")}>
+          <CriticalDegreesSection
+            criticalDegrees={analysis.criticalDegrees}
+            combustPlanets={analysis.combustPlanets}
+            planets={planets}
+          />
+        </InsightSection>
+      )}
+
+      <GroupLabel>How your chart is built</GroupLabel>
+
+      <InsightSection title="Your chart balance" count="the mix">
+        <BalanceSection
+          elementBalance={analysis.elementBalance}
+          modalityBalance={analysis.modalityBalance}
+        />
+      </InsightSection>
+
+      {notableDignities.length > 0 && (
+        <InsightSection title="Planet strengths" count={n(notableDignities.length, "planet")}>
+          <DignitiesSection dignities={analysis.dignities} planets={planets} />
+        </InsightSection>
+      )}
+
+      {hasHouseMarkers && (
+        <InsightSection
+          title="House patterns"
+          count={analysis.emptyHouses.length > 0 ? n(analysis.emptyHouses.length, "empty house") : "houses"}
+        >
+          <HouseMarkersSection
+            angularPlanets={analysis.angularPlanets}
+            cadentPlanets={analysis.cadentPlanets}
+            houseEmphasis={analysis.houseEmphasis}
+            emptyHouses={analysis.emptyHouses}
+            planets={planets}
+          />
+        </InsightSection>
+      )}
+
+      <GroupLabel>The sky you were born under</GroupLabel>
+
+      <InsightSection title="Your birth moon" count={analysis.moonPhase?.phase ?? null}>
+        <MoonPhaseSection moonPhase={analysis.moonPhase} />
+      </InsightSection>
+
+      <InsightSection
+        title="Day or night person"
+        count={analysis.sect.isDayChart ? "day" : "night"}
+      >
+        <SectSection sect={analysis.sect} />
+      </InsightSection>
+
+      {analysis.retrogradePlanets.length > 0 && (
+        <InsightSection
+          title="Retrograde planets"
+          count={n(analysis.retrogradePlanets.length, "planet")}
+        >
+          <RetrogradesSection retrogradePlanets={analysis.retrogradePlanets} />
+        </InsightSection>
+      )}
     </div>
   );
 }
