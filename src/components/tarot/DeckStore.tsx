@@ -20,12 +20,13 @@
  * purchased_decks.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { STORE_DECKS, formatPrice, type StoreDeck } from "@/lib/deckStore";
 import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
 import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
 import { storeCard, onStoreImageError } from "@/lib/storeImage";
+import { fetchDeckEntitlements, claimFreeDeck, NO_ENTITLEMENTS, type DeckEntitlements } from "@/lib/freeDeck";
 
 interface Props {
   /** Deck id from ?deck_purchased= — shows the success banner. */
@@ -37,13 +38,21 @@ interface Props {
 const CARD_RATIO = "9 / 16";
 
 export default function DeckStore({ justPurchased }: Props) {
-  const [owned, setOwned] = useState<Set<string>>(new Set());
+  const [ent, setEnt] = useState<DeckEntitlements>(NO_ENTITLEMENTS);
+  const owned = ent.owned;
   const [buying, setBuying] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [openDeck, setOpenDeck] = useState<StoreDeck | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>("about");
+
+  const loadEntitlements = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setSignedIn(!!session?.user);
+    setEnt(await fetchDeckEntitlements());
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -51,12 +60,8 @@ export default function DeckStore({ justPurchased }: Props) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!alive) return;
       setSignedIn(!!session?.user);
-      if (!session?.user) return;
-      const { data } = await supabase
-        .from("purchased_decks")
-        .select("deck_id")
-        .eq("user_id", session.user.id);
-      if (alive && data) setOwned(new Set(data.map((r) => r.deck_id as string)));
+      const e = await fetchDeckEntitlements();
+      if (alive) setEnt(e);
     })();
     return () => { alive = false; };
   }, [justPurchased]);
@@ -91,6 +96,18 @@ export default function DeckStore({ justPurchased }: Props) {
     }
   }
 
+  async function claim(deck: StoreDeck) {
+    setError(null);
+    setClaiming(deck.id);
+    const res = await claimFreeDeck(deck.id);
+    if (!res.ok) setError(res.error ?? "Could not claim the deck.");
+    // Re-read either way: a 409 means our idea of what they own was stale, and
+    // the fix for that is the same as the success path.
+    await loadEntitlements();
+    setClaiming(null);
+    if (res.ok) setOpenDeck(null);
+  }
+
   function openProduct(deck: StoreDeck) {
     setError(null);
     setHeroIndex(0);
@@ -117,6 +134,7 @@ export default function DeckStore({ justPurchased }: Props) {
       : cards;
     const isOwned = owned.has(openDeck.id);
     const soldOut = openDeck.status === "coming-soon";
+    const freeHere = ent.hasFreePick && !isOwned && !soldOut;
 
     return (
       <div className="mp-store flex flex-col">
@@ -181,10 +199,15 @@ export default function DeckStore({ justPurchased }: Props) {
 
           <div className="flex items-baseline gap-2.5 mt-3.5">
             <span className="text-[26px] font-bold leading-none" style={{ color: "var(--foreground)" }}>
-              {formatPrice(openDeck.priceCents)}
+              {freeHere ? "Free" : formatPrice(openDeck.priceCents)}
             </span>
+            {freeHere && (
+              <span className="text-[14px] line-through" style={{ color: "var(--foreground-muted)" }}>
+                {formatPrice(openDeck.priceCents)}
+              </span>
+            )}
             <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
-              one-time · yours forever
+              {freeHere ? "free with your account · yours forever" : "one-time · yours forever"}
             </span>
           </div>
           {isOwned && (
@@ -263,16 +286,20 @@ export default function DeckStore({ justPurchased }: Props) {
             </div>
           ) : (
             <button
-              onClick={() => buy(openDeck)}
-              disabled={buying === openDeck.id || soldOut}
+              onClick={() => (freeHere ? claim(openDeck) : buy(openDeck))}
+              disabled={buying === openDeck.id || claiming === openDeck.id || soldOut}
               className="w-full px-5 py-3.5 rounded-lg text-[15px] font-bold active:scale-[0.99] transition-transform disabled:opacity-60"
               style={{ backgroundColor: "var(--brass)", color: "var(--btn-ink)", boxShadow: "0 6px 22px color-mix(in srgb, var(--brass) 26%, transparent)" }}
             >
               {soldOut
                 ? "Coming soon"
-                : buying === openDeck.id
-                  ? "Opening checkout…"
-                  : `Buy now · ${formatPrice(openDeck.priceCents)}`}
+                : claiming === openDeck.id
+                  ? "Adding it to your decks…"
+                  : buying === openDeck.id
+                    ? "Opening checkout…"
+                    : freeHere
+                      ? "Choose this one — free"
+                      : `Buy now · ${formatPrice(openDeck.priceCents)}`}
             </button>
           )}
         </div>
@@ -281,6 +308,8 @@ export default function DeckStore({ justPurchased }: Props) {
   }
 
   /* ═══════════════════════ Store grid ═══════════════════════ */
+  const available = STORE_DECKS.filter((d) => !owned.has(d.id));
+
   return (
     <div className="mp-store flex flex-col gap-4">
       {justPurchased && (
@@ -291,20 +320,48 @@ export default function DeckStore({ justPurchased }: Props) {
       )}
       {errorBox}
 
-      {/* Results header, as on any catalog page */}
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>
-          All decks
-        </h2>
-        <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
-          {STORE_DECKS.length} {STORE_DECKS.length === 1 ? "item" : "items"}
-        </span>
-      </div>
+      {/* A deck you own is not for sale, so it leaves the shelf entirely — it
+          already lives in My Decks. Without this the store slowly turns into a
+          list of things you cannot buy. */}
+      {available.length > 0 && (
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>
+            {ent.hasFreePick ? "Choose your free deck" : "All decks"}
+          </h2>
+          <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+            {available.length} {available.length === 1 ? "item" : "items"}
+          </span>
+        </div>
+      )}
+
+      {ent.hasFreePick && available.length > 0 && (
+        <div className="rounded-lg px-4 py-3" style={{ backgroundColor: "rgba(201,169,97,0.12)", border: "1px solid var(--brass)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
+            One deck is on us
+          </p>
+          <p className="text-[12px] leading-relaxed mt-0.5" style={{ color: "var(--foreground-secondary)" }}>
+            Pick any deck below and it&rsquo;s yours — no card, yours forever. You can
+            buy the others whenever you like.
+          </p>
+        </div>
+      )}
+
+      {available.length === 0 && (
+        <div className="rounded-xl px-5 py-8 text-center" style={{ border: "1px solid var(--border-card)" }}>
+          <p className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>
+            You own every deck
+          </p>
+          <p className="text-[12.5px] leading-relaxed mt-1.5 mx-auto" style={{ color: "var(--foreground-secondary)", maxWidth: 260 }}>
+            All of them are in My Decks, ready to read. New decks are on the way —
+            they&rsquo;ll show up here.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
-        {STORE_DECKS.map((deck) => {
-          const isOwned = owned.has(deck.id);
+        {available.map((deck) => {
           const soldOut = deck.status === "coming-soon";
+          const free = ent.hasFreePick && !soldOut;
           return (
             /* Two sibling buttons, never nested — the tile opens the product
                page, the CTA buys. A button inside a button is invalid HTML and
@@ -324,10 +381,10 @@ export default function DeckStore({ justPurchased }: Props) {
                     loading="lazy"
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
-                  {isOwned && (
+                  {free && (
                     <span className="absolute top-2 left-2 px-2 py-1 rounded text-[9.5px] font-bold uppercase tracking-[0.1em]"
                       style={{ background: "var(--brass)", color: "var(--btn-ink)" }}>
-                      Owned
+                      Free pick
                     </span>
                   )}
                 </div>
@@ -340,30 +397,37 @@ export default function DeckStore({ justPurchased }: Props) {
                     {deck.cardCount} cards
                   </p>
                   <p className="text-[16px] font-bold mt-1.5" style={{ color: "var(--foreground)" }}>
-                    {formatPrice(deck.priceCents)}
+                    {free ? (
+                      <>
+                        Free{" "}
+                        <span className="text-[12.5px] font-normal line-through" style={{ color: "var(--foreground-muted)" }}>
+                          {formatPrice(deck.priceCents)}
+                        </span>
+                      </>
+                    ) : (
+                      formatPrice(deck.priceCents)
+                    )}
                   </p>
                 </div>
               </button>
 
               <div className="px-3 pb-3 pt-2 mt-auto">
-                {isOwned ? (
-                  <button
-                    onClick={() => openProduct(deck)}
-                    className="w-full py-2.5 rounded-lg text-[12.5px] font-semibold"
-                    style={{ minHeight: 44, background: "transparent", color: "var(--brass)", border: "1px solid var(--brass)" }}
-                  >
-                    View deck
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => buy(deck)}
-                    disabled={buying === deck.id || soldOut}
-                    className="w-full py-2.5 rounded-lg text-[12.5px] font-bold active:scale-[0.99] transition-transform disabled:opacity-60"
-                    style={{ minHeight: 44, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}
-                  >
-                    {soldOut ? "Coming soon" : buying === deck.id ? "Opening…" : "Buy now"}
-                  </button>
-                )}
+                <button
+                  onClick={() => (free ? claim(deck) : buy(deck))}
+                  disabled={buying === deck.id || claiming === deck.id || soldOut}
+                  className="w-full py-2.5 rounded-lg text-[12.5px] font-bold active:scale-[0.99] transition-transform disabled:opacity-60"
+                  style={{ minHeight: 44, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}
+                >
+                  {soldOut
+                    ? "Coming soon"
+                    : claiming === deck.id
+                      ? "Claiming…"
+                      : buying === deck.id
+                        ? "Opening…"
+                        : free
+                          ? "Get it free"
+                          : "Buy now"}
+                </button>
               </div>
             </div>
           );
@@ -376,13 +440,17 @@ export default function DeckStore({ justPurchased }: Props) {
         </p>
       )}
 
-      {/* Reassurance strip — the row of guarantees a checkout page always carries */}
+      {/* Reassurance strip — the row of guarantees a checkout page always
+          carries. Hidden once there is nothing left to buy, where promising
+          secure checkout reads as a leftover. */}
+      {available.length > 0 && (
       <ul className="flex flex-col gap-1.5 rounded-xl px-4 py-3.5 text-[11.5px]"
         style={{ border: "1px solid var(--border-card)", color: "var(--foreground-muted)" }}>
-        <li>✓ One-time purchase — no subscription</li>
+        <li>✓ {ent.hasFreePick ? "Your first deck is free — no card needed" : "One-time purchase — no subscription"}</li>
         <li>✓ Unlocks instantly after payment</li>
         <li>✓ Secure checkout by Stripe</li>
       </ul>
+      )}
     </div>
   );
 }

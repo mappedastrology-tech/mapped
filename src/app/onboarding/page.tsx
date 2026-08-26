@@ -10,7 +10,7 @@
  *  3  Headline cards (big three + chart ruler, sect light, lord of the year)
  *  4  Demographics (optional)
  *  5  Meet Dolly
- *  6  Pick your free deck
+ *  6  Pick your free deck (one oracle deck, free, granted server-side)
  *  7  Notifications opt-in
  *  8  Moon practice prompt
  *  9  Final orientation
@@ -26,6 +26,9 @@ import { SIGN_FULL } from "@/lib/knowledge";
 import { getSectLight, getLordOfTheYear } from "@/lib/rulers";
 import { getChartRuler } from "@/lib/chartRuler";
 import Logo from "@/components/Logo";
+import { STORE_DECKS, formatPrice } from "@/lib/deckStore";
+import { claimFreeDeck } from "@/lib/freeDeck";
+import { storeCard, onStoreImageError } from "@/lib/storeImage";
 
 const TOTAL_STEPS = 10;
 const LS_KEY = "mapped:onboarding-step";
@@ -105,7 +108,12 @@ export default function OnboardingPage() {
   const [professionalStatus, setProfessionalStatus] = useState("");
 
   /* ── deck choice ── */
-  const [deckChoice, setDeckChoice] = useState<"classic_tarot" | "mapped_oracle" | null>(null);
+  // A deck id from the real catalog (src/lib/deckStore), not a hand-written
+  // label — this screen used to offer "Classic Tarot" (free for everyone
+  // already) and a "Mapped Starter Oracle" that does not exist.
+  const [deckChoice, setDeckChoice] = useState<string | null>(null);
+  const [deckError, setDeckError] = useState("");
+  const [claimingDeck, setClaimingDeck] = useState(false);
 
   /* ── notifications (richer model) ── */
   const [notifPref, setNotifPref] = useState<"all" | "important" | "none" | null>(null);
@@ -135,7 +143,17 @@ export default function OnboardingPage() {
   const touchDeltaX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  /* ── Restore step from localStorage ── */
+  /* ── Restore step from localStorage ──
+     restoreTarget holds the step we are on our way back to. It exists because
+     the persist effect below runs in the same commit as this one, while `step`
+     is still 0 — so it used to write 0 over the saved step immediately. On the
+     next mount the restore then read that 0 and put the user back at the
+     welcome screen, losing their place in a ten-screen signup. Traced writes:
+       read step => 6   (restore)
+       write   => 0     (persist, same commit, step not updated yet)
+       read step => 0   (restore, next mount — the value is gone) */
+  const restoreTarget = useRef<number | null>(null);
+
   useEffect(() => {
     const saved = localStorage.getItem(LS_KEY);
     if (saved) {
@@ -146,8 +164,10 @@ export default function OnboardingPage() {
         if (parsed >= 2 && storedChart) {
           setChartData(JSON.parse(storedChart));
           setBirthDataDone(true);
+          restoreTarget.current = parsed;
           setStep(parsed);
         } else if (parsed < 2) {
+          restoreTarget.current = parsed;
           setStep(parsed);
         }
       }
@@ -156,6 +176,10 @@ export default function OnboardingPage() {
 
   /* ── Persist step changes ── */
   useEffect(() => {
+    // Hold off until the restored step has actually rendered; writing before
+    // then is what destroyed it.
+    if (restoreTarget.current !== null && step !== restoreTarget.current) return;
+    restoreTarget.current = null;
     localStorage.setItem(LS_KEY, String(step));
   }, [step]);
 
@@ -177,9 +201,11 @@ export default function OnboardingPage() {
   }, []);
 
   /* ── navigation helpers ── */
-  // Screen 6 (Pick your free deck) is disabled until paid features are built.
-  // Skip it in both directions.
-  const SKIP_SCREENS = new Set([6]);
+  // Screen 6 (pick your free deck) used to be skipped: it offered decks that
+  // were not in the catalog and saved to profiles.free_deck, a column that does
+  // not exist, so the write silently failed and nobody got anything. It now
+  // grants a real deck through /api/decks/claim-free and is shown again.
+  const SKIP_SCREENS = new Set<number>([]);
 
   const goTo = useCallback(
     (next: number, dir: "left" | "right") => {
@@ -373,12 +399,16 @@ export default function OnboardingPage() {
 
   /* ── deck save ── */
   async function saveDeck() {
-    if (!deckChoice) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase.from("profiles").update({
-        free_deck: deckChoice,
-      }).eq("id", session.user.id);
+    if (!deckChoice || claimingDeck) return;
+    setDeckError("");
+    setClaimingDeck(true);
+    const res = await claimFreeDeck(deckChoice);
+    setClaimingDeck(false);
+    if (!res.ok) {
+      // Never trap someone in onboarding over a free extra. Show what happened
+      // and let them move on; the Deck Store offers the same pick later.
+      setDeckError(res.error ?? "Could not add that deck. You can pick one later in the Deck Store.");
+      return;
     }
     goNext();
   }
@@ -1244,47 +1274,63 @@ export default function OnboardingPage() {
               >
                 Pick your free deck
               </h1>
-              <p className="text-secondary text-xs mb-6 text-center">
-                You can buy more anytime, $5.55 each.
+              <p className="text-secondary text-xs mb-6 text-center max-w-xs">
+                One oracle deck is on us — yours forever. You can buy the others
+                any time for {formatPrice(STORE_DECKS[0]?.priceCents ?? 555)} each.
               </p>
 
-              <div className="flex gap-3 w-full max-w-sm mb-8">
-                {/* Classic Tarot */}
-                <button
-                  onClick={() => setDeckChoice("classic_tarot")}
-                  className={`flex-1 rounded-2xl border-2 p-4 text-center transition-all ${
-                    deckChoice === "classic_tarot"
-                      ? "border-terracotta bg-terracotta/10"
-                      : "border-foreground/15 bg-card/40"
-                  }`}
-                >
-                  <div className="text-3xl mb-2">&#x1F0CF;</div>
-                  <p className="text-foreground font-bold text-sm mb-1">Classic Tarot</p>
-                  <p className="text-secondary text-[11px]">78 cards</p>
-                </button>
-
-                {/* Mapped Oracle */}
-                <button
-                  onClick={() => setDeckChoice("mapped_oracle")}
-                  className={`flex-1 rounded-2xl border-2 p-4 text-center transition-all ${
-                    deckChoice === "mapped_oracle"
-                      ? "border-terracotta bg-terracotta/10"
-                      : "border-foreground/15 bg-card/40"
-                  }`}
-                >
-                  <div className="text-3xl mb-2">&#x2728;</div>
-                  <p className="text-foreground font-bold text-sm mb-1">Mapped Starter Oracle</p>
-                  <p className="text-secondary text-[11px]">22 cards</p>
-                </button>
+              {/* The real catalog, with the real card art, so what you choose
+                  here is the thing that shows up in My Decks. */}
+              <div className="grid grid-cols-2 gap-3 w-full max-w-sm mb-6">
+                {STORE_DECKS.filter((d) => d.status === "available").map((deck) => {
+                  const picked = deckChoice === deck.id;
+                  return (
+                    <button
+                      key={deck.id}
+                      onClick={() => { setDeckChoice(deck.id); setDeckError(""); }}
+                      aria-pressed={picked}
+                      className={`rounded-2xl border-2 overflow-hidden text-left transition-all ${
+                        picked ? "border-terracotta" : "border-foreground/15"
+                      }`}
+                    >
+                      <div className="w-full" style={{ aspectRatio: "9 / 16", background: "var(--background-card)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={storeCard(deck.coverImage)}
+                          onError={onStoreImageError}
+                          alt={deck.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <p className="text-foreground font-bold text-[12.5px] leading-snug line-clamp-2">{deck.name}</p>
+                        <p className="text-secondary text-[11px] mt-0.5">{deck.cardCount} cards</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+
+              {deckError && (
+                <p className="text-[12px] text-center mb-3 max-w-xs" role="alert" style={{ color: "var(--oxblood-light)" }}>
+                  {deckError}
+                </p>
+              )}
 
               <button
                 onClick={saveDeck}
-                disabled={!deckChoice}
-                className={ctaBtn(!!deckChoice)}
-                style={deckChoice ? { ...ctaShadow, ...ctaTextColor } : undefined}
+                disabled={!deckChoice || claimingDeck}
+                className={ctaBtn(!!deckChoice && !claimingDeck)}
+                style={deckChoice && !claimingDeck ? { ...ctaShadow, ...ctaTextColor } : undefined}
               >
-                Continue
+                {claimingDeck ? "Adding it to your decks…" : "This one, please"}
+              </button>
+
+              <button
+                onClick={goNext}
+                className="text-secondary text-xs font-semibold py-3 mt-1 hover:text-foreground transition-colors"
+              >
+                Skip — I&apos;ll choose later
               </button>
             </div>
           )}
