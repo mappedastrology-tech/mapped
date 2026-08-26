@@ -1938,7 +1938,11 @@ function DeckRow({ tag, name, sub, count, covers, gradient, onClick }: {
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{tag}</span>
-        <span className="block mt-1.5" style={{ fontFamily: "var(--font-heading)", fontSize: 21, lineHeight: 1.1, color: "#f0e6d2" }}>{name}</span>
+        {/* Deck names read in the UI sans, not --font-heading. Le Jour Serif is
+            an all-caps titling face, so "Stitched Animal Oracle" rendered as
+            "STITCHED ANIMAL ORACLE" here while the store one tab away — the
+            same deck, the same name — set it in DM Sans sentence case. */}
+        <span className="block mt-1.5 font-semibold" style={{ fontFamily: 'var(--font-ui)', fontSize: 19, lineHeight: 1.15, color: "#f0e6d2" }}>{name}</span>
         <span className="block text-[12.5px] italic mt-1" style={{ lineHeight: 1.45, color: "rgba(240,230,210,0.6)" }}>{sub}</span>
         <span className="inline-flex items-center gap-1.5 mt-3 text-[9px] tracking-[0.14em] uppercase font-semibold" style={{ color: "var(--brass)" }}>{count} <span style={{ fontSize: 15 }}>→</span></span>
       </span>
