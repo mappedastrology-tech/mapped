@@ -950,6 +950,12 @@ input, select, textarea {
 }
 
 /* ═══ FONT FACES ═══
+   Shipped as woff2 only. The originals were .otf/.ttf served straight out of
+   /public, which meant every one of these was a desktop-installable file at a
+   public URL that anyone could download and install — something most webfont
+   licences specifically forbid, and which no licence purchase would fix.
+   woff2 is web-only and also 56% smaller (839KB -> 368KB across the six).
+   Support is universal: every browser since 2016, and every Capacitor webview.
    The text faces use font-display: optional, not swap. With swap the browser
    paints fallback metrics first and re-lays-out when the real face arrives —
    on /learn that moved the greeting and everything under it by 6-9px, which
@@ -965,7 +971,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'Ahsing';
-  src: url('/fonts/ahsing-regular.otf') format('opentype');
+  src: url('/fonts/ahsing-regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: optional;
@@ -973,7 +979,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'Le Jour Serif';
-  src: url('/fonts/le-jour-serif.otf') format('opentype');
+  src: url('/fonts/le-jour-serif.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: optional;
@@ -981,7 +987,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'Le Jour Script';
-  src: url('/fonts/le-jour-script.otf') format('opentype');
+  src: url('/fonts/le-jour-script.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: optional;
@@ -989,7 +995,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'ZodiacDings';
-  src: url('/fonts/mf-zodiac-dings.ttf') format('truetype');
+  src: url('/fonts/mf-zodiac-dings.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -997,7 +1003,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'Astrologicus';
-  src: url('/fonts/astrologicus-regular.ttf') format('truetype');
+  src: url('/fonts/astrologicus-regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -1005,7 +1011,7 @@ input, select, textarea {
 
 @font-face {
   font-family: 'JS Chanok';
-  src: url('/fonts/js-chanok-normal.ttf') format('truetype');
+  src: url('/fonts/js-chanok-normal.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: optional;

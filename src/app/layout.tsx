@@ -75,9 +75,9 @@ export default function RootLayout({
           Preloading these three — the ones used above the fold on nearly
           every screen — is what makes it normally win that window.
         */}
-        <link rel="preload" as="font" type="font/otf" href="/fonts/le-jour-serif.otf" crossOrigin="anonymous" />
-        <link rel="preload" as="font" type="font/otf" href="/fonts/le-jour-script.otf" crossOrigin="anonymous" />
-        <link rel="preload" as="font" type="font/ttf" href="/fonts/js-chanok-normal.ttf" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/le-jour-serif.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/le-jour-script.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/fonts/js-chanok-normal.woff2" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
