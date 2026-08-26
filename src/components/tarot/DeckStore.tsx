@@ -167,7 +167,14 @@ export default function DeckStore({ justPurchased }: Props) {
 
         {/* ─── Title + price block ─── */}
         <div className="mt-5">
-          <h2 className="text-[21px] leading-tight" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
+          {/* Deliberately NOT --font-heading. Le Jour Serif is an all-caps
+              titling face, so it rendered this as "THE BIRD ORACLE" while the
+              same product read "The Bird Oracle" in Georgia on the tile one tap
+              earlier — the product named in two typefaces and two cases. The
+              store's own text font, one size up and bold, is what a product
+              title looks like. The decorative face still carries the page
+              header above, where it belongs. */}
+          <h2 className="text-[22px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
             {openDeck.name}
           </h2>
           <p className="text-[13px] italic mt-1" style={{ color: "var(--brass)" }}>{openDeck.tagline}</p>
@@ -286,7 +293,7 @@ export default function DeckStore({ justPurchased }: Props) {
 
       {/* Results header, as on any catalog page */}
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[17px]" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
+        <h2 className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>
           All decks
         </h2>
         <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
