@@ -771,10 +771,14 @@ export default function TarotTab() {
               role="tab"
               aria-selected={deckTab === tab}
               onClick={() => setDeckTab(tab)}
-              className="px-5 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.06em] transition-colors"
+              className="px-5 rounded-full text-[12px] font-semibold tracking-[0.06em] transition-colors"
               style={deckTab === tab
-                ? { backgroundColor: "var(--brass)", color: "var(--btn-ink)" }
-                : { color: "var(--foreground-muted)" }}
+                // 40px tall inside a 1px-padded pill, so the tab itself clears
+                // the 44px touch target once its padding is counted. It was
+                // py-1.5 (30px), which is small for the control that switches
+                // between the whole deck list and the whole store.
+                ? { minHeight: 40, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }
+                : { minHeight: 40, color: "var(--foreground-muted)" }}
             >
               {tab === "my-decks" ? "My Decks" : "Deck Store"}
             </button>
