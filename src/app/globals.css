@@ -932,6 +932,19 @@ input, select, textarea {
   color: var(--brass);
 }
 
+/* Deck Store — commerce chrome, not editorial copy.
+
+   Product names, prices, buttons, section labels and the spec table are the
+   vocabulary of a checkout, and they read plainly in DM Sans the way they do
+   in every other store. The app's Georgia body serif made a price look like
+   prose. This is the same override .lib-felt and .mp-web already use for their
+   own UI text, so it is the established way to say "this surface is interface,
+   not writing". */
+.mp-store {
+  --font-body: "DM Sans", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
+}
+
 /* ═══ FONT FACES ═══
    The text faces use font-display: optional, not swap. With swap the browser
    paints fallback metrics first and re-lays-out when the real face arrives —

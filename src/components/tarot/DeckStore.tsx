@@ -119,7 +119,7 @@ export default function DeckStore({ justPurchased }: Props) {
     const soldOut = openDeck.status === "coming-soon";
 
     return (
-      <div className="flex flex-col">
+      <div className="mp-store flex flex-col">
         {/* Breadcrumb back, the way every product page has one */}
         <button
           onClick={() => setOpenDeck(null)}
@@ -171,9 +171,9 @@ export default function DeckStore({ justPurchased }: Props) {
               titling face, so it rendered this as "THE BIRD ORACLE" while the
               same product read "The Bird Oracle" in Georgia on the tile one tap
               earlier — the product named in two typefaces and two cases. The
-              store's own text font, one size up and bold, is what a product
-              title looks like. The decorative face still carries the page
-              header above, where it belongs. */}
+              store's UI font (DM Sans, see .mp-store), one size up and bold,
+              is what a product title looks like. The decorative face still
+              carries the page header above, where it belongs. */}
           <h2 className="text-[22px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
             {openDeck.name}
           </h2>
@@ -282,7 +282,7 @@ export default function DeckStore({ justPurchased }: Props) {
 
   /* ═══════════════════════ Store grid ═══════════════════════ */
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mp-store flex flex-col gap-4">
       {justPurchased && (
         <div className="rounded-lg px-4 py-3 text-[13px] leading-relaxed"
           style={{ backgroundColor: "rgba(201,169,97,0.14)", border: "1px solid var(--brass)", color: "var(--foreground)" }}>
