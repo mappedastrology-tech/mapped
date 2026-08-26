@@ -772,13 +772,15 @@ export default function TarotTab() {
               aria-selected={deckTab === tab}
               onClick={() => setDeckTab(tab)}
               className="px-5 rounded-full text-[12px] font-semibold tracking-[0.06em] transition-colors"
+              // These set no font, so they inherited --font-body — Georgia, a
+              // serif — while the store they switch to is entirely DM Sans. A
+              // tab is a control, not prose, so it belongs on --font-ui.
+              // minHeight 40 inside a 1px-padded pill clears the touch target;
+              // it was py-1.5 (30px), small for the control that swaps between
+              // the whole deck list and the whole store.
               style={deckTab === tab
-                // 40px tall inside a 1px-padded pill, so the tab itself clears
-                // the 44px touch target once its padding is counted. It was
-                // py-1.5 (30px), which is small for the control that switches
-                // between the whole deck list and the whole store.
-                ? { minHeight: 40, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }
-                : { minHeight: 40, color: "var(--foreground-muted)" }}
+                ? { fontFamily: "var(--font-ui)", minHeight: 40, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }
+                : { fontFamily: "var(--font-ui)", minHeight: 40, color: "var(--foreground-muted)" }}
             >
               {tab === "my-decks" ? "My Decks" : "Deck Store"}
             </button>
@@ -1937,14 +1939,14 @@ function DeckRow({ tag, name, sub, count, covers, gradient, onClick }: {
         )}
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{tag}</span>
+        <span className="block text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ fontFamily: "var(--font-ui)", color: "var(--brass)" }}>{tag}</span>
         {/* Deck names read in the UI sans, not --font-heading. Le Jour Serif is
             an all-caps titling face, so "Stitched Animal Oracle" rendered as
             "STITCHED ANIMAL ORACLE" here while the store one tab away — the
             same deck, the same name — set it in DM Sans sentence case. */}
         <span className="block mt-1.5 font-semibold" style={{ fontFamily: 'var(--font-ui)', fontSize: 19, lineHeight: 1.15, color: "#f0e6d2" }}>{name}</span>
         <span className="block text-[12.5px] italic mt-1" style={{ lineHeight: 1.45, color: "rgba(240,230,210,0.6)" }}>{sub}</span>
-        <span className="inline-flex items-center gap-1.5 mt-3 text-[9px] tracking-[0.14em] uppercase font-semibold" style={{ color: "var(--brass)" }}>{count} <span style={{ fontSize: 15 }}>→</span></span>
+        <span className="inline-flex items-center gap-1.5 mt-3 text-[9px] tracking-[0.14em] uppercase font-semibold" style={{ fontFamily: "var(--font-ui)", color: "var(--brass)" }}>{count} <span style={{ fontSize: 15 }}>→</span></span>
       </span>
     </button>
   );
