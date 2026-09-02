@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { QuizQuestion, LessonBlock } from "@/lib/learn/types";
 import { scoreQuiz, shuffle, isRecallCorrect, answeredCorrectly, type QuizScore } from "@/lib/learn/quiz";
 import LessonBlocks from "./LessonBlocks";
@@ -19,7 +19,12 @@ export default function Quiz({
   activities,
 }: {
   questions: QuizQuestion[];
-  onComplete?: (score: QuizScore, answers: Record<string, string>) => void;
+  onComplete?: (
+    score: QuizScore,
+    answers: Record<string, string>,
+    /** How many were right on the first attempt — the honest accuracy. */
+    firstTry: { correct: number; total: number },
+  ) => void;
   /** When set, the results screen shows pass/fail against this fraction (0..1). */
   passThreshold?: number;
   title?: string;
@@ -29,10 +34,18 @@ export default function Quiz({
   activities?: LessonBlock[];
 }) {
   const MAX_TRIES = 2;
-  const prepared = useMemo(
-    () => questions.map((q) => ({ ...q, options: shuffle(q.options) })),
-    [questions],
-  );
+
+  // Shuffling has to wait for the client. This ran during render, so the server
+  // picked one order, the browser picked another, and React reported a
+  // hydration mismatch on every single lesson — then threw away the tree and
+  // rebuilt it. The first paint now uses the authored order (which the server
+  // agrees with) and the shuffle lands immediately after mount, below the fold
+  // at the end of the lesson body.
+  const [shuffled, setShuffled] = useState<QuizQuestion[] | null>(null);
+  useEffect(() => {
+    setShuffled(questions.map((q) => ({ ...q, options: shuffle(q.options) })));
+  }, [questions]);
+  const prepared = useMemo(() => shuffled ?? questions, [shuffled, questions]);
 
   type PreparedQ = (typeof prepared)[number];
   type Item = { kind: "q"; q: PreparedQ } | { kind: "activity"; block: LessonBlock };
@@ -47,6 +60,15 @@ export default function Quiz({
   const [wrongPicks, setWrongPicks] = useState<Set<string>>(new Set());
   const [typed, setTyped] = useState(""); // recall (type-the-answer) input
   const [done, setDone] = useState(false);
+  // Questions that took more than one attempt, or were got wrong outright.
+  //
+  // In retry mode a wrong pick followed by the right one stores the RIGHT
+  // answer, so scoreQuiz counts it as correct and the percentage on the results
+  // card reads higher than the attempt really went. (It is not always 100% —
+  // after MAX_TRIES wrong picks the wrong answer is what gets stored.)
+  // First-try accuracy is the honest number, and it is what the completion
+  // screen rewards.
+  const [missedFirstTry, setMissedFirstTry] = useState<Set<string>>(new Set());
 
   const current = items[index];
   const q = current?.kind === "q" ? current.q : undefined;
@@ -61,7 +83,10 @@ export default function Quiz({
   function advance() {
     if (isLast) {
       setDone(true);
-      onComplete?.(scoreQuiz(prepared, answers), answers);
+      onComplete?.(scoreQuiz(prepared, answers), answers, {
+        correct: prepared.length - missedFirstTry.size,
+        total: prepared.length,
+      });
     } else {
       setIndex((i) => i + 1);
       setRevealed(false);
@@ -72,6 +97,7 @@ export default function Quiz({
 
   function submitRecall() {
     if (revealed || !q || !typed.trim()) return;
+    if (!isRecallCorrect(q, typed)) setMissedFirstTry((m) => new Set(m).add(q.id));
     setAnswers((a) => ({ ...a, [q.id]: typed }));
     setRevealed(true);
   }
@@ -79,15 +105,18 @@ export default function Quiz({
   function choose(optId: string) {
     if (revealed || !q) return;
     if (!retry) {
+      if (!q.options.find((o) => o.id === optId)?.correct) setMissedFirstTry((m) => new Set(m).add(q.id));
       setAnswers((a) => ({ ...a, [q.id]: optId }));
       setRevealed(true);
       return;
     }
     const opt = q.options.find((o) => o.id === optId);
     if (opt?.correct) {
+      if (wrongPicks.size > 0) setMissedFirstTry((m) => new Set(m).add(q.id));
       setAnswers((a) => ({ ...a, [q.id]: optId }));
       setRevealed(true);
     } else {
+      setMissedFirstTry((m) => new Set(m).add(q.id));
       const next = new Set(wrongPicks).add(optId);
       setWrongPicks(next);
       if (next.size >= MAX_TRIES) {

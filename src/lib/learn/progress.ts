@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { scheduleInitialReview } from "./reviewStore";
 import { awardXp } from "./activityStore";
-import { XP_LESSON, XP_FINAL_BONUS } from "./stats";
+import { XP_LESSON, XP_FINAL_BONUS, XP_PERFECT } from "./stats";
 import type { CourseProgress, CertificateRecord } from "./types";
 
 /**
@@ -66,9 +66,19 @@ export async function getProgress(courseId: string): Promise<CourseProgress | nu
 }
 
 /** Mark a lesson complete (idempotent) and remember it as the last-viewed lesson. */
-export async function markLessonComplete(courseId: string, lessonId: string): Promise<void> {
+/**
+ * @param perfect Every question right on the first try — earns a small bonus,
+ *   and only on the first completion, so it cannot be farmed by retaking.
+ * @returns whether this was the first completion, which is what decides if
+ *   there is anything to celebrate.
+ */
+export async function markLessonComplete(
+  courseId: string,
+  lessonId: string,
+  perfect = false,
+): Promise<{ isNewCompletion: boolean }> {
   const user = await uid();
-  if (!user) return;
+  if (!user) return { isNewCompletion: false };
   try {
     const existing = await getProgress(courseId);
     const completed = new Set(existing?.completedLessonIds ?? []);
@@ -88,9 +98,11 @@ export async function markLessonComplete(courseId: string, lessonId: string): Pr
     // Schedule a spaced-repetition review for this lesson (no-op if already set).
     await scheduleInitialReview(courseId, lessonId);
     // Award XP only the first time a lesson is completed.
-    if (isNew) await awardXp(XP_LESSON, 1);
+    if (isNew) await awardXp(XP_LESSON + (perfect ? XP_PERFECT : 0), 1);
+    return { isNewCompletion: isNew };
   } catch {
     /* fail soft */
+    return { isNewCompletion: false };
   }
 }
 

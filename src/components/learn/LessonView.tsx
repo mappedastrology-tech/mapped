@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getCourse, getLesson, lessonContext, passThresholdFor, domainAccent } from "@/lib/learn/registry";
 import { markLessonComplete, recordQuizAttempt } from "@/lib/learn/progress";
 import { detectNewAchievements } from "@/lib/learn/achievementsNotify";
 import { useToast } from "@/components/Toast";
-import { XP_LESSON } from "@/lib/learn/stats";
 import type { QuizScore } from "@/lib/learn/quiz";
+import { loadEngagement } from "@/lib/learn/engagement";
+import { getDailyGoal } from "@/lib/learn/goals";
+import { buildSessionSummary, type SessionSummary } from "@/lib/learn/sessionSummary";
+import type { Achievement } from "@/lib/learn/achievements";
+import type { LearningStats } from "@/lib/learn/stats";
+import LessonComplete from "./LessonComplete";
 import LibraryHeader from "./LibraryHeader";
 import LessonBlocks from "./LessonBlocks";
 import Quiz from "./Quiz";
@@ -21,7 +26,21 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
   const course = getCourse(courseId);
   const lesson = course ? getLesson(course, lessonId) : undefined;
   const [completedLesson, setCompletedLesson] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const [fresh, setFresh] = useState<Achievement[]>([]);
   const quizDone = completedLesson === lessonId;
+
+  // Snapshot the stats BEFORE the lesson is recorded. The completion screen
+  // needs to know what changed, and reading again afterwards would race the
+  // write that just happened.
+  const [before, setBefore] = useState<LearningStats | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadEngagement()
+      .then((e) => { if (alive) setBefore(e.stats); })
+      .catch(() => { /* signed out or offline — the screen degrades */ });
+    return () => { alive = false; };
+  }, [lessonId]);
 
   if (!course || !lesson) {
     return (
@@ -40,14 +59,35 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
   const bodyBlocks = lesson.blocks.filter((b) => !INTERACTIVE.has(b.kind));
   const activities = lesson.blocks.filter((b) => INTERACTIVE.has(b.kind));
 
-  async function handleQuizComplete(score: QuizScore) {
+  async function handleQuizComplete(
+    score: QuizScore,
+    _answers: Record<string, string>,
+    firstTry: { correct: number; total: number },
+  ) {
     setCompletedLesson(lessonId);
-    await Promise.all([
-      markLessonComplete(courseId, lessonId),
+    // Flawless means right first time, not right eventually — in retry mode
+    // score.fraction is ~1.0 for nearly everyone.
+    const perfect = firstTry.total > 0 && firstTry.correct === firstTry.total;
+
+    const [{ isNewCompletion }] = await Promise.all([
+      markLessonComplete(courseId, lessonId, perfect),
       recordQuizAttempt(courseId, lessonId, score.fraction, score.fraction >= passThresholdFor(course!)),
     ]);
-    detectNewAchievements().then((fresh) => {
-      if (fresh[0]) toast.success(`🏆 ${fresh[0].title} unlocked!`);
+
+    if (before) {
+      setSummary(buildSessionSummary({
+        before,
+        goalXp: getDailyGoal().xp,
+        firstTry,
+        isNewCompletion,
+      }));
+    }
+
+    detectNewAchievements().then((unlocked) => {
+      // Shown as cards on the completion screen rather than a toast that
+      // slides away — and all of them, not just the first.
+      if (unlocked.length) setFresh(unlocked);
+      else if (!before) unlocked.forEach((a) => toast.success(`🏆 ${a.title} unlocked!`));
     });
   }
 
@@ -85,9 +125,13 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
         {/* Continue */}
         {quizDone && (
           <div className="mt-6 flex flex-col gap-2">
-            <div className="self-center mb-1 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ backgroundColor: "var(--tag-green-bg)", color: "var(--sage-light)" }}>
-              ✦ Lesson complete · +{XP_LESSON} XP
-            </div>
+            {summary ? (
+              <LessonComplete summary={summary} achievements={fresh} accent={accent} />
+            ) : (
+              <div className="self-center mb-1 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ backgroundColor: "var(--tag-green-bg)", color: "var(--sage-light)" }}>
+                ✦ Lesson complete
+              </div>
+            )}
             {ctx.next ? (
               <Link href={`/library/${courseId}/${ctx.next.id}`} className="block text-center w-full py-3 rounded-xl text-[14px] font-medium active:scale-[0.99] transition-transform" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
                 Next lesson →

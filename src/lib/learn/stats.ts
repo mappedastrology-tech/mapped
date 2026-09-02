@@ -10,6 +10,8 @@ export const XP_PER_LEVEL = 120;
 export const XP_LESSON = 15; // first completion of a lesson
 export const XP_REVIEW = 5; // per lesson reviewed
 export const XP_FINAL_BONUS = 50; // first time a course's final test is passed
+/** Flawless run of a lesson's check — every question right on the first try. */
+export const XP_PERFECT = 5;
 
 export interface ActivityDay {
   date: string; // 'YYYY-MM-DD' (local)
