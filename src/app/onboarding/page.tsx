@@ -28,7 +28,7 @@ import { getChartRuler } from "@/lib/chartRuler";
 import Logo from "@/components/Logo";
 import { STORE_DECKS, formatPrice } from "@/lib/deckStore";
 import { claimFreeDeck } from "@/lib/freeDeck";
-import { storeCard, onStoreImageError } from "@/lib/storeImage";
+import DeckStack from "@/components/tarot/DeckStack";
 
 const TOTAL_STEPS = 10;
 const LS_KEY = "mapped:onboarding-step";
@@ -1293,14 +1293,10 @@ export default function OnboardingPage() {
                         picked ? "border-terracotta" : "border-foreground/15"
                       }`}
                     >
-                      <div className="w-full" style={{ aspectRatio: "9 / 16", background: "var(--background-card)" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={storeCard(deck.coverImage)}
-                          onError={onStoreImageError}
-                          alt={deck.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
+                      {/* Same fanned stack the store uses, so a deck looks
+                          like itself wherever you meet it. */}
+                      <div className="w-full" style={{ aspectRatio: "20 / 23", background: "var(--background-card)" }}>
+                        <DeckStack deckId={deck.id} fallbackImage={deck.coverImage} alt={deck.name} />
                       </div>
                       <div className="px-2.5 py-2">
                         <p className="text-foreground font-bold text-[12.5px] leading-snug line-clamp-2">{deck.name}</p>

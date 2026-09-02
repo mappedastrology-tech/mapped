@@ -25,7 +25,7 @@ import { supabase } from "@/lib/supabase";
 import { STORE_DECKS, formatPrice, type StoreDeck } from "@/lib/deckStore";
 import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
 import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
-import { storeCard, onStoreImageError } from "@/lib/storeImage";
+import DeckStack from "@/components/tarot/DeckStack";
 import { fetchDeckEntitlements, claimFreeDeck, NO_ENTITLEMENTS, type DeckEntitlements } from "@/lib/freeDeck";
 
 interface Props {
@@ -36,6 +36,10 @@ interface Props {
 /* Product photos are drawn at 9:16. Fixing the ratio on every image box keeps
    the grid from reflowing as photos arrive. */
 const CARD_RATIO = "9 / 16";
+
+/* The store tile is squarer than a card: it holds a fanned stack, and a 9:16
+   box would clip the rotated cards at the sides. */
+const TILE_RATIO = "20 / 23";
 
 export default function DeckStore({ justPurchased }: Props) {
   const [ent, setEnt] = useState<DeckEntitlements>(NO_ENTITLEMENTS);
@@ -372,18 +376,14 @@ export default function DeckStore({ justPurchased }: Props) {
                 onClick={() => openProduct(deck)}
                 className="text-left active:scale-[0.995] transition-transform"
               >
-                <div className="relative w-full" style={{ aspectRatio: CARD_RATIO, background: "var(--background)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={storeCard(deck.coverImage)}
-                    onError={onStoreImageError}
-                    alt={deck.name}
-                    loading="lazy"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                {/* Shown as a stack, not one card — a single flat card reads as
+                    "buying this card" rather than "buying this deck". The box is
+                    squarer than a card so the fan has room without clipping. */}
+                <div className="relative w-full" style={{ aspectRatio: TILE_RATIO, background: "var(--background)" }}>
+                  <DeckStack deckId={deck.id} fallbackImage={deck.coverImage} alt={deck.name} />
                   {free && (
                     <span className="absolute top-2 left-2 px-2 py-1 rounded text-[9.5px] font-bold uppercase tracking-[0.1em]"
-                      style={{ background: "var(--brass)", color: "var(--btn-ink)" }}>
+                      style={{ background: "var(--brass)", color: "var(--btn-ink)", zIndex: 5 }}>
                       Free pick
                     </span>
                   )}

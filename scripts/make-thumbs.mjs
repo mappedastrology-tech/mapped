@@ -14,13 +14,6 @@ import { statSync } from 'node:fs';
  */
 const WIDTH = 300;
 
-/**
- * Store product images. The deck store renders each cover as a product tile
- * roughly 170 CSS px wide, where the 300px thumb is soft on a 3x screen and
- * the full 900px art is ~20x more pixels than the tile can show.
- */
-const CARD_WIDTH = 600;
-const COVERS_FOR_STORE = ['public/oracle/stitched-animal/1.webp', 'public/oracle/bird/1.webp'];
 const COVERS = [
   // The classic deck's three fanned covers.
   'public/tarot/classic/major-0.webp',
@@ -40,11 +33,6 @@ for (const f of COVERS) {
   await sharp(f).resize({ width: WIDTH }).webp({ quality: 78, effort: 6 }).toFile(out);
   full += statSync(f).size; thumb += statSync(out).size;
   console.log(`${f.replace('public','')}  ${(statSync(f).size/1024).toFixed(0)}KB -> ${(statSync(out).size/1024).toFixed(0)}KB`);
-}
-for (const f of COVERS_FOR_STORE) {
-  const out = f.replace(/\.webp$/, '.card.webp');
-  await sharp(f).resize({ width: CARD_WIDTH }).webp({ quality: 80, effort: 6 }).toFile(out);
-  console.log(`${out.replace('public','')}  ${(statSync(out).size/1024).toFixed(0)}KB  (store tile)`);
 }
 
 console.log(`\ncovers: ${(full/1024).toFixed(0)}KB of art -> ${(thumb/1024).toFixed(0)}KB of thumbs (added ${(thumb/1024).toFixed(0)}KB to the bundle)`);
