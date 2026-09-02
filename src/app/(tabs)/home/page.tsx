@@ -89,7 +89,9 @@ import { getDailyQuote } from "@/lib/dailyQuote";
 import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import Image from "next/image";
 import FlipCard from "@/components/FlipCard";
-import { ORACLE_DECKS, getDailyOracleCard, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
+import Link from "next/link";
+import { ORACLE_DECKS, getDailyOracleCard } from "@/lib/oracleDecks";
+import { useOracleAccess } from "@/lib/oracleAccess";
 import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
@@ -157,7 +159,11 @@ export default function HomeTab() {
   const [pullDeck, setPullDeck] = useState<"tarot" | "oracle">("tarot");
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
-  const [oracleDeckId, setOracleDeckId] = useState(DEFAULT_ORACLE_DECK);
+  // Which oracle decks this account owns, and which one it pulls from. The
+  // choice itself lives in Settings → Oracle deck; the home screen only reads
+  // it. See lib/oracleAccess.
+  const oracle = useOracleAccess();
+  const oracleDeckId = oracle.activeId;
 
   // Save pull state
   const [savingPull, setSavingPull] = useState<"tarot" | "oracle" | null>(null);
@@ -196,43 +202,12 @@ export default function HomeTab() {
       if (localStorage.getItem(`mapped:oracle-revealed-${dateKey}`) === "1") {
         setOracleRevealed(true);
       }
-      // Load preferred oracle deck
-      const savedDeck = localStorage.getItem(ORACLE_DECK_KEY);
-      if (savedDeck && ORACLE_DECKS.some(d2 => d2.id === savedDeck)) {
-        setOracleDeckId(savedDeck);
-      }
     } catch { /* SSR or localStorage unavailable */ }
     getCardSalt()
       .then(setCardSalt)
       .catch(() => { /* keep 0 — date-only fallback */ })
       .finally(() => setCardStateHydrated(true));
   }, []);
-
-  // Account-synced oracle deck — overrides the local value if the user picked
-  // a deck on another device.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id;
-        if (!uid || cancelled) return;
-        const acct = await fetchSetting(uid, "oracle-deck");
-        if (acct && ORACLE_DECKS.some((d2) => d2.id === acct) && !cancelled) {
-          setOracleDeckId(acct);
-          try { localStorage.setItem(ORACLE_DECK_KEY, acct); } catch { /* ignore */ }
-        }
-      } catch { /* signed out / offline */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Choose an oracle deck — persists the same way Settings → Oracle deck does
-  const chooseOracleDeck = useCallback((id: string) => {
-    setOracleDeckId(id);
-    try { localStorage.setItem(ORACLE_DECK_KEY, id); } catch { /* ignore */ }
-    if (currentUserId) saveSetting(currentUserId, "oracle-deck", id);
-  }, [currentUserId]);
 
   // Save a daily pull with optional notes
   const saveDailyPull = useCallback((type: "tarot" | "oracle", notes: string) => {
@@ -403,13 +378,13 @@ export default function HomeTab() {
     return ALL_CARDS[idx];
   }, [dailySeed]);
 
-  // Daily oracle card (deterministic per day, uses selected deck)
+  // Daily oracle card (deterministic per day, from the deck they own).
+  // Null when the account owns no oracle deck yet — there is no deck to draw
+  // from, and falling back to one they do not own would be showing them
+  // something they have not got.
   const dailyOracle = useMemo(() => {
-    const card = getDailyOracleCard(oracleDeckId, dailySeed);
-    if (card) return card;
-    // Fallback to first deck
-    return getDailyOracleCard(DEFAULT_ORACLE_DECK, dailySeed)!;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!oracleDeckId) return null;
+    return getDailyOracleCard(oracleDeckId, dailySeed);
   }, [dailySeed, oracleDeckId]);
 
   // Preload today's card faces so the reveal is instant (no post-flip image load lag).
@@ -1232,30 +1207,6 @@ export default function HomeTab() {
             })}
           </div>
 
-          {/* Oracle deck sub-chooser — only when Oracle is selected */}
-          {pullDeck === "oracle" && (
-            <div className="flex gap-2 mb-4">
-              {ORACLE_DECKS.map((deck) => {
-                const active = oracleDeckId === deck.id;
-                return (
-                  <button
-                    key={deck.id}
-                    onClick={() => chooseOracleDeck(deck.id)}
-                    className="flex-1 py-[9px] px-1.5 rounded-[11px] text-center transition-all"
-                    style={{
-                      border: `0.5px solid ${active ? "var(--brass)" : "rgba(240,230,210,0.18)"}`,
-                      background: active ? "rgba(201,169,97,0.14)" : "transparent",
-                      color: active ? "#f0e6d2" : "rgba(240,230,210,0.55)",
-                    }}
-                  >
-                    <span className="block text-[13px] leading-[1.2]" style={{ fontFamily: "var(--font-heading)" }}>{deck.name}</span>
-                    <span className="block text-[8px] uppercase tracking-[0.14em] mt-[3px] opacity-60">{deck.cardCount} cards</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Single card — the selected deck */}
           {pullDeck === "tarot" ? (() => {
             const tarotFaceSrc = getCardImagePath(dailyTarot.id) || CARD_BACK_IMAGE;
@@ -1286,7 +1237,27 @@ export default function HomeTab() {
                 )}
               </button>
             );
-          })() : (() => {
+          })() : !dailyOracle ? (
+            /* No oracle deck owned yet. Every account gets one free, so the
+               honest thing here is an invitation to go and take it — not a
+               card from a deck they do not have. */
+            <div className="text-center px-6 py-8">
+              <p className="text-[13px] leading-relaxed" style={{ color: "rgba(240,230,210,0.75)" }}>
+                {oracle.loading
+                  ? "Finding your deck…"
+                  : "You haven't picked an oracle deck yet — one is free with your account."}
+              </p>
+              {!oracle.loading && (
+                <Link
+                  href="/tarot?store=1"
+                  className="inline-flex items-center justify-center mt-4 px-6 py-3 rounded-full text-[13px] font-bold active:scale-[0.98] transition-transform"
+                  style={{ background: "var(--brass)", color: "#1a1230", minHeight: 44 }}
+                >
+                  Choose your free deck
+                </Link>
+              )}
+            </div>
+          ) : (() => {
             const currentDeck = ORACLE_DECKS.find(d => d.id === oracleDeckId);
             const ORACLE_BACK = currentDeck?.backImage || "/oracle/stitched-animal/back of deck.webp";
             return (
@@ -1477,7 +1448,7 @@ export default function HomeTab() {
         )}
 
         {/* Expanded oracle reading */}
-        {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && (
+        {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && dailyOracle && (
           <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">

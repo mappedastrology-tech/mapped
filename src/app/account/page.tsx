@@ -17,7 +17,9 @@ import { PlansPage } from "@/components/Paywall";
 import CitySearch from "@/components/CitySearch";
 import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
-import { ORACLE_DECKS, ORACLE_DECK_KEY, DEFAULT_ORACLE_DECK } from "@/lib/oracleDecks";
+import Link from "next/link";
+import { ORACLE_DECKS } from "@/lib/oracleDecks";
+import { useOracleAccess } from "@/lib/oracleAccess";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import {
   getCachedLocation,
@@ -1040,54 +1042,64 @@ function ThemeSection() {
 /* ─── Oracle Deck section ─── */
 
 function OracleDeckSection() {
-  const [deckId, setDeckId] = useState<string>(DEFAULT_ORACLE_DECK);
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ORACLE_DECK_KEY);
-      if (saved && ORACLE_DECKS.some((d) => d.id === saved)) setDeckId(saved);
-    } catch { /* ignore */ }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id;
-        if (!uid || cancelled) return;
-        setUserId(uid);
-        const acct = await fetchSetting(uid, "oracle-deck");
-        if (acct && ORACLE_DECKS.some((d) => d.id === acct) && !cancelled) {
-          setDeckId(acct);
-          try { localStorage.setItem(ORACLE_DECK_KEY, acct); } catch { /* ignore */ }
-        }
-      } catch { /* signed out / offline */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const choose = (id: string) => {
-    setDeckId(id);
-    try { localStorage.setItem(ORACLE_DECK_KEY, id); } catch { /* ignore */ }
-    if (userId) saveSetting(userId, "oracle-deck", id);
-  };
+  // The list is what the account OWNS, not the catalog. Every account gets one
+  // oracle deck free, so a new user sees exactly one option here — the deck
+  // they picked — and the list grows as they buy more. This is the only place
+  // the choice is made; the home screen just reads it.
+  const { decks, activeId, loading, choose } = useOracleAccess();
+
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <p className="text-xs uppercase tracking-widest text-muted mb-1">Oracle Deck</p>
-      <p className="text-muted text-[11px] mb-3">The oracle deck used for your daily pull on the home screen.</p>
-      <div className="flex gap-2">
-        {ORACLE_DECKS.map((deck) => (
-          <button
-            key={deck.id}
-            onClick={() => choose(deck.id)}
-            className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl text-sm font-medium transition-all border ${
-              deckId === deck.id
-                ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
-            }`}
+      <p className="text-muted text-[11px] mb-3">
+        The oracle deck used for your daily pull on the home screen.
+      </p>
+
+      {loading ? (
+        <p className="text-muted text-[12px] py-2">Loading your decks…</p>
+      ) : decks.length === 0 ? (
+        <div>
+          <p className="text-secondary text-[12.5px] leading-relaxed mb-3">
+            You haven&rsquo;t picked an oracle deck yet — one is free with your account.
+          </p>
+          <Link
+            href="/tarot?store=1"
+            className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-[13px] font-semibold"
+            style={{ minHeight: 44, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}
           >
-            <span>{deck.name}</span>
-            <span className="text-[10px] opacity-60">{deck.cardCount} cards</span>
-          </button>
-        ))}
-      </div>
+            Choose your free deck
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {decks.map((deck) => (
+              <button
+                key={deck.id}
+                onClick={() => choose(deck.id)}
+                aria-pressed={activeId === deck.id}
+                className={`flex-1 min-w-[45%] flex flex-col items-center gap-1 py-3 rounded-xl text-sm font-medium transition-all border ${
+                  activeId === deck.id
+                    ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
+                    : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
+                }`}
+              >
+                <span>{deck.name}</span>
+                <span className="text-[10px] opacity-60">{deck.cardCount} cards</span>
+              </button>
+            ))}
+          </div>
+          {decks.length < ORACLE_DECKS.length && (
+            <p className="text-muted text-[11px] mt-3">
+              More decks appear here as you add them —{" "}
+              <Link href="/tarot?store=1" className="underline" style={{ color: "var(--brass)" }}>
+                visit the Deck Store
+              </Link>
+              .
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
