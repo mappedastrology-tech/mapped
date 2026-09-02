@@ -216,9 +216,9 @@ export default function WebDolly() {
             <span style={{ width: 34, height: 34, borderRadius: "50%", background: `url('${AVATAR}') center/cover`, flex: "0 0 auto" }} />
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 14.5, fontWeight: 700, color: "var(--fg)", margin: 0 }}>Dolly</p>
-              <p style={{ fontSize: 11.5, color: "var(--go)", margin: 0, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--go)" }} />reading your sky</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--go)", margin: 0, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--go)" }} />reading your sky</p>
             </div>
-            <span style={{ fontSize: 11, color: "var(--faint)" }}>{knows}</span>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--faint)" }}>{knows}</span>
           </div>
 
           <div ref={scrollRef} style={{ padding: "26px 24px", display: "flex", flexDirection: "column", gap: 16, minHeight: 280, maxHeight: 460, overflowY: "auto" }}>
@@ -264,7 +264,7 @@ export default function WebDolly() {
             </button>
           </div>
         </div>
-        <p style={{ textAlign: "center", fontSize: 12, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>Dolly reads your real birth chart when you&rsquo;re signed in — the more complete your chart, the more specific her answers.</p>
+        <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>Dolly reads your real birth chart when you&rsquo;re signed in — the more complete your chart, the more specific her answers.</p>
 
         {/* WHAT DOLLY KNOWS */}
         <div style={{ margin: "64px 0 20px" }}>

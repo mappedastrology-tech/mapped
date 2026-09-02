@@ -220,7 +220,7 @@ function FullFooter() {
         </div>
         {FOOT_COLS.map((fc) => (
           <div key={fc.head}>
-            <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)", margin: "0 0 16px" }}>{fc.head}</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)", margin: "0 0 16px" }}>{fc.head}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               {fc.links.map((l) => (
                 <Link key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</Link>
@@ -230,11 +230,11 @@ function FullFooter() {
         ))}
       </div>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "22px 32px", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. Made under a waxing gibbous moon.</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. Made under a waxing gibbous moon.</span>
         <div style={{ display: "flex", gap: 22 }}>
-          <Link href="/privacy" style={{ fontSize: 12.5, color: "var(--faint)" }}>Privacy</Link>
-          <Link href="/terms" style={{ fontSize: 12.5, color: "var(--faint)" }}>Terms</Link>
-          <Link href="/" style={{ fontSize: 12.5, color: "var(--faint)" }}>Contact</Link>
+          <Link href="/privacy" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Privacy</Link>
+          <Link href="/terms" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Terms</Link>
+          <Link href="/" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Contact</Link>
         </div>
       </div>
     </footer>
@@ -245,7 +245,7 @@ export function CompactFooter({ tagline = "Read the sky, then trust yourself." }
   return (
     <footer style={{ position: "relative", zIndex: 10, borderTop: "1px solid var(--hair)", background: "var(--bg2)" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. {tagline}</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. {tagline}</span>
         <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>← Back to home</Link>
       </div>
     </footer>

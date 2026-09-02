@@ -616,6 +616,12 @@ function InfoTip({ text }: { text: string }) {
             ? "color-mix(in srgb, var(--brass) 30%, transparent)"
             : "color-mix(in srgb, var(--foreground) 10%, transparent)",
           color: open ? "var(--brass)" : "var(--foreground-muted)",
+          // Pinned rather than inherited. The size is set inline, so it never
+          // matched a size class and picked up whatever face its ancestor had:
+          // the same 8px "i" rendered in DM Sans, Le Jour Serif and Georgia in
+          // three places on this one page. Le Jour Serif is all-caps, so its
+          // version was not even a lowercase i.
+          fontFamily: "var(--font-ui)",
           fontSize: "8px",
           fontWeight: 700,
           lineHeight: 1,
@@ -1207,7 +1213,7 @@ export default function AlmanacPageContent() {
             >
               <p
                 style={{
-                  fontSize: 9,
+                  fontFamily: "var(--font-ui)", fontSize: 9,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
                   fontWeight: 700,
@@ -1241,7 +1247,7 @@ export default function AlmanacPageContent() {
                   >
                     <span
                       style={{
-                        fontSize: 10,
+                        fontFamily: "var(--font-ui)", fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: "0.04em",
                         color: wd.isToday ? "var(--brass)" : "var(--foreground-muted)",
@@ -1261,7 +1267,7 @@ export default function AlmanacPageContent() {
                     </span>
                     <span
                       style={{
-                        fontSize: 9.5,
+                        fontFamily: "var(--font-ui)", fontSize: 9.5,
                         color: wd.isToday ? "var(--foreground)" : "var(--foreground-faint)",
                         fontWeight: wd.isToday ? 700 : 400,
                       }}
@@ -1287,7 +1293,7 @@ export default function AlmanacPageContent() {
             >
               <p
                 style={{
-                  fontSize: 9,
+                  fontFamily: "var(--font-ui)", fontSize: 9,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
                   fontWeight: 700,
@@ -1336,7 +1342,7 @@ export default function AlmanacPageContent() {
               >
                 <p
                   style={{
-                    fontSize: 9,
+                    fontFamily: "var(--font-ui)", fontSize: 9,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
                     fontWeight: 700,
@@ -1349,7 +1355,7 @@ export default function AlmanacPageContent() {
                 <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 17, color: "var(--foreground)", margin: 0 }}>
                   {weekData.brightest.label}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
                   {weekData.brightest.note}
                 </p>
               </div>
@@ -1364,7 +1370,7 @@ export default function AlmanacPageContent() {
               >
                 <p
                   style={{
-                    fontSize: 9,
+                    fontFamily: "var(--font-ui)", fontSize: 9,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
                     fontWeight: 700,
@@ -1377,7 +1383,7 @@ export default function AlmanacPageContent() {
                 <p style={{ fontFamily: "'Bodoni Moda', Georgia, serif", fontSize: 17, color: "var(--foreground)", margin: 0 }}>
                   {weekData.gentle.label}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--foreground-muted)", margin: "2px 0 0" }}>
                   {weekData.gentle.note}
                 </p>
               </div>
@@ -1434,7 +1440,7 @@ export default function AlmanacPageContent() {
                         <span
                           style={{
                             display: "block",
-                            fontSize: 11.5,
+                            fontFamily: "var(--font-ui)", fontSize: 11.5,
                             lineHeight: 1.45,
                             marginTop: 2,
                             color: "var(--foreground-muted)",
@@ -1448,7 +1454,7 @@ export default function AlmanacPageContent() {
                         <span
                           style={{
                             display: "block",
-                            fontSize: 9,
+                            fontFamily: "var(--font-ui)", fontSize: 9,
                             letterSpacing: "0.08em",
                             textTransform: "uppercase",
                             fontWeight: 700,
@@ -1457,7 +1463,7 @@ export default function AlmanacPageContent() {
                         >
                           {ev.day}
                         </span>
-                        <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
+                        <span style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
                           {ev.date}
                         </span>
                       </span>
@@ -1488,7 +1494,7 @@ export default function AlmanacPageContent() {
             >
               <p
                 style={{
-                  fontSize: 9,
+                  fontFamily: "var(--font-ui)", fontSize: 9,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
                   fontWeight: 700,
@@ -1541,7 +1547,7 @@ export default function AlmanacPageContent() {
                   >
                     <p
                       style={{
-                        fontSize: 8.5,
+                        fontFamily: "var(--font-ui)", fontSize: 8.5,
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
                         color: "color-mix(in srgb, var(--lib-on-plum) 62%, transparent)",
@@ -1571,7 +1577,7 @@ export default function AlmanacPageContent() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 2px 14px" }}>
                 <p
                   style={{
-                    fontSize: 9,
+                    fontFamily: "var(--font-ui)", fontSize: 9,
                     letterSpacing: "0.16em",
                     textTransform: "uppercase",
                     fontWeight: 700,
@@ -1589,7 +1595,7 @@ export default function AlmanacPageContent() {
                   >
                     ‹
                   </button>
-                  <p style={{ fontFamily: "var(--font-heading)", fontSize: 15, letterSpacing: "0.05em", color: "var(--foreground-secondary)", margin: 0, minWidth: 96, textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, letterSpacing: "0.05em", color: "var(--foreground-secondary)", margin: 0, minWidth: 96, textAlign: "center" }}>
                     {monthData.monthLabel.toUpperCase()}
                   </p>
                   <button
@@ -1604,7 +1610,7 @@ export default function AlmanacPageContent() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 1, marginBottom: 6 }}>
                 {["S", "M", "T", "W", "T", "F", "S"].map((dl, i) => (
-                  <span key={i} style={{ textAlign: "center", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--foreground-faint)" }}>
+                  <span key={i} style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--foreground-faint)" }}>
                     {dl}
                   </span>
                 ))}
@@ -1641,7 +1647,7 @@ export default function AlmanacPageContent() {
                     )}
                     <span
                       style={{
-                        fontSize: 10,
+                        fontFamily: "var(--font-ui)", fontSize: 10,
                         lineHeight: 1,
                         color: cell.isToday
                           ? "var(--brass)"
@@ -1667,7 +1673,7 @@ export default function AlmanacPageContent() {
                 ].map((pl, i) => (
                   <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <MoonPhaseGlyph illum={pl.illum} waning={pl.waning} size={14} />
-                    <span style={{ fontSize: 9.5, lineHeight: 1.1, color: "var(--foreground-muted)" }}>{pl.label}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, lineHeight: 1.1, color: "var(--foreground-muted)" }}>{pl.label}</span>
                   </span>
                 ))}
               </div>
@@ -1724,7 +1730,7 @@ export default function AlmanacPageContent() {
                         <span
                           style={{
                             display: "block",
-                            fontSize: 11.5,
+                            fontFamily: "var(--font-ui)", fontSize: 11.5,
                             lineHeight: 1.45,
                             marginTop: 2,
                             color: "var(--foreground-muted)",
@@ -1738,7 +1744,7 @@ export default function AlmanacPageContent() {
                         <span
                           style={{
                             display: "block",
-                            fontSize: 9,
+                            fontFamily: "var(--font-ui)", fontSize: 9,
                             letterSpacing: "0.08em",
                             textTransform: "uppercase",
                             fontWeight: 700,
@@ -1747,7 +1753,7 @@ export default function AlmanacPageContent() {
                         >
                           {ev.day}
                         </span>
-                        <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
+                        <span style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--foreground-secondary)" }}>
                           {ev.date}
                         </span>
                       </span>
@@ -2269,7 +2275,7 @@ export default function AlmanacPageContent() {
               <p
                 className="text-[14px] leading-relaxed"
                 style={{
-                  fontFamily: "var(--font-serif)",
+                  fontFamily: "var(--font-ui)",
                   fontStyle: "italic",
                   color: "var(--foreground-on-card)",
                 }}
@@ -2675,7 +2681,7 @@ export default function AlmanacPageContent() {
                       <p className="text-[9px] font-bold uppercase" style={{ color: labelColor }}>
                         {day.dayLabel}
                       </p>
-                      <p className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: textColor }}>
+                      <p className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-ui)", color: textColor }}>
                         {day.dayNum}
                       </p>
                       <p className="text-[9px] font-medium tabular-nums" style={{ color: labelColor }}>
@@ -2720,7 +2726,7 @@ export default function AlmanacPageContent() {
               <p
                 className="text-[13px] leading-relaxed"
                 style={{
-                  fontFamily: "var(--font-serif)",
+                  fontFamily: "var(--font-ui)",
                   fontStyle: "italic",
                   color: "var(--foreground-on-card)",
                 }}
@@ -2757,7 +2763,7 @@ export default function AlmanacPageContent() {
                 }}
               >
                 <div>
-                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground-on-card)", fontFamily: "var(--font-display)" }}>
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground-on-card)", fontFamily: "var(--font-ui)" }}>
                     {bodyTiming.dayLabel.charAt(0) + bodyTiming.dayLabel.slice(1).toLowerCase()}, {bodyTiming.dateLabel}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-on-card-muted)" }}>
@@ -3019,7 +3025,7 @@ export default function AlmanacPageContent() {
                       style={{ borderBottom: i < onThisDay.length - 1 ? "1px solid color-mix(in srgb, var(--foreground-muted) 10%, transparent)" : "none" }}
                     >
                       <div className="flex flex-col items-center shrink-0 w-10">
-                        <span className="text-[12px] font-bold tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--brass)" }}>
+                        <span className="text-[12px] font-bold tabular-nums" style={{ fontFamily: "var(--font-ui)", color: "var(--brass)" }}>
                           {evt.year}
                         </span>
                         <span className="text-[11px] mt-0.5">{catIcon}</span>
@@ -3091,7 +3097,7 @@ export default function AlmanacPageContent() {
                 <div key={i} className="flex flex-col items-center gap-1.5" style={{ opacity: isToday ? 1 : 0.68 }}>
                   <span className="text-[9px] font-bold uppercase" style={{ color: isToday ? "var(--brass)" : "var(--foreground-muted)" }}>{d.dayLabel[0]}</span>
                   <MoonPhaseGlyph illum={d.illumination} waning={d.waning} size={17} />
-                  <span className="text-[12px] font-semibold leading-none" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{d.dayNum}</span>
+                  <span className="text-[12px] font-semibold leading-none" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{d.dayNum}</span>
                   <span className="w-1 h-1 rounded-full" style={{ background: isToday ? "var(--brass)" : "transparent" }} />
                 </div>
               );

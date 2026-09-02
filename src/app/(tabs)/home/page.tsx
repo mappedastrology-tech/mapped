@@ -845,7 +845,7 @@ export default function HomeTab() {
                 <span className="text-[28px]">{lore?.emoji || (isNew ? "🌑" : "🌕")}</span>
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
-                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ui)" }}>
                     Tonight
                   </p>
                   <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
@@ -906,7 +906,7 @@ export default function HomeTab() {
                 <span className="text-[28px]">{"☀︎"}</span>
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
-                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                     style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ui)" }}>
                     Today · {todaysSolarEvent.dayType}
                   </p>
                   <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
@@ -957,7 +957,7 @@ export default function HomeTab() {
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-[26px]" style={{ color: "#c9a9d4" }} aria-hidden="true">℞</span>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-display)" }}>
+                  <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ui)" }}>
                     In the sky now
                   </p>
                   <p className="text-[18px] font-medium" style={{ color: "#f0e6d2", fontFamily: "var(--font-heading)" }}>
@@ -1132,7 +1132,7 @@ export default function HomeTab() {
             </>
           ) : (
             <>
-              <span className="text-[14px]" style={{ fontFamily: "var(--font-script)" }}>
+              <span className="text-[14px]" style={{ fontFamily: "var(--font-ui)" }}>
                 Begin
               </span>
               <span className="text-[11px] tracking-[0.18em] uppercase font-medium">
@@ -1231,7 +1231,7 @@ export default function HomeTab() {
                   {cardStateHydrated && tarotRevealed ? dailyTarot.name : "Tap to pull"}
                 </p>
                 {cardStateHydrated && tarotRevealed && (
-                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
+                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontFamily: "var(--font-ui)", fontSize: 10 }}>
                     {dailyTarot.uprightKeywords.slice(0, 3).join(" · ")}
                   </p>
                 )}
@@ -1280,7 +1280,7 @@ export default function HomeTab() {
                   {cardStateHydrated && oracleRevealed ? dailyOracle.animal : "Tap to pull"}
                 </p>
                 {cardStateHydrated && oracleRevealed && (
-                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontSize: 10 }}>
+                  <p className="text-center mt-1" style={{ color: "rgba(240,230,210,0.55)", fontFamily: "var(--font-ui)", fontSize: 10 }}>
                     {dailyOracle.keyword}
                   </p>
                 )}
@@ -1299,7 +1299,7 @@ export default function HomeTab() {
           <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
-              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
+              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-ui)" }}>
                 {dailyTarot.name}
               </p>
               <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
@@ -1452,7 +1452,7 @@ export default function HomeTab() {
           <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
-              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-heading)" }}>
+              <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-ui)" }}>
                 {dailyOracle.animal}
               </p>
               <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
@@ -1776,7 +1776,7 @@ export default function HomeTab() {
                     <MoonPhaseIcon phase={item!.event.kind === "full" ? "Full Moon" : "New Moon"} size={24} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{item!.event.label}</p>
+                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-on-card)" }}>{item!.event.label}</p>
                     <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{formatMoonDate(item!.event.date)} · {daysPhrase(item!.event.daysUntil)}</p>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
@@ -1837,7 +1837,7 @@ export default function HomeTab() {
                     <p className="text-[15px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{event.name}</p>
+                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-on-card)" }}>{event.name}</p>
                     <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{event.daysUntil === 0 ? "today" : event.daysUntil === 1 ? "tomorrow" : `in ${event.daysUntil} days`}</p>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
@@ -2096,7 +2096,7 @@ function MetricTile({ label, value, hint, glyph, accent, onClick }: MetricTilePr
         >
           {label}
         </p>
-        <p className="text-foreground text-[14px] font-semibold leading-tight capitalize" style={{ fontFamily: "var(--font-display)" }}>
+        <p className="text-foreground text-[14px] font-semibold leading-tight capitalize" style={{ fontFamily: "var(--font-ui)" }}>
           {value}
         </p>
         {hint && (

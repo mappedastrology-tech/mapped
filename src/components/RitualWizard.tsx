@@ -651,7 +651,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
             <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
           </svg>
         </div>
-        <p className="text-muted text-[14px] mb-2" style={{ fontFamily: "var(--font-display)" }}>
+        <p className="text-muted text-[14px] mb-2" style={{ fontFamily: "var(--font-ui)" }}>
           Pulling this together.
         </p>
         <p className="text-muted text-[12px]">One sec.</p>

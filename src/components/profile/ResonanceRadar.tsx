@@ -61,7 +61,7 @@ export default function ResonanceRadar({ facets, size = 240, accent = "var(--bra
             y={p.y}
             textAnchor="middle"
             dominantBaseline="middle"
-            style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fill: "var(--foreground-muted, #999)", fontWeight: 600 }}
+            style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fill: "var(--foreground-muted, #999)", fontWeight: 600 }}
           >
             {FACET_LABEL[f]}
           </text>

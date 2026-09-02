@@ -232,7 +232,7 @@ export default function NightSky({
       <div style={{ position: "absolute", top: 18, left: 0, right: 0, zIndex: 30, textAlign: "center", pointerEvents: "none" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginBottom: 5 }}>
           <span style={{ width: 18, height: 1, background: "rgba(201,169,97,.5)" }} />
-          <span style={{ fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#9a8662", fontWeight: 600 }}>The people in your orbit</span>
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#9a8662", fontWeight: 600 }}>The people in your orbit</span>
           <span style={{ width: 18, height: 1, background: "rgba(201,169,97,.5)" }} />
         </div>
         <h1 style={{ fontFamily: "var(--font-display)", fontSize: 27, fontWeight: 600, margin: 0, color: "#f0e6d2" }}>Your Map</h1>
@@ -263,15 +263,15 @@ export default function NightSky({
                 color: c.color, padding: "8px 15px", borderRadius: 16, background: "rgba(184,160,210,.22)",
                 border: `1px solid ${c.color}`, cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,.55)",
               }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
                   {c.label} <span aria-hidden="true" style={{ opacity: 0.85, fontSize: 13 }}>›</span>
                 </span>
-                <span style={{ fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; patterns</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; patterns</span>
               </button>
             ) : (
               <span key={`l-${c.group}`} style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
-                fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
+                fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: c.color,
                 textShadow: "0 1px 6px rgba(0,0,0,.9)", pointerEvents: "none",
               }}>{c.label}</span>
             )
@@ -283,8 +283,8 @@ export default function NightSky({
               <span style={{ position: "absolute", inset: -10, borderRadius: 999, background: "radial-gradient(circle, rgba(201,169,97,.55), rgba(201,169,97,.12) 60%, transparent 75%)" }} />
               <span style={{ position: "relative", fontSize: 26, color: "#f3e6c4", textShadow: "0 0 14px rgba(201,169,97,.9)" }} aria-hidden="true">{"☉\uFE0E"}</span>
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#f0e6d2", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>You</span>
-            {hasChart && userSun && <span style={{ fontSize: 9, color: "#cdbfa6", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{userSun}</span>}
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "#f0e6d2", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>You</span>
+            {hasChart && userSun && <span style={{ fontFamily: "var(--font-ui)", fontSize: 9, color: "#cdbfa6", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{userSun}</span>}
           </button>
 
           {/* people — stars */}
@@ -296,7 +296,7 @@ export default function NightSky({
                   {person.name.charAt(0).toUpperCase()}
                 </span>
               </span>
-              <span style={{ fontSize: 9.5, color: "#e8dfc4", maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name.split(" ")[0]}</span>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name.split(" ")[0]}</span>
             </button>
           ))}
 
@@ -308,7 +308,7 @@ export default function NightSky({
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
               </span>
             </span>
-            <span style={{ fontSize: 9.5, color: "#e8dfc4", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>Your places</span>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>Your places</span>
           </button>
         </div>
       </div>
@@ -342,7 +342,7 @@ export default function NightSky({
             {ADD_OPTIONS.map((o) => (
               <button key={o.cat} onClick={() => { setAddOpen(false); onAdd(o.cat); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", background: "none", border: "none", borderBottom: "1px solid rgba(232,223,196,.08)", cursor: "pointer", color: "#e8dfc4" }}>
                 <span style={{ fontSize: 13, fontWeight: 600, display: "block" }}>{o.label}</span>
-                <span style={{ fontSize: 11, color: "#9a8662" }}>{o.hint}</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#9a8662" }}>{o.hint}</span>
               </button>
             ))}
           </div>
@@ -355,7 +355,7 @@ export default function NightSky({
       {/* Hint pill */}
       <div style={{ position: "absolute", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 34, display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 999, background: "rgba(20,16,28,.55)", border: "1px solid rgba(232,223,196,.12)", backdropFilter: "blur(8px)", pointerEvents: "none" }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9a8662" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg>
-        <span style={{ fontSize: 11, color: "#b8a886", letterSpacing: ".02em" }}>Drag to roam · pinch to zoom · tap a star</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#b8a886", letterSpacing: ".02em" }}>Drag to roam · pinch to zoom · tap a star</span>
       </div>
     </div>
   );

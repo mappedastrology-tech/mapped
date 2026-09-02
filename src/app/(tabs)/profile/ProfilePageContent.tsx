@@ -699,7 +699,7 @@ export default function ProfilePageContent() {
                   <div key={`${r.kicker}-${r.mark}`} className="flex items-start gap-3"
                     style={{ borderRadius: 15, padding: "14px 16px", background: "var(--background-card)", border: "0.5px solid rgba(212,161,58,0.28)", borderLeft: "2.5px solid #d4a13a" }}>
                     <span className="flex items-center justify-center flex-shrink-0"
-                      style={{ width: 34, height: 34, borderRadius: "50%", fontFamily: "var(--font-display)", fontSize: 15, color: "#d4a13a", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", fontFamily: "var(--font-ui)", fontSize: 15, color: "#d4a13a", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>
                       {r.mark}
                     </span>
                     <div className="flex-1 min-w-0">

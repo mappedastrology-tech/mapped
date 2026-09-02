@@ -733,7 +733,7 @@ function JournalPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={isBurn ? "#e8823f" : "var(--foreground-muted)"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c1 3-1 4-1 6 0 1.6 1.1 2.6 1.1 4.2A3.1 3.1 0 0 1 9 15c0-1.4.6-2 .6-3.2C7.4 13 7 15.4 7 17a5 5 0 0 0 10 0c0-4.4-3.2-6-5-9-.7-1.2-.5-4 0-6z" /></svg>
             </span>
             <div className="flex-1 min-w-0">
-              <div style={{ fontFamily: "var(--font-heading)", fontSize: 15.5, lineHeight: 1.1, color: isBurn ? "#e8965a" : "var(--foreground)" }}>Burn mode</div>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 15.5, lineHeight: 1.1, color: isBurn ? "#e8965a" : "var(--foreground)" }}>Burn mode</div>
               <div className="text-[11.5px] mt-[3px]" style={{ lineHeight: 1.45, color: "var(--foreground-muted)", textWrap: "pretty" }}>Sometimes, you need to get things out and then not ever see it again. Use burn mode to release it.</div>
             </div>
             <span className="shrink-0 relative rounded-full" style={{ width: 44, height: 26, transition: "background 0.2s", ...(isBurn ? { background: "#d9622e" } : { background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }) }}>
@@ -1415,7 +1415,7 @@ function JournalPage() {
               <button onClick={() => setCalOffset((o) => o - 1)} aria-label="Previous month" className="w-[30px] h-[30px] rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
               </button>
-              <span className="text-center" style={{ fontFamily: "var(--font-heading)", fontSize: 14, color: "var(--foreground)", minWidth: 44 }}>{monthName}</span>
+              <span className="text-center" style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--foreground)", minWidth: 44 }}>{monthName}</span>
               <button onClick={() => setCalOffset((o) => Math.min(0, o + 1))} aria-label="Next month" disabled={isCurrentMonth} className="w-[30px] h-[30px] rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)", opacity: isCurrentMonth ? 0.35 : 1 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
               </button>

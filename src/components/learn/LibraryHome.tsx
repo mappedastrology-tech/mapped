@@ -222,7 +222,7 @@ export default function LibraryHome() {
                     <Link href="/library/progress" className="block active:opacity-90 transition-opacity">
                       <LevelOrb level={s.level} frac={s.xpIntoLevel / s.xpForLevel} />
                       <div className="text-center mt-4 text-[14px]" style={{ color: "var(--foreground-secondary)" }}>
-                        <span style={{ fontFamily: "var(--font-display)", color: "var(--brass-light)", fontWeight: 700 }}>{toLevel} XP</span> to level {s.level + 1}
+                        <span style={{ fontFamily: "var(--font-ui)", color: "var(--brass-light)", fontWeight: 700 }}>{toLevel} XP</span> to level {s.level + 1}
                       </div>
                     </Link>
 

@@ -56,14 +56,14 @@ function BodyNode({ parts }: { parts: BodyPart[] }) {
           case "chips":
             return (
               <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {p.chips.map((c, j) => <span key={j} style={{ fontSize: 11, fontWeight: 600, padding: "5px 10px", borderRadius: 8, background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--muted)" }}>{c}</span>)}
+                {p.chips.map((c, j) => <span key={j} style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, padding: "5px 10px", borderRadius: 8, background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--muted)" }}>{c}</span>)}
               </div>
             );
           case "rows":
             return (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {p.rows.map((r, j) => (
-                  <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, borderBottom: "0.5px solid var(--line)", paddingBottom: 6 }}>
+                  <div key={j} style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-ui)", fontSize: 12.5, borderBottom: "0.5px solid var(--line)", paddingBottom: 6 }}>
                     <span style={{ color: "var(--muted)" }}>{r[0]}</span><span style={{ color: "var(--fg)", fontWeight: 600 }}>{r[1]}</span>
                   </div>
                 ))}
@@ -75,7 +75,7 @@ function BodyNode({ parts }: { parts: BodyPart[] }) {
                 <img src={p.src} alt={p.name} style={{ height: 92, borderRadius: 7, border: "1px solid rgba(201,169,97,0.3)", boxShadow: "0 8px 20px rgba(0,0,0,0.45)" }} />
                 <div>
                   <p style={{ fontFamily: "var(--deco)", fontSize: 20, fontWeight: 600, color: "var(--fg)", margin: "0 0 3px" }}>{p.name}</p>
-                  <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{p.kw}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{p.kw}</p>
                 </div>
               </div>
             );
@@ -85,11 +85,11 @@ function BodyNode({ parts }: { parts: BodyPart[] }) {
             return (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 2 }}>
                 <span style={{ fontFamily: "var(--deco)", fontSize: 40, fontWeight: 600, color: "var(--brass)", lineHeight: 1 }}>{p.big}</span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>of a 9-day cycle</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)" }}>of a 9-day cycle</span>
               </div>
             );
           case "tag2":
-            return <span key={i} style={{ alignSelf: "flex-start", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "5px 11px", borderRadius: 999, background: "color-mix(in srgb, var(--go) 14%, transparent)", color: "var(--go)" }}>{p.tag2}</span>;
+            return <span key={i} style={{ alignSelf: "flex-start", fontFamily: "var(--font-ui)", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "5px 11px", borderRadius: 999, background: "color-mix(in srgb, var(--go) 14%, transparent)", color: "var(--go)" }}>{p.tag2}</span>;
         }
       })}
     </div>
@@ -200,7 +200,7 @@ export default function WebToday() {
             <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 44, lineHeight: 1, margin: 0, color: "var(--fg)" }}>{dateLabel || " "}</h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 12.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" /></svg>
               drag any card to rearrange your view
             </span>
@@ -217,7 +217,7 @@ export default function WebToday() {
             <img src={bannerMoon} alt={sky?.moonLabel ?? "Moon"} style={{ position: "relative", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
           </div>
           <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "0 0 5px" }}>{bannerEyebrow}</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "0 0 5px" }}>{bannerEyebrow}</p>
             <p style={{ fontFamily: "var(--deco)", fontSize: 22, fontWeight: 500, color: "#f3ecd8", margin: "0 0 4px" }}>{bannerTitle}</p>
             <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "#cdc1a8", margin: 0, maxWidth: 640 }}>{bannerBody}</p>
           </div>
@@ -244,13 +244,13 @@ export default function WebToday() {
                 <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 14 }}>
                   <span style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, background: "color-mix(in srgb, var(--brass) 15%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{w.glyph + VS}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
                     <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 600, color: "var(--fg)", margin: 0, lineHeight: 1.1 }}>{w.title}</p>
                   </div>
                   <span style={{ color: "var(--faint)", fontSize: 17, lineHeight: 1 }}>⠿</span>
                 </div>
                 <BodyNode parts={liveBody(key)} />
-                <Link href={w.href} style={{ marginTop: "auto", paddingTop: 14, fontSize: 12.5, fontWeight: 700, color: "var(--brass)" }}>{w.cta} →</Link>
+                <Link href={w.href} style={{ marginTop: "auto", paddingTop: 14, fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, color: "var(--brass)" }}>{w.cta} →</Link>
               </div>
             );
           })}

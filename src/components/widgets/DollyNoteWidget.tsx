@@ -55,7 +55,7 @@ export default function DollyNoteWidget() {
       </p>
       <p
         className="text-[15px] leading-relaxed italic"
-        style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}
+        style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}
       >
         &ldquo;{note}&rdquo;
       </p>

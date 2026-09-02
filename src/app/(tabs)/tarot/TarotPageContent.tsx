@@ -1100,7 +1100,7 @@ export default function TarotTab() {
           className="w-full flex items-center justify-center gap-2 mt-6"
           style={{ padding: 16, borderRadius: 99, border: "none", background: "var(--brass)", color: "#1a1815", cursor: "pointer" }}
         >
-          <span style={{ fontFamily: "var(--font-script)", fontSize: 19 }}>Draw your cards</span>
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 19 }}>Draw your cards</span>
           <span style={{ fontSize: 15 }}>→</span>
         </button>
         <p className="text-center text-[10.5px] mt-3.5" style={{ lineHeight: 1.6, color: "var(--foreground-faint)" }}>
@@ -1139,7 +1139,7 @@ export default function TarotTab() {
             {currentPickPos + 1} of {selectedSpread.cardCount} · Swipe & tap to pick
           </p>
           {question && (
-            <p className="mx-auto mt-1.5" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+            <p className="mx-auto mt-1.5" style={{ fontFamily: "var(--font-ui)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
           )}
         </div>
 
@@ -1245,7 +1245,7 @@ export default function TarotTab() {
             {allRevealed ? "Tap any card to read its message" : "Tap each card to reveal it"}
           </p>
           {question && (
-            <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+            <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-ui)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
           )}
 
           {showSavedBanner && (
@@ -1459,7 +1459,7 @@ export default function TarotTab() {
           {allRevealed ? "Tap any card to read its full meaning" : "Tap each card to reveal it"}
         </p>
         {question && (
-          <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+          <p className="text-center mx-auto -mt-2 mb-4" style={{ fontFamily: "var(--font-ui)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
         )}
 
         {showSavedBanner && (
@@ -1732,7 +1732,7 @@ export default function TarotTab() {
         <h1 className="text-lg text-foreground text-center mb-1" style={{ fontFamily: "var(--font-heading)" }}>Fanned</h1>
         <p className="text-muted text-[10px] text-center mb-2">Swipe or drag through the deck · Tap cards that call to you · {totalPicked} picked</p>
         {question && (
-          <p className="text-center mx-auto -mt-1 mb-2" style={{ fontFamily: "var(--font-script)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
+          <p className="text-center mx-auto -mt-1 mb-2" style={{ fontFamily: "var(--font-ui)", fontSize: 16, lineHeight: 1.45, maxWidth: 280, color: "var(--brass)" }}>&ldquo;{question}&rdquo;</p>
         )}
         {showSavedBanner && (
           <div className="text-center mb-2 py-1.5 px-4 rounded-full bg-sage/15 border border-sage/25 text-sage text-xs font-medium mx-auto" style={{ display: "flex", justifyContent: "center", width: "fit-content" }}>

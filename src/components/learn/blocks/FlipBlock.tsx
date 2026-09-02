@@ -60,7 +60,7 @@ export default function FlipBlock({ prompt, instructions, cards }: { prompt: str
           <>
             <span className="shrink-0 text-center text-[18px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--brass-light)", minWidth: 22 }}>{(last ?? 0) + 1}</span>
             <div className="min-w-0">
-              <div className="text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{cap.name}</div>
+              <div className="text-[15px] leading-tight" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{cap.name}</div>
               {cap.caption && <div className="text-[11.5px] mt-0.5" style={{ color: "var(--foreground-secondary)" }}>{cap.caption}</div>}
             </div>
           </>

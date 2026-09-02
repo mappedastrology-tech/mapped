@@ -100,7 +100,7 @@ export default function NmOrbit({
 
       <div className="text-center mt-1.5">
         <p className="m-0" style={{ fontFamily: "var(--font-heading)", fontSize: 23, color: "#f0e6d2" }}>{title}</p>
-        <p className="mt-1" style={{ fontSize: 11, letterSpacing: "0.03em", color: "rgba(232,223,196,0.62)" }}>{subtitle}</p>
+        <p className="mt-1" style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.03em", color: "rgba(232,223,196,0.62)" }}>{subtitle}</p>
       </div>
     </div>
   );

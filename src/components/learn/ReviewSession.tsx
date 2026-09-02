@@ -114,7 +114,7 @@ export default function ReviewSession() {
               {advanced} of {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"} pushed further out. The rest will come back sooner so you can lock them in.
             </p>
             <div className="inline-flex items-center gap-1.5 mt-5 px-4 py-2 rounded-full" style={{ background: "rgba(201,169,97,0.14)" }}>
-              <span className="text-[15px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--brass-light)" }}>+{lessonCount * XP_REVIEW} XP</span>
+              <span className="text-[15px] font-bold" style={{ fontFamily: "var(--font-ui)", color: "var(--brass-light)" }}>+{lessonCount * XP_REVIEW} XP</span>
             </div>
             <p className="text-[11px] mt-4" style={{ color: "var(--foreground-muted)" }}>Come back tomorrow to keep the streak alive ✦</p>
             <Link href="/library" className="block mt-5 px-5 py-2.5 rounded-xl text-[13px] font-medium" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>

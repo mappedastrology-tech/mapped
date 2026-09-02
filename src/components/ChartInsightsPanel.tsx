@@ -451,7 +451,7 @@ function InsightCard({ tone, eyebrow, title, subtitle, children }: {
   const accent = tone === "harmony" ? "var(--insight-harmony)" : tone === "tension" ? "var(--insight-tension)" : "var(--insight-neutral)";
   return (
     <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: `3px solid ${accent}`, boxShadow: "var(--insight-shadow)", padding: "18px 20px", marginBottom: 14 }}>
-      <p style={{ color: accent, fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase", margin: 0, marginBottom: 8 }}>{eyebrow}</p>
+      <p style={{ color: accent, fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase", margin: 0, marginBottom: 8 }}>{eyebrow}</p>
       <div style={{ marginBottom: 8, lineHeight: 1.2 }}>
         <span style={{ fontFamily: "var(--font-heading)", fontSize: 21, color: "var(--insight-ink)" }}>{title}</span>
         {subtitle ? <span style={{ marginLeft: 8, fontSize: 13, color: "var(--insight-muted)" }}>{subtitle}</span> : null}

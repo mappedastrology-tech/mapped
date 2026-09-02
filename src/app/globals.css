@@ -534,7 +534,28 @@
 }
 
 /*
-  Typography system:
+  Typography system.
+
+  ─── The size rule ───
+  Decorative faces are for big text; the UI sans carries everything small.
+
+    under 13px   --font-ui (DM Sans). Labels, badges, counts, timestamps. This
+                 is applied by the size classes themselves, further down, so it
+                 holds without every call site remembering.
+    13-15px      --font-ui or --font-body. Reading serif is fine for prose here;
+                 a display face is not.
+    16px+        --font-heading / --font-serif / --font-display are allowed.
+    20px+        --font-script. It is handwriting, and it needs the most room
+                 of any of them before it stops being decoration and starts
+                 being an obstacle.
+
+  Why: an audit of the running app found 264 text nodes set in Georgia between
+  8px and 10px, and 68 nodes where a display face was doing work under 18px —
+  including a handwriting face at 16px and JS Chanok, which is block capitals,
+  at 13px. Georgia is a print serif and DM Sans is a UI face; the difference
+  only matters at exactly the sizes that were getting it wrong.
+
+  Tokens:
   --font-display:  JS Chanok — big block-caps titles ("RITUAL", "YOUR MAP")
   --font-heading:  Le Jour Serif — card titles, body text, the workhorse serif
   --font-serif:    Bodoni Moda — mixed-case elegant titles
@@ -947,6 +968,37 @@ input, select, textarea {
 .mp-store {
   --font-body: var(--font-ui);
   font-family: var(--font-body);
+}
+
+
+/* ═══ SMALL TEXT READS IN THE UI SANS ═══
+
+   Anything under 13px is a label, a badge, a count, a timestamp — never a
+   passage anyone reads. Georgia is a print serif: fine strokes, small
+   x-height, generous ascenders. It is a pleasure at 15px and a squint at 9px
+   on a phone, and an audit of the running app found 264 text nodes set in it
+   between 8px and 10px.
+
+   Rather than touch a thousand call sites, this attaches the UI face to the
+   size classes themselves, so any element that opts into small text gets the
+   font that survives it. An element with its own inline font-family still
+   wins, which is what makes the display faces below still possible.
+
+   Sizes mirror the arbitrary Tailwind values actually used in the app; a new
+   one needs adding here too. */
+.text-\[6px\],
+.text-\[7px\],
+.text-\[8px\],
+.text-\[8\.5px\],
+.text-\[9px\],
+.text-\[9\.5px\],
+.text-\[10px\],
+.text-\[10\.5px\],
+.text-\[11px\],
+.text-\[11\.5px\],
+.text-\[12px\],
+.text-\[12\.5px\] {
+  font-family: var(--font-ui);
 }
 
 /* ═══ FONT FACES ═══

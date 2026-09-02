@@ -1018,7 +1018,7 @@ export default function DollyTab() {
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>DOLLY</h1>
             <span className="rounded-full" style={{ width: 6, height: 6, background: "var(--sage)", boxShadow: "0 0 7px var(--sage)" }} />
           </div>
-          <p style={{ fontFamily: "var(--font-script)", fontSize: 18, lineHeight: 1, color: "var(--lavender)", marginTop: 1 }}>your cosmic guide</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, lineHeight: 1, color: "var(--lavender)", marginTop: 1 }}>your cosmic guide</p>
         </div>
         {messages.length > 0 && (
           <button
@@ -1071,7 +1071,7 @@ export default function DollyTab() {
           you're at the bottom and holds still the moment you scroll up. */}
       <div ref={threadRef} className="dl-thread relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
         <div className="flex flex-col gap-[18px]">
-          <div className="text-center" style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", opacity: 0.7 }}>
+          <div className="text-center" style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", opacity: 0.7 }}>
             {skyLine}
           </div>
 
@@ -1097,7 +1097,7 @@ export default function DollyTab() {
                 </p>
               </div>
 
-              <div style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--foreground-muted)", opacity: 0.75 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--foreground-muted)", opacity: 0.75 }}>
                 Try asking
               </div>
               <div className="flex flex-col gap-2.5">
@@ -1211,7 +1211,7 @@ export default function DollyTab() {
                         onClick={() => handleSend(f)}
                         disabled={isStreaming}
                         className="font-medium transition-transform active:scale-[0.98] disabled:opacity-40"
-                        style={{ padding: "9px 15px", borderRadius: 99, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 28%, transparent)", color: "var(--lavender)", fontSize: 12.5 }}
+                        style={{ padding: "9px 15px", borderRadius: 99, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid color-mix(in srgb, var(--lavender) 28%, transparent)", color: "var(--lavender)", fontFamily: "var(--font-ui)", fontSize: 12.5 }}
                       >
                         {f}
                       </button>
@@ -1230,7 +1230,7 @@ export default function DollyTab() {
         <button
           onClick={() => scrollToBottom()}
           className="absolute z-20 left-1/2 flex items-center gap-1.5 transition-transform active:scale-95"
-          style={{ bottom: 92, transform: "translateX(-50%)", padding: "8px 15px", borderRadius: 99, background: "var(--card)", border: "0.5px solid var(--border-card)", boxShadow: "0 6px 20px rgba(0,0,0,0.35)", color: "var(--foreground)", fontSize: 12, fontWeight: 600 }}
+          style={{ bottom: 92, transform: "translateX(-50%)", padding: "8px 15px", borderRadius: 99, background: "var(--card)", border: "0.5px solid var(--border-card)", boxShadow: "0 6px 20px rgba(0,0,0,0.35)", color: "var(--foreground)", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600 }}
         >
           {isStreaming ? "Dolly is writing" : "Latest"}
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -72,7 +72,7 @@ export default function GlobalError({
             Try again
           </button>
 
-          <p style={{ fontSize: "12px", opacity: 0.4, marginTop: "24px" }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: "12px", opacity: 0.4, marginTop: "24px" }}>
             If this keeps happening, try refreshing the page.
           </p>
         </div>

@@ -207,7 +207,7 @@ export default function WebTarot() {
           <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
             {/* deck */}
             <div style={{ flex: "0 0 auto", textAlign: "center" }}>
-              <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 16px" }}>The deck · {remaining} left</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 16px" }}>The deck · {remaining} left</p>
               <div style={{ position: "relative", width: 170, height: 290, margin: "0 auto" }}>
                 {remaining > 0 ? (
                   <>
@@ -222,10 +222,10 @@ export default function WebTarot() {
                     />
                   </>
                 ) : (
-                  <div style={{ position: "absolute", inset: 0, borderRadius: 12, border: "1px dashed var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 20, fontSize: 12.5, color: "var(--faint)" }}>The deck is spent. Reshuffle to draw again.</div>
+                  <div style={{ position: "absolute", inset: 0, borderRadius: 12, border: "1px dashed var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 20, fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>The deck is spent. Reshuffle to draw again.</div>
                 )}
               </div>
-              <p style={{ fontSize: 12, color: "var(--muted)", margin: "16px auto 0", maxWidth: 170 }}>Drag me onto a slot →</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)", margin: "16px auto 0", maxWidth: 170 }}>Drag me onto a slot →</p>
               <button onClick={reshuffle} style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 600, marginTop: 14, padding: "9px 18px", borderRadius: 999, cursor: "pointer", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", color: "#f3ecd8" }}>Reshuffle</button>
             </div>
 
@@ -254,7 +254,7 @@ export default function WebTarot() {
                     {filled && (
                       <>
                         <p style={{ fontFamily: "var(--deco)", fontSize: 17, fontWeight: 600, color: "#f3ecd8", margin: "12px 0 2px" }}>{card!.name}</p>
-                        <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{card!.keyword}</p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--brass)", margin: 0 }}>{card!.keyword}</p>
                       </>
                     )}
                   </div>
@@ -267,7 +267,7 @@ export default function WebTarot() {
         {/* reading */}
         {reading.length > 0 && (
           <div className="mp-reveal" style={{ marginTop: 22, borderRadius: 20, padding: "28px 30px 30px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 6px 22px var(--shadow)" }}>
-            <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 16px" }}>Your reading</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 16px" }}>Your reading</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {reading.map((r) => (
                 <div key={r.label} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>

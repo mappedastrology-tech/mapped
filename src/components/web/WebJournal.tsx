@@ -127,7 +127,7 @@ export default function WebJournal() {
             <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 12px 40px var(--shadow)", padding: "30px 32px 28px" }}>
               <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
               <div style={{ position: "relative" }}>
-                <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 12px" }}>Tonight&rsquo;s prompt · Scorpio Moon</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 12px" }}>Tonight&rsquo;s prompt · Scorpio Moon</p>
                 <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 25, lineHeight: 1.4, color: "#f3ecd8", margin: "0 0 22px", textWrap: "pretty" }}>“Where are you carrying tension you could gently set down before the week turns?”</p>
                 <textarea
                   className="mp-ta"
@@ -137,7 +137,7 @@ export default function WebJournal() {
                   style={{ width: "100%", minHeight: 170, resize: "vertical", background: "rgba(0,0,0,0.28)", border: "1px solid var(--hair)", borderRadius: 14, padding: "16px 18px", color: "var(--fg)", fontFamily: "var(--wbody)", fontSize: 15.5, lineHeight: 1.75 }}
                 />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: 14 }}>
-                  <span style={{ fontSize: 12, color: "rgba(240,231,208,0.55)" }}>{wordCount} words · saved as you type</span>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "rgba(240,231,208,0.55)" }}>{wordCount} words · saved as you type</span>
                   <button onClick={saveEntry} style={{ fontFamily: "var(--wbody)", fontSize: 14, fontWeight: 700, padding: "12px 26px", borderRadius: 999, cursor: "pointer", background: "var(--brass)", color: "var(--btn-ink)", border: "none" }}>Save entry</button>
                 </div>
               </div>
@@ -155,10 +155,10 @@ export default function WebJournal() {
                       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                         <span style={{ width: 38, textAlign: "center", flex: "0 0 auto" }}>
                           <span style={{ display: "block", fontFamily: "var(--deco)", fontSize: 20, fontWeight: 600, lineHeight: 1, color: "var(--brass)" }}>{e.day}</span>
-                          <span style={{ display: "block", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--faint)" }}>{e.mon}</span>
+                          <span style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--faint)" }}>{e.mon}</span>
                         </span>
-                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 999, background: ts[0], color: ts[1] }}>{e.tag}</span>
-                        <span style={{ fontSize: 12, color: "var(--faint)", marginLeft: "auto" }}>{e.moon}</span>
+                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 999, background: ts[0], color: ts[1] }}>{e.tag}</span>
+                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--faint)", marginLeft: "auto" }}>{e.moon}</span>
                       </div>
                       <p style={{ fontSize: 15, lineHeight: 1.8, color: "var(--fg2)", margin: 0, textWrap: "pretty" }}>{e.text}</p>
                     </div>
@@ -172,7 +172,7 @@ export default function WebJournal() {
           <aside style={{ display: "flex", flexDirection: "column", gap: 20, position: "sticky", top: 96 }}>
             <div style={{ padding: 24, borderRadius: 18, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)", textAlign: "center" }}>
               <p style={{ fontFamily: "var(--deco)", fontSize: 48, fontWeight: 600, lineHeight: 1, color: "var(--brass)", margin: 0 }}>{streak}</p>
-              <p style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--faint)", margin: "6px 0 0" }}>day streak</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--faint)", margin: "6px 0 0" }}>day streak</p>
               <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 16 }}>
                 {streakDots.map((on, i) => (
                   <span key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: on ? "var(--brass)" : "color-mix(in srgb, var(--brass) 28%, transparent)" }} />
@@ -180,7 +180,7 @@ export default function WebJournal() {
               </div>
             </div>
             <div style={{ padding: 24, borderRadius: 18, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)" }}>
-              <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>Prompt library</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>Prompt library</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {PROMPTS.map((p, i) => (
                   <p key={i} style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--fg2)", margin: 0, paddingBottom: 10, borderBottom: "0.5px solid var(--line)", textWrap: "pretty" }}>{p}</p>

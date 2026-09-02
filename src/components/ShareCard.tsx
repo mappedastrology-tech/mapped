@@ -178,7 +178,7 @@ export default function ShareCard({
           <div
             style={{
               textAlign: "center",
-              fontSize: 10,
+              fontFamily: "var(--font-ui)", fontSize: 10,
               letterSpacing: "0.2em",
               textTransform: "uppercase" as const,
               color: "#5a1f1a",
@@ -223,7 +223,7 @@ export default function ShareCard({
             <div
               style={{
                 textAlign: "center",
-                fontSize: 12,
+                fontFamily: "var(--font-ui)", fontSize: 12,
                 color: "rgba(42, 31, 24, 0.6)",
                 marginBottom: name2 && subtitle2 ? 2 : 20,
               }}
@@ -235,7 +235,7 @@ export default function ShareCard({
             <div
               style={{
                 textAlign: "center",
-                fontSize: 12,
+                fontFamily: "var(--font-ui)", fontSize: 12,
                 color: "rgba(42, 31, 24, 0.6)",
                 marginBottom: 20,
               }}
@@ -292,7 +292,7 @@ export default function ShareCard({
                   </div>
                   <div
                     style={{
-                      fontSize: 9,
+                      fontFamily: "var(--font-ui)", fontSize: 9,
                       letterSpacing: "0.15em",
                       textTransform: "uppercase" as const,
                       color: "rgba(42, 31, 24, 0.45)",
@@ -311,7 +311,7 @@ export default function ShareCard({
           <div
             style={{
               textAlign: "center",
-              fontSize: 9,
+              fontFamily: "var(--font-ui)", fontSize: 9,
               color: "rgba(42, 31, 24, 0.35)",
               letterSpacing: "0.12em",
               paddingTop: 12,

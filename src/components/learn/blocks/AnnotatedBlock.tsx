@@ -58,7 +58,7 @@ export default function AnnotatedBlock({ prompt, instructions, image, pins }: { 
       {/* detail */}
       <div className="mt-4 p-4 rounded-2xl" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.18)" }}>
         <div className="flex items-center gap-2.5">
-          <span className="flex items-center justify-center text-[13px] font-bold" style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--brass)", color: "var(--btn-primary-text)", fontFamily: "var(--font-display)" }} aria-hidden="true">{active + 1}</span>
+          <span className="flex items-center justify-center text-[13px] font-bold" style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--brass)", color: "var(--btn-primary-text)", fontFamily: "var(--font-ui)" }} aria-hidden="true">{active + 1}</span>
           <span className="text-[18px]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{cur.title}</span>
         </div>
         <p className="text-[13px] leading-relaxed mt-3" style={{ color: "var(--foreground-secondary)" }}>{cur.body}</p>

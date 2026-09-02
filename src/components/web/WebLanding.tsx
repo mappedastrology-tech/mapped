@@ -165,9 +165,9 @@ export default function WebLanding() {
               width={864}
               height={1440} src="/images/parchment-stars-pair.webp" alt="" aria-hidden="true" style={{ position: "absolute", right: 6, top: 14, width: 120, opacity: 0.9, animation: "mp-floaty 7s ease-in-out infinite", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))" }} />
           <div style={{ position: "absolute", left: 0, bottom: 24, padding: "16px 20px", borderRadius: 18, background: "color-mix(in srgb, var(--card) 88%, transparent)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", boxShadow: "0 10px 30px var(--shadow)", maxWidth: 230 }}>
-            <p style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 5px" }}>Tonight</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 5px" }}>Tonight</p>
             <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, margin: "0 0 4px", color: "var(--fg)" }}>Waxing Gibbous · 73%</p>
-            <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", margin: 0 }}>Moon in Scorpio — depth over noise.</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", margin: 0 }}>Moon in Scorpio — depth over noise.</p>
           </div>
         </div>
       </section>
@@ -193,7 +193,7 @@ export default function WebLanding() {
             <Link key={f.title} href={f.href} className="mp-card-lift" style={{ display: "block", borderRadius: 22, overflow: "hidden", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 20px var(--shadow)", color: "inherit" }}>
               <div style={{ position: "relative", height: 186, overflow: "hidden", background: "radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--brass) 9%, transparent), transparent 70%)" }}>
                 {f.render()}
-                <span style={{ position: "absolute", top: 14, left: 14, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
+                <span style={{ position: "absolute", top: 14, left: 14, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
               </div>
               <div style={{ padding: "22px 22px 24px" }}>
                 <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: "0 0 8px", color: "var(--fg)" }}>{f.title}</h3>
@@ -213,13 +213,13 @@ export default function WebLanding() {
           </div>
           <div style={{ position: "relative", padding: "44px 48px 22px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
             <div style={{ maxWidth: 520 }}>
-              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 10px" }}>Your dashboard, your way</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 10px" }}>Your dashboard, your way</p>
               <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 40, lineHeight: 1.08, margin: "0 0 12px", color: "#f3ecd8" }}>Drag to build your daily view</h2>
               <p style={{ fontSize: 15.5, lineHeight: 1.6, color: "rgba(240,231,208,0.82)", margin: 0 }}>Grab any card and drop it where it belongs. Mapped remembers the order you like — the sky the way <em>you</em> read it.</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <Link href="/home" style={{ fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Open your Today page →</Link>
-              <span style={{ fontSize: 12.5, color: "rgba(240,231,208,0.6)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "rgba(240,231,208,0.6)", display: "flex", alignItems: "center", gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" /></svg>
                 drag to reorder
               </span>
@@ -246,7 +246,7 @@ export default function WebLanding() {
                     <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                       <span style={{ width: 38, height: 38, flex: "0 0 auto", borderRadius: 11, background: "color-mix(in srgb, var(--brass) 16%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 18 }}>{w.glyph}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
                         <p style={{ fontFamily: "var(--deco)", fontSize: 17, fontWeight: 600, color: "var(--fg)", margin: 0, lineHeight: 1.1 }}>{w.title}</p>
                       </div>
                       <span style={{ color: "var(--faint)", fontSize: 15, lineHeight: 1 }}>⠿</span>
@@ -290,7 +290,7 @@ export default function WebLanding() {
                   <span style={{ width: 38, height: 38, borderRadius: "50%", background: "color-mix(in srgb, var(--brass) 18%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--deco)", fontWeight: 600, color: "var(--brass)" }}>{q.initial}</span>
                   <div>
                     <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--fg)", margin: 0 }}>{q.name}</p>
-                    <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{q.role}</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)", margin: 0 }}>{q.role}</p>
                   </div>
                 </div>
               </div>
@@ -314,8 +314,8 @@ export default function WebLanding() {
               border: p.featured ? "1.5px solid var(--brass)" : "1px solid var(--hair)",
               boxShadow: p.featured ? "0 16px 44px color-mix(in srgb, var(--brass) 22%, var(--shadow))" : "0 6px 24px var(--shadow)",
             }}>
-              {p.featured && <span style={{ position: "absolute", top: 20, right: 20, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "6px 12px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Most loved</span>}
-              <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 12px" }}>{p.name}</p>
+              {p.featured && <span style={{ position: "absolute", top: 20, right: 20, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "6px 12px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Most loved</span>}
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 12px" }}>{p.name}</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
                 <span style={{ fontFamily: "var(--deco)", fontSize: 52, fontWeight: 500, color: "var(--fg)", lineHeight: 1 }}>{p.price}</span>
                 <span style={{ fontSize: 15, color: "var(--muted)" }}>{p.per}</span>

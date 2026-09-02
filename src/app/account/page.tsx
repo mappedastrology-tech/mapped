@@ -1122,7 +1122,7 @@ function ReportBugSection() {
               <path d="M8 11H4M16 11h4M8 15H4M16 15h4M9 18l-2 3M15 18l2 3M12 6V4" />
             </svg>
           </span>
-          <span className="text-foreground text-sm" style={{ fontFamily: "var(--font-display)" }}>
+          <span className="text-foreground text-sm" style={{ fontFamily: "var(--font-ui)" }}>
             Report a Bug
           </span>
         </div>

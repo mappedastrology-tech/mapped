@@ -50,7 +50,7 @@ export default function LibraryHeader({
                 ))}
               </nav>
             )}
-            <h1 className="text-[15px] font-semibold truncate leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>
+            <h1 className="text-[15px] font-semibold truncate leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-ui)" }}>
               <span style={{ color: accent }}>—</span> {title}
             </h1>
           </div>

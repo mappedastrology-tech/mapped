@@ -104,13 +104,13 @@ export default function WebLibrary() {
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", padding: "34px 40px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
             <div>
-              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 8px" }}>The four elements · a game</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 8px" }}>The four elements · a game</p>
               <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 32, margin: 0, color: "#f3ecd8" }}>Sort every sign into its element</h2>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ textAlign: "right" }}>
                 <p style={{ fontFamily: "var(--deco)", fontSize: 30, fontWeight: 600, lineHeight: 1, margin: 0, color: "var(--brass)" }}>{placedCount}<span style={{ color: "var(--faint)", fontSize: 18 }}>/12</span></p>
-                <p style={{ fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--faint)", margin: "2px 0 0" }}>placed</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--faint)", margin: "2px 0 0" }}>placed</p>
               </div>
               <button onClick={reset} style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 600, padding: "9px 17px", borderRadius: 999, cursor: "pointer", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.16)", color: "#f3ecd8" }}>Reset</button>
             </div>
@@ -118,7 +118,7 @@ export default function WebLibrary() {
 
           {/* pool */}
           <div style={{ position: "relative", margin: "8px 40px 4px", padding: "16px 16px 10px", borderRadius: 16, background: "rgba(0,0,0,0.22)", border: "1px dashed var(--hair)", minHeight: 76 }}>
-            <p style={{ fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)", margin: "0 0 12px" }}>Drag from here</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)", margin: "0 0 12px" }}>Drag from here</p>
             {pool.length === 0 && <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 18, color: "var(--go)", margin: "2px 0 8px" }}>✦ All twelve placed — beautifully done.</p>}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {pool.map((c) => (
@@ -156,13 +156,13 @@ export default function WebLibrary() {
                     <span style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: b.accent, background: `color-mix(in srgb, ${b.accent} 16%, transparent)`, fontSize: 15 }}>{b.icon}</span>
                     <span style={{ fontFamily: "var(--deco)", fontSize: 20, fontWeight: 600, color: "var(--fg)" }}>{b.name}</span>
                   </div>
-                  <p style={{ fontSize: 11, lineHeight: 1.4, color: "var(--muted)", margin: "0 0 12px" }}>{b.note}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, lineHeight: 1.4, color: "var(--muted)", margin: "0 0 12px" }}>{b.note}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {chips.map((pc) => (
                       <div key={pc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px", borderRadius: 11, background: `color-mix(in srgb, ${b.accent} 12%, var(--card))`, border: `1px solid color-mix(in srgb, ${b.accent} 26%, transparent)`, animation: "mp-pop .2s ease" }}>
                         <span style={{ fontSize: 16, color: b.accent }}>{pc.glyph + VS}</span>
                         <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg)", flex: 1 }}>{pc.name}</span>
-                        <span style={{ color: b.accent, fontSize: 12 }}>✓</span>
+                        <span style={{ color: b.accent, fontFamily: "var(--font-ui)", fontSize: 12 }}>✓</span>
                       </div>
                     ))}
                     {chips.length === 0 && (
@@ -187,7 +187,7 @@ export default function WebLibrary() {
                 <span style={{ display: "inline-flex", width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", fontSize: 22, color: "var(--brass)", background: "color-mix(in srgb, var(--brass) 14%, transparent)", marginBottom: 14 }}>{t.glyph + VS}</span>
                 <h3 style={{ fontFamily: "var(--deco)", fontSize: 23, fontWeight: 500, margin: "0 0 6px", color: "var(--fg)" }}>{t.title}</h3>
                 <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 12px", textWrap: "pretty" }}>{t.desc}</p>
-                <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)" }}>{t.count}</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)" }}>{t.count}</span>
               </Link>
             ))}
           </div>

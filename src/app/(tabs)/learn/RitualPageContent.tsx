@@ -275,7 +275,7 @@ function RitualToolsPopup({ onClose }: { onClose: () => void }) {
           <button
             onClick={onClose}
             className="w-full py-3 rounded-xl text-[14px] font-semibold transition-all"
-            style={{ fontFamily: "var(--font-serif)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+            style={{ fontFamily: "var(--font-ui)", backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
           >
             Done
           </button>
@@ -389,7 +389,7 @@ function EventCalendar({
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
         <button onClick={goToToday} className="text-center">
-          <p className="text-[15px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{monthLabel}</p>
+          <p className="text-[15px] font-bold" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{monthLabel}</p>
           {!isCurrentMonth && (
             <p className="text-[10px] font-medium" style={{ color: "var(--terracotta)" }}>Back to today</p>
           )}
@@ -493,7 +493,7 @@ function EventCalendar({
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[14px]">{sym.icon}</span>
-                    <span className="text-[13px] font-semibold flex-1" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{evt.name}</span>
+                    <span className="text-[13px] font-semibold flex-1" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{evt.name}</span>
                     <svg aria-hidden="true" className={`w-3.5 h-3.5 transition-transform ${isActive ? "rotate-90" : ""}`} style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -567,7 +567,7 @@ function RitualDetailCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <RitualIcon name={ritual.element} size={20} />
-              <h3 className="text-[14px] font-medium" style={{ fontFamily: "var(--font-serif)", color: "var(--foreground)" }}>{ritual.title}</h3>
+              <h3 className="text-[14px] font-medium" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{ritual.title}</h3>
             </div>
             <div className="flex items-center gap-2 text-[10px] flex-wrap">
               {(() => {
@@ -1172,7 +1172,7 @@ export default function RitualPageContent() {
           <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 30, fontWeight: 500, lineHeight: 1.05, letterSpacing: "-0.01em", margin: "0 0 6px", color: "#f6efdc" }}>
             {dailySuggestion.title}
           </h2>
-          <p style={{ fontFamily: "var(--font-heading)", fontStyle: "italic", fontSize: 14.5, lineHeight: 1.45, color: "#cbbf9e", margin: "0 0 16px" }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontStyle: "italic", fontSize: 14.5, lineHeight: 1.45, color: "#cbbf9e", margin: "0 0 16px" }}>
             {dailySuggestion.description.split(".")[0]}.
           </p>
           <button
@@ -1245,7 +1245,7 @@ export default function RitualPageContent() {
                   >
                     <RitualIcon name={r.category} size={20} />
                   </span>
-                  <span className="block" style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, lineHeight: 1.15, color: "var(--foreground)", marginTop: 11 }}>
+                  <span className="block" style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 500, lineHeight: 1.15, color: "var(--foreground)", marginTop: 11 }}>
                     {r.title}
                   </span>
                   <span className="block text-[11px]" style={{ color: "var(--foreground-muted)", marginTop: 4 }}>
@@ -1450,7 +1450,7 @@ export default function RitualPageContent() {
                   {cat.key === null ? <span style={{ color: TILE_CREAM, fontSize: 16 }}>{"\u2726\uFE0E"}</span> : <RitualIcon name={cat.key} size={20} />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block" style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontWeight: 500, lineHeight: 1.1, color: TILE_CREAM }}>{cat.label}</span>
+                  <span className="block" style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 500, lineHeight: 1.1, color: TILE_CREAM }}>{cat.label}</span>
                   <span className="block text-[10.5px] mt-0.5" style={{ letterSpacing: "0.03em", color: "rgba(246,239,220,0.72)" }}>{count} {count === 1 ? "ritual" : "rituals"}</span>
                 </span>
               </button>

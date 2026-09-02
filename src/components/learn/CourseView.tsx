@@ -143,7 +143,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
                       ) : (
                         <span className="flex items-center justify-center text-[14px] font-semibold" style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--lib-soft)", border: "0.5px solid rgba(201,169,97,0.16)", color: "var(--foreground-faint)" }} aria-hidden="true">{i + 1}</span>
                       )}
-                      <span className="text-center mt-2.5 leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: 13, color: done ? "var(--foreground-secondary)" : current ? "var(--foreground)" : "var(--foreground-faint)" }}>
+                      <span className="text-center mt-2.5 leading-tight" style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: done ? "var(--foreground-secondary)" : current ? "var(--foreground)" : "var(--foreground-faint)" }}>
                         {lesson.title}
                         {current && <span className="block text-[9px] mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-muted)" }}>In progress</span>}
                       </span>

@@ -169,7 +169,7 @@ export default function RitualCompletionCheckin({
         <div className="rounded-3xl p-8 mx-6 max-w-sm w-full text-center animate-in fade-in zoom-in duration-300"
              style={{ backgroundColor: "var(--modal-bg)" }}>
           <div className="text-4xl mb-4" style={{ animation: "pulse 1.5s ease-in-out infinite" }}>✦</div>
-          <p className="text-[15px] font-medium mb-2" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground)" }}>
+          <p className="text-[15px] font-medium mb-2" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>
             {msg}
           </p>
           {streakCount > 1 && (

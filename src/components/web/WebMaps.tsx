@@ -139,7 +139,7 @@ export default function WebMaps() {
                   >
                     <span style={ava(p.color, size, fs, p.isYou)}>{p.initials}</span>
                     <span style={{ ...nodeName, fontSize: p.isYou ? 16 : 14 }}>{p.name}</span>
-                    <span style={{ fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: p.color, whiteSpace: "nowrap" }}>{p.rel}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: p.color, whiteSpace: "nowrap" }}>{p.rel}</span>
                   </div>
                 );
               })}
@@ -149,7 +149,7 @@ export default function WebMaps() {
           {/* hint */}
           <div style={{ position: "absolute", left: "50%", bottom: 18, transform: "translateX(-50%)", zIndex: 6, display: "flex", alignItems: "center", gap: 9, padding: "9px 16px", borderRadius: 999, background: "rgba(11,7,18,0.66)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", pointerEvents: "none" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" /></svg>
-            <span style={{ fontSize: 12.5, color: "#d8c9a8", letterSpacing: "0.02em" }}>Drag to roam your orbit · tap a person</span>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "#d8c9a8", letterSpacing: "0.02em" }}>Drag to roam your orbit · tap a person</span>
           </div>
           <button onClick={() => setPan(DEFAULT_PAN)} aria-label="Recenter" style={{ position: "absolute", right: 18, bottom: 18, zIndex: 6, width: 44, height: 44, borderRadius: "50%", background: "rgba(11,7,18,0.66)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /></svg>
@@ -162,7 +162,7 @@ export default function WebMaps() {
               <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 16 }}>
                 <span style={ava(selYou ? you.color : selPerson!.color, 46, 18)}>{selYou ? "Y" : selPerson!.initials}</span>
                 <div>
-                  <p style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{selYou ? you.rel : selPerson!.rel}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{selYou ? you.rel : selPerson!.rel}</p>
                   <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: 0, color: "#f3ecd8" }}>{selYou ? you.name : selPerson!.name}</h3>
                 </div>
               </div>
@@ -179,10 +179,10 @@ export default function WebMaps() {
                     </div>
                     <div>
                       <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 18, color: "var(--go)", margin: "0 0 2px" }}>{selPerson!.connLabel}</p>
-                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{selPerson!.signs}</p>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)", margin: 0 }}>{selPerson!.signs}</p>
                     </div>
                   </div>
-                  <p style={{ fontSize: 12.5, margin: "0 0 14px" }}>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, margin: "0 0 14px" }}>
                     <span style={{ color: "var(--go)" }}>{selPerson!.harm} harmonious</span> · <span style={{ color: "var(--terra)" }}>{selPerson!.chall} challenging</span> · <span style={{ color: "var(--brass)" }}>{selPerson!.fated} fated</span>
                   </p>
                   <p style={{ fontSize: 13.5, lineHeight: 1.65, color: "#d8cdb2", margin: 0, textWrap: "pretty" }}>{selPerson!.summary}</p>
@@ -203,7 +203,7 @@ export default function WebMaps() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
                     <span style={{ fontFamily: "var(--deco)", fontSize: 18, fontWeight: 500, color: "var(--fg)" }}>{o.name}</span>
-                    <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--faint)" }}>{o.rel}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--faint)" }}>{o.rel}</span>
                   </div>
                   <div style={{ marginTop: 8, height: 6, borderRadius: 999, background: "var(--soft)", overflow: "hidden" }}>
                     <span style={{ display: "block", height: "100%", width: `${o.score}%`, borderRadius: 999, background: `linear-gradient(90deg, color-mix(in srgb, ${o.color} 60%, transparent), ${o.color})` }} />

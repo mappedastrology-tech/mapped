@@ -538,7 +538,7 @@ export default function NumerologyPageContent() {
                               <div className="flex items-center justify-between gap-3">
                                 <span className="text-[12.5px] font-semibold" style={{ color: "var(--foreground)" }}>{r.label}</span>
                                 <span className="flex items-center gap-2 shrink-0">
-                                  <span className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-muted)" }}>{r.a}</span>
+                                  <span className="text-[15px] font-bold tabular-nums" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-muted)" }}>{r.a}</span>
                                   <span style={{ color: "var(--foreground-faint)" }}>→</span>
                                   <span className="text-[18px] font-bold tabular-nums" style={{ fontFamily: "var(--font-heading)", color: changed ? "var(--brass)" : "var(--foreground-muted)" }}>{r.b}</span>
                                 </span>
@@ -613,7 +613,7 @@ function NmCoreCard({
               aria-label="What is this?"
               onClick={(e) => { e.stopPropagation(); onTip(); }}
               className="ml-1.5 inline-flex items-center justify-center cursor-pointer"
-              style={{ width: 15, height: 15, borderRadius: "50%", fontSize: 9, fontWeight: 700, letterSpacing: 0, textTransform: "none", color: "var(--foreground-muted)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}
+              style={{ width: 15, height: 15, borderRadius: "50%", fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700, letterSpacing: 0, textTransform: "none", color: "var(--foreground-muted)", background: "var(--background)", border: "0.5px solid var(--border-card)" }}
             >
               i
             </span>
@@ -749,7 +749,7 @@ function NmNameResult({
           <span className="block" style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--foreground)", lineHeight: 1.15 }}>{title}</span>
           <span className="block text-[10.5px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{from}</span>
         </span>
-        <span className="shrink-0 text-[11px]" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>{math}</span>
+        <span className="shrink-0 text-[11px]" style={{ fontFamily: "var(--font-ui)", color: "var(--brass)" }}>{math}</span>
         <span className="shrink-0 text-[13px] transition-transform" style={{ color: "var(--brass)", transform: open ? "rotate(90deg)" : "none" }}>›</span>
       </button>
       {open && (

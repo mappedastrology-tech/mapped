@@ -84,7 +84,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
                     return linked ? (
                       <button onClick={() => onOpenEntry!(linked)} className="mt-1 text-[13px] leading-tight active:opacity-70" style={{ fontFamily: "var(--font-display)", color: accent, textDecoration: "underline", textUnderlineOffset: 2 }}>{f.value}</button>
                     ) : (
-                      <div className="mt-1 text-[13px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{f.value}</div>
+                      <div className="mt-1 text-[13px] leading-tight" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{f.value}</div>
                     );
                   })()}
                 </div>
