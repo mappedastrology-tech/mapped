@@ -8,8 +8,27 @@ import type { ReferenceEntry } from "../types";
  * Written in numerology's own voice — the meanings the tradition holds.
  */
 
+/**
+ * The numbers that have a painted plate.
+ *
+ * Only the countable ones. Each plate is an object group whose COUNT is the
+ * number — seven books, eight coins — so the reading comes from counting rather
+ * than from reading a numeral, which at the 31px this renders at would just be
+ * a digit. That trick has no answer for a karmic debt, a chart position or an
+ * angel number, so those 15 entries stay on the letter fallback and are
+ * deliberately absent here.
+ */
+const PLATED = new Set([
+  "num-0", "num-1", "num-2", "num-3", "num-4", "num-5", "num-6",
+  "num-7", "num-8", "num-9", "num-11", "num-22", "num-33",
+]);
+
 function num(e: Omit<ReferenceEntry, "domain">): ReferenceEntry {
-  return { domain: "numerology", ...e };
+  // Set here rather than on each entry so the plate and the id can never drift
+  // apart: the filename IS the id, which is what let the delivered folder drop
+  // in without renaming a thing.
+  const image = PLATED.has(e.id) ? `/images/learn/${e.id}.webp` : undefined;
+  return { domain: "numerology", image, ...e };
 }
 
 export const numerologyReference: ReferenceEntry[] = [

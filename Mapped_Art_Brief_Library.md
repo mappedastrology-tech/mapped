@@ -1,10 +1,10 @@
 # Mapped — Art Brief: the Library
 
 **What this is.** The Library holds **812 reference entries across 11 domains**.
-Ninety of them have art — the 78 tarot cards and the 12 zodiac signs. **722 do
-not.** This file is the instruction set for filling that in, category by
-category: what to draw, what the rule is for each category, what to call the
-file, and what NOT to draw.
+A hundred and three of them have art — the 78 tarot cards, the 12 zodiac signs
+and the 13 numerology plates. **709 do not.** This file is the instruction set
+for filling that in, category by category: what to draw, what the rule is for
+each category, what to call the file, and what NOT to draw.
 
 Counts here were read out of the code, not estimated, and every filename in
 this document was checked against the app's real reference-entry ids — all 91
@@ -20,10 +20,10 @@ match, so a correctly-named file drops straight in.
 | Essential oils | 76 | 0 | 76 |
 | Meditation | 43 | 0 | 43 |
 | Almanac | 38 | 0 | 38 |
-| Numerology | 28 | 0 | 28 |
+| Numerology | 28 | **13** | 15 |
 | Runes | 24 | 0 | 24 |
 | Chakras | 14 | 0 | 14 |
-| **Total** | **812** | **90** | **722** |
+| **Total** | **812** | **103** | **709** |
 
 **Read section 1 and 2 once.** They apply to everything. After that, go
 straight to the category you're producing and follow its rule.
@@ -127,7 +127,7 @@ grow — so whole categories finish rather than filling in patchily.
 | # | Set | Count | Why first |
 |---|---|---|---|
 | 1 | **Chakras** | 9 | Closed, canonical, colour-coded. Smallest complete win in the app. |
-| 2 | **Numerology** | 13 | Closed. 1–9 plus 0 and the three master numbers. |
+| 2 | ~~**Numerology**~~ | ~~13~~ | **Delivered.** Installed and wired; `num-8` and `num-22` need a redraw for count. |
 | 3 | **Runes** | 24 | The Elder Futhark. Closed for a thousand years. |
 | 4 | **Almanac — Wheel of the Year** | 8 | Closed. (Moon phases are already done — see §0.) |
 | 5 | **Almanac — planetary days** | 7 | Closed. |

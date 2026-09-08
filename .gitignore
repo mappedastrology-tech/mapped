@@ -80,3 +80,7 @@ broken_name*
 
 # Local dev-server log (see .dev.log usage in QA runs)
 .dev.log
+
+# Python bytecode from the art scripts
+__pycache__/
+*.pyc

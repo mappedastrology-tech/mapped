@@ -1,9 +1,14 @@
 # Mapped — Learn Section Image List
 
-Every image the Learn section still needs, as a flat checklist. **115 files.**
+Every image the Learn section needs, as a flat checklist. **115 files.**
 Filenames are exact — they are the app's real entry ids, so a correctly-named
-file drops in with no renaming. Counts were read out of the code today: **812
-reference entries, 90 with art (78 tarot + 12 zodiac), 722 without.**
+file drops in with no renaming. Counts were read out of the code: **812
+reference entries, 103 with art (78 tarot + 12 zodiac + 13 numerology), 709
+without.**
+
+**Status.** Batch 2 (numerology, 13 files) has been delivered, keyed and
+installed. Two of those thirteen need a redraw — see the note under that batch.
+Everything else on this list is still to draw.
 
 The reasoning behind each rule lives in `Mapped_Art_Brief_Library.md`. This is
 the list to work from.
@@ -59,7 +64,7 @@ Petal counts are fixed. Anyone who knows the system will notice a wrong count.
 
 ---
 
-## Batch 2 — Numerology · 13 files
+## Batch 2 — Numerology · 13 files — **DELIVERED**
 
 **Do not draw the numeral.** Paint an object group whose **count is the
 number**. The count does the work.
@@ -81,6 +86,16 @@ number**. The count does the work.
 | 22 | `num-33.png` | three tiered lamps, each burning, on one stand |
 
 Counts must be **exact and countable at a glance**.
+
+**Two need a redraw — the count is wrong, and the count is the whole design:**
+
+| File | Asked for | Delivered | Fix |
+|---|---|---|---|
+| `num-8.png` | eight coins | **seven** | Add one coin to the stack. Keep the same painting — it only needs to be eight high. |
+| `num-22.png` | twenty-two bricks (11 + 11) | **twenty-four** (12 gold + 12 red) | Remove one brick from each side. Keep the two-colour split, which reads the 11 + 11 well. |
+
+Both were counted twice, by eye and by segmenting the image and labelling every
+piece. The other eleven are correct and are live in the app now.
 
 ---
 

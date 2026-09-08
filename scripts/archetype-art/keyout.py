@@ -82,11 +82,46 @@ def keyout(path):
     # Feather two pixels into the soft painted edge, but only inside the region
     # the flood could reach — so the ramp can never start eating a neighbour.
     cut = bg | (ndimage.binary_dilation(bg, iterations=2) & reach)
+    cut = repair_holes(cut, chroma, gchroma)
 
     alpha = np.full(lum.shape, 255.0, np.float32)
     alpha[cut] = np.clip((HI - lum[cut]) / (HI - LO), 0.0, 1.0) * 255.0
     alpha = ndimage.gaussian_filter(alpha, sigma=0.6)   # feather the matte edge
     return Image.fromarray(np.dstack([a, alpha]).astype(np.uint8), "RGBA")
+
+
+def repair_holes(cut, chroma, gchroma):
+    """Fill cut regions that the paper cannot actually reach.
+
+    Connectivity is measured loosely, at LO, so that white seen THROUGH a
+    subject (the cells of a spider's web) is reachable. The cost is that bright
+    paint conducts too: a flame's max channel is pinned at 255, so the whole
+    flame joins the paper's component, and any pixel inside it that happens to
+    read pure neutral white — a cream highlight has some — passes the paper test
+    and is cut, with the two-pixel feather widening each one into a visible hole.
+    That is what punched speckles through the flames on num-3 and num-11.
+
+    A hole is decided by where it is, not how bright it is: a cut region that
+    does not touch the border is only paper if it is NEUTRAL like the ground
+    (the gaps between the dandelion heads on num-9 measure ~0.4 chroma) and big
+    enough to be a gap at all. Tinted means paint, and paint is put back.
+
+    Only ever restores opacity, so it cannot take anything the key would have
+    kept.
+    """
+    lab, n = ndimage.label(cut)
+    if n == 0:
+        return cut
+    border = np.concatenate([lab[0, :], lab[-1, :], lab[:, 0], lab[:, -1]])
+    edge_ids = {int(v) for v in np.unique(border) if v}
+    idx = np.array([i for i in range(1, n + 1) if i not in edge_ids])
+    if not idx.size:
+        return cut
+    chmeans = ndimage.mean(chroma, lab, idx)
+    sizes = ndimage.sum(np.ones_like(chroma), lab, idx)
+    fill = [int(i) for i, ch, s in zip(idx, chmeans, sizes)
+            if ch > gchroma + CHROMA_TOL or s < ENCLOSED_MIN_PX]
+    return cut & ~np.isin(lab, fill) if fill else cut
 
 
 def render(src, dst, size=512):
