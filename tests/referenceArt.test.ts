@@ -52,3 +52,18 @@ test("every rune in the Elder Futhark has a plate", () => {
   assert.equal(runes.length, 24);
   assert.deepEqual(runes.filter((e) => !e.image).map((e) => e.id), []);
 });
+
+test("the whole Wheel of the Year and every moon phase has a plate", () => {
+  // Both are closed sets of eight, and both are the kind of set where a single
+  // gap is obvious on screen — the eight sit together in one list.
+  const need = [
+    "almanac-samhain", "almanac-yule", "almanac-imbolc", "almanac-ostara",
+    "almanac-beltane", "almanac-litha", "almanac-lughnasadh", "almanac-mabon",
+    "almanac-new-moon", "almanac-waxing-crescent", "almanac-first-quarter",
+    "almanac-waxing-gibbous", "almanac-full-moon", "almanac-waning-gibbous",
+    "almanac-last-quarter", "almanac-waning-crescent",
+  ];
+  const byId = new Map(ALL_REFERENCE.map((e) => [e.id, e]));
+  const gaps = need.filter((id) => !byId.get(id)?.image);
+  assert.deepEqual(gaps, [], `\nNo plate on:\n  ${gaps.join("\n  ")}\n`);
+});

@@ -3,12 +3,13 @@
 Every image the Learn section needs, as a flat checklist. **115 files.**
 Filenames are exact — they are the app's real entry ids, so a correctly-named
 file drops in with no renaming. Counts were read out of the code: **812
-reference entries, 136 with art (78 tarot + 12 zodiac + 13 numerology + 9
-chakras + 24 runes), 676 without.**
+reference entries, 152 with art (78 tarot + 12 zodiac + 13 numerology + 9
+chakras + 24 runes + 8 sabbats + 8 moon phases), 660 without.**
 
-**Status.** Batches 1, 2 and 3 — chakras, numerology and runes, 46 files — have
-been delivered, keyed and installed. Five of those forty-six need a redraw; see
-the note under each batch. Everything else on this list is still to draw.
+**Status.** Batches 1 to 4 — chakras, numerology, runes and the Wheel of the
+Year, 54 files — have been delivered, keyed and installed, and the 8 moon
+phases the app already owned are now wired too. Five of those fifty-four need a
+redraw; see the note under each batch. Everything else here is still to draw.
 
 The reasoning behind each rule lives in `Mapped_Art_Brief_Library.md`. This is
 the list to work from.
@@ -152,7 +153,7 @@ standard Elder form. Say the word and it can be redrawn straight.
 
 ---
 
-## Batch 4 — Wheel of the Year · 8 files
+## Batch 4 — Wheel of the Year · 8 files — **DELIVERED**
 
 One seasonal object per festival — the thing that season is actually *doing*.
 No wheels, no pentacles, no generic witchy props.
@@ -167,6 +168,17 @@ No wheels, no pentacles, no generic witchy props.
 | 52 | `almanac-litha.png` | a sun-bleached wreath of St John's wort and vervain |
 | 53 | `almanac-lughnasadh.png` | the first loaf, cut, on a sheaf of wheat |
 | 54 | `almanac-mabon.png` | a basket of apples, grapes and hazelnuts, tipped |
+
+**All eight are right — nothing to redraw.** Each is the object the brief asked
+for, and the details that are easy to get wrong are correct: Samhain is a
+*turnip* lantern rather than a pumpkin, Imbolc's cross is woven rush, Ostara's
+nest carries hare fur, Beltane's bough is hawthorn in flower. No wheels, no
+pentacles, nothing generically witchy.
+
+One judgement call: the Samhain lantern has a carved face, which the house
+style otherwise forbids. A lantern's face is part of the object rather than a
+figure, and at 31px it reads as a lantern, so it stays unless you'd rather it
+were carved with something else.
 
 ---
 

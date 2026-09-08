@@ -7,8 +7,42 @@ import type { ReferenceEntry } from "../types";
  * are stated as the traditions they are. Both sit side by side without apology.
  */
 
+/**
+ * The almanac entries that have a plate.
+ *
+ * Two sets, from two places. The eight sabbats are painted plates delivered for
+ * the Library and named after their entry ids. The eight moon phases are the
+ * watercolour moons the app already had — the same files `MoonPhaseIcon` draws
+ * on the Today screen, reused rather than repainted, which is why they are
+ * mapped explicitly: the phase the almanac calls the last quarter is filed
+ * under its other name, `third-quarter`.
+ *
+ * The remaining 22 almanac entries — eclipses, the nodes, the full-moon names,
+ * the solstices and equinoxes, the planetary days — have no plate yet. The
+ * planetary days are Batch 5 and are drawn from their classical metals.
+ */
+const PLATE: Record<string, string> = {
+  "almanac-samhain": "/images/learn/almanac-samhain.webp",
+  "almanac-yule": "/images/learn/almanac-yule.webp",
+  "almanac-imbolc": "/images/learn/almanac-imbolc.webp",
+  "almanac-ostara": "/images/learn/almanac-ostara.webp",
+  "almanac-beltane": "/images/learn/almanac-beltane.webp",
+  "almanac-litha": "/images/learn/almanac-litha.webp",
+  "almanac-lughnasadh": "/images/learn/almanac-lughnasadh.webp",
+  "almanac-mabon": "/images/learn/almanac-mabon.webp",
+
+  "almanac-new-moon": "/moons/new-moon.webp",
+  "almanac-waxing-crescent": "/moons/waxing-crescent.webp",
+  "almanac-first-quarter": "/moons/first-quarter.webp",
+  "almanac-waxing-gibbous": "/moons/waxing-gibbous.webp",
+  "almanac-full-moon": "/moons/full-moon.webp",
+  "almanac-waning-gibbous": "/moons/waning-gibbous.webp",
+  "almanac-last-quarter": "/moons/third-quarter.webp",
+  "almanac-waning-crescent": "/moons/waning-crescent.webp",
+};
+
 function alm(e: Omit<ReferenceEntry, "domain">): ReferenceEntry {
-  return { domain: "almanac", ...e };
+  return { domain: "almanac", image: PLATE[e.id], ...e };
 }
 
 export const almanacReference: ReferenceEntry[] = [

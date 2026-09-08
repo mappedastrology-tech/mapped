@@ -1,9 +1,9 @@
 # Mapped — Art Brief: the Library
 
 **What this is.** The Library holds **812 reference entries across 11 domains**.
-A hundred and thirty-six of them have art — the 78 tarot cards, the 12 zodiac
-signs, the 13 numerology plates, the 9 chakra yantras and the 24 runes. **676
-do not.** This file is the instruction set
+A hundred and fifty-two of them have art — the 78 tarot cards, the 12 zodiac
+signs, the 13 numerology plates, the 9 chakra yantras, the 24 runes, the 8
+sabbats and the 8 moon phases. **660 do not.** This file is the instruction set
 for filling that in, category by category: what to draw, what the rule is for
 each category, what to call the file, and what NOT to draw.
 
@@ -20,11 +20,11 @@ match, so a correctly-named file drops straight in.
 | Tarot | 78 | **78** | 0 |
 | Essential oils | 76 | 0 | 76 |
 | Meditation | 43 | 0 | 43 |
-| Almanac | 38 | 0 | 38 |
+| Almanac | 38 | **16** | 22 |
 | Numerology | 28 | **13** | 15 |
 | Runes | 24 | **24** | 0 |
 | Chakras | 14 | **9** | 5 |
-| **Total** | **812** | **136** | **676** |
+| **Total** | **812** | **152** | **660** |
 
 **Read section 1 and 2 once.** They apply to everything. After that, go
 straight to the category you're producing and follow its rule.
@@ -38,8 +38,8 @@ cover entries on the "missing" list. Don't commission these.
 
 | Already exists | Covers | Action |
 |---|---|---|
-| `public/moons/` — 8 painted moon phases | The 8 moon-phase entries in Almanac | I'll wire them. Zero new art. |
-| `public/ritual icons/` — fire, water, earth, air, spirit | The 4 element concepts in Astrology | I'll wire them. Zero new art. |
+| `public/moons/` — 8 painted moon phases | The 8 moon-phase entries in Almanac | **Wired.** Zero new art. |
+| `public/ritual icons/` — fire, water, earth, air, spirit | The 4 element concepts in Astrology | Still to wire. Zero new art. |
 | `public/images/tarot/` — all 78 cards | Tarot reference, 78/78 | Already complete and wired. |
 
 That's 90 entries either done or free. Everything below is genuinely new work.
@@ -130,7 +130,7 @@ grow — so whole categories finish rather than filling in patchily.
 | 1 | ~~**Chakras**~~ | ~~9~~ | **Delivered.** Installed and wired; `chakra-solar-plexus` and `chakra-throat` need a redraw for petal count. |
 | 2 | ~~**Numerology**~~ | ~~13~~ | **Delivered.** Installed and wired; `num-8` and `num-22` need a redraw for count. |
 | 3 | ~~**Runes**~~ | ~~24~~ | **Delivered.** Installed and wired; `rune-perthro` needs a redraw. |
-| 4 | **Almanac — Wheel of the Year** | 8 | Closed. (Moon phases are already done — see §0.) |
+| 4 | ~~**Almanac — Wheel of the Year**~~ | ~~8~~ | **Delivered.** All 8 installed and wired, no redraws. |
 | 5 | **Almanac — planetary days** | 7 | Closed. |
 | 6 | **Astrology — planets** | 10 | The single most looked-up set in the app. |
 | 7 | **Astrology — houses** | 12 | Closed. |
