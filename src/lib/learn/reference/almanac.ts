@@ -17,9 +17,14 @@ import type { ReferenceEntry } from "../types";
  * mapped explicitly: the phase the almanac calls the last quarter is filed
  * under its other name, `third-quarter`.
  *
- * The remaining 22 almanac entries — eclipses, the nodes, the full-moon names,
- * the solstices and equinoxes, the planetary days — have no plate yet. The
- * planetary days are Batch 5 and are drawn from their classical metals.
+ * The seven planetary days are a third set, each drawn as its planet's
+ * classical metal worked into an object — gold, silver, iron, quicksilver, tin,
+ * copper, lead. Four of those metals are grey, so shape does the separating:
+ * a crescent, a blade, a cup, a plumb bob.
+ *
+ * The remaining 15 almanac entries — the eclipses, the nodes, the full-moon
+ * names, the solstices and equinoxes, the cross-quarter overview — have no
+ * plate yet.
  */
 const PLATE: Record<string, string> = {
   "almanac-samhain": "/images/learn/almanac-samhain.webp",
@@ -30,6 +35,14 @@ const PLATE: Record<string, string> = {
   "almanac-litha": "/images/learn/almanac-litha.webp",
   "almanac-lughnasadh": "/images/learn/almanac-lughnasadh.webp",
   "almanac-mabon": "/images/learn/almanac-mabon.webp",
+
+  "almanac-sunday-sun": "/images/learn/almanac-sunday-sun.webp",
+  "almanac-monday-moon": "/images/learn/almanac-monday-moon.webp",
+  "almanac-tuesday-mars": "/images/learn/almanac-tuesday-mars.webp",
+  "almanac-wednesday-mercury": "/images/learn/almanac-wednesday-mercury.webp",
+  "almanac-thursday-jupiter": "/images/learn/almanac-thursday-jupiter.webp",
+  "almanac-friday-venus": "/images/learn/almanac-friday-venus.webp",
+  "almanac-saturday-saturn": "/images/learn/almanac-saturday-saturn.webp",
 
   "almanac-new-moon": "/moons/new-moon.webp",
   "almanac-waxing-crescent": "/moons/waxing-crescent.webp",

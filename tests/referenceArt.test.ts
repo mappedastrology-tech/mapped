@@ -67,3 +67,14 @@ test("the whole Wheel of the Year and every moon phase has a plate", () => {
   const gaps = need.filter((id) => !byId.get(id)?.image);
   assert.deepEqual(gaps, [], `\nNo plate on:\n  ${gaps.join("\n  ")}\n`);
 });
+
+test("all seven planetary days have a plate", () => {
+  // One per weekday; a gap here shows as a lone letter tile in a row of seven.
+  const need = [
+    "almanac-sunday-sun", "almanac-monday-moon", "almanac-tuesday-mars",
+    "almanac-wednesday-mercury", "almanac-thursday-jupiter",
+    "almanac-friday-venus", "almanac-saturday-saturn",
+  ];
+  const byId = new Map(ALL_REFERENCE.map((e) => [e.id, e]));
+  assert.deepEqual(need.filter((id) => !byId.get(id)?.image), []);
+});

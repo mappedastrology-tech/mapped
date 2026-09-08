@@ -24,9 +24,11 @@ def plate():
              flames on num-3 and num-11. It must stay opaque.
     MIDDLE — a painted ring around untouched paper. That paper is a real gap and
              must be cut, or the plate shows a white blob on a dark screen.
-    RIGHT  — a glow: pure white at the centre fading outward into cream, with no
-             edge anywhere. This is chakra-soul-star, where the key took the
-             middle out of the light. It must stay opaque.
+    RIGHT  — a metal bead with a specular highlight: a mid-grey sphere carrying
+             a small near-white hot spot. The hot spot is bounded (the sphere
+             shades away from it fast enough to look like an edge), so what
+             saves it is that near-white is not the paper — 253 against a ground
+             of 255. This is the mercury phial. It must stay opaque.
     """
     a = np.full((256, 384, 3), 255, np.uint8)
     yy, xx = np.mgrid[0:256, 0:384]
@@ -43,10 +45,14 @@ def plate():
     a[(r < 45 ** 2) & (r > 26 ** 2)] = PAINT
 
     d = np.sqrt((yy - 128) ** 2 + (xx - 320) ** 2)
-    glow = d < 45
-    t = np.clip(d[glow] / 45.0, 0, 1)[:, None]
-    a[glow] = (np.array([255, 255, 255]) * (1 - t)
-               + np.array([250, 238, 205]) * t).astype(np.uint8)
+    bead = d < 45
+    t = np.clip(d[bead] / 45.0, 0, 1)[:, None]
+    a[bead] = (np.array([215, 215, 218]) * (1 - t)
+               + np.array([120, 122, 128]) * t).astype(np.uint8)
+    hot = np.sqrt((yy - 112) ** 2 + (xx - 306) ** 2) < 14
+    a[hot] = np.where(rng.random((hot.sum(), 1)) < 0.4,
+                      np.array([253, 253, 253], np.uint8),
+                      np.array([250, 250, 251], np.uint8))
     return a
 
 
@@ -61,7 +67,7 @@ def main():
     checks = [
         ("highlight inside paint", (yy - 128) ** 2 + (xx - 64) ** 2 < 9 ** 2, "keep"),
         ("enclosed paper gap", (yy - 128) ** 2 + (xx - 192) ** 2 < 20 ** 2, "cut"),
-        ("centre of a glow", (yy - 128) ** 2 + (xx - 320) ** 2 < 16 ** 2, "keep"),
+        ("specular highlight on metal", (yy - 112) ** 2 + (xx - 306) ** 2 < 9 ** 2, "keep"),
         ("the ground itself", xx < 12, "cut"),
     ]
     fail = []
@@ -76,7 +82,7 @@ def main():
         for f in fail:
             print(" -", f)
         raise SystemExit(1)
-    print("ok — highlight and glow kept, enclosed gap and ground cut")
+    print("ok — highlight and specular kept, enclosed gap and ground cut")
 
 
 if __name__ == "__main__":

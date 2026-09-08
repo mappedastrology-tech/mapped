@@ -3,13 +3,15 @@
 Every image the Learn section needs, as a flat checklist. **115 files.**
 Filenames are exact — they are the app's real entry ids, so a correctly-named
 file drops in with no renaming. Counts were read out of the code: **812
-reference entries, 152 with art (78 tarot + 12 zodiac + 13 numerology + 9
-chakras + 24 runes + 8 sabbats + 8 moon phases), 660 without.**
+reference entries, 159 with art (78 tarot + 12 zodiac + 13 numerology + 9
+chakras + 24 runes + 8 sabbats + 8 moon phases + 7 planetary days), 653
+without.**
 
-**Status.** Batches 1 to 4 — chakras, numerology, runes and the Wheel of the
-Year, 54 files — have been delivered, keyed and installed, and the 8 moon
-phases the app already owned are now wired too. Five of those fifty-four need a
-redraw; see the note under each batch. Everything else here is still to draw.
+**Status.** Batches 1 to 5 — chakras, numerology, runes, the Wheel of the Year
+and the planetary days, 61 files — have been delivered, keyed and installed,
+and the 8 moon phases the app already owned are now wired too. Five of those
+sixty-one need a redraw; see the note under each batch. Everything else here is
+still to draw.
 
 The reasoning behind each rule lives in `Mapped_Art_Brief_Library.md`. This is
 the list to work from.
@@ -182,7 +184,7 @@ were carved with something else.
 
 ---
 
-## Batch 5 — Planetary days · 7 files
+## Batch 5 — Planetary days · 7 files — **DELIVERED**
 
 Each planet's **classical metal**, worked into a small object. The metal is what
 unifies the set.
@@ -196,6 +198,12 @@ unifies the set.
 | 59 | `almanac-thursday-jupiter.png` | tin — a tin cup, generous and dented |
 | 60 | `almanac-friday-venus.png` | copper — a copper hand-mirror, green at the edge |
 | 61 | `almanac-saturday-saturn.png` | lead — a lead weight on a plumb line |
+
+**All seven are right — nothing to redraw.** The metals carry the set exactly as
+intended, and the risk in this batch was that four of them are grey. Shape does
+the separating: a crescent, a blade, a cup, a plumb bob all read apart at 31px,
+and the tones differ underneath — silver bright, iron warm-dark, tin cool-mid,
+lead darkest. Venus's rim has its verdigris and Jupiter's cup its dent.
 
 ---
 

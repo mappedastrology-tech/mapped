@@ -41,6 +41,7 @@ FLAT_SD = 3.0                # paper is flat; painted white carries texture
 PAPER_BELOW_GROUND = 2.0     # how far under the measured ground still reads as paper
 CHROMA_TOL = 5.0             # the ground is neutral; tinted white is paint
 SURROUND_DROP = 20.0         # a real gap is bounded by paint, and paint is darker
+CORE_BELOW_GROUND = 1.5      # a real gap IS the paper, so its interior matches it
 
 
 def keyout(path):
@@ -83,7 +84,7 @@ def keyout(path):
     # Feather two pixels into the soft painted edge, but only inside the region
     # the flood could reach — so the ramp can never start eating a neighbour.
     cut = bg | (ndimage.binary_dilation(bg, iterations=2) & reach)
-    cut = repair_holes(cut, lum, chroma, gchroma)
+    cut = repair_holes(cut, lum, chroma, gchroma, ground)
 
     alpha = np.full(lum.shape, 255.0, np.float32)
     alpha[cut] = np.clip((HI - lum[cut]) / (HI - LO), 0.0, 1.0) * 255.0
@@ -91,7 +92,7 @@ def keyout(path):
     return Image.fromarray(np.dstack([a, alpha]).astype(np.uint8), "RGBA")
 
 
-def repair_holes(cut, lum, chroma, gchroma):
+def repair_holes(cut, lum, chroma, gchroma, ground):
     """Fill cut regions that the paper cannot actually reach.
 
     Connectivity is measured loosely, at LO, so that white seen THROUGH a
@@ -100,17 +101,20 @@ def repair_holes(cut, lum, chroma, gchroma):
     flame joins the paper's component, and any pixel inside it that reads as
     paper — flat, ground-bright, neutral — is cut, with the two-pixel feather
     widening each one into a visible hole. That punched speckles through the
-    flames on num-3 and num-11, and a hole clean through the middle of the glow
-    on chakra-soul-star.
+    flames, a hole through the middle of chakra-soul-star's glow, and holes in
+    the specular highlights on the mercury beads.
 
-    A hole that never reaches the border is judged by what surrounds it, not by
-    how bright it is. Real paper is bounded by paint, so the ring just outside a
-    genuine gap is markedly darker: the gaps between the dandelion heads on
-    num-9 measure a 43-94 point drop, the stone shards on chakra-earth-star 108.
-    A highlight has no such boundary — it fades into the bright paint around it,
-    2.8 points on the soul star's glow and 8 on the crown's. Twenty sits in the
-    middle of a gap that wide. Tint is the second signal, for a highlight bright
-    enough to clear it: paper is neutral like the ground and paint is not.
+    A hole that never reaches the border is judged by what it IS, not by how
+    bright it looks. Real paper is the ground, so its interior measures as the
+    ground does — same statistic, the median, after eroding away the soft
+    boundary. Across 36 genuine gaps in six batches the interior sits at most
+    1.0 under the ground; across 14 eaten highlights it is never nearer than
+    2.0, because painted white is bright but is not the paper.
+
+    A second, independent check: paper is bounded by paint, and paint is darker.
+    Genuine gaps drop 23 to 110 points at the rim; a highlight has no boundary
+    at all and fades into the paint around it, 2 to 8 points. Both tests must
+    pass for a hole to stay cut.
 
     Only ever restores opacity, so it cannot take anything the key would keep.
     """
@@ -136,6 +140,17 @@ def repair_holes(cut, lum, chroma, gchroma):
             continue
         if chroma[pad][m].mean() > gchroma + CHROMA_TOL:
             fill.append(i)                       # tinted: this is paint
+            continue
+        # Erode past the feathered rim before measuring, or the boundary drags
+        # the reading down and a real gap looks like paint.
+        core = m
+        for k in (3, 2, 1):
+            e = ndimage.binary_erosion(m, iterations=k)
+            if e.sum() >= 50:
+                core = e
+                break
+        if ground - float(np.median(lum[pad][core])) > CORE_BELOW_GROUND:
+            fill.append(i)                       # bright, but not the paper
             continue
         ring = ndimage.binary_dilation(m, iterations=6) & ~ndimage.binary_dilation(m, iterations=2)
         if ring.any() and lum[pad][ring].mean() > lum[pad][m].mean() - SURROUND_DROP:
