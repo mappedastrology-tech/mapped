@@ -1,0 +1,3066 @@
+[
+  {
+    "id": "P01",
+    "name": "Ava Chen",
+    "date": "1990-07-15",
+    "time": "14:30",
+    "place": "New York, USA",
+    "lat": 40.7128,
+    "lon": -74.006,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Can",
+        "moon": "Ari",
+        "rising": "Sco"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Can",
+          "deg": 23,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Ari",
+          "deg": 27.07,
+          "house": 6,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Leo",
+          "deg": 7.28,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Gem",
+          "deg": 24.74,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Tau",
+          "deg": 2.12,
+          "house": 6,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Can",
+          "deg": 22.61,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Cap",
+          "deg": 21.94,
+          "house": 3,
+          "retro": true
+        },
+        {
+          "name": "Uranus",
+          "sign": "Cap",
+          "deg": 6.96,
+          "house": 2,
+          "retro": true
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 12.91,
+          "house": 3,
+          "retro": true
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 15,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Chiron",
+          "sign": "Can",
+          "deg": 15.79,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Aqu",
+          "deg": 8.09,
+          "house": 3,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Leo",
+          "deg": 8.09,
+          "house": 9,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Sco",
+          "deg": 28.26,
+          "house": 1,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Sco",
+          "deg": 6.95
+        },
+        {
+          "n": 2,
+          "sign": "Sag",
+          "deg": 5.7
+        },
+        {
+          "n": 3,
+          "sign": "Cap",
+          "deg": 8.86
+        },
+        {
+          "n": 4,
+          "sign": "Aqu",
+          "deg": 14.37
+        },
+        {
+          "n": 5,
+          "sign": "Pis",
+          "deg": 17.27
+        },
+        {
+          "n": 6,
+          "sign": "Ari",
+          "deg": 14.67
+        },
+        {
+          "n": 7,
+          "sign": "Tau",
+          "deg": 6.95
+        },
+        {
+          "n": 8,
+          "sign": "Gem",
+          "deg": 5.7
+        },
+        {
+          "n": 9,
+          "sign": "Can",
+          "deg": 8.86
+        },
+        {
+          "n": 10,
+          "sign": "Leo",
+          "deg": 14.37
+        },
+        {
+          "n": 11,
+          "sign": "Vir",
+          "deg": 17.27
+        },
+        {
+          "n": 12,
+          "sign": "Lib",
+          "deg": 14.67
+        }
+      ],
+      "mc": {
+        "sign": "Leo",
+        "deg": 14.37
+      },
+      "numerology": {
+        "lifePath": 5,
+        "expression": 9,
+        "soulUrge": 7,
+        "personality": 11,
+        "birthday": 6,
+        "maturity": 5,
+        "masters": [
+          11
+        ],
+        "karmics": [
+          14
+        ]
+      },
+      "hd": {
+        "type": "Reflector",
+        "authority": "Lunar (Reflector)",
+        "profile": "3/5",
+        "definition": "No Definition",
+        "centers": [],
+        "channels": [],
+        "cross": "Right Angle Cross (62/61 | 42/32)"
+      },
+      "resonance": {
+        "archetype": "The Undertow",
+        "secondary": "The Crossroads",
+        "score": 65,
+        "evidence": [
+          "Reflector",
+          "Cancer Sun",
+          "Life Path 5",
+          "Scorpio Rising"
+        ],
+        "topTraits": [
+          "adaptability:89",
+          "disruption:78",
+          "intuition:65",
+          "autonomy:65"
+        ],
+        "animal": "Lizard",
+        "animalTier": "widely-shared",
+        "deity": "Loki",
+        "deityTier": "open",
+        "character": "Mowgli",
+        "signature": "UNDE-CROS-depth61-mind60-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Undertow",
+      "secondary": "The Crossroads",
+      "score": 65,
+      "evidence": [
+        "Reflector",
+        "Cancer Sun",
+        "Life Path 5",
+        "Scorpio Rising"
+      ],
+      "topTraits": [
+        "adaptability:89",
+        "disruption:78",
+        "intuition:65",
+        "autonomy:65"
+      ],
+      "animal": "Lizard",
+      "animalTier": "widely-shared",
+      "deity": "Loki",
+      "deityTier": "open",
+      "character": "Mowgli",
+      "signature": "UNDE-CROS-depth61-mind60-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P02",
+    "name": "Mateo Rossi",
+    "date": "1985-10-27",
+    "time": "02:30",
+    "place": "Rome, Italy",
+    "lat": 41.9028,
+    "lon": 12.4964,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Sco",
+        "moon": "Ari",
+        "rising": "Vir"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Sco",
+          "deg": 3.58,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Ari",
+          "deg": 15.39,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Sco",
+          "deg": 23.88,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Lib",
+          "deg": 13.06,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Vir",
+          "deg": 29.64,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Aqu",
+          "deg": 8.04,
+          "house": 5,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Sco",
+          "deg": 27.56,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Sag",
+          "deg": 15.67,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 1.38,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 4.64,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Gem",
+          "deg": 11.58,
+          "house": 9,
+          "retro": true
+        },
+        {
+          "name": "North Node",
+          "sign": "Tau",
+          "deg": 9.32,
+          "house": 9,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Sco",
+          "deg": 9.32,
+          "house": 3,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Tau",
+          "deg": 16.35,
+          "house": 9,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Vir",
+          "deg": 14.61
+        },
+        {
+          "n": 2,
+          "sign": "Lib",
+          "deg": 8.96
+        },
+        {
+          "n": 3,
+          "sign": "Sco",
+          "deg": 8.33
+        },
+        {
+          "n": 4,
+          "sign": "Sag",
+          "deg": 11.87
+        },
+        {
+          "n": 5,
+          "sign": "Cap",
+          "deg": 16.24
+        },
+        {
+          "n": 6,
+          "sign": "Aqu",
+          "deg": 17.57
+        },
+        {
+          "n": 7,
+          "sign": "Pis",
+          "deg": 14.61
+        },
+        {
+          "n": 8,
+          "sign": "Ari",
+          "deg": 8.96
+        },
+        {
+          "n": 9,
+          "sign": "Tau",
+          "deg": 8.33
+        },
+        {
+          "n": 10,
+          "sign": "Gem",
+          "deg": 11.87
+        },
+        {
+          "n": 11,
+          "sign": "Can",
+          "deg": 16.24
+        },
+        {
+          "n": 12,
+          "sign": "Leo",
+          "deg": 17.57
+        }
+      ],
+      "mc": {
+        "sign": "Gem",
+        "deg": 11.87
+      },
+      "numerology": {
+        "lifePath": 6,
+        "expression": 8,
+        "soulUrge": 9,
+        "personality": 8,
+        "birthday": 9,
+        "maturity": 5,
+        "masters": [],
+        "karmics": [
+          14
+        ]
+      },
+      "hd": {
+        "type": "Generator",
+        "authority": "Sacral",
+        "profile": "2/4",
+        "definition": "Single Definition",
+        "centers": [
+          "g",
+          "sacral"
+        ],
+        "channels": [
+          "2-14",
+          "29-46"
+        ],
+        "cross": "Right Angle Cross (28/27 | 31/41)"
+      },
+      "resonance": {
+        "archetype": "The Crypt",
+        "secondary": "The Nest",
+        "score": 62,
+        "evidence": [
+          "Scorpio Sun",
+          "Life Path 6",
+          "Generator",
+          "Virgo Rising"
+        ],
+        "topTraits": [
+          "shadow:87",
+          "transformation:87",
+          "intensity:82",
+          "embodiment:81"
+        ],
+        "animal": "Crocodile",
+        "animalTier": "attested",
+        "deity": "Tlaloc",
+        "deityTier": "open",
+        "character": "Frankenstein's Creature",
+        "signature": "CRYP-NEST-depth72-drive61-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Crypt",
+      "secondary": "The Nest",
+      "score": 62,
+      "evidence": [
+        "Scorpio Sun",
+        "Life Path 6",
+        "Generator",
+        "Virgo Rising"
+      ],
+      "topTraits": [
+        "shadow:87",
+        "transformation:87",
+        "intensity:82",
+        "embodiment:81"
+      ],
+      "animal": "Crocodile",
+      "animalTier": "attested",
+      "deity": "Tlaloc",
+      "deityTier": "open",
+      "character": "Frankenstein's Creature",
+      "signature": "CRYP-NEST-depth72-drive61-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P03",
+    "name": "Zainab Al-Farsi",
+    "date": "1993-02-18",
+    "time": "23:50",
+    "place": "Dubai, UAE",
+    "lat": 25.2048,
+    "lon": 55.2708,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Pis",
+        "moon": "Aqu",
+        "rising": "Sco"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Pis",
+          "deg": 0.18,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Aqu",
+          "deg": 0.38,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Pis",
+          "deg": 17.93,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Ari",
+          "deg": 12.71,
+          "house": 5,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Can",
+          "deg": 8.75,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Lib",
+          "deg": 14.01,
+          "house": 11,
+          "retro": true
+        },
+        {
+          "name": "Saturn",
+          "sign": "Aqu",
+          "deg": 22.03,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Cap",
+          "deg": 20.43,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 20.11,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 25.51,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Leo",
+          "deg": 17.72,
+          "house": 9,
+          "retro": true
+        },
+        {
+          "name": "North Node",
+          "sign": "Sag",
+          "deg": 17.84,
+          "house": 2,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Gem",
+          "deg": 17.84,
+          "house": 8,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Pis",
+          "deg": 13.99,
+          "house": 4,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Sco",
+          "deg": 15.94
+        },
+        {
+          "n": 2,
+          "sign": "Sag",
+          "deg": 15.27
+        },
+        {
+          "n": 3,
+          "sign": "Cap",
+          "deg": 16.43
+        },
+        {
+          "n": 4,
+          "sign": "Aqu",
+          "deg": 19.13
+        },
+        {
+          "n": 5,
+          "sign": "Pis",
+          "deg": 21.38
+        },
+        {
+          "n": 6,
+          "sign": "Ari",
+          "deg": 20.58
+        },
+        {
+          "n": 7,
+          "sign": "Tau",
+          "deg": 15.94
+        },
+        {
+          "n": 8,
+          "sign": "Gem",
+          "deg": 15.27
+        },
+        {
+          "n": 9,
+          "sign": "Can",
+          "deg": 16.43
+        },
+        {
+          "n": 10,
+          "sign": "Leo",
+          "deg": 19.13
+        },
+        {
+          "n": 11,
+          "sign": "Vir",
+          "deg": 21.38
+        },
+        {
+          "n": 12,
+          "sign": "Lib",
+          "deg": 20.58
+        }
+      ],
+      "mc": {
+        "sign": "Leo",
+        "deg": 19.13
+      },
+      "numerology": {
+        "lifePath": 33,
+        "expression": 11,
+        "soulUrge": 22,
+        "personality": 7,
+        "birthday": 9,
+        "maturity": 8,
+        "masters": [
+          33,
+          11,
+          22
+        ],
+        "karmics": []
+      },
+      "hd": {
+        "type": "Manifesting Generator",
+        "authority": "Emotional",
+        "profile": "1/3",
+        "definition": "Split Definition",
+        "centers": [
+          "throat",
+          "heart",
+          "sacral",
+          "solarPlexus",
+          "root"
+        ],
+        "channels": [
+          "19-49",
+          "20-34",
+          "21-45"
+        ],
+        "cross": "Right Angle Cross (55/59 | 34/20)"
+      },
+      "resonance": {
+        "archetype": "The Spiral",
+        "secondary": "The Lens",
+        "score": 41,
+        "evidence": [
+          "Pisces Sun",
+          "Manifesting Generator",
+          "Life Path 33",
+          "Scorpio Rising"
+        ],
+        "topTraits": [
+          "transcendence:86",
+          "memory:77",
+          "care:76",
+          "intensity:74"
+        ],
+        "animal": "Nightingale",
+        "animalTier": "attested",
+        "deity": "Ganga",
+        "deityTier": "living-open",
+        "character": "Sydney Carton",
+        "signature": "SPIR-LENS-mind66-depth59-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Spiral",
+      "secondary": "The Lens",
+      "score": 41,
+      "evidence": [
+        "Pisces Sun",
+        "Manifesting Generator",
+        "Life Path 33",
+        "Scorpio Rising"
+      ],
+      "topTraits": [
+        "transcendence:86",
+        "memory:77",
+        "care:76",
+        "intensity:74"
+      ],
+      "animal": "Nightingale",
+      "animalTier": "attested",
+      "deity": "Ganga",
+      "deityTier": "living-open",
+      "character": "Sydney Carton",
+      "signature": "SPIR-LENS-mind66-depth59-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P04",
+    "name": "Freya Þórsdóttir",
+    "date": "1998-12-21",
+    "time": "03:10",
+    "place": "Reykjavík, Iceland",
+    "lat": 64.1466,
+    "lon": -21.9426,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Sag",
+        "moon": "Cap",
+        "rising": "Lib"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Sag",
+          "deg": 29.03,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Cap",
+          "deg": 24.11,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Sag",
+          "deg": 7.52,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Cap",
+          "deg": 11.75,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Lib",
+          "deg": 12.86,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Pis",
+          "deg": 20.5,
+          "house": 5,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Ari",
+          "deg": 26.83,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "Uranus",
+          "sign": "Aqu",
+          "deg": 10.41,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Aqu",
+          "deg": 0.68,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sag",
+          "deg": 8.72,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Sco",
+          "deg": 23.39,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Leo",
+          "deg": 24.97,
+          "house": 10,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Aqu",
+          "deg": 24.97,
+          "house": 4,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Sco",
+          "deg": 11.42,
+          "house": 2,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Lib",
+          "deg": 14.38
+        },
+        {
+          "n": 2,
+          "sign": "Sco",
+          "deg": 7
+        },
+        {
+          "n": 3,
+          "sign": "Sag",
+          "deg": 8.39
+        },
+        {
+          "n": 4,
+          "sign": "Cap",
+          "deg": 23.21
+        },
+        {
+          "n": 5,
+          "sign": "Pis",
+          "deg": 0.99
+        },
+        {
+          "n": 6,
+          "sign": "Pis",
+          "deg": 26.62
+        },
+        {
+          "n": 7,
+          "sign": "Ari",
+          "deg": 14.38
+        },
+        {
+          "n": 8,
+          "sign": "Tau",
+          "deg": 7
+        },
+        {
+          "n": 9,
+          "sign": "Gem",
+          "deg": 8.39
+        },
+        {
+          "n": 10,
+          "sign": "Can",
+          "deg": 23.21
+        },
+        {
+          "n": 11,
+          "sign": "Vir",
+          "deg": 0.99
+        },
+        {
+          "n": 12,
+          "sign": "Vir",
+          "deg": 26.62
+        }
+      ],
+      "mc": {
+        "sign": "Can",
+        "deg": 23.21
+      },
+      "numerology": {
+        "lifePath": 6,
+        "expression": 5,
+        "soulUrge": 9,
+        "personality": 5,
+        "birthday": 3,
+        "maturity": 11,
+        "masters": [
+          11
+        ],
+        "karmics": [
+          14
+        ]
+      },
+      "hd": {
+        "type": "Generator",
+        "authority": "Sacral",
+        "profile": "1/3",
+        "definition": "Single Definition",
+        "centers": [
+          "g",
+          "sacral",
+          "root"
+        ],
+        "channels": [
+          "3-60",
+          "10-34",
+          "29-46"
+        ],
+        "cross": "Right Angle Cross (10/15 | 46/25)"
+      },
+      "resonance": {
+        "archetype": "The Waystone",
+        "secondary": "The Tangle",
+        "score": 42,
+        "evidence": [
+          "Sagittarius Sun",
+          "Life Path 6",
+          "Generator",
+          "Capricorn Moon"
+        ],
+        "topTraits": [
+          "adaptability:76",
+          "embodiment:74",
+          "loyalty:68",
+          "endurance:65"
+        ],
+        "animal": "Otter",
+        "animalTier": "attested",
+        "deity": "Hapi",
+        "deityTier": "open",
+        "character": "Sancho Panza",
+        "signature": "WAYS-TANG-form55-bond53-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Waystone",
+      "secondary": "The Tangle",
+      "score": 42,
+      "evidence": [
+        "Sagittarius Sun",
+        "Life Path 6",
+        "Generator",
+        "Capricorn Moon"
+      ],
+      "topTraits": [
+        "adaptability:76",
+        "embodiment:74",
+        "loyalty:68",
+        "endurance:65"
+      ],
+      "animal": "Otter",
+      "animalTier": "attested",
+      "deity": "Hapi",
+      "deityTier": "open",
+      "character": "Sancho Panza",
+      "signature": "WAYS-TANG-form55-bond53-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P05",
+    "name": "Kwame Mensah",
+    "date": "1979-12-31",
+    "time": "23:55",
+    "place": "Accra, Ghana",
+    "lat": 5.6037,
+    "lon": -0.187,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Cap",
+        "moon": "Gem",
+        "rising": "Vir"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Cap",
+          "deg": 9.67,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Gem",
+          "deg": 22.56,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Sag",
+          "deg": 27.89,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Aqu",
+          "deg": 11.34,
+          "house": 5,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Vir",
+          "deg": 13.96,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Vir",
+          "deg": 10.2,
+          "house": 12,
+          "retro": true
+        },
+        {
+          "name": "Saturn",
+          "sign": "Vir",
+          "deg": 26.98,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Sco",
+          "deg": 24.04,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Sag",
+          "deg": 20.92,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Lib",
+          "deg": 21.61,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Tau",
+          "deg": 8.02,
+          "house": 8,
+          "retro": true
+        },
+        {
+          "name": "North Node",
+          "sign": "Vir",
+          "deg": 1.9,
+          "house": 12,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Pis",
+          "deg": 1.9,
+          "house": 6,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Vir",
+          "deg": 19.49,
+          "house": 12,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Vir",
+          "deg": 23.03
+        },
+        {
+          "n": 2,
+          "sign": "Lib",
+          "deg": 24.52
+        },
+        {
+          "n": 3,
+          "sign": "Sco",
+          "deg": 25.04
+        },
+        {
+          "n": 4,
+          "sign": "Sag",
+          "deg": 23.88
+        },
+        {
+          "n": 5,
+          "sign": "Cap",
+          "deg": 22.29
+        },
+        {
+          "n": 6,
+          "sign": "Aqu",
+          "deg": 21.91
+        },
+        {
+          "n": 7,
+          "sign": "Pis",
+          "deg": 23.03
+        },
+        {
+          "n": 8,
+          "sign": "Ari",
+          "deg": 24.52
+        },
+        {
+          "n": 9,
+          "sign": "Tau",
+          "deg": 25.04
+        },
+        {
+          "n": 10,
+          "sign": "Gem",
+          "deg": 23.88
+        },
+        {
+          "n": 11,
+          "sign": "Can",
+          "deg": 22.29
+        },
+        {
+          "n": 12,
+          "sign": "Leo",
+          "deg": 21.91
+        }
+      ],
+      "mc": {
+        "sign": "Gem",
+        "deg": 23.88
+      },
+      "numerology": {
+        "lifePath": 6,
+        "expression": 5,
+        "soulUrge": 3,
+        "personality": 2,
+        "birthday": 4,
+        "maturity": 11,
+        "masters": [
+          11
+        ],
+        "karmics": []
+      },
+      "hd": {
+        "type": "Manifesting Generator",
+        "authority": "Emotional",
+        "profile": "1/3",
+        "definition": "Split Definition",
+        "centers": [
+          "head",
+          "ajna",
+          "throat",
+          "heart",
+          "sacral",
+          "solarPlexus",
+          "root"
+        ],
+        "channels": [
+          "6-59",
+          "21-45",
+          "37-40",
+          "39-55",
+          "47-64"
+        ],
+        "cross": "Right Angle Cross (38/39 | 48/21)"
+      },
+      "resonance": {
+        "archetype": "The Scrap",
+        "secondary": "The Thaw",
+        "score": 55,
+        "evidence": [
+          "Capricorn Sun",
+          "Life Path 6",
+          "Manifesting Generator",
+          "Virgo Rising"
+        ],
+        "topTraits": [
+          "adaptability:79",
+          "order:73",
+          "analysis:72",
+          "craft:68"
+        ],
+        "animal": "Chameleon",
+        "animalTier": "widely-shared",
+        "deity": "Enki",
+        "deityTier": "open",
+        "character": "Gulliver",
+        "signature": "SCRA-THAW-form59-mind56-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Scrap",
+      "secondary": "The Thaw",
+      "score": 55,
+      "evidence": [
+        "Capricorn Sun",
+        "Life Path 6",
+        "Manifesting Generator",
+        "Virgo Rising"
+      ],
+      "topTraits": [
+        "adaptability:79",
+        "order:73",
+        "analysis:72",
+        "craft:68"
+      ],
+      "animal": "Chameleon",
+      "animalTier": "widely-shared",
+      "deity": "Enki",
+      "deityTier": "open",
+      "character": "Gulliver",
+      "signature": "SCRA-THAW-form59-mind56-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P06",
+    "name": "Mia Nakamura",
+    "date": "2000-02-29",
+    "time": "12:00",
+    "place": "Tokyo, Japan",
+    "lat": 35.6762,
+    "lon": 139.6503,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Pis",
+        "moon": "Cap",
+        "rising": "Can"
+      },
+      "risingCusp": {
+        "current": "Can",
+        "alternate": "Gem",
+        "position": 0.94,
+        "message": "Your rising sign is right on the Gem/Can cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that."
+      },
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Pis",
+          "deg": 9.83,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Cap",
+          "deg": 1.11,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Pis",
+          "deg": 12.88,
+          "house": 10,
+          "retro": true
+        },
+        {
+          "name": "Venus",
+          "sign": "Aqu",
+          "deg": 13.49,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Ari",
+          "deg": 12.94,
+          "house": 10,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Tau",
+          "deg": 2.51,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Tau",
+          "deg": 12.34,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Aqu",
+          "deg": 18.1,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Aqu",
+          "deg": 5.34,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sag",
+          "deg": 12.83,
+          "house": 6,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Sag",
+          "deg": 11.83,
+          "house": 6,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Leo",
+          "deg": 1.94,
+          "house": 2,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Aqu",
+          "deg": 1.94,
+          "house": 8,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Sag",
+          "deg": 29.88,
+          "house": 6,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Can",
+          "deg": 0.94
+        },
+        {
+          "n": 2,
+          "sign": "Can",
+          "deg": 22.14
+        },
+        {
+          "n": 3,
+          "sign": "Leo",
+          "deg": 14.52
+        },
+        {
+          "n": 4,
+          "sign": "Vir",
+          "deg": 11.46
+        },
+        {
+          "n": 5,
+          "sign": "Lib",
+          "deg": 15.6
+        },
+        {
+          "n": 6,
+          "sign": "Sco",
+          "deg": 24.77
+        },
+        {
+          "n": 7,
+          "sign": "Cap",
+          "deg": 0.94
+        },
+        {
+          "n": 8,
+          "sign": "Cap",
+          "deg": 22.14
+        },
+        {
+          "n": 9,
+          "sign": "Aqu",
+          "deg": 14.52
+        },
+        {
+          "n": 10,
+          "sign": "Pis",
+          "deg": 11.46
+        },
+        {
+          "n": 11,
+          "sign": "Ari",
+          "deg": 15.6
+        },
+        {
+          "n": 12,
+          "sign": "Tau",
+          "deg": 24.77
+        }
+      ],
+      "mc": {
+        "sign": "Pis",
+        "deg": 11.46
+      },
+      "numerology": {
+        "lifePath": 6,
+        "expression": 4,
+        "soulUrge": 7,
+        "personality": 6,
+        "birthday": 11,
+        "maturity": 1,
+        "masters": [
+          11
+        ],
+        "karmics": [
+          16
+        ]
+      },
+      "hd": {
+        "type": "Generator",
+        "authority": "Emotional",
+        "profile": "5/1",
+        "definition": "Split Definition",
+        "centers": [
+          "heart",
+          "sacral",
+          "solarPlexus",
+          "spleen"
+        ],
+        "channels": [
+          "27-50",
+          "37-40"
+        ],
+        "cross": "Left Angle Cross (37/40 | 5/35)"
+      },
+      "resonance": {
+        "archetype": "The Loom",
+        "secondary": "The Marrow",
+        "score": 57,
+        "evidence": [
+          "Pisces Sun",
+          "Life Path 6",
+          "Generator",
+          "Capricorn Moon"
+        ],
+        "topTraits": [
+          "care:74",
+          "endurance:72",
+          "loyalty:71",
+          "transcendence:71"
+        ],
+        "animal": "Vulture",
+        "animalTier": "attested",
+        "deity": "Saulė",
+        "deityTier": "open",
+        "character": "Sonya",
+        "signature": "LOOM-MARR-bond58-depth52-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Loom",
+      "secondary": "The Marrow",
+      "score": 57,
+      "evidence": [
+        "Pisces Sun",
+        "Life Path 6",
+        "Generator",
+        "Capricorn Moon"
+      ],
+      "topTraits": [
+        "care:74",
+        "endurance:72",
+        "loyalty:71",
+        "transcendence:71"
+      ],
+      "animal": "Vulture",
+      "animalTier": "attested",
+      "deity": "Saulė",
+      "deityTier": "open",
+      "character": "Sonya",
+      "signature": "LOOM-MARR-bond58-depth52-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P07",
+    "name": "Lucas Silva",
+    "date": "1988-02-05",
+    "time": "21:40",
+    "place": "São Paulo, Brazil",
+    "lat": -23.5505,
+    "lon": -46.6333,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Aqu",
+        "moon": "Vir",
+        "rising": "Vir"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Aqu",
+          "deg": 16.39,
+          "house": 5,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Vir",
+          "deg": 20.1,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Aqu",
+          "deg": 26.79,
+          "house": 6,
+          "retro": true
+        },
+        {
+          "name": "Venus",
+          "sign": "Pis",
+          "deg": 25.76,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Sag",
+          "deg": 18.94,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Ari",
+          "deg": 24.16,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Sag",
+          "deg": 29.29,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Sag",
+          "deg": 29.61,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 9.07,
+          "house": 4,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 12.56,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Gem",
+          "deg": 20.09,
+          "house": 9,
+          "retro": true
+        },
+        {
+          "name": "North Node",
+          "sign": "Pis",
+          "deg": 25.26,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Vir",
+          "deg": 25.26,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Leo",
+          "deg": 19.02,
+          "house": 12,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Vir",
+          "deg": 21.56
+        },
+        {
+          "n": 2,
+          "sign": "Lib",
+          "deg": 29.04
+        },
+        {
+          "n": 3,
+          "sign": "Sco",
+          "deg": 28.97
+        },
+        {
+          "n": 4,
+          "sign": "Sag",
+          "deg": 24.23
+        },
+        {
+          "n": 5,
+          "sign": "Cap",
+          "deg": 18.75
+        },
+        {
+          "n": 6,
+          "sign": "Aqu",
+          "deg": 16.5
+        },
+        {
+          "n": 7,
+          "sign": "Pis",
+          "deg": 21.56
+        },
+        {
+          "n": 8,
+          "sign": "Ari",
+          "deg": 29.04
+        },
+        {
+          "n": 9,
+          "sign": "Tau",
+          "deg": 28.97
+        },
+        {
+          "n": 10,
+          "sign": "Gem",
+          "deg": 24.23
+        },
+        {
+          "n": 11,
+          "sign": "Can",
+          "deg": 18.75
+        },
+        {
+          "n": 12,
+          "sign": "Leo",
+          "deg": 16.5
+        }
+      ],
+      "mc": {
+        "sign": "Gem",
+        "deg": 24.23
+      },
+      "numerology": {
+        "lifePath": 6,
+        "expression": 2,
+        "soulUrge": 5,
+        "personality": 6,
+        "birthday": 5,
+        "maturity": 8,
+        "masters": [],
+        "karmics": [
+          14
+        ]
+      },
+      "hd": {
+        "type": "Projector",
+        "authority": "Splenic",
+        "profile": "4/6",
+        "definition": "Single Definition",
+        "centers": [
+          "heart",
+          "spleen"
+        ],
+        "channels": [
+          "26-44"
+        ],
+        "cross": "Right Angle Cross (13/7 | 1/2)"
+      },
+      "resonance": {
+        "archetype": "The Web",
+        "secondary": "The Mask",
+        "score": 62,
+        "evidence": [
+          "Aquarius Sun",
+          "Projector",
+          "Life Path 6",
+          "Expression 2"
+        ],
+        "topTraits": [
+          "intuition:82",
+          "loyalty:81",
+          "analysis:78",
+          "care:77"
+        ],
+        "animal": "Owl",
+        "animalTier": "attested",
+        "deity": "Enki",
+        "deityTier": "open",
+        "character": "The Scarecrow",
+        "signature": "WEB-MASK-mind67-bond67-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Web",
+      "secondary": "The Mask",
+      "score": 62,
+      "evidence": [
+        "Aquarius Sun",
+        "Projector",
+        "Life Path 6",
+        "Expression 2"
+      ],
+      "topTraits": [
+        "intuition:82",
+        "loyalty:81",
+        "analysis:78",
+        "care:77"
+      ],
+      "animal": "Owl",
+      "animalTier": "attested",
+      "deity": "Enki",
+      "deityTier": "open",
+      "character": "The Scarecrow",
+      "signature": "WEB-MASK-mind67-bond67-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P08",
+    "name": "Priya Nair",
+    "date": "1995-09-05",
+    "time": "18:20",
+    "place": "Mumbai, India",
+    "lat": 19.076,
+    "lon": 72.8777,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Vir",
+        "moon": "Cap",
+        "rising": "Pis"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Vir",
+          "deg": 12.5,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Cap",
+          "deg": 24.62,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Lib",
+          "deg": 9.12,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Vir",
+          "deg": 16.74,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Lib",
+          "deg": 28.84,
+          "house": 8,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Sag",
+          "deg": 7.23,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Pis",
+          "deg": 22.03,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Uranus",
+          "sign": "Cap",
+          "deg": 26.91,
+          "house": 11,
+          "retro": true
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 23.01,
+          "house": 11,
+          "retro": true
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 28.03,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Vir",
+          "deg": 25.37,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Lib",
+          "deg": 28.66,
+          "house": 8,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Ari",
+          "deg": 28.66,
+          "house": 2,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Gem",
+          "deg": 27.45,
+          "house": 4,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Pis",
+          "deg": 4.16
+        },
+        {
+          "n": 2,
+          "sign": "Ari",
+          "deg": 11.52
+        },
+        {
+          "n": 3,
+          "sign": "Tau",
+          "deg": 13.89
+        },
+        {
+          "n": 4,
+          "sign": "Gem",
+          "deg": 11.1
+        },
+        {
+          "n": 5,
+          "sign": "Can",
+          "deg": 6.13
+        },
+        {
+          "n": 6,
+          "sign": "Leo",
+          "deg": 2.55
+        },
+        {
+          "n": 7,
+          "sign": "Vir",
+          "deg": 4.16
+        },
+        {
+          "n": 8,
+          "sign": "Lib",
+          "deg": 11.52
+        },
+        {
+          "n": 9,
+          "sign": "Sco",
+          "deg": 13.89
+        },
+        {
+          "n": 10,
+          "sign": "Sag",
+          "deg": 11.1
+        },
+        {
+          "n": 11,
+          "sign": "Cap",
+          "deg": 6.13
+        },
+        {
+          "n": 12,
+          "sign": "Aqu",
+          "deg": 2.55
+        }
+      ],
+      "mc": {
+        "sign": "Sag",
+        "deg": 11.1
+      },
+      "numerology": {
+        "lifePath": 2,
+        "expression": 3,
+        "soulUrge": 2,
+        "personality": 1,
+        "birthday": 5,
+        "maturity": 5,
+        "masters": [],
+        "karmics": []
+      },
+      "hd": {
+        "type": "Manifesting Generator",
+        "authority": "Emotional",
+        "profile": "2/4",
+        "definition": "Split Definition",
+        "centers": [
+          "throat",
+          "sacral",
+          "solarPlexus",
+          "spleen",
+          "root"
+        ],
+        "channels": [
+          "3-60",
+          "27-50",
+          "35-36"
+        ],
+        "cross": "Right Angle Cross (64/63 | 35/5)"
+      },
+      "resonance": {
+        "archetype": "The Stitch",
+        "secondary": "The Library",
+        "score": 65,
+        "evidence": [
+          "Life Path 2",
+          "Virgo Sun",
+          "Manifesting Generator",
+          "Capricorn Moon"
+        ],
+        "topTraits": [
+          "care:84",
+          "loyalty:79",
+          "magnetism:78",
+          "stillness:73"
+        ],
+        "animal": "Dove",
+        "animalTier": "attested",
+        "deity": "Inari",
+        "deityTier": "living-open",
+        "character": "Éponine",
+        "signature": "STIT-LIBR-bond70-drive50-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Stitch",
+      "secondary": "The Library",
+      "score": 65,
+      "evidence": [
+        "Life Path 2",
+        "Virgo Sun",
+        "Manifesting Generator",
+        "Capricorn Moon"
+      ],
+      "topTraits": [
+        "care:84",
+        "loyalty:79",
+        "magnetism:78",
+        "stillness:73"
+      ],
+      "animal": "Dove",
+      "animalTier": "attested",
+      "deity": "Inari",
+      "deityTier": "living-open",
+      "character": "Éponine",
+      "signature": "STIT-LIBR-bond70-drive50-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P09",
+    "name": "Sam Rivers",
+    "date": "1992-04-04",
+    "time": "12:00",
+    "place": "Denver, USA",
+    "lat": 39.7392,
+    "lon": -104.9903,
+    "unknownTime": true,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Ari",
+        "moon": "Tau",
+        "rising": ""
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Ari",
+          "deg": 15.26,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Tau",
+          "deg": 4.2,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Pis",
+          "deg": 29.65,
+          "house": null,
+          "retro": true
+        },
+        {
+          "name": "Venus",
+          "sign": "Pis",
+          "deg": 26.9,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Pis",
+          "deg": 5.97,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Vir",
+          "deg": 5.66,
+          "house": null,
+          "retro": true
+        },
+        {
+          "name": "Saturn",
+          "sign": "Aqu",
+          "deg": 16.23,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Cap",
+          "deg": 17.89,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 18.89,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 22.52,
+          "house": null,
+          "retro": true
+        },
+        {
+          "name": "Chiron",
+          "sign": "Leo",
+          "deg": 1.93,
+          "house": null,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Cap",
+          "deg": 4.78,
+          "house": null,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Can",
+          "deg": 4.78,
+          "house": null,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Aqu",
+          "deg": 8.34,
+          "house": null,
+          "retro": false
+        }
+      ],
+      "houses": [],
+      "mc": null,
+      "numerology": {
+        "lifePath": 11,
+        "expression": 7,
+        "soulUrge": 6,
+        "personality": 1,
+        "birthday": 4,
+        "maturity": 9,
+        "masters": [
+          11
+        ],
+        "karmics": []
+      },
+      "hd": null,
+      "resonance": {
+        "archetype": "The Altar",
+        "secondary": "The Dawn",
+        "score": 6,
+        "evidence": [
+          "Aries Sun",
+          "Life Path 11",
+          "Taurus Moon",
+          "Expression 7"
+        ],
+        "topTraits": [
+          "transcendence:81",
+          "intuition:64",
+          "disruption:47",
+          "concealment:43"
+        ],
+        "animal": "Vulture",
+        "animalTier": "attested",
+        "deity": "Shiva",
+        "deityTier": "living-open",
+        "character": "Cassandra",
+        "signature": "ALTA-DAWN-mind43-depth43-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Altar",
+      "secondary": "The Dawn",
+      "score": 6,
+      "evidence": [
+        "Aries Sun",
+        "Life Path 11",
+        "Taurus Moon",
+        "Expression 7"
+      ],
+      "topTraits": [
+        "transcendence:81",
+        "intuition:64",
+        "disruption:47",
+        "concealment:43"
+      ],
+      "animal": "Vulture",
+      "animalTier": "attested",
+      "deity": "Shiva",
+      "deityTier": "living-open",
+      "character": "Cassandra",
+      "signature": "ALTA-DAWN-mind43-depth43-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P10",
+    "name": "Noor Haddad",
+    "date": "1990-06-13",
+    "time": "08:15",
+    "place": "Beirut, Lebanon",
+    "lat": 33.8938,
+    "lon": 35.5018,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Gem",
+        "moon": "Aqu",
+        "rising": "Can"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Gem",
+          "deg": 21.95,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Aqu",
+          "deg": 15.71,
+          "house": 7,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Gem",
+          "deg": 1.9,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Tau",
+          "deg": 16.1,
+          "house": 10,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Ari",
+          "deg": 9.4,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Can",
+          "deg": 15.4,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Cap",
+          "deg": 24.16,
+          "house": 6,
+          "retro": true
+        },
+        {
+          "name": "Uranus",
+          "sign": "Cap",
+          "deg": 8.25,
+          "house": 6,
+          "retro": true
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 13.77,
+          "house": 6,
+          "retro": true
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sco",
+          "deg": 15.45,
+          "house": 4,
+          "retro": true
+        },
+        {
+          "name": "Chiron",
+          "sign": "Can",
+          "deg": 12.29,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Aqu",
+          "deg": 9.82,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Leo",
+          "deg": 9.82,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Sco",
+          "deg": 24.63,
+          "house": 5,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Can",
+          "deg": 28.01
+        },
+        {
+          "n": 2,
+          "sign": "Leo",
+          "deg": 19.93
+        },
+        {
+          "n": 3,
+          "sign": "Vir",
+          "deg": 15.64
+        },
+        {
+          "n": 4,
+          "sign": "Lib",
+          "deg": 16.83
+        },
+        {
+          "n": 5,
+          "sign": "Sco",
+          "deg": 22.21
+        },
+        {
+          "n": 6,
+          "sign": "Sag",
+          "deg": 27.05
+        },
+        {
+          "n": 7,
+          "sign": "Cap",
+          "deg": 28.01
+        },
+        {
+          "n": 8,
+          "sign": "Aqu",
+          "deg": 19.93
+        },
+        {
+          "n": 9,
+          "sign": "Pis",
+          "deg": 15.64
+        },
+        {
+          "n": 10,
+          "sign": "Ari",
+          "deg": 16.83
+        },
+        {
+          "n": 11,
+          "sign": "Tau",
+          "deg": 22.21
+        },
+        {
+          "n": 12,
+          "sign": "Gem",
+          "deg": 27.05
+        }
+      ],
+      "mc": {
+        "sign": "Ari",
+        "deg": 16.83
+      },
+      "numerology": {
+        "lifePath": 11,
+        "expression": 3,
+        "soulUrge": 5,
+        "personality": 7,
+        "birthday": 4,
+        "maturity": 5,
+        "masters": [
+          11
+        ],
+        "karmics": [
+          14,
+          13
+        ]
+      },
+      "hd": {
+        "type": "Projector",
+        "authority": "Self-Projected",
+        "profile": "6/2",
+        "definition": "Single Definition",
+        "centers": [
+          "throat",
+          "g"
+        ],
+        "channels": [
+          "13-33"
+        ],
+        "cross": "Left Angle Cross (45/26 | 36/6)"
+      },
+      "resonance": {
+        "archetype": "The Lens",
+        "secondary": "The Cuckoo",
+        "score": 60,
+        "evidence": [
+          "Projector",
+          "Gemini Sun",
+          "Life Path 11",
+          "Cancer Rising"
+        ],
+        "topTraits": [
+          "vision:91",
+          "intuition:77",
+          "disruption:76",
+          "autonomy:70"
+        ],
+        "animal": "Owl",
+        "animalTier": "attested",
+        "deity": "Laima",
+        "deityTier": "open",
+        "character": "Cassandra",
+        "signature": "LENS-CUCK-mind72-bond53-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Lens",
+      "secondary": "The Cuckoo",
+      "score": 60,
+      "evidence": [
+        "Projector",
+        "Gemini Sun",
+        "Life Path 11",
+        "Cancer Rising"
+      ],
+      "topTraits": [
+        "vision:91",
+        "intuition:77",
+        "disruption:76",
+        "autonomy:70"
+      ],
+      "animal": "Owl",
+      "animalTier": "attested",
+      "deity": "Laima",
+      "deityTier": "open",
+      "character": "Cassandra",
+      "signature": "LENS-CUCK-mind72-bond53-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P11",
+    "name": "Elena Petrova",
+    "date": "1970-06-13",
+    "time": "10:05",
+    "place": "Moscow, USSR",
+    "lat": 55.7558,
+    "lon": 37.6173,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Gem",
+        "moon": "Lib",
+        "rising": "Vir"
+      },
+      "risingCusp": {
+        "current": "Vir",
+        "alternate": "Leo",
+        "position": 0.2,
+        "message": "Your rising sign is right on the Leo/Vir cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that."
+      },
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Gem",
+          "deg": 21.86,
+          "house": 10,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Lib",
+          "deg": 4.38,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Tau",
+          "deg": 29.67,
+          "house": 10,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Can",
+          "deg": 25.92,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Can",
+          "deg": 7.26,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Lib",
+          "deg": 26.22,
+          "house": 3,
+          "retro": true
+        },
+        {
+          "name": "Saturn",
+          "sign": "Tau",
+          "deg": 17.23,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Lib",
+          "deg": 4.66,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Sco",
+          "deg": 28.91,
+          "house": 4,
+          "retro": true
+        },
+        {
+          "name": "Pluto",
+          "sign": "Vir",
+          "deg": 24.7,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Chiron",
+          "sign": "Ari",
+          "deg": 15.5,
+          "house": 9,
+          "retro": false
+        },
+        {
+          "name": "North Node",
+          "sign": "Pis",
+          "deg": 6.64,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Vir",
+          "deg": 6.64,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Leo",
+          "deg": 20.84,
+          "house": 12,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Vir",
+          "deg": 0.2
+        },
+        {
+          "n": 2,
+          "sign": "Vir",
+          "deg": 18.57
+        },
+        {
+          "n": 3,
+          "sign": "Lib",
+          "deg": 13.5
+        },
+        {
+          "n": 4,
+          "sign": "Sco",
+          "deg": 17.51
+        },
+        {
+          "n": 5,
+          "sign": "Sag",
+          "deg": 28.38
+        },
+        {
+          "n": 6,
+          "sign": "Aqu",
+          "deg": 3.48
+        },
+        {
+          "n": 7,
+          "sign": "Pis",
+          "deg": 0.2
+        },
+        {
+          "n": 8,
+          "sign": "Pis",
+          "deg": 18.57
+        },
+        {
+          "n": 9,
+          "sign": "Ari",
+          "deg": 13.5
+        },
+        {
+          "n": 10,
+          "sign": "Tau",
+          "deg": 17.51
+        },
+        {
+          "n": 11,
+          "sign": "Gem",
+          "deg": 28.38
+        },
+        {
+          "n": 12,
+          "sign": "Leo",
+          "deg": 3.48
+        }
+      ],
+      "mc": {
+        "sign": "Tau",
+        "deg": 17.51
+      },
+      "numerology": {
+        "lifePath": 9,
+        "expression": 8,
+        "soulUrge": 5,
+        "personality": 3,
+        "birthday": 4,
+        "maturity": 8,
+        "masters": [],
+        "karmics": [
+          13
+        ]
+      },
+      "hd": {
+        "type": "Generator",
+        "authority": "Emotional",
+        "profile": "6/2",
+        "definition": "Triple Split Definition",
+        "centers": [
+          "ajna",
+          "throat",
+          "g",
+          "heart",
+          "sacral",
+          "solarPlexus"
+        ],
+        "channels": [
+          "2-14",
+          "17-62",
+          "37-40"
+        ],
+        "cross": "Left Angle Cross (45/26 | 36/6)"
+      },
+      "resonance": {
+        "archetype": "The Mortar",
+        "secondary": "The Sand",
+        "score": 53,
+        "evidence": [
+          "Gemini Sun",
+          "Life Path 9",
+          "Generator",
+          "Virgo Rising"
+        ],
+        "topTraits": [
+          "stillness:76",
+          "embodiment:74",
+          "endurance:64",
+          "vision:64"
+        ],
+        "animal": "Tortoise",
+        "animalTier": "attested",
+        "deity": "Freyr",
+        "deityTier": "open",
+        "character": "Sancho Panza",
+        "signature": "MORT-SAND-form56-bond53-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Mortar",
+      "secondary": "The Sand",
+      "score": 53,
+      "evidence": [
+        "Gemini Sun",
+        "Life Path 9",
+        "Generator",
+        "Virgo Rising"
+      ],
+      "topTraits": [
+        "stillness:76",
+        "embodiment:74",
+        "endurance:64",
+        "vision:64"
+      ],
+      "animal": "Tortoise",
+      "animalTier": "attested",
+      "deity": "Freyr",
+      "deityTier": "open",
+      "character": "Sancho Panza",
+      "signature": "MORT-SAND-form56-bond53-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  },
+  {
+    "id": "P12",
+    "name": "Diego Torres-Vega",
+    "date": "1996-04-19",
+    "time": "05:50",
+    "place": "Mexico City, Mexico",
+    "lat": 19.4326,
+    "lon": -99.1332,
+    "deterministic": true,
+    "live": {
+      "bigThree": {
+        "sun": "Ari",
+        "moon": "Tau",
+        "rising": "Ari"
+      },
+      "risingCusp": null,
+      "placements": [
+        {
+          "name": "Sun",
+          "sign": "Ari",
+          "deg": 29.66,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Moon",
+          "sign": "Tau",
+          "deg": 17.78,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Mercury",
+          "sign": "Tau",
+          "deg": 19.1,
+          "house": 2,
+          "retro": false
+        },
+        {
+          "name": "Venus",
+          "sign": "Gem",
+          "deg": 13.99,
+          "house": 3,
+          "retro": false
+        },
+        {
+          "name": "Mars",
+          "sign": "Ari",
+          "deg": 19.92,
+          "house": 1,
+          "retro": false
+        },
+        {
+          "name": "Jupiter",
+          "sign": "Cap",
+          "deg": 17.3,
+          "house": 10,
+          "retro": false
+        },
+        {
+          "name": "Saturn",
+          "sign": "Ari",
+          "deg": 1.42,
+          "house": 12,
+          "retro": false
+        },
+        {
+          "name": "Uranus",
+          "sign": "Aqu",
+          "deg": 4.43,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Neptune",
+          "sign": "Cap",
+          "deg": 27.73,
+          "house": 11,
+          "retro": false
+        },
+        {
+          "name": "Pluto",
+          "sign": "Sag",
+          "deg": 2.59,
+          "house": 8,
+          "retro": true
+        },
+        {
+          "name": "Chiron",
+          "sign": "Lib",
+          "deg": 5.22,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "North Node",
+          "sign": "Lib",
+          "deg": 16.64,
+          "house": 7,
+          "retro": true
+        },
+        {
+          "name": "South Node",
+          "sign": "Ari",
+          "deg": 16.64,
+          "house": 1,
+          "retro": true
+        },
+        {
+          "name": "Lilith",
+          "sign": "Can",
+          "deg": 22.73,
+          "house": 4,
+          "retro": false
+        }
+      ],
+      "houses": [
+        {
+          "n": 1,
+          "sign": "Ari",
+          "deg": 1.52
+        },
+        {
+          "n": 2,
+          "sign": "Tau",
+          "deg": 6.83
+        },
+        {
+          "n": 3,
+          "sign": "Gem",
+          "deg": 5.72
+        },
+        {
+          "n": 4,
+          "sign": "Can",
+          "deg": 1.09
+        },
+        {
+          "n": 5,
+          "sign": "Can",
+          "deg": 26.59
+        },
+        {
+          "n": 6,
+          "sign": "Leo",
+          "deg": 25.84
+        },
+        {
+          "n": 7,
+          "sign": "Lib",
+          "deg": 1.52
+        },
+        {
+          "n": 8,
+          "sign": "Sco",
+          "deg": 6.83
+        },
+        {
+          "n": 9,
+          "sign": "Sag",
+          "deg": 5.72
+        },
+        {
+          "n": 10,
+          "sign": "Cap",
+          "deg": 1.09
+        },
+        {
+          "n": 11,
+          "sign": "Cap",
+          "deg": 26.59
+        },
+        {
+          "n": 12,
+          "sign": "Aqu",
+          "deg": 25.84
+        }
+      ],
+      "mc": {
+        "sign": "Cap",
+        "deg": 1.09
+      },
+      "numerology": {
+        "lifePath": 3,
+        "expression": 8,
+        "soulUrge": 1,
+        "personality": 7,
+        "birthday": 1,
+        "maturity": 11,
+        "masters": [
+          11
+        ],
+        "karmics": [
+          19
+        ]
+      },
+      "hd": {
+        "type": "Generator",
+        "authority": "Emotional",
+        "profile": "4/6",
+        "definition": "Split Definition",
+        "centers": [
+          "g",
+          "heart",
+          "sacral",
+          "solarPlexus",
+          "spleen",
+          "root"
+        ],
+        "channels": [
+          "3-60",
+          "25-51",
+          "30-41",
+          "32-54",
+          "34-57"
+        ],
+        "cross": "Right Angle Cross (3/50 | 60/56)"
+      },
+      "resonance": {
+        "archetype": "The Hearth",
+        "secondary": "The Throne",
+        "score": 57,
+        "evidence": [
+          "Aries Sun",
+          "Life Path 3",
+          "Generator",
+          "Taurus Moon"
+        ],
+        "topTraits": [
+          "initiative:84",
+          "embodiment:82",
+          "intensity:79",
+          "display:77"
+        ],
+        "animal": "Shark",
+        "animalTier": "modern-popular",
+        "deity": "Raijin",
+        "deityTier": "living-open",
+        "character": "Achilles",
+        "signature": "HEAR-THRO-drive67-voice53-v1"
+      }
+    },
+    "fixedResonance": {
+      "archetype": "The Hearth",
+      "secondary": "The Throne",
+      "score": 57,
+      "evidence": [
+        "Aries Sun",
+        "Life Path 3",
+        "Generator",
+        "Taurus Moon"
+      ],
+      "topTraits": [
+        "initiative:84",
+        "embodiment:82",
+        "intensity:79",
+        "display:77"
+      ],
+      "animal": "Shark",
+      "animalTier": "modern-popular",
+      "deity": "Raijin",
+      "deityTier": "living-open",
+      "character": "Achilles",
+      "signature": "HEAR-THRO-drive67-voice53-v1"
+    },
+    "resonanceChangesWhenSignsFixed": false
+  }
+]

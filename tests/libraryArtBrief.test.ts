@@ -59,3 +59,56 @@ test("the brief's headline entry count matches the code", () => {
   assert.equal(withArt, actualWith, `brief says ${withArt} with art, code has ${actualWith}`);
   assert.equal(needs, actualTotal - actualWith, "brief's needs-art column doesn't add up");
 });
+
+/**
+ * The flat list handed to whoever actually draws the plates. Same contract as
+ * the brief — the filenames are entry ids — but it also names files that are
+ * deliberately NOT entries (domain covers, lesson backdrops, element emblems),
+ * so those prefixes are excluded rather than the whole file being untested.
+ */
+const LIST = "Mapped_Learn_Image_List.md";
+const NON_ENTRY = /^(cover|explore|element)-/;
+
+function listedPlates(): string[] {
+  const md = readFileSync(LIST, "utf8");
+  const named = [...md.matchAll(/`([a-z0-9][a-z0-9-]*)\.png`/g)].map((m) => m[1]);
+  return [...new Set(named)];
+}
+
+test("every entry plate the image list names is a real entry id", () => {
+  const ids = new Set(ALL_REFERENCE.map((e) => e.id));
+  const orphans = listedPlates().filter((n) => !NON_ENTRY.test(n) && !ids.has(n));
+  assert.deepEqual(orphans, [], `\nListed filenames matching no entry id:\n  ${orphans.join("\n  ")}\n`);
+});
+
+test("the image list finishes the closed sets it claims to finish", () => {
+  const listed = new Set(listedPlates());
+  const gaps: string[] = [];
+  for (const re of [/^rune-/, /^planet-/, /^house-/, /^aspect-/]) {
+    for (const e of ALL_REFERENCE) {
+      if (re.test(e.id) && !listed.has(e.id)) gaps.push(e.id);
+    }
+  }
+  assert.deepEqual(gaps, [], `\nClosed sets missing from the image list:\n  ${gaps.join("\n  ")}\n`);
+});
+
+test("the image list's headline counts match the code", () => {
+  const md = readFileSync(LIST, "utf8");
+  const m = /\*\*(\d{3,4})\s+reference entries,\s+(\d+)\s+with art/.exec(md);
+  assert.ok(m, "no headline count sentence found in the image list");
+  assert.equal(Number(m[1]), ALL_REFERENCE.length);
+  assert.equal(Number(m[2]), ALL_REFERENCE.filter((e) => e.image).length);
+});
+
+test("the image list's file total matches the number of files it actually names", () => {
+  const md = readFileSync(LIST, "utf8");
+  const m = /\*\*(\d+) files\.\*\*/.exec(md);
+  assert.ok(m, "no headline file total found in the image list");
+  // Rows are numbered 1..N across the batches; the last number is the total.
+  // The rune table runs two numbered columns per row, so match anywhere in the line.
+  const numbered = [...md.matchAll(/\| (\d+) \| `[a-z0-9-]+\.png`/g)].map((x) => Number(x[1]));
+  assert.equal(numbered.length, Number(m[1]), "numbered rows don't match the stated total");
+  // The rune table numbers down two columns, so document order is not 1..N.
+  const sorted = [...numbered].sort((a, b) => a - b);
+  assert.deepEqual(sorted, sorted.map((_, i) => i + 1), "row numbering has a gap or repeat");
+});
