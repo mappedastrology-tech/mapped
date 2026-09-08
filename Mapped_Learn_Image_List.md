@@ -3,12 +3,12 @@
 Every image the Learn section needs, as a flat checklist. **115 files.**
 Filenames are exact — they are the app's real entry ids, so a correctly-named
 file drops in with no renaming. Counts were read out of the code: **812
-reference entries, 103 with art (78 tarot + 12 zodiac + 13 numerology), 709
-without.**
+reference entries, 112 with art (78 tarot + 12 zodiac + 13 numerology + 9
+chakras), 700 without.**
 
-**Status.** Batch 2 (numerology, 13 files) has been delivered, keyed and
-installed. Two of those thirteen need a redraw — see the note under that batch.
-Everything else on this list is still to draw.
+**Status.** Batch 1 (chakras, 9 files) and Batch 2 (numerology, 13 files) have
+been delivered, keyed and installed. Four of those twenty-two need a redraw —
+see the notes under each batch. Everything else on this list is still to draw.
 
 The reasoning behind each rule lives in `Mapped_Art_Brief_Library.md`. This is
 the list to work from.
@@ -43,7 +43,7 @@ One clear silhouette, strong value contrast, no fine detail.
 
 ---
 
-## Batch 1 — Chakras · 9 files
+## Batch 1 — Chakras · 9 files — **DELIVERED**
 
 Painted **yantra** for each: the lotus with its correct petal count containing
 its correct inner figure. An emblem, never a body or a glowing figure.
@@ -61,6 +61,18 @@ its correct inner figure. An emblem, never a body or a glowing figure.
 | 9 | `chakra-soul-star.png` | a pale sphere of light above an open bloom — white-gold |
 
 Petal counts are fixed. Anyone who knows the system will notice a wrong count.
+
+**Two need a redraw — the petal count is wrong:**
+
+| File | Asked for | Delivered | Fix |
+|---|---|---|---|
+| `chakra-solar-plexus.png` | 10 petals | **11** | Remove one petal and re-space the ring. Nothing else changes. |
+| `chakra-throat.png` | 16 petals | **18** | Remove two petals and re-space the ring. |
+
+Counted by eye and again by tracing the outline and marking every petal tip, so
+each petal is accounted for exactly once. Root 4, sacral 6, heart 12 and third
+eye 2 are all correct, as are the inner figures throughout; crown, earth star
+and soul star are right. The other seven are live in the app now.
 
 ---
 

@@ -29,3 +29,18 @@ test("the numerology plates are exactly the countable numbers", () => {
     "num-4", "num-5", "num-6", "num-7", "num-8", "num-9",
   ]);
 });
+
+test("the chakra plates are exactly the wheels, not the concepts", () => {
+  // A plate here is a yantra (or, for the two transpersonal centres, the thing
+  // the centre describes). "Prana" has no object, so a plate appearing on one
+  // of the five concept entries would mean the set had drifted from the idea.
+  const plated = ALL_REFERENCE
+    .filter((e) => e.domain === "chakras" && e.image)
+    .map((e) => e.id)
+    .sort();
+  assert.deepEqual(plated, [
+    "chakra-crown", "chakra-earth-star", "chakra-heart", "chakra-root",
+    "chakra-sacral", "chakra-solar-plexus", "chakra-soul-star",
+    "chakra-third-eye", "chakra-throat",
+  ]);
+});

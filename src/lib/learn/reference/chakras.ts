@@ -8,8 +8,27 @@ import type { ReferenceEntry } from "../types";
  * higher transpersonal centers.
  */
 
+/**
+ * The chakras that have a painted plate.
+ *
+ * Each plate is that chakra's traditional yantra — the lotus with its own petal
+ * count around its own inner figure — plus the two transpersonal centres, which
+ * have no yantra and are painted as what they describe. The remaining five
+ * entries are concepts rather than wheels (the subtle body, the nadis, prana,
+ * kundalini, the bija mantras); a yantra would misrepresent them, so they stay
+ * on the letter fallback and are deliberately absent here.
+ */
+const PLATED = new Set([
+  "chakra-root", "chakra-sacral", "chakra-solar-plexus", "chakra-heart",
+  "chakra-throat", "chakra-third-eye", "chakra-crown",
+  "chakra-earth-star", "chakra-soul-star",
+]);
+
 function chakra(e: Omit<ReferenceEntry, "domain">): ReferenceEntry {
-  return { domain: "chakras", ...e };
+  // Set here rather than on each entry so the plate and the id cannot drift
+  // apart: the filename IS the id.
+  const image = PLATED.has(e.id) ? `/images/learn/${e.id}.webp` : undefined;
+  return { domain: "chakras", image, ...e };
 }
 
 export const chakraReference: ReferenceEntry[] = [

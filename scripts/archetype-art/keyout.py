@@ -40,6 +40,7 @@ ENCLOSED_MIN_PX = 150        # ignore speckle-sized components
 FLAT_SD = 3.0                # paper is flat; painted white carries texture
 PAPER_BELOW_GROUND = 2.0     # how far under the measured ground still reads as paper
 CHROMA_TOL = 5.0             # the ground is neutral; tinted white is paint
+SURROUND_DROP = 20.0         # a real gap is bounded by paint, and paint is darker
 
 
 def keyout(path):
@@ -82,7 +83,7 @@ def keyout(path):
     # Feather two pixels into the soft painted edge, but only inside the region
     # the flood could reach — so the ramp can never start eating a neighbour.
     cut = bg | (ndimage.binary_dilation(bg, iterations=2) & reach)
-    cut = repair_holes(cut, chroma, gchroma)
+    cut = repair_holes(cut, lum, chroma, gchroma)
 
     alpha = np.full(lum.shape, 255.0, np.float32)
     alpha[cut] = np.clip((HI - lum[cut]) / (HI - LO), 0.0, 1.0) * 255.0
@@ -90,37 +91,55 @@ def keyout(path):
     return Image.fromarray(np.dstack([a, alpha]).astype(np.uint8), "RGBA")
 
 
-def repair_holes(cut, chroma, gchroma):
+def repair_holes(cut, lum, chroma, gchroma):
     """Fill cut regions that the paper cannot actually reach.
 
     Connectivity is measured loosely, at LO, so that white seen THROUGH a
     subject (the cells of a spider's web) is reachable. The cost is that bright
     paint conducts too: a flame's max channel is pinned at 255, so the whole
-    flame joins the paper's component, and any pixel inside it that happens to
-    read pure neutral white — a cream highlight has some — passes the paper test
-    and is cut, with the two-pixel feather widening each one into a visible hole.
-    That is what punched speckles through the flames on num-3 and num-11.
+    flame joins the paper's component, and any pixel inside it that reads as
+    paper — flat, ground-bright, neutral — is cut, with the two-pixel feather
+    widening each one into a visible hole. That punched speckles through the
+    flames on num-3 and num-11, and a hole clean through the middle of the glow
+    on chakra-soul-star.
 
-    A hole is decided by where it is, not how bright it is: a cut region that
-    does not touch the border is only paper if it is NEUTRAL like the ground
-    (the gaps between the dandelion heads on num-9 measure ~0.4 chroma) and big
-    enough to be a gap at all. Tinted means paint, and paint is put back.
+    A hole that never reaches the border is judged by what surrounds it, not by
+    how bright it is. Real paper is bounded by paint, so the ring just outside a
+    genuine gap is markedly darker: the gaps between the dandelion heads on
+    num-9 measure a 43-94 point drop, the stone shards on chakra-earth-star 108.
+    A highlight has no such boundary — it fades into the bright paint around it,
+    2.8 points on the soul star's glow and 8 on the crown's. Twenty sits in the
+    middle of a gap that wide. Tint is the second signal, for a highlight bright
+    enough to clear it: paper is neutral like the ground and paint is not.
 
-    Only ever restores opacity, so it cannot take anything the key would have
-    kept.
+    Only ever restores opacity, so it cannot take anything the key would keep.
     """
     lab, n = ndimage.label(cut)
     if n == 0:
         return cut
     border = np.concatenate([lab[0, :], lab[-1, :], lab[:, 0], lab[:, -1]])
     edge_ids = {int(v) for v in np.unique(border) if v}
-    idx = np.array([i for i in range(1, n + 1) if i not in edge_ids])
-    if not idx.size:
-        return cut
-    chmeans = ndimage.mean(chroma, lab, idx)
-    sizes = ndimage.sum(np.ones_like(chroma), lab, idx)
-    fill = [int(i) for i, ch, s in zip(idx, chmeans, sizes)
-            if ch > gchroma + CHROMA_TOL or s < ENCLOSED_MIN_PX]
+    # Work inside each hole's own bounding box. Whole-image dilations per
+    # component turn a plate with a few dozen holes into a minute of work.
+    boxes = ndimage.find_objects(lab)
+    fill = []
+    for i in range(1, n + 1):
+        if i in edge_ids:
+            continue
+        sl = boxes[i - 1]
+        if sl is None:
+            continue
+        pad = tuple(slice(max(a.start - 8, 0), a.stop + 8) for a in sl)
+        m = lab[pad] == i
+        if int(m.sum()) < ENCLOSED_MIN_PX:
+            fill.append(i)                       # a pinhole is never a real gap
+            continue
+        if chroma[pad][m].mean() > gchroma + CHROMA_TOL:
+            fill.append(i)                       # tinted: this is paint
+            continue
+        ring = ndimage.binary_dilation(m, iterations=6) & ~ndimage.binary_dilation(m, iterations=2)
+        if ring.any() and lum[pad][ring].mean() > lum[pad][m].mean() - SURROUND_DROP:
+            fill.append(i)                       # nothing dark bounds it
     return cut & ~np.isin(lab, fill) if fill else cut
 
 
