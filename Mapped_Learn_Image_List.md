@@ -3,12 +3,12 @@
 Every image the Learn section needs, as a flat checklist. **115 files.**
 Filenames are exact — they are the app's real entry ids, so a correctly-named
 file drops in with no renaming. Counts were read out of the code: **812
-reference entries, 112 with art (78 tarot + 12 zodiac + 13 numerology + 9
-chakras), 700 without.**
+reference entries, 136 with art (78 tarot + 12 zodiac + 13 numerology + 9
+chakras + 24 runes), 676 without.**
 
-**Status.** Batch 1 (chakras, 9 files) and Batch 2 (numerology, 13 files) have
-been delivered, keyed and installed. Four of those twenty-two need a redraw —
-see the notes under each batch. Everything else on this list is still to draw.
+**Status.** Batches 1, 2 and 3 — chakras, numerology and runes, 46 files — have
+been delivered, keyed and installed. Five of those forty-six need a redraw; see
+the note under each batch. Everything else on this list is still to draw.
 
 The reasoning behind each rule lives in `Mapped_Art_Brief_Library.md`. This is
 the list to work from.
@@ -111,7 +111,7 @@ piece. The other eleven are correct and are live in the app now.
 
 ---
 
-## Batch 3 — Runes · 24 files
+## Batch 3 — Runes · 24 files — **DELIVERED**
 
 One **cast tile** each: pale bone or weathered birch, slightly irregular, the
 rune carved in and the cut stained dark red-brown. **Same tile, same lighting,
@@ -135,6 +135,20 @@ knotwork, no ravens, no Norse pastiche.
 | 32 | `rune-nauthiz.png` | ᚾ | | 44 | `rune-ingwaz.png` | ᛜ |
 | 33 | `rune-isa.png` | ᛁ | | 45 | `rune-dagaz.png` | ᛞ |
 | 34 | `rune-jera.png` | ᛃ | | 46 | `rune-othala.png` | ᛟ |
+
+**One needs a redraw:**
+
+| File | Delivered | Fix |
+|---|---|---|
+| `rune-perthro.png` | Both arms meet the stave in its middle third and open outward, so the mark reads as a K. | Perthro is symmetric top to bottom. Full-height stave on the left; from its **top** a line goes down-right to a point and back up-right to a top-right terminus, and the same mirrored from its **bottom**. The two chevrons point at each other, and the right side stays open. |
+
+Every mark was checked against its Unicode reference (U+16A0–U+16B7) with the
+carving lifted off the tile, so the tile could not flatter it. The other 23 are
+correct and are live in the app now.
+
+One judgement call, not a defect: `rune-hagalaz` carries a **slanted** crossbar
+rather than a straight one. Both are attested; the straight bar is the more
+standard Elder form. Say the word and it can be redrawn straight.
 
 ---
 

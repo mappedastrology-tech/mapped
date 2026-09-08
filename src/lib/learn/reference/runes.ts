@@ -6,6 +6,10 @@ function rune(id: string, name: string, symbol: string, aett: string, sound: str
   return {
     domain: "runes",
     id: `rune-${id}`,
+    // Unconditional, unlike the other domains' plate sets: the Elder Futhark is
+    // closed and all 24 are painted, so a rune without a plate would be a rune
+    // that shouldn't be here. tests/referenceArt.test.ts catches a missing file.
+    image: `/images/learn/rune-${id}.webp`,
     name: `${name} ${symbol}`,
     aka: [name, symbol],
     category: `Elder Futhark · ${aett} Aett`,

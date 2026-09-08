@@ -44,3 +44,11 @@ test("the chakra plates are exactly the wheels, not the concepts", () => {
     "chakra-third-eye", "chakra-throat",
   ]);
 });
+
+test("every rune in the Elder Futhark has a plate", () => {
+  // The alphabet is closed at 24. If this count moves, either a rune was lost
+  // from the reference or something that is not a rune acquired the prefix.
+  const runes = ALL_REFERENCE.filter((e) => e.domain === "runes");
+  assert.equal(runes.length, 24);
+  assert.deepEqual(runes.filter((e) => !e.image).map((e) => e.id), []);
+});
