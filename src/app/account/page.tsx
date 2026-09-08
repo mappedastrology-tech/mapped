@@ -11,6 +11,7 @@
 import { Suspense, useEffect, useState, useCallback, useRef, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { authedFetch } from "@/lib/authedFetch";
 import { useTheme } from "@/components/ThemeProvider";
 import { useTier } from "@/components/TierProvider";
 import { PlansPage } from "@/components/Paywall";
@@ -617,6 +618,10 @@ function NotificationSettingsSection() {
   const [saving, setSaving] = useState(false);
   const [permissionState, setPermissionState] = useState<string>("default");
   const [requesting, setRequesting] = useState(false);
+  // Why push can't be switched on, if it can't — iOS in a Safari tab is the
+  // common one, and it is invisible to a plain permission check.
+  const [blocker, setBlocker] = useState<string>("ok");
+  const [testState, setTestState] = useState<{ kind: "idle" | "sending" | "sent" | "error"; msg?: string }>({ kind: "idle" });
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -624,6 +629,7 @@ function NotificationSettingsSection() {
     } else {
       setPermissionState("unsupported");
     }
+    import("@/lib/notifications").then(({ pushBlocker }) => setBlocker(pushBlocker()));
 
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -670,12 +676,43 @@ function NotificationSettingsSection() {
       setPermissionState(result);
       if (result === "granted") {
         await registerServiceWorker();
-        await subscribeToPush();
+        const sub = await subscribeToPush();
+        // Say so when the subscription didn't actually store. Reporting this as
+        // "on" is how an account ends up with the switch flipped and nothing
+        // registered server-side.
+        if (!sub.ok) {
+          setTestState({
+            kind: "error",
+            msg:
+              sub.reason === "not-configured"
+                ? "Notifications aren't configured on the server yet."
+                : sub.reason === "not-signed-in"
+                  ? "Sign in first so this device can be linked to your account."
+                  : "Couldn't register this device. Try again, or reopen the app from your Home Screen.",
+          });
+        }
       }
     } catch (err) {
       console.error("Permission request failed:", err);
+      setTestState({ kind: "error", msg: "The browser refused the request." });
     }
     setRequesting(false);
+  }
+
+  /** Prove the whole chain: subscription -> server -> push service -> device. */
+  async function sendTest() {
+    setTestState({ kind: "sending" });
+    try {
+      const res = await authedFetch("/api/notifications/test", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.ok) {
+        setTestState({ kind: "sent", msg: "Sent — it should arrive in a few seconds." });
+      } else {
+        setTestState({ kind: "error", msg: body.fix || body.error || "Couldn't send it." });
+      }
+    } catch {
+      setTestState({ kind: "error", msg: "Couldn't reach the server." });
+    }
   }
 
   async function save(updated: Record<string, boolean | number | string | null>) {
@@ -730,14 +767,22 @@ function NotificationSettingsSection() {
       <div className="flex items-center justify-between px-5 py-4">
         <div>
           <p className="text-foreground text-[15px] font-semibold">Notifications</p>
-          {permissionState === "denied" && (
+          {blocker === "ios-needs-install" && (
+            <p className="text-muted text-[11px] mt-0.5 max-w-[15rem]">
+              On iPhone, add Mapped to your Home Screen first — tap Share, then Add to Home Screen, and open it from there.
+            </p>
+          )}
+          {blocker !== "ios-needs-install" && permissionState === "denied" && (
             <p className="text-muted text-[11px] mt-0.5">Blocked in browser settings</p>
           )}
-          {permissionState === "unsupported" && (
-            <p className="text-muted text-[11px] mt-0.5">Add to home screen to enable</p>
+          {blocker === "unsupported" && (
+            <p className="text-muted text-[11px] mt-0.5">This browser can&rsquo;t do notifications</p>
+          )}
+          {blocker === "not-configured" && (
+            <p className="text-muted text-[11px] mt-0.5">Not switched on for this build yet</p>
           )}
         </div>
-        {permissionState !== "unsupported" && (
+        {blocker !== "unsupported" && blocker !== "ios-needs-install" && (
           <ToggleSwitch
             checked={isEnabled}
             onChange={handleToggleNotifications}
@@ -745,6 +790,30 @@ function NotificationSettingsSection() {
           />
         )}
       </div>
+
+      {/* A push that never arrives looks identical to one that was never sent.
+          This is the only way to tell the two apart from the device itself. */}
+      {isEnabled && (
+        <div className="px-5 pb-4 -mt-1">
+          <button
+            type="button"
+            onClick={sendTest}
+            disabled={testState.kind === "sending"}
+            className="text-[12px] font-semibold underline underline-offset-2 disabled:opacity-50"
+            style={{ color: "var(--brass)" }}
+          >
+            {testState.kind === "sending" ? "Sending…" : "Send me a test notification"}
+          </button>
+          {testState.msg && (
+            <p
+              className="text-[11px] mt-1.5 max-w-[19rem]"
+              style={{ color: testState.kind === "error" ? "var(--terracotta, #b76b48)" : "var(--foreground-muted)" }}
+            >
+              {testState.msg}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Category toggles — only shown when enabled */}
       {isEnabled && (

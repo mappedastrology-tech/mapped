@@ -487,6 +487,46 @@ export function isPushSupported(): boolean {
 }
 
 /**
+ * Why push can't be turned on right now — or "ok" if it can.
+ *
+ * isPushSupported() alone is not enough, and the gap it leaves is the single
+ * biggest reason a phone never receives anything:
+ *
+ * On iOS, Safari EXPOSES serviceWorker, PushManager and Notification in an
+ * ordinary tab, so every feature check passes — but permission can only
+ * actually be granted once the app has been added to the Home Screen. Tapping
+ * "turn on notifications" in a tab therefore does nothing at all: no prompt, no
+ * error, no subscription. The person believes it is on. It never was.
+ *
+ * So we detect the installed (standalone) state explicitly and say what to do.
+ */
+export type PushBlocker =
+  | "ok"
+  | "unsupported"        // the browser has no push at all
+  | "ios-needs-install"  // iOS Safari tab — must be added to the Home Screen first
+  | "denied"             // the person declined the browser prompt
+  | "not-configured";    // no VAPID public key shipped — a server-side gap
+
+export function pushBlocker(): PushBlocker {
+  if (typeof window === "undefined") return "unsupported";
+  if (!isPushSupported()) return "unsupported";
+
+  const isIOS =
+    /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    // iPadOS 13+ reports itself as a Mac; the touch points give it away.
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const installed =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    // Safari's own flag, which predates and still outlives display-mode here.
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+  if (isIOS && !installed) return "ios-needs-install";
+  if (Notification.permission === "denied") return "denied";
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return "not-configured";
+  return "ok";
+}
+
+/**
  * Get the current notification permission state.
  */
 export function getPermissionState(): PushPermissionState {
@@ -548,22 +588,35 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
  * Subscribe this browser to push notifications.
  * Saves the subscription to Supabase for server-side sending.
  */
-export async function subscribeToPush(): Promise<boolean> {
+export interface SubscribeResult {
+  ok: boolean;
+  /** Machine-readable reason when ok is false, for the UI to explain. */
+  reason?: "no-service-worker" | "not-configured" | "not-signed-in" | "save-failed" | "subscribe-failed";
+  detail?: string;
+}
+
+/**
+ * Subscribe this browser to push and record it server-side.
+ *
+ * Returns a RESULT, not a bare boolean, and every failure path is a failure.
+ * The previous version returned true when no VAPID key was configured and
+ * ignored whether the row actually saved — so the settings screen would report
+ * notifications as on while the server had no endpoint to send to. That is a
+ * silent lie in the one place a person checks, and it is the likely reason this
+ * app has twenty accounts and one subscription.
+ */
+export async function subscribeToPush(): Promise<SubscribeResult> {
   let reg = await getRegistration();
   if (!reg) {
     reg = await registerServiceWorker();
-    if (!reg) return false;
+    if (!reg) return { ok: false, reason: "no-service-worker" };
   }
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!vapidKey) {
-    console.warn("[notifications] No VAPID public key. Using test mode — notifications will only work locally.");
-    return true; // Still allow local notifications
-  }
+  if (!vapidKey) return { ok: false, reason: "not-configured" };
 
   try {
     let subscription = await reg.pushManager.getSubscription();
-
     if (!subscription) {
       subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -571,23 +624,27 @@ export async function subscribeToPush(): Promise<boolean> {
       });
     }
 
-    // Save to Supabase
     const json = subscription.toJSON();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user && json.endpoint) {
-      await supabase.from("push_subscriptions").upsert({
-        user_id: session.user.id,
-        endpoint: json.endpoint,
-        keys_p256dh: json.keys?.p256dh || "",
-        keys_auth: json.keys?.auth || "",
-        created_at: new Date().toISOString(),
-      }, { onConflict: "endpoint" });
-    }
+    if (!json.endpoint) return { ok: false, reason: "subscribe-failed" };
 
-    return true;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return { ok: false, reason: "not-signed-in" };
+
+    const { error } = await supabase.from("push_subscriptions").upsert({
+      user_id: session.user.id,
+      endpoint: json.endpoint,
+      keys_p256dh: json.keys?.p256dh || "",
+      keys_auth: json.keys?.auth || "",
+      created_at: new Date().toISOString(),
+    }, { onConflict: "endpoint" });
+
+    // A subscription the server never stored is not a subscription.
+    if (error) return { ok: false, reason: "save-failed", detail: error.message };
+
+    return { ok: true };
   } catch (err) {
     console.error("[notifications] Push subscription failed:", err);
-    return false;
+    return { ok: false, reason: "subscribe-failed", detail: (err as Error)?.message };
   }
 }
 
