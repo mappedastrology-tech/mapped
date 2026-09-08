@@ -696,12 +696,15 @@ export function showLocalNotification(title: string, body: string, url?: string)
 /**
  * Call on app load. If permission already granted, register SW and subscribe.
  */
-export async function initPushNotifications(): Promise<void> {
-  if (!isPushSupported()) return;
-  if (Notification.permission === "granted") {
-    await registerServiceWorker();
-    await subscribeToPush();
-  }
+export async function initPushNotifications(): Promise<SubscribeResult> {
+  if (!isPushSupported()) return { ok: false, reason: "no-service-worker" };
+  if (Notification.permission !== "granted") return { ok: false, reason: "no-service-worker" };
+  await registerServiceWorker();
+  // Returns the result rather than swallowing it. Someone who granted
+  // permission on an earlier build has a granted permission and NO stored
+  // subscription — this is the call that repairs that, and if it fails again
+  // the screen needs to be able to say so.
+  return subscribeToPush();
 }
 
 /* ─── Test Notification ─── */

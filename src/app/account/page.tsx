@@ -657,16 +657,36 @@ function NotificationSettingsSection() {
     }
     load();
 
+    // Permission granted on an earlier build could still mean NO stored
+    // subscription — that was the silent failure. Re-register on every visit
+    // (subscribing is idempotent) and say so if it still doesn't take.
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      import("@/lib/notifications").then(({ initPushNotifications }) => {
-        initPushNotifications();
+      import("@/lib/notifications").then(async ({ initPushNotifications }) => {
+        const r = await initPushNotifications();
+        if (!r.ok && r.reason === "not-configured") {
+          setTestState({ kind: "error", msg: "Notifications aren't configured on the server yet." });
+        } else if (!r.ok && r.reason === "save-failed") {
+          setTestState({ kind: "error", msg: "This device couldn't be linked to your account. Try again." });
+        }
       });
     }
   }, []);
 
   async function handleToggleNotifications() {
     if (permissionState === "granted") {
-      // Already granted — toggling off just updates prefs, browser permission stays
+      // Permission is already granted, but that does NOT mean this device is
+      // registered — the old code returned here, which left anyone whose
+      // subscription had silently failed with no way to create one. Retry it;
+      // subscribing is idempotent when a subscription already exists.
+      setRequesting(true);
+      const { subscribeToPush } = await import("@/lib/notifications");
+      const again = await subscribeToPush();
+      setTestState(
+        again.ok
+          ? { kind: "sent", msg: "This device is registered." }
+          : { kind: "error", msg: "Couldn't register this device. Reopen Mapped from your Home Screen and try again." },
+      );
+      setRequesting(false);
       return;
     }
     setRequesting(true);
