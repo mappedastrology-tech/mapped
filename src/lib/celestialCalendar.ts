@@ -9,8 +9,12 @@ import {
   getMoonPhaseFraction,
   getMoonIllumination,
   getMoonLongitude,
+  getCurrentMoonSign,
   getCurrentSunSign,
   getSeasonDates,
+  moonEventsForYear,
+  nextMoonEventInstant,
+  isSameLocalDay,
 } from "@/lib/astro/currentSky";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -929,78 +933,81 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   // Full moons are added separately below, but each one is an Esbat in Wiccan tradition
   // They represent a gathering of witches to work magic aligned with the full moon's energy
 
-  // ── FULL MOONS (astronomically correct for 2026) ──
-  // Sources: CHANI, Parade, Royal Museums Greenwich, Old Farmer's Almanac
-  // Format: [month, day, name, zodiacSign, special?]
-  const fullMoons2026: [number, number, string, string, string?][] = [
-    [0, 3, "Wolf Moon", "Cancer"],
-    [1, 1, "Snow Moon", "Leo"],
-    [2, 3, "Worm Moon", "Virgo"],          // Lunar Eclipse
-    [3, 1, "Pink Moon", "Libra"],
-    [4, 1, "Flower Moon", "Scorpio"],       // First of two May full moons
-    [4, 31, "Blue Moon", "Sagittarius"],    // Rare second full moon in May
-    [5, 29, "Strawberry Moon", "Capricorn"],
-    [6, 29, "Buck Moon", "Aquarius"],
-    [7, 28, "Sturgeon Moon", "Pisces"],     // Lunar Eclipse
-    [8, 26, "Harvest Moon", "Aries"],
-    [9, 25, "Hunter's Moon", "Taurus"],
-    [10, 24, "Beaver Moon", "Gemini"],
-    [11, 24, "Cold Moon", "Cancer"],
-  ];
-
-  for (const [month, day, name, sign, special] of fullMoons2026) {
-    if (year === 2026) {
-      const isBlue = name === "Blue Moon";
-      const isEclipse = special === "eclipse" || (month === 2 && day === 3) || (month === 7 && day === 28);
-      const specialLabel = isBlue ? " — Blue Moon (rare second full moon this month)" :
-                           isEclipse ? " — Lunar Eclipse" : "";
-      events.push({
-        id: `full-moon-${year}-${month}-${day}`,
-        name: `Full ${name} (Esbat)`,
-        date: new Date(year, month, day),
-        tradition: "pagan",
-        category: "moon",
-        description: `The ${name} in ${sign}.${specialLabel} In Wiccan tradition, every full moon is an Esbat — a gathering of witches to work magic and celebrate the Goddess. Each full moon has been named by indigenous, Celtic, and colonial American traditions based on the natural world at that time of year.`,
-        ritualHint: "Full moon release: write what you want to let go of and safely burn the paper. Sit in moonlight for 10 minutes. Cast a circle and work magic aligned with the moon's energy.",
-        element: "water",
-      });
-    }
+  // ── FULL AND NEW MOONS ──
+  // Computed, not typed. These used to be two hand-entered tables of dates for
+  // 2026 only, and the tables were wrong: three of the twelve new moons were a
+  // day out, and the full moons mixed UTC dates with US ones, because whoever
+  // wrote them was copying from sources in different timezones. A moon event is
+  // an instant, not a date, and which day it falls on depends on where you are
+  // standing — September 2026's new moon is 03:26 UTC on the 11th, which is the
+  // evening of the 10th in Texas. Both are true, and only the instant knows.
+  //
+  // The names, the lore and the Esbat framing are cultural and stay written
+  // down. The dates come from the same ephemeris the moon card already uses.
+  for (const at of moonEventsForYear("full", year)) {
+    const month = at.getMonth();
+    const day = at.getDate();
+    const name = fullMoonNameFor(at, year);
+    const sign = signAt(at);
+    const isBlue = name === "Blue Moon";
+    const isEclipse = isEclipseInstant(at, "lunar");
+    const specialLabel = isBlue ? " — Blue Moon (rare second full moon this month)" :
+                         isEclipse ? " — Lunar Eclipse" : "";
+    events.push({
+      id: `full-moon-${year}-${month}-${day}`,
+      name: `Full ${name} (Esbat)`,
+      date: new Date(year, month, day),
+      tradition: "pagan",
+      category: "moon",
+      description: `The ${name} in ${sign}.${specialLabel} In Wiccan tradition, every full moon is an Esbat — a gathering of witches to work magic and celebrate the Goddess. Each full moon has been named by indigenous, Celtic, and colonial American traditions based on the natural world at that time of year.`,
+      ritualHint: "Full moon release: write what you want to let go of and safely burn the paper. Sit in moonlight for 10 minutes. Cast a circle and work magic aligned with the moon's energy.",
+      element: "water",
+    });
   }
 
-  // ── NEW MOONS (astronomically correct for 2026) ──
-  // Format: [month, day, zodiacSign, special?]
-  const newMoons2026: [number, number, string, string?][] = [
-    [0, 18, "Capricorn"],
-    [1, 17, "Aquarius"],                   // Solar Eclipse (Feb 17 12:01 UTC)
-    [2, 19, "Pisces"],
-    [3, 17, "Aries"],
-    [4, 16, "Taurus"],
-    [5, 14, "Gemini"],
-    [6, 14, "Cancer"],
-    [7, 12, "Leo"],                        // Solar Eclipse
-    [8, 10, "Virgo"],
-    [9, 10, "Libra"],
-    [10, 9, "Scorpio"],
-    [11, 8, "Sagittarius"],
-  ];
-
-  for (const [month, day, sign] of newMoons2026) {
-    if (year === 2026) {
-      const isEclipse = (month === 1 && day === 17) || (month === 7 && day === 12);
-      events.push({
-        id: `new-moon-${year}-${month}`,
-        name: "New Moon",
-        date: new Date(year, month, day),
-        tradition: "astronomical",
-        category: "moon",
-        description: `New Moon in ${sign}.${isEclipse ? " — Solar Eclipse" : ""} The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.`,
-        ritualHint: "Write 3 intentions by candlelight. Speak them aloud to the dark sky.",
-        element: "water",
-      });
-    }
+  for (const at of moonEventsForYear("new", year)) {
+    const month = at.getMonth();
+    const sign = signAt(at);
+    const isEclipse = isEclipseInstant(at, "solar");
+    events.push({
+      id: `new-moon-${year}-${month}-${at.getDate()}`,
+      name: "New Moon",
+      date: new Date(year, month, at.getDate()),
+      tradition: "astronomical",
+      category: "moon",
+      description: `New Moon in ${sign}.${isEclipse ? " — Solar Eclipse" : ""} The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.`,
+      ritualHint: "Write 3 intentions by candlelight. Speak them aloud to the dark sky.",
+      element: "water",
+    });
   }
 
   return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+
+// ─── Moon event naming ───────────────────────────────────────────────────────
+
+/**
+ * The traditional name for a month's full moon.
+ *
+ * One name per calendar month, and a second full moon inside the same month is
+ * a Blue Moon — which is the actual folk rule, so it is computed rather than
+ * marked by hand on the one row somebody happened to notice.
+ */
+const FULL_MOON_NAMES = [
+  "Wolf Moon", "Snow Moon", "Worm Moon", "Pink Moon", "Flower Moon", "Strawberry Moon",
+  "Buck Moon", "Sturgeon Moon", "Harvest Moon", "Hunter's Moon", "Beaver Moon", "Cold Moon",
+];
+
+function fullMoonNameFor(at: Date, year: number): string {
+  const earlierSameMonth = moonEventsForYear("full", year)
+    .filter((d) => d.getMonth() === at.getMonth() && d.getTime() < at.getTime());
+  return earlierSameMonth.length ? "Blue Moon" : FULL_MOON_NAMES[at.getMonth()];
+}
+
+/** The sign the moon is actually standing in at that instant. */
+function signAt(at: Date): string {
+  return getCurrentMoonSign(at).full;
 }
 
 // ─── FULL MOON NAME LORE ─────────────────────────────────────────────────────
@@ -1365,6 +1372,16 @@ export interface TodaysMoonEvent {
   isBlue: boolean;        // rare second full moon in a month
   isEclipse: boolean;     // lunar or solar eclipse
   lore?: MoonNameLore;    // rich lore data
+  /**
+   * True only on the calendar day holding the exact instant.
+   *
+   * The moon reads as new or full for about three days either side, and the
+   * phase card says so for all of them — so the PAGE is offered for all of
+   * them, because a card that says "New Moon" and does nothing when you tap it
+   * is the bug this flag exists to end. The uninvited banner is the intrusive
+   * part, and that stays on the one day the event actually happens.
+   */
+  isPeak: boolean;
 }
 
 // 2026 eclipse dates for cross-referencing with moon events
@@ -1375,38 +1392,59 @@ const ECLIPSE_DATES_2026: { month: number; day: number; type: "solar" | "lunar" 
   { month: 7, day: 28, type: "lunar" },   // Aug 28 — Lunar eclipse (full moon)
 ];
 
-function isEclipseDate(date: Date): boolean {
-  const m = date.getMonth();
-  const d = date.getDate();
-  return ECLIPSE_DATES_2026.some(e => e.month === m && e.day === d);
+/**
+ * Whether a computed moon instant is one of the 2026 eclipses.
+ *
+ * Matched in UTC, because that is the timezone eclipses are quoted in and the
+ * one this table was written from. Matching in local time loses the August
+ * lunar eclipse for anyone west of Greenwich: it is 04:18 UTC on the 28th,
+ * which is the evening of the 27th in Texas, and the table only knows about a
+ * 28th.
+ *
+ * Still a typed table, and still only 2026 — astronomy-engine can search
+ * eclipses properly and this should move to it, but that is its own change.
+ * The year guard means 2027 says "no eclipse" rather than quietly matching on
+ * a month and a day.
+ */
+function isEclipseInstant(at: Date, type: "solar" | "lunar"): boolean {
+  if (at.getUTCFullYear() !== 2026) return false;
+  return ECLIPSE_DATES_2026.some(
+    (e) => e.type === type && e.month === at.getUTCMonth() && e.day === at.getUTCDate()
+  );
 }
 
 export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
-  const { nextFull, nextNew } = getNextMoonEvents(date);
+  const phase = getMoonPhase(date).phase;
+  if (phase !== "new" && phase !== "full") return null;
 
-  if (nextFull && nextFull.daysUntil === 0) {
-    const name = nextFull.moonName;
+  // Look back far enough to catch an instant a day or two behind us: the phase
+  // window opens before the event and closes after it.
+  const from = new Date(date.getTime() - 4 * 24 * 60 * 60 * 1000);
+  const at = nextMoonEventInstant(phase, from);
+  const isPeak = isSameLocalDay(at, date);
+  const zodiacSign = getCurrentMoonSign(at).full;
+
+  if (phase === "full") {
+    const name = fullMoonNameFor(at, at.getFullYear());
     return {
       kind: "full",
       moonName: name,
-      zodiacSign: nextFull.zodiacSign || getCurrentZodiacSeason(date).sign,
+      zodiacSign,
       isBlue: name === "Blue Moon",
-      isEclipse: isEclipseDate(date),
-      lore: name ? MOON_LORE[name] : undefined,
+      isEclipse: isEclipseInstant(at, "lunar"),
+      lore: MOON_LORE[name],
+      isPeak,
     };
   }
 
-  if (nextNew && nextNew.daysUntil === 0) {
-    return {
-      kind: "new",
-      zodiacSign: nextNew.zodiacSign || getCurrentZodiacSeason(date).sign,
-      isBlue: false,
-      isEclipse: isEclipseDate(date),
-      lore: NEW_MOON_LORE,
-    };
-  }
-
-  return null;
+  return {
+    kind: "new",
+    zodiacSign,
+    isBlue: false,
+    isEclipse: isEclipseInstant(at, "solar"),
+    lore: NEW_MOON_LORE,
+    isPeak,
+  };
 }
 
 // ─── ALL FULL MOONS FOR A YEAR (for the "Moons of 2026" grid) ──────────────
@@ -1420,23 +1458,31 @@ export interface YearMoonEntry {
   emoji: string;
 }
 
+const FULL_MOON_EMOJI: Record<string, string> = {
+  "Wolf Moon": "🐺", "Snow Moon": "❄️", "Worm Moon": "🪱", "Pink Moon": "🌸",
+  "Flower Moon": "🌷", "Strawberry Moon": "🍓", "Buck Moon": "🦌", "Sturgeon Moon": "🐟",
+  "Harvest Moon": "🌾", "Hunter's Moon": "🏹", "Beaver Moon": "🦫", "Cold Moon": "❄️",
+  "Blue Moon": "🔵",
+};
+
+/**
+ * Every full moon in a year, for the "Moons of" grid.
+ *
+ * This used to return an empty array for any year but 2026, which meant the
+ * grid would simply vanish on 1 January 2027 with nothing to say why.
+ */
 export function getFullMoonsForYear(year: number): YearMoonEntry[] {
-  if (year !== 2026) return []; // Only 2026 data is hardcoded
-  return [
-    { month: 0, day: 3, name: "Wolf Moon", sign: "Cancer", isBlue: false, emoji: "🐺" },
-    { month: 1, day: 1, name: "Snow Moon", sign: "Leo", isBlue: false, emoji: "❄️" },
-    { month: 2, day: 3, name: "Worm Moon", sign: "Virgo", isBlue: false, emoji: "🪱" },
-    { month: 3, day: 1, name: "Pink Moon", sign: "Libra", isBlue: false, emoji: "🌸" },
-    { month: 4, day: 1, name: "Flower Moon", sign: "Scorpio", isBlue: false, emoji: "🌷" },
-    { month: 4, day: 31, name: "Blue Moon", sign: "Sagittarius", isBlue: true, emoji: "🔵" },
-    { month: 5, day: 29, name: "Strawberry Moon", sign: "Capricorn", isBlue: false, emoji: "🍓" },
-    { month: 6, day: 29, name: "Buck Moon", sign: "Aquarius", isBlue: false, emoji: "🦌" },
-    { month: 7, day: 28, name: "Sturgeon Moon", sign: "Pisces", isBlue: false, emoji: "🐟" },
-    { month: 8, day: 26, name: "Harvest Moon", sign: "Aries", isBlue: false, emoji: "🌾" },
-    { month: 9, day: 25, name: "Hunter's Moon", sign: "Taurus", isBlue: false, emoji: "🏹" },
-    { month: 10, day: 24, name: "Beaver Moon", sign: "Gemini", isBlue: false, emoji: "🦫" },
-    { month: 11, day: 24, name: "Cold Moon", sign: "Cancer", isBlue: false, emoji: "❄️" },
-  ];
+  return moonEventsForYear("full", year).map((at) => {
+    const name = fullMoonNameFor(at, year);
+    return {
+      month: at.getMonth(),
+      day: at.getDate(),
+      name,
+      sign: getCurrentMoonSign(at).full,
+      isBlue: name === "Blue Moon",
+      emoji: FULL_MOON_EMOJI[name] ?? "🌕",
+    };
+  });
 }
 
 // ─── DAILY ENERGY CALCULATOR ─────────────────────────────────────────────────

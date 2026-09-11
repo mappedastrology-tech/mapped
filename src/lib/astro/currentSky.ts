@@ -191,3 +191,53 @@ export function getActiveRetrogrades(date: Date = new Date()): RetrogradeInfo[] 
   }
   return found.sort((a, b) => RETRO_ORDER.indexOf(a.planet) - RETRO_ORDER.indexOf(b.planet));
 }
+
+// ─── Moon event instants ──────────────────────────────────────────────────────
+
+/**
+ * The exact instant of the next new or full moon at or after `from`.
+ *
+ * The calendar used to carry these as hand-typed date tables. Three of the
+ * twelve new moons in the 2026 table were a day out, and the full moons were a
+ * mix of UTC and US dates, because a table cannot record the one thing that
+ * matters: a moon event is an INSTANT, and which calendar day it lands on
+ * depends on where you are standing. Sept 2026's new moon is 03:26 UTC on the
+ * 11th, which is the evening of the 10th in Texas. Both are right.
+ *
+ * Computing the instant and letting the caller read it in local time gets that
+ * right everywhere, and for every year rather than only the one someone typed
+ * out.
+ */
+export function nextMoonEventInstant(kind: "new" | "full", from: Date = new Date()): Date {
+  const time = Astronomy.SearchMoonPhase(kind === "new" ? 0 : 180, dateToAstroTime(from), 40);
+  if (!time) throw new Error(`no ${kind} moon within 40 days of ${from.toISOString()}`);
+  return time.date;
+}
+
+/**
+ * Every new or full moon whose LOCAL calendar date falls in `year`.
+ *
+ * Local, not UTC, because everything downstream — the year grid, "is it today"
+ * — is a calendar question, and the calendar is the reader's own.
+ */
+export function moonEventsForYear(kind: "new" | "full", year: number): Date[] {
+  const out: Date[] = [];
+  // Start a month early: an event just before New Year in UTC can be inside the
+  // year locally, and vice versa.
+  let cursor = new Date(year - 1, 11, 1);
+  const end = new Date(year + 1, 0, 31);
+  while (cursor < end) {
+    const at = nextMoonEventInstant(kind, cursor);
+    if (at.getFullYear() === year) out.push(at);
+    if (at.getFullYear() > year) break;
+    cursor = new Date(at.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return out;
+}
+
+/** True when `a` and `b` are the same calendar day in the reader's timezone. */
+export function isSameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}

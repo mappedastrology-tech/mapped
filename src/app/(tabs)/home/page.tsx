@@ -293,9 +293,14 @@ export default function HomeTab() {
   const nextMoons = useMemo(() => getNextMoonEvents(today), [today]);
   const todaysMoonEvent = useMemo(() => getTodaysMoonEvent(today), [today]);
 
-  // Auto-show moon event banner on new/full moon days (once per day)
+  // Auto-show moon event banner on the day the moon event actually happens.
+  //
+  // Not on every day the moon READS as new or full — that is about three days
+  // either side, and an uninvited banner three days running is nagging. The
+  // moon page stays reachable across all of them (see the moon card's onClick);
+  // it is only this banner that waits for the exact day.
   useEffect(() => {
-    if (!todaysMoonEvent) { setShowMoonBanner(false); return; }
+    if (!todaysMoonEvent?.isPeak) { setShowMoonBanner(false); return; }
     const dismissKey = `mapped:moon-banner-dismissed-${todayLocal}`;
     let dismissed = false;
     try { dismissed = localStorage.getItem(dismissKey) === "1"; } catch {}
