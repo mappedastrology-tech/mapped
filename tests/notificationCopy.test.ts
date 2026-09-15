@@ -10,7 +10,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { COPY, renderCopy, copyFor, MAX_TITLE, MAX_BODY, shortPoint } from "../src/lib/notifications/copy";
+import { COPY, renderCopy, copyFor, variantsFor, MAX_TITLE, MAX_BODY, shortPoint } from "../src/lib/notifications/copy";
 
 /** The longest value each slot can actually take in this app. */
 const WORST: Record<string, string> = {
@@ -84,8 +84,11 @@ test("an unfilled slot throws instead of sending a hole", () => {
 test("variants are addressable by name, so nothing is chosen at random", () => {
   // The old library used pickRandom, which is how someone got "tonight" copy
   // on the wrong night.
-  assert.equal(copyFor("eclipses", "solar").body.includes("Not a day for starting"), true);
-  assert.equal(copyFor("eclipses", "lunar").body.includes("release"), true);
+  // The solar and lunar lines must stay different: practitioners advise against
+  // initiating under a solar eclipse, which is the opposite of the lunar read.
+  assert.notEqual(copyFor("eclipses", "solar").body, copyFor("eclipses", "lunar").body);
+  assert.match(copyFor("eclipses", "solar").body, /wait/i);
+  assert.match(copyFor("eclipses", "lunar").body, /ends/i);
   assert.throws(() => copyFor("eclipses", "nonsense"), /no notification copy/);
 });
 
@@ -97,4 +100,61 @@ test("the angles are written the way an astrologer says them", () => {
   const { title } = renderCopy(copyFor("major_transits", "opposition"),
     { planet: "Mercury", natal: shortPoint("Midheaven") });
   assert.ok(title.length <= MAX_TITLE, title);
+});
+
+/* ─── Voice ─── */
+
+test("nothing hedges", () => {
+  // The first draft cushioned almost every line — "if you want one", "worth
+  // knowing", "a good night to", "no pressure". Stacked up those don't read as
+  // gentle, they read as timid. Say the thing; they can decide what to do with it.
+  const hedges = [
+    /\bif you want\b/i, /\bworth (knowing|thinking|a look)\b/i, /\bno pressure\b/i,
+    /\ba good (night|day|time) to\b/i, /\bmight want to\b/i, /\byou (could|may want)\b/i,
+    /\bconsider\b/i, /\bwhenever you want\b/i, /\bperhaps\b/i, /\bfeel free to\b/i,
+  ];
+  const found: string[] = [];
+  for (const t of COPY) {
+    for (const h of hedges) {
+      if (h.test(t.body) || h.test(t.title)) found.push(`${t.category}/${t.variant}: "${t.body}"`);
+    }
+  }
+  assert.deepEqual([...new Set(found)], []);
+});
+
+test("nothing reads like a manual", () => {
+  // "Not a day for starting things. Wait 48 hours, then decide." A friend still
+  // tells you to sit tight — the difference is whether she sounds like she is
+  // reading it off a card.
+  const procedural = [
+    /\bwait \d+ hours?\b/i, /\bstep \d\b/i, /\bfirst,.*then\b/i,
+    /\bread it as\b/i, /\bin order to\b/i, /\bit is (recommended|advised)\b/i,
+    /\bbe sure to\b/i, /\bmake sure (you|to)\b/i,
+  ];
+  const found: string[] = [];
+  for (const t of COPY) {
+    for (const p of procedural) {
+      if (p.test(t.body) || p.test(t.title)) found.push(`${t.category}/${t.variant}: "${t.body}"`);
+    }
+  }
+  assert.deepEqual([...new Set(found)], []);
+});
+
+test("no first-person plural", () => {
+  // Apple's style guidance says avoid "we", and the largest headline dataset
+  // found first-person plural was the one pronoun with a significant negative
+  // effect. Two independent sources, same direction.
+  const found = COPY
+    .filter((t) => /\b(we|we're|we'll|our|us)\b/i.test(`${t.title} ${t.body}`))
+    .map((t) => `${t.category}/${t.variant}: "${t.body}"`);
+  assert.deepEqual(found, []);
+});
+
+test("the journal question stays behind the tap", () => {
+  // Apple: you cannot predict what someone is doing when a notification lands.
+  // The prompts are good because they are intimate, which is what makes them
+  // wrong for a screen a stranger can read over a shoulder.
+  for (const t of variantsFor("journal_checkin")) {
+    assert.doesNotMatch(t.body, /\?/, `${t.variant} puts a question on the lock screen: "${t.body}"`);
+  }
 });

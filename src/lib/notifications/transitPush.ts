@@ -155,11 +155,14 @@ export function promptQuestion(text: string): string {
 /**
  * Job 03 — something of yours is waiting.
  *
- * The sharpest thing in the catalogue, and it costs almost nothing: the app
- * already holds prompts keyed to exactly these transits, so this never has to
- * say "time to journal". It names the transit and asks the question written for
- * it — Job 02's specificity with Job 03's restraint. Where no question has been
- * written for a transit, it stays quiet rather than reaching for a generic one.
+ * The app already holds prompts keyed to exactly these transits, so this never
+ * has to say "time to journal": it names the transit, and a question written
+ * for that transit is waiting behind the tap. Where no question has been written
+ * for one, it stays quiet rather than reaching for a generic prompt.
+ *
+ * The question is deliberately NOT in the notification. "What desire are you
+ * pretending is smaller than it actually is?" is a good prompt and a bad thing
+ * to have face-up on a table in a meeting.
  */
 export function journalCheckinNotification(chart: ChartRow, today: string, known?: TransitHit | null): Push | null {
   const hit = known !== undefined ? known : exactTransitToday(chart, today);
@@ -175,9 +178,10 @@ export function journalCheckinNotification(chart: ChartRow, today: string, known
     natal: shortPoint(hit.natalPlanet),
   }).title;
 
+  // The question itself stays in the app. It is only good BECAUSE it is
+  // intimate, and a lock screen is read by whoever is standing there.
   const { title, body } = renderCopy(copyFor("journal_checkin", "transit"), {
     title: transitTitle,
-    prompt: promptQuestion(prompt.text),
   });
   return { category: "journal_checkin", title, body };
 }

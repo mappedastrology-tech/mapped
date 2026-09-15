@@ -1,34 +1,52 @@
 /**
- * Every line Mapped can send, and the rules the lines have to hold to.
+ * Every line Mapped can send.
  *
- * Six rules, each derived from something rather than from taste:
+ * THE VOICE. Someone you actually know, who happens to know this stuff, telling
+ * you a thing. Not a practitioner, not a manual, not a wellness brand. She says
+ * what's happening and one true thing about it, and then she stops, because she
+ * assumes you can take it from there.
+ *
+ * The failure mode this was rewritten out of is HEDGING. The first draft was
+ * full of "if you want one", "worth knowing", "worth thinking about", "a good
+ * night to", "whenever you want it", "no pressure" — every one of them a little
+ * cushion placed under the sentence in case it landed too hard. Stacked up they
+ * don't read as gentle, they read as timid, and nobody talks to their friends
+ * that way. Say the thing. They can decide what to do with it.
+ *
+ * The other failure mode is PROCEDURE. "Not a day for starting things. Wait 48
+ * hours, then decide" is a manual, not a person. A friend still tells you to sit
+ * tight — the difference isn't whether she gives you advice, it's whether she
+ * sounds like she's reading it off a card.
+ *
+ * So: no hedges, no numbered steps, no explaining the astrology, no "consider",
+ * no "may want to". Second sentence is an aside, not an instruction. Dry is
+ * allowed. Mean is not — the point is warmth with a spine, and an app that finds
+ * something ominous to say every day is one people delete.
+ *
+ * SIX MECHANICAL RULES, which are not matters of taste:
  *
  * 1. THE SPECIFIC THING GOES IN THE TITLE. Apple Intelligence and Android 16
  *    both summarise and rank notifications before the person sees them, reading
- *    the opening. Every title here used to be a label — "Mapped", "Full Moon",
- *    "Your chart today" — which spent the only always-visible part of a push on
- *    nothing. Say which planet, which moon, which house.
- * 2. TITLE <= 30 CHARACTERS, BODY <= 110. There is no OS-enforced limit; what
- *    exists is display truncation that varies by device, lock screen, app-name
- *    length and Android skin, so these are the conservative end of the vendor
- *    range (iOS 25-35, Android 40-50). Both are enforced by test against the
- *    longest real substitutions, not against the templates.
- * 3. NO EMOJI. The largest study available (four billion notifications, 2025)
- *    found emoji lift is strongly category-dependent and NEGATIVE in the
- *    closest category to this one. Enforced by test.
- * 4. SPECIFICITY COMES FROM THE CHART, NOT A MERGE TAG. "Hi [name]" is worth
- *    about nine percent. "Mercury's retrograde in your 7th house" is the thing
- *    that actually works.
- * 5. ONE CONCRETE THING, PLAINLY. The best-performing lines in this category
- *    anywhere are three to nine words, imperative, one real action. Borrow the
- *    economy; leave the nihilism.
- * 6. NEVER ILLNESS, DEATH, DOOM, OR URGENCY PRESSURE. People delete astrology
- *    apps over exactly this. "Hurry" and "don't miss" test well in retail and
- *    would poison a daily ritual.
+ *    the opening. Say which planet, which moon, which house.
+ * 2. TITLE <= 30 CHARACTERS, BODY <= 110. No OS enforces a limit; what exists is
+ *    display truncation that varies by device, lock screen, app-name length and
+ *    Android skin, so these sit at the conservative end of the vendor range.
+ *    Enforced by test against the longest real substitutions.
+ * 3. NO EMOJI. The largest study available — four billion notifications, 2025 —
+ *    found the effect is category-dependent and NEGATIVE in the nearest category
+ *    to this one. Enforced by test.
+ * 4. SPECIFICITY COMES FROM THE CHART, NEVER FROM BEHAVIOUR. The line between
+ *    personal and creepy is not how specific you are, it is whether the person
+ *    can trace how you knew. A birth time they typed in is traceable. "You open
+ *    this at 2am a lot" is equally accurate and reads as surveillance.
+ * 5. NOTHING SENSITIVE ON THE LOCK SCREEN. Apple's own guidance: you cannot
+ *    predict what someone is doing when a notification arrives. Assume a
+ *    stranger is reading over their shoulder.
+ * 6. NO URGENCY PRESSURE AND NO DOOM. "Hurry" and "don't miss" test well in
+ *    retail and would poison a daily ritual. Enforced by test.
  *
- * Variants are chosen by what is TRUE, never at random. The old library picked
- * with pickRandom, which is how someone could be told "tonight" on the wrong
- * night.
+ * Variants are chosen by what is TRUE, never at random — the old library picked
+ * with pickRandom, which is how someone got told "tonight" on the wrong night.
  */
 
 import type { NotificationCategory } from "./catalogue";
@@ -84,143 +102,136 @@ export const COPY: CopyTemplate[] = [
 
   { category: "new_moon", variant: "default",
     title: "New moon in [sign]",
-    body: "A clean page, if you want one. The next two days are the ones to write on." },
+    body: "The month starts over tonight. Nobody's watching what you do with it." },
   { category: "new_moon", variant: "plant",
     title: "New moon in [sign]",
-    body: "The dark part of the month. Plant something you'll watch grow." },
-  // The tradition puts the potent window at the exact moment plus 48 hours,
-  // then a second beat about four days later at the waxing sextile — the point
-  // at which an intention is supposed to be acted on rather than set.
+    body: "Nothing in the sky tonight. Good — you've been needing a blank one." },
+  // The tradition puts the potent window at the exact moment plus 48 hours, then
+  // a second beat around four days later at the waxing sextile: the point where
+  // an intention is supposed to be acted on rather than set.
   { category: "new_moon_act", variant: "default",
     title: "Four days in",
-    body: "Whatever you set at the new moon wants one small action today. Just one." },
+    body: "You told yourself something at the new moon. Today's when it wants proof." },
 
   { category: "full_moon", variant: "named",
     title: "The [name] Moon",
-    body: "Full tonight, in [sign]. Whatever you started at the new moon — this is where you see it." },
+    body: "Full in [sign] tonight. This is where you find out what the last two weeks were about." },
   { category: "full_moon", variant: "default",
     title: "Full moon in [sign]",
-    body: "Tonight. Whatever you started at the new moon — this is where you see it." },
+    body: "Tonight. Whatever's been building since the new moon just came due." },
   { category: "full_moon", variant: "release",
     title: "Full moon in [sign]",
-    body: "A good night to put something down." },
+    body: "Classic night for putting something down. Your call what." },
 
   { category: "quarter_moon", variant: "first",
     title: "First quarter",
-    body: "Half lit. The point where what you started meets its first real resistance." },
+    body: "Half lit. This is the part where it gets annoying and you keep going anyway." },
   { category: "quarter_moon", variant: "last",
     title: "Last quarter",
-    body: "Half dark. A good few days to clear something out before the next cycle." },
+    body: "Half dark. The clearing-out part. Nobody enjoys it." },
 
-  // Practitioners broadly advise AGAINST initiating under an eclipse, which is
-  // the opposite of the new-moon advice — so this must never reuse the
-  // "plant something" language.
+  // Practitioners advise AGAINST initiating under an eclipse, which is the
+  // opposite of the new-moon advice — so this must never reuse that language.
   { category: "eclipses", variant: "solar",
     title: "Solar eclipse in [sign]",
-    body: "Not a day for starting things. Wait 48 hours, then decide." },
+    body: "Everything will feel like it can't wait today. Most of it can." },
   { category: "eclipses", variant: "lunar",
     title: "Lunar eclipse in [sign]",
-    body: "The big release. Whatever it takes, it usually needed to go." },
+    body: "Something ends around now. You'll probably be relieved." },
   { category: "eclipses", variant: "saros",
     title: "You've met this one",
-    body: "This eclipse family last crossed your chart in [year]. What happened then?" },
+    body: "Same eclipse family as [year]. Think about where you were then." },
 
   // An eclipse season is 31-37 days of real astronomy, not an invented window.
   { category: "eclipse_season", variant: "default",
     title: "Eclipse season starts",
-    body: "Five weeks, [count] eclipses, falling across [axis]." },
+    body: "Five weeks, [count] eclipses, both across [axis]. It's a lot. It always is." },
 
   // The station, not the retrograde span, is what the tradition holds to carry
   // weight — a stationary planet is slow, and slowness intensifies. It is also
-  // two events per cycle rather than three weeks of nagging.
+  // two moments a cycle rather than three weeks of nagging.
   { category: "retrograde_stations", variant: "retrograde",
     title: "[planet] stops today",
-    body: "It turns retrograde in your [house] house. Read it as: review, don't restart." },
+    body: "Going backwards through your [house] house now. You know how this one goes." },
   { category: "retrograde_stations", variant: "direct",
     title: "[planet] moves again",
-    body: "It's been retrograde since [month]. What stalled then starts moving." },
-  // When the retrograde start can't be established, say the true thing without
-  // the date rather than filling the slot with whatever month it is now.
+    body: "Retrograde since [month]. Whatever stalled then is about to come unstuck." },
   { category: "retrograde_stations", variant: "direct-undated",
     title: "[planet] moves again",
-    body: "It turns direct today. What stalled while it was retrograde starts moving." },
+    body: "It's been going backwards a while. That's over as of today." },
 
   { category: "retrograde_shadow", variant: "clears",
     title: "Out of the shadow",
-    body: "[planet] has cleared the degrees it went back over. That chapter's closed." },
+    body: "[planet]'s finally past the ground it covered twice. You can stop bracing." },
 
   { category: "mercury_retrograde", variant: "default",
     title: "Mercury turns back",
-    body: "Three weeks of it, in your [house] house. Review, don't restart." },
+    body: "Three weeks, your [house] house. Yes, back your things up." },
 
   { category: "major_ingresses", variant: "default",
     title: "[planet] enters [sign]",
-    body: "[years] years there. It'll spend them in your [house] house." },
+    body: "[years] years there, all of it in your [house] house. Long game." },
 
   /* ── Job 02 · your chart ────────────────────────────────────────────── */
 
   { category: "transit_approaching", variant: "default",
     title: "[planet] is approaching",
-    body: "It meets your [natal] in four days. Worth knowing before it lands." },
+    body: "Hits your [natal] in four days. Just so it's not a surprise." },
 
   { category: "major_transits", variant: "conjunction",
     title: "[planet] meets your [natal]",
-    body: "Exact today. A new cycle starts here." },
+    body: "Exact today. Something starts here whether you clock it or not." },
   { category: "major_transits", variant: "opposition",
     title: "[planet] opposes your [natal]",
-    body: "Exact today. A push-pull kind of day — something's asking for balance." },
+    body: "Exact today. Two things want opposite things from you." },
   { category: "major_transits", variant: "square",
     title: "[planet] squares your [natal]",
-    body: "Exact today. Friction you can put to work." },
+    body: "Exact today. The friction kind — use it or it uses you." },
   { category: "major_transits", variant: "trine",
     title: "[planet] trines your [natal]",
-    body: "Exact today. Things flow a little easier here, if you want to use it." },
+    body: "Exact today. This is the easy one. Don't waste it." },
 
   { category: "solar_return", variant: "default",
     title: "Your year turns at [time]",
-    body: "The Sun is back where it was when you were born. New chart, new twelve months." },
+    body: "Sun's back where it was when you were born. That's your new year, not January." },
   { category: "birthday_week", variant: "default",
     title: "Your year is turning",
-    body: "Your solar return is [days] days out. Worth thinking about what you want from it." },
+    body: "[days] days to your solar return. Start deciding what you want out of it." },
 
   /* ── Job 03 · something of yours is waiting ─────────────────────────── */
 
-  // The sharpest thing in the catalogue: the app already holds 150+ journal
-  // prompts keyed to specific transits, so this never has to say "time to
-  // journal". It names the transit and asks the question written for it.
-  // The title is borrowed from the transit copy rather than written again, so
-  // "Mars squares your Moon" says the aspect instead of the earlier
-  // "[planet]'s on your [natal]", which rendered as "Mars's on your Moon" and
-  // implied a conjunction whatever the aspect actually was.
+  // The question stays behind the tap. The prompts are good because they are
+  // intimate, which is exactly what makes them wrong for a screen anyone
+  // standing nearby can read — see rule 5.
   { category: "journal_checkin", variant: "transit",
     title: "[title]",
-    body: "[prompt]" },
+    body: "There's a question waiting on this one." },
   { category: "journal_checkin", variant: "lunation",
     title: "A question for tonight",
-    body: "[prompt]" },
+    body: "The new moon left you one. It's in your journal." },
   { category: "journal_checkin", variant: "quiet",
     title: "Your journal's quiet",
-    body: "No pressure. There's a question waiting whenever you want it." },
+    body: "Been a minute. There's a question with your name on it." },
 
   { category: "practice_reminders", variant: "saved",
     title: "Tonight's ritual",
-    body: "The one you saved for [occasion]. Two minutes." },
+    body: "The [occasion] one you saved. Two minutes." },
 
   { category: "learning_reminder", variant: "default",
     title: "Your streak is at [n]",
-    body: "A lesson keeps it. No pressure — your progress is saved either way." },
+    body: "One lesson keeps it. Or don't — it's all saved either way." },
 
   /* ── Job 04 · nothing is happening ──────────────────────────────────── */
 
-  // The best lines here. A notification that admits nothing is happening is the
-  // strongest signal that the rest are worth reading, and it is the thing an app
-  // that must find something portentous to say every day structurally cannot do.
+  // The best lines here. An app that finds something portentous to say every
+  // single day is one you stop believing; saying nothing is happening, on the
+  // days nothing is, is what makes the rest of it land.
   { category: "daily_content", variant: "quiet",
     title: "Nothing much today",
-    body: "Quiet skies. No cosmic homework — just catch your breath." },
+    body: "Quiet skies. No homework." },
   { category: "daily_content", variant: "quiet-alt",
     title: "A slow one",
-    body: "Nothing in your chart is asking for anything today." },
+    body: "Your chart isn't asking for anything today. Enjoy it." },
   { category: "daily_content", variant: "moon-sign",
     title: "Moon's in [sign]",
     body: "[flavour]" },
@@ -232,13 +243,16 @@ export const COPY: CopyTemplate[] = [
 
   { category: "re_engagement", variant: "first",
     title: "The sky moved",
-    body: "A few things changed in your chart while you were away. Here's the short version." },
+    body: "A few things shifted in your chart while you were gone. Want the short version?" },
   { category: "re_engagement", variant: "second",
     title: "Still here",
-    body: "Your chart didn't go anywhere. Whenever you're ready." },
+    body: "Your chart didn't go anywhere." },
+  // No "we" — Apple's style guidance says avoid it, and the largest headline
+  // dataset found first-person plural was the one pronoun with a significant
+  // negative effect.
   { category: "re_engagement", variant: "last",
     title: "Last one",
-    body: "We won't keep checking in. Come back anytime — your data is here." },
+    body: "No more check-ins after this. It's all still here if you come back." },
 ];
 
 /** The copy for one category and variant. Throws rather than sending nothing. */
