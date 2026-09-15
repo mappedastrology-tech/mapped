@@ -11,9 +11,9 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
-import { calculateTransits } from "@/lib/astro/calculateTransits";
+import { getTodaysMoonEvent, type TodaysMoonEvent } from "@/lib/celestialCalendar";
 import { computeStreak } from "@/lib/learn/stats";
+import { personalTransitNotification, type ChartRow } from "@/lib/notifications/transitPush";
 import {
   SAMPLE_COPY,
   type NotificationPreferences,
@@ -63,106 +63,44 @@ function isPaused(prefs: NotificationPreferences): boolean {
   return new Date(prefs.paused_until) > new Date();
 }
 
-/* ─── Personal transits ─── */
-
-interface ChartRow {
-  user_id: string;
-  planets: { name: string; sign: string; absPosition: number; house?: number | null }[] | null;
-  houses: { number: number; sign: string; absPosition: number }[] | null;
-  zodiac_system: string | null;
-  ayanamsa: string | null;
-}
-
-interface TransitAspectLite {
-  transitPlanet: string;
-  natalPlanet: string;
-  aspect: string;
-  exactDate?: string;
-}
-
-// Only outer/intense transiters and hard/flowing major aspects are worth a push.
-const NOTIFIABLE_ASPECTS = new Set(["conjunction", "opposition", "square", "trine"]);
-const NOTIFIABLE_TRANSITERS = new Set(["Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
-const TRANSIT_VERB: Record<string, string> = {
-  conjunction: "meets", opposition: "opposes", square: "squares", trine: "trines",
-};
-const TRANSIT_FLAVOR: Record<string, string> = {
-  conjunction: "A new cycle starts here.",
-  opposition: "A push-pull kind of day. Something's asking for balance.",
-  square: "Friction you can put to work.",
-  trine: "Things flow a little easier here, if you want to use it.",
-};
-
-/**
- * Returns a notification for the single strongest major transit that is EXACT
- * today against the user's natal chart, or null if none qualifies. Transits to
- * natal planets are valid even for unknown-birth-time charts (planet positions
- * don't depend on time), so no time guard is needed here.
- */
-function personalTransitNotification(
-  chart: ChartRow,
-  today: string,
-): { category: NotificationCategory; title: string; body: string } | null {
-  const planets = chart.planets;
-  if (!Array.isArray(planets) || planets.length === 0) return null;
-
-  let aspects: TransitAspectLite[];
-  try {
-    const result = calculateTransits({
-      natalPlanets: planets,
-      natalHouses: Array.isArray(chart.houses) ? chart.houses : [],
-      transitDate: today,
-      zodiacSystem: chart.zodiac_system === "sidereal" ? "sidereal" : "tropical",
-      ayanamsa: chart.ayanamsa || "lahiri",
-    }) as { transitAspects?: TransitAspectLite[] };
-    aspects = result.transitAspects ?? [];
-  } catch {
-    return null;
-  }
-
-  // aspects arrive pre-sorted by intensity, so the first qualifying hit is the strongest.
-  const hit = aspects.find(
-    (a) => a.exactDate === today && NOTIFIABLE_ASPECTS.has(a.aspect) && NOTIFIABLE_TRANSITERS.has(a.transitPlanet),
-  );
-  if (!hit) return null;
-
-  const verb = TRANSIT_VERB[hit.aspect] ?? "aspects";
-  const flavor = TRANSIT_FLAVOR[hit.aspect] ?? "";
-  return {
-    category: "major_transits",
-    title: "Your chart today",
-    body: `${hit.transitPlanet} ${verb} your natal ${hit.natalPlanet} today, exact. ${flavor}`.trim(),
-  };
-}
-
 /* ─── Determine today's notifications for a user ─── */
 
 function determineNotifications(
   prefs: NotificationPreferences,
-  moonLabel: string,
-  moonSign: string,
+  moonEvent: TodaysMoonEvent | null,
   chart: ChartRow | undefined,
   today: string,
   learning: { atRisk: boolean; streak: number } | undefined,
 ): { category: NotificationCategory; title: string; body: string }[] {
   const out: { category: NotificationCategory; title: string; body: string }[] = [];
 
-  const isFullMoon = moonLabel === "Full Moon";
-  const isNewMoon = moonLabel === "New Moon";
+  // 1. Moon phase — on the peak day only.
+  //
+  // The moon READS as full or new for about three days, and the old test here
+  // (getMoonPhaseLabel === "Full Moon") was true for all of them, so one
+  // lunation sent on three consecutive nights, each one saying "tonight".
+  // isPeak is the day holding the exact instant, which is the night the copy
+  // is actually describing.
+  const isPeakFull = moonEvent?.kind === "full" && moonEvent.isPeak;
+  const isPeakNew = moonEvent?.kind === "new" && moonEvent.isPeak;
 
-  // 1. Moon phase notifications
-  if (isFullMoon && prefs.full_moon) {
+  if (isPeakFull && prefs.full_moon) {
     const copies = SAMPLE_COPY.filter((c) => c.category === "full_moon");
     const copy = pickRandom(copies);
-    const body = copy.body.replace("[sign]", moonSign);
-    out.push({ category: "full_moon", title: "Full Moon", body });
+    const body = copy.body.replace("[sign]", moonEvent!.zodiacSign);
+    // The traditional name where the month has one — "The Harvest Moon" is a
+    // better title than "Full Moon", and it is the specific half.
+    const title = moonEvent!.moonName
+      ? `The ${moonEvent!.moonName}`
+      : `Full moon in ${moonEvent!.zodiacSign}`;
+    out.push({ category: "full_moon", title, body });
   }
 
-  if (isNewMoon && prefs.new_moon) {
+  if (isPeakNew && prefs.new_moon) {
     const copies = SAMPLE_COPY.filter((c) => c.category === "new_moon");
     const copy = pickRandom(copies);
-    const body = copy.body.replace("[sign]", moonSign);
-    out.push({ category: "new_moon", title: "New Moon", body });
+    const body = copy.body.replace("[sign]", moonEvent!.zodiacSign);
+    out.push({ category: "new_moon", title: `New moon in ${moonEvent!.zodiacSign}`, body });
   }
 
   // 2. Personal transits — major aspect exact today against the natal chart
@@ -188,8 +126,8 @@ function determineNotifications(
     }
   }
 
-  // 4. Practice reminders on full/new moon days
-  if (prefs.practice_reminders && (isFullMoon || isNewMoon)) {
+  // 4. Practice reminders — same peak gate, or they repeat for three nights too.
+  if (prefs.practice_reminders && (isPeakFull || isPeakNew)) {
     const copies = SAMPLE_COPY.filter((c) => c.category === "practice_reminders");
     if (copies.length > 0) {
       const copy = pickRandom(copies);
@@ -281,10 +219,9 @@ export async function GET(request: Request) {
     activeByUser.set(r.user_id, set);
   }
 
-  // Compute moon phase once for today
+  // Compute today's moon event once. Null on the ~26 ordinary days of the month.
   const now = new Date();
-  const moonLabel = getMoonPhaseLabel(now);
-  const moonSign = getCurrentMoonSign(now).full;
+  const moonEvent = getTodaysMoonEvent(now);
 
   // Group subscriptions by user
   const subsByUser = new Map<string, PushSubscriptionRow[]>();
@@ -304,7 +241,7 @@ export async function GET(request: Request) {
     if (isPaused(prefs)) continue;
 
     const { streak, atRisk } = computeStreak(activeByUser.get(userId) ?? new Set<string>(), now);
-    const notifications = determineNotifications(prefs, moonLabel, moonSign, chartMap.get(userId), today, { streak, atRisk });
+    const notifications = determineNotifications(prefs, moonEvent, chartMap.get(userId), today, { streak, atRisk });
     if (notifications.length === 0) continue;
 
     // Send highest-priority notification only (respect rate limits)
@@ -350,7 +287,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     date: today,
-    moon: moonLabel,
+    moon: moonEvent ? `${moonEvent.kind}${moonEvent.isPeak ? " (peak)" : ""}` : "none",
     sent,
     failed,
     cleaned: staleEndpoints.length,
