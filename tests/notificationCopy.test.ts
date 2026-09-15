@@ -87,8 +87,13 @@ test("variants are addressable by name, so nothing is chosen at random", () => {
   // The solar and lunar lines must stay different: practitioners advise against
   // initiating under a solar eclipse, which is the opposite of the lunar read.
   assert.notEqual(copyFor("eclipses", "solar").body, copyFor("eclipses", "lunar").body);
-  assert.match(copyFor("eclipses", "solar").body, /wait/i);
-  assert.match(copyFor("eclipses", "lunar").body, /ends/i);
+  // Pin the distinction, not the wording: solar holds you off, lunar names an
+  // ending, and neither may borrow the new moon's "start something" language.
+  const solar = copyFor("eclipses", "solar").body;
+  const lunar = copyFor("eclipses", "lunar").body;
+  assert.doesNotMatch(solar, /\bstart\b/i, `solar eclipse copy reads like a new moon: "${solar}"`);
+  assert.match(solar, /\b(two days|doesn't|hold|sit)\b/i, solar);
+  assert.match(lunar, /\bend(s|ed|ing)\b/i, lunar);
   assert.throws(() => copyFor("eclipses", "nonsense"), /no notification copy/);
 });
 
