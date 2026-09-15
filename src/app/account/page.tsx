@@ -20,6 +20,11 @@ import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
 import Link from "next/link";
 import { ORACLE_DECKS } from "@/lib/oracleDecks";
+import {
+  DEFAULT_PREFERENCES, TIME_OPTIONS, PAUSE_OPTIONS, getPauseUntil,
+  groupEnabled, setGroup, isPaused,
+  type NotificationPreferences, type NotificationGroup,
+} from "@/lib/notifications/catalogue";
 import { useOracleAccess } from "@/lib/oracleAccess";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import {
@@ -622,6 +627,7 @@ function NotificationSettingsSection() {
   // common one, and it is invisible to a plain permission check.
   const [blocker, setBlocker] = useState<string>("ok");
   const [testState, setTestState] = useState<{ kind: "idle" | "sending" | "sent" | "error"; msg?: string }>({ kind: "idle" });
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -635,24 +641,9 @@ function NotificationSettingsSection() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
       const { data } = await supabase.from("profiles").select("notification_preferences").eq("id", session.user.id).single();
-      if (data?.notification_preferences) {
-        const np = data.notification_preferences;
-        // Map full prefs back to simplified view (handles existing users)
-        if ("moon_phases" in np) {
-          setPrefs({ learning_streak: true, ...np });
-        } else {
-          setPrefs({
-            moon_phases: np.full_moon ?? true,
-            your_chart: np.major_transits ?? true,
-            daily_message: np.daily_content ?? false,
-            learning_streak: np.learning_reminder ?? true,
-          });
-        }
-      } else {
-        setPrefs({
-          moon_phases: true, your_chart: true, daily_message: false, learning_streak: true,
-        });
-      }
+      // Merged over the defaults so a preference added since this profile was
+      // last saved arrives with its intended default rather than undefined.
+      setPrefs({ ...DEFAULT_PREFERENCES, ...(data?.notification_preferences ?? {}) });
       setLoaded(true);
     }
     load();
@@ -739,33 +730,22 @@ function NotificationSettingsSection() {
     setSaving(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      // Map simplified prefs to the full preference structure for the cron handler
-      const fullPrefs = {
-        full_moon: !!updated.moon_phases,
-        new_moon: !!updated.moon_phases,
-        quarter_moon: false,
-        major_transits: !!updated.your_chart,
-        retrograde_stations: !!updated.your_chart,
-        birthday_week: !!updated.your_chart,
-        solar_return: !!updated.your_chart,
-        eclipses: !!updated.moon_phases,
-        mercury_retrograde: !!updated.your_chart,
-        major_ingresses: !!updated.your_chart,
-        daily_content: !!updated.daily_message,
-        practice_reminders: !!updated.moon_phases,
-        learning_reminder: updated.learning_streak !== false,
-        re_engagement: true,
-        preferred_hour: 19,
-        paused_until: null,
-        email_marketing: false,
-      };
-      await supabase.from("profiles").update({ notification_preferences: fullPrefs }).eq("id", session.user.id);
+      // Write the whole object as it now stands. The old version REBUILT it
+      // from four switches every time, which meant saving any toggle silently
+      // reset the delivery hour to 19 and cleared any pause.
+      await supabase.from("profiles").update({ notification_preferences: updated }).eq("id", session.user.id);
     }
     setSaving(false);
   }
 
-  function toggle(key: string) {
-    const updated = { ...prefs, [key]: !prefs[key] };
+  function applyGroup(group: NotificationGroup, on: boolean) {
+    const updated = setGroup(prefs as unknown as NotificationPreferences, group, on) as unknown as Record<string, boolean | number | string | null>;
+    setPrefs(updated);
+    save(updated);
+  }
+
+  function setValue(key: string, value: boolean | number | string | null) {
+    const updated = { ...prefs, [key]: value };
     setPrefs(updated);
     save(updated);
   }
@@ -774,11 +754,37 @@ function NotificationSettingsSection() {
 
   const isEnabled = permissionState === "granted";
 
-  const categories = [
-    { key: "moon_phases", label: "Moon phases", desc: "Full moons, new moons, and eclipses" },
-    { key: "your_chart", label: "Your chart", desc: "Transits, retrogrades, and birthdays" },
-    { key: "daily_message", label: "Daily message", desc: "A short daily note" },
-    { key: "learning_streak", label: "Learning streak", desc: "A nudge only when your streak is about to lapse" },
+  const typed = prefs as unknown as NotificationPreferences;
+
+  // The three switches most people will ever touch. Each one maps to a job:
+  // something happened overhead, something happened in your chart, something
+  // of yours is waiting.
+  const groups: { key: NotificationGroup; label: string; desc: string }[] = [
+    { key: "sky", label: "The sky", desc: "Moons, eclipses, retrogrades, ingresses" },
+    { key: "chart", label: "My chart", desc: "Transits to your placements, your solar return" },
+    { key: "practice", label: "My practice", desc: "Journal prompts and rituals you've saved" },
+  ];
+
+  // Everything, for anyone who wants to tune it. Astrologers disagree with each
+  // other about most of this, so the per-alert switches are a real answer
+  // rather than a hedge.
+  const detail: { key: keyof NotificationPreferences; label: string; desc: string }[] = [
+    { key: "new_moon", label: "New moons", desc: "On the night it peaks" },
+    { key: "new_moon_act", label: "Four days after a new moon", desc: "The beat where an intention wants an action" },
+    { key: "full_moon", label: "Full moons", desc: "On the night it peaks" },
+    { key: "quarter_moon", label: "Quarter moons", desc: "The quieter two" },
+    { key: "eclipses", label: "Eclipses", desc: "Four to six a year" },
+    { key: "eclipse_season", label: "Eclipse season opening", desc: "Five weeks' notice, twice a year" },
+    { key: "retrograde_stations", label: "Retrograde stations", desc: "The day a planet stops, either direction" },
+    { key: "retrograde_shadow", label: "Shadow periods clearing", desc: "When a planet finishes re-crossing its own ground" },
+    { key: "major_ingresses", label: "Planets changing sign", desc: "Jupiter and slower only" },
+    { key: "major_transits", label: "Transits to your chart", desc: "Only when genuinely exact" },
+    { key: "transit_approaching", label: "Transits approaching", desc: "Four days before it lands" },
+    { key: "solar_return", label: "Your solar return", desc: "The exact moment, once a year" },
+    { key: "birthday_week", label: "Birthday week", desc: "A few days ahead of it" },
+    { key: "journal_checkin", label: "Journal check-ins", desc: "A question written for the transit you're in" },
+    { key: "practice_reminders", label: "Saved rituals", desc: "On the night they're for" },
+    { key: "learning_reminder", label: "Learning streak", desc: "Only if you want to be nudged about it" },
   ];
 
   return (
@@ -835,28 +841,128 @@ function NotificationSettingsSection() {
         </div>
       )}
 
-      {/* Category toggles — only shown when enabled */}
+      {/* Three switches, a time, and a pause. Everything else is one tap down. */}
       {isEnabled && (
         <div className="border-t border-foreground/8">
-          {categories.map((cat, i) => (
-            <div
-              key={cat.key}
-              className={`flex items-center justify-between px-5 py-3.5 ${
-                i < categories.length - 1 ? "border-b border-foreground/5" : ""
-              }`}
-            >
+          {groups.map((g) => (
+            <div key={g.key} className="flex items-center justify-between px-5 py-3.5 border-b border-foreground/5">
               <div className="flex-1 mr-4">
-                <p className="text-foreground text-[14px] font-medium">{cat.label}</p>
-                <p className="text-muted text-[12px] mt-0.5">{cat.desc}</p>
+                <p className="text-foreground text-[14px] font-medium">{g.label}</p>
+                <p className="text-muted text-[12px] mt-0.5">{g.desc}</p>
               </div>
               <ToggleSwitch
-                checked={!!prefs[cat.key]}
-                onChange={() => toggle(cat.key)}
+                checked={groupEnabled(typed, g.key)}
+                onChange={() => applyGroup(g.key, !groupEnabled(typed, g.key))}
               />
             </div>
           ))}
+
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-foreground/5">
+            <div className="flex-1 mr-4">
+              <p className="text-foreground text-[14px] font-medium">A reading every day</p>
+              <p className="text-muted text-[12px] mt-0.5">One a day, drawn from your own chart</p>
+            </div>
+            <ToggleSwitch
+              checked={!!prefs.daily_content}
+              onChange={() => setValue("daily_content", !prefs.daily_content)}
+            />
+          </div>
+
+          {/* Delivery time. This is the setting that did nothing at all until
+              the sender learned to run hourly and read the user's timezone. */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-foreground/5">
+            <div className="flex-1 mr-4">
+              <p className="text-foreground text-[14px] font-medium">Send at</p>
+              <p className="text-muted text-[12px] mt-0.5">Your time, wherever you are</p>
+            </div>
+            <select
+              id="notif-hour"
+              value={String(prefs.preferred_hour ?? 19)}
+              onChange={(e) => setValue("preferred_hour", Number(e.target.value))}
+              className="text-[13px] bg-transparent border border-foreground/20 rounded-lg px-2 py-1.5 text-foreground"
+            >
+              {TIME_OPTIONS.map((t) => (
+                <option key={t.hour} value={t.hour}>{t.label} · {t.description}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-foreground/5">
+            <div className="flex-1 mr-4">
+              <p className="text-foreground text-[14px] font-medium">Quiet hours</p>
+              <p className="text-muted text-[12px] mt-0.5">Nothing between 10 PM and 7 AM</p>
+            </div>
+            <ToggleSwitch
+              checked={prefs.quiet_hours !== false}
+              onChange={() => setValue("quiet_hours", prefs.quiet_hours === false)}
+            />
+          </div>
+
+          <div className="px-5 py-3.5 border-b border-foreground/5">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 mr-4">
+                <p className="text-foreground text-[14px] font-medium">Pause</p>
+                <p className="text-muted text-[12px] mt-0.5">
+                  {isPaused(typed)
+                    ? `Quiet until ${new Date(String(prefs.paused_until)).toLocaleDateString()}`
+                    : "Everything off for a while"}
+                </p>
+              </div>
+              {isPaused(typed) ? (
+                <button
+                  type="button"
+                  onClick={() => setValue("paused_until", null)}
+                  className="text-[12px] font-semibold underline underline-offset-2"
+                  style={{ color: "var(--brass)" }}
+                >
+                  Resume
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  {PAUSE_OPTIONS.map((o) => (
+                    <button
+                      key={o.hours}
+                      type="button"
+                      onClick={() => setValue("paused_until", getPauseUntil(o.hours))}
+                      className="text-[12px] border border-foreground/20 rounded-lg px-2 py-1"
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowDetail((v) => !v)}
+            className="w-full text-left px-5 py-3.5 text-[13px] font-semibold"
+            style={{ color: "var(--brass)" }}
+            aria-expanded={showDetail}
+          >
+            {showDetail ? "Done" : "Choose individually"}
+          </button>
+
+          {showDetail && (
+            <div className="border-t border-foreground/8">
+              {detail.map((cat) => (
+                <div key={cat.key} className="flex items-center justify-between px-5 py-3 border-b border-foreground/5">
+                  <div className="flex-1 mr-4">
+                    <p className="text-foreground text-[13px] font-medium">{cat.label}</p>
+                    <p className="text-muted text-[11px] mt-0.5">{cat.desc}</p>
+                  </div>
+                  <ToggleSwitch
+                    checked={prefs[cat.key] === true}
+                    onChange={() => setValue(cat.key, prefs[cat.key] !== true)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
     </div>
   );
 }
