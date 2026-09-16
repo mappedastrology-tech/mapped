@@ -1,10 +1,21 @@
 /**
- * Daily notifications cron — Netlify Scheduled Function.
+ * Hourly notifications cron — Netlify Scheduled Function.
  *
  * Replaces the Vercel cron in vercel.json (Netlify ignores that file). Fires
- * daily at 14:00 UTC and calls the app's own /api/cron/notifications route,
- * which does the real work: read push subscriptions, respect each user's
- * preferences and pause state, send via web-push, prune dead subscriptions.
+ * every hour and calls the app's own /api/cron/notifications route, which does
+ * the real work: read push subscriptions, respect each user's preferences and
+ * pause state, send via web-push, prune dead subscriptions.
+ *
+ * IT MUST BE HOURLY, and this is the whole reason the schedule changed. The
+ * route sends to a person only when their OWN clock has reached the hour they
+ * chose, which is the only way "deliver at 7pm" can mean 7pm in Austin and 7pm
+ * in Berlin. Called once a day at 14:00 UTC, as it was before the rebuild, the
+ * only people who would ever hear from Mapped are the ones whose chosen hour
+ * happens to land on 14:00 UTC that day. Everyone else gets silence, with no
+ * error anywhere to say so.
+ *
+ * The volume does not change: the caps in catalogue.ts are per person per day,
+ * week and month, so twenty-four calls a day still send at most one push.
  *
  * The route authenticates with CRON_SECRET as a bearer token and fails closed
  * when it is unset, so CRON_SECRET must be configured in Netlify's environment
@@ -48,5 +59,5 @@ export default async () => {
 };
 
 export const config: Config = {
-  schedule: "0 14 * * *", // daily 14:00 UTC — matches the old vercel.json
+  schedule: "0 * * * *", // hourly, on the hour — matches vercel.json
 };
