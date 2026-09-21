@@ -963,7 +963,7 @@ export default function OnboardingPage() {
 
                 {!existingUserId && (
                   <button
-                    onClick={() => router.push("/account?mode=signin")}
+                    onClick={() => router.push("/welcome?mode=signin")}
                     className="text-terracotta text-xs hover:opacity-80 transition-colors self-center pb-2"
                   >
                     Already have an account?{" "}

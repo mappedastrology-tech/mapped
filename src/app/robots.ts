@@ -28,6 +28,7 @@ export default function robots(): MetadataRoute.Robots {
         "/palmistry",
         "/account",
         "/admin",
+        "/welcome",
         "/onboarding",
         "/rectification",
         "/chart",

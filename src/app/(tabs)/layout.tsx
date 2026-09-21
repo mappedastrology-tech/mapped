@@ -23,6 +23,7 @@ import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
+import { isInstalledApp } from "@/lib/isNativeApp";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import WebToday from "@/components/web/WebToday";
 import WebAlmanac from "@/components/web/WebAlmanac";
@@ -85,8 +86,9 @@ export default function TabsLayout({
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) {
-        // Not signed in — send to landing page
-        router.replace("/");
+        // Not signed in. Inside the app that means the sign-in screen; the
+        // marketing page is only for someone browsing the website.
+        router.replace(isInstalledApp() ? "/welcome" : "/");
         return;
       }
       try {

@@ -37,3 +37,26 @@ export function isNativeApp(): boolean {
 
   return API_BASE !== "";
 }
+
+/**
+ * isInstalledApp — is this person using Mapped as an app rather than a website?
+ *
+ * True inside the Capacitor shell, AND when Mapped was added to the Home Screen
+ * and opened from there. The second case is how most people use Mapped today,
+ * and isNativeApp() alone doesn't see it: a Home Screen web app runs in Safari's
+ * engine at the real https address, so it looks exactly like a website to
+ * every check above. That is why signing out of the installed app landed on the
+ * marketing page — nav bar, "Start free", footer — instead of a sign-in screen.
+ *
+ * The browser does know: an app launched from the Home Screen runs in
+ * "standalone" display mode (manifest.json asks for it), and iOS also exposes
+ * navigator.standalone.
+ */
+export function isInstalledApp(): boolean {
+  if (typeof window === "undefined") return false;
+  if (isNativeApp()) return true;
+  try {
+    if (window.matchMedia?.("(display-mode: standalone)").matches) return true;
+  } catch { /* very old browser — fall through */ }
+  return (navigator as unknown as { standalone?: boolean }).standalone === true;
+}

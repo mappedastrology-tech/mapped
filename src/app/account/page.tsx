@@ -1695,7 +1695,7 @@ function AccountPage() {
       // Sign out locally and redirect
       await supabase.auth.signOut();
       sessionStorage.clear();
-      router.push("/");
+      router.replace("/welcome");
     } catch (err) {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -1745,7 +1745,10 @@ function AccountPage() {
     setEmail(null);
     setUserName(null);
     setUserId(null);
-    router.push("/");
+    // Signing out of an app lands on its sign-in screen — on every device,
+    // never the marketing site. replace(), so Back can't return to a signed-in
+    // page that no longer has anyone behind it.
+    router.replace("/welcome");
   }
 
   const inputClass = `w-full px-4 py-3.5 rounded-xl bg-surface border border-foreground/18

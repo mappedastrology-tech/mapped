@@ -183,7 +183,7 @@ export default function WebShell({
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           {variant === "marketing" ? (
             <>
-              <Link href="/onboarding" style={{ fontSize: 14, fontWeight: 600, color: "var(--fg2)", flex: "0 0 auto" }}>Log in</Link>
+              <Link href="/welcome?mode=signin" style={{ fontSize: 14, fontWeight: 600, color: "var(--fg2)", flex: "0 0 auto" }}>Log in</Link>
               <Link href="/onboarding" style={{ flex: "0 0 auto", fontSize: 14, fontWeight: 700, letterSpacing: "0.01em", padding: "11px 20px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Start free</Link>
             </>
           ) : (

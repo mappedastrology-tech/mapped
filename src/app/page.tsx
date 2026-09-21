@@ -2,14 +2,14 @@
 
 // Landing page — first thing users see.
 // Signed-in users skip straight to /home. Signed-out users see the web
-// marketing landing (design_handoff_mapped_web) — except inside the native
-// app, which goes to /onboarding instead. See the redirect below for why.
+// marketing landing (design_handoff_mapped_web) — except inside the app
+// (native or Home Screen), which goes to /welcome. See the redirect below.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import WebLanding from "@/components/web/WebLanding";
-import { isNativeApp } from "@/lib/isNativeApp";
+import { isInstalledApp } from "@/lib/isNativeApp";
 
 export default function Home() {
   const router = useRouter();
@@ -33,22 +33,21 @@ export default function Home() {
           // Supabase unreachable but user has a session — send to home
           router.replace("/home");
         }
-      } else if (isNativeApp()) {
-        // The app's start URL is "/", so this is its first screen. On the web
-        // that should be the marketing page; inside the app it must not be.
-        // Someone who has already downloaded and opened the app does not need
-        // to be sold it, and a native app that opens on a website — site nav,
-        // "Log in / Start free", press badges, a footer with a Contact link —
-        // is the precise shape App Review rejects under Guideline 4.2. Send
-        // them to the actual first run instead.
-        router.replace("/onboarding");
+      } else if (isInstalledApp()) {
+        // Inside the app — native, or opened from the Home Screen — this must
+        // never be the marketing page. Someone who has the app open doesn't
+        // need to be sold it, and a native app that opens on a website (site
+        // nav, "Start free", a footer) is the shape App Review rejects under
+        // Guideline 4.2. They get the app's own front door: create a chart,
+        // or sign in.
+        router.replace("/welcome");
       } else {
         setChecked(true);
       }
     }).catch(() => {
       // Can't reach Supabase at all. Same split: the app still has an
       // onboarding flow to show, the web has its landing page.
-      if (isNativeApp()) router.replace("/onboarding");
+      if (isInstalledApp()) router.replace("/welcome");
       else setChecked(true);
     });
   }, [router]);

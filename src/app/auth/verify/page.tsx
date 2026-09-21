@@ -52,7 +52,7 @@ function VerifyContent() {
         }
         router.replace("/home");
       } else {
-        router.replace("/account?mode=signin");
+        router.replace("/welcome?mode=signin");
       }
     }
 
@@ -65,10 +65,10 @@ function VerifyContent() {
         <div className="rounded-2xl bg-surface border border-foreground/15 p-6 max-w-sm w-full text-center">
           <p className="text-foreground text-sm mb-4">{error}</p>
           <button
-            onClick={() => router.push("/account")}
+            onClick={() => router.push("/welcome?mode=signin")}
             className="text-terracotta text-sm hover:text-terracotta-light transition-colors"
           >
-            Go to account
+            Back to sign in
           </button>
         </div>
       </main>

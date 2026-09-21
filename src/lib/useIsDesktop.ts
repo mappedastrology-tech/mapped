@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { isNativeApp } from "@/lib/isNativeApp";
+import { isInstalledApp } from "@/lib/isNativeApp";
 
 // Env var wins if set ("1" on / "0" off); otherwise this default applies.
 const FORCE_MOBILE_DEFAULT = false;
@@ -28,7 +28,7 @@ export function useIsDesktop(): boolean {
   useEffect(() => {
     // The native shell always gets the app layout, whatever the screen measures
     // — see lib/isNativeApp for why an iPad makes this necessary.
-    if (FORCE_MOBILE || isNativeApp()) { setIsDesktop(false); return; }
+    if (FORCE_MOBILE || isInstalledApp()) { setIsDesktop(false); return; }
     const mq = window.matchMedia("(min-width: 1024px)");
     const apply = () => setIsDesktop(mq.matches);
     apply();
