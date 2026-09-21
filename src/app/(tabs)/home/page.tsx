@@ -96,6 +96,7 @@ import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import { getDailyEnergy } from "@/lib/celestialCalendar";
 import FolderCard from "@/components/FolderCard";
+import PanchangGrid from "@/components/PanchangGrid";
 import StartHereCard from "@/components/StartHereCard";
 import MoonPhaseIcon from "@/components/MoonPhaseIcon";
 import MoonEventScreen from "@/components/MoonEventScreen";
@@ -1777,6 +1778,7 @@ export default function HomeTab() {
                     <p className="text-[13px] font-semibold capitalize" style={{ color: "var(--foreground-on-card)" }}>{nakshatra.quality}</p>
                   </div>
                 </div>
+                <PanchangGrid at={today} tone="card" />
                 <p className="text-[11px] italic leading-relaxed" style={{ color: "var(--foreground-on-card-faint)" }}>
                   Nakshatras are the 27 lunar mansions of Vedic astrology — slices of sky the Moon passes through. Each has a ruling deity that colors the day&apos;s energy.
                 </p>

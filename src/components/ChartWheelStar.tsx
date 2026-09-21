@@ -56,13 +56,22 @@ const STARS: [number, number, number, number][] = (() => {
   return out;
 })();
 
-export default function ChartWheelStar({ planets, houses, aspects }: { planets: Planet[]; houses: House[]; aspects: Aspect[] }) {
+/**
+ * `ascendant` / `midheaven` (absolute degrees) are optional. Pass them for
+ * whole-sign charts: there the house-1 cusp is 0° of the rising sign, so the
+ * wheel is oriented on the real Ascendant and the gold ASC/MC axes are drawn
+ * at the angles themselves instead of on cusps 1 and 10.
+ */
+export default function ChartWheelStar({ planets, houses, aspects, ascendant, midheaven }: {
+  planets: Planet[]; houses: House[]; aspects: Aspect[]; ascendant?: number | null; midheaven?: number | null;
+}) {
   const safePlanets = (planets || []).filter((p) => p && isFinite(p.absPosition));
   const safeHouses = (houses || []).filter((h) => h && isFinite(h.absPosition));
+  const explicitAngles = ascendant != null && isFinite(ascendant);
 
   const cx = 230, cy = 230;
   const rimR = 206, signGlyphR = 193, signRingR = 180, planetRingR = 150, houseNumR = 100, aspectR = 132;
-  const ascDeg = safeHouses[0]?.absPosition || 0;
+  const ascDeg = explicitAngles ? (ascendant as number) : (safeHouses[0]?.absPosition || 0);
 
   const toAngle = (deg: number) => 180 - (deg - ascDeg);
   const xy = (angleDeg: number, r: number): [number, number] => {
@@ -133,7 +142,7 @@ export default function ChartWheelStar({ planets, houses, aspects }: { planets: 
             const angle = toAngle(h.absPosition);
             const [x1, y1] = xy(angle, signRingR);
             const [x2, y2] = xy(angle, 40);
-            const isAxis = i === 0 || i === 9; // ASC, MC
+            const isAxis = !explicitAngles && (i === 0 || i === 9); // ASC, MC (quadrant houses only)
             const next = safeHouses[(i + 1) % safeHouses.length];
             let midAbs = (h.absPosition + next.absPosition) / 2;
             if (next.absPosition < h.absPosition) { midAbs = (h.absPosition + next.absPosition + 360) / 2; if (midAbs >= 360) midAbs -= 360; }
@@ -146,6 +155,14 @@ export default function ChartWheelStar({ planets, houses, aspects }: { planets: 
                 </text>
               </g>
             );
+          })}
+
+          {/* ASC/MC axes drawn at the angles themselves (whole-sign charts) */}
+          {explicitAngles && houses.length > 0 && [ascendant as number, midheaven].map((deg, i) => {
+            if (deg == null || !isFinite(deg)) return null;
+            const [x1, y1] = xy(toAngle(deg), signRingR);
+            const [x2, y2] = xy(toAngle(deg), 40);
+            return <line key={`axis-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#e0c488" strokeWidth={1} opacity={0.5} />;
           })}
 
           {/* aspect web */}

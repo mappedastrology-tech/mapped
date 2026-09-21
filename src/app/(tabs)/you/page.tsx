@@ -30,6 +30,10 @@ import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearI
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
 import { analyzeChart, type ChartAnalysis } from "@/lib/chartAnalysis";
 import ChartInsightsPanel from "@/components/ChartInsightsPanel";
+import VedicChartPanel from "@/components/VedicChartPanel";
+import type { VedicDetails } from "@/lib/astro/vedic/vedicChart";
+import { chartCalcParams, chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
+import { chartColumns, systemColumns, writeWithOptionalColumns } from "@/lib/chartSystemSync";
 import { useTheme } from "@/components/ThemeProvider";
 
 interface Planet {
@@ -92,6 +96,12 @@ interface ChartData {
     position: number;
     absPosition: number;
   } | null;
+  /** Exact Ascendant (with whole-sign houses, house 1 starts at 0° of the sign instead). */
+  ascendant?: { sign: string; signNum: number; position: number; absPosition: number } | null;
+  /** Zodiac / ayanamsa / houses / nodes the positions are in. */
+  system?: ChartSystem;
+  /** Nakshatras, navamsa, dasha inputs — sidereal charts only. */
+  vedic?: VedicDetails | null;
 }
 
 const PLANET_SYMBOLS: Record<string, string> = {
@@ -1171,7 +1181,7 @@ export default function YouTab() {
   const [cuspDismissed, setCuspDismissed] = useState(false);
   const [openAspect, setOpenAspect] = useState<string | null>(null);
   const [aspectTab, setAspectTab] = useState<"strong" | "medium" | "mild">("strong");
-  const [pageTab, setPageTab] = useState<"placements" | "aspects" | "insights">("placements");
+  const [pageTab, setPageTab] = useState<"placements" | "aspects" | "insights" | "vedic">("placements");
   const [accountName, setAccountName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1193,6 +1203,7 @@ export default function YouTab() {
         if (data) {
           // Recalculate client-side — no API call, no serverless dependency.
           // This runs the exact same calculateChart() in the browser.
+          const system = chartSystemFromRow(data);
           try {
             const recalc = calculateChart({
               name: data.name,
@@ -1202,10 +1213,29 @@ export default function YouTab() {
               latitude: data.latitude,
               longitude: data.longitude,
               cityName: data.city_name,
-              zodiacSystem: data.zodiac_system || "tropical",
-              ...(data.zodiac_system === "sidereal" ? { ayanamsa: data.ayanamsa || "lahiri" } : {}),
+              ...chartCalcParams(system),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             }) as any;
+
+            // Sidereal charts saved before the ayanamsa was computed per date
+            // (it was a frozen 24.17°) or before whole-sign houses became the
+            // sidereal default hold stale positions — and the horoscope, Dolly
+            // and pushes read the stored row, not this recalculation. Re-save
+            // the user's own row once so everything agrees with this screen.
+            if (system.zodiacSystem === "sidereal") {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const storedMoon = (data.planets || []).find((p: any) => p.name === "Moon")?.absPosition;
+              const drift = typeof storedMoon === "number" ? Math.abs(storedMoon - recalc.planets[1].absPosition) : 999;
+              const housesMoved = (data.houses?.[0]?.absPosition ?? null) !== (recalc.houses?.[0]?.absPosition ?? null);
+              if (drift > 0.05 || housesMoved) {
+                const cols = systemColumns(system);
+                void writeWithOptionalColumns(
+                  (payload) => supabase.from("charts").update(payload).eq("id", data.id),
+                  { ...chartColumns(recalc), ...cols.required },
+                  { ...cols.optional, ascendant: recalc.ascendant || null },
+                );
+              }
+            }
 
             setChartData({
               name: metaName || data.name,
@@ -1222,6 +1252,9 @@ export default function YouTab() {
               aspects: recalc.aspects,
               specialPoints: recalc.specialPoints || [],
               midheaven: recalc.midheaven || null,
+              ascendant: recalc.ascendant || null,
+              system,
+              vedic: recalc.vedic || null,
             });
           } catch (err) {
             console.error("[recalc] Client-side calculation failed:", err);
@@ -1241,6 +1274,7 @@ export default function YouTab() {
               aspects: data.aspects,
               specialPoints: data.special_points || [],
               midheaven: data.midheaven || null,
+              system,
             });
           }
           setIsLoading(false);
@@ -1283,6 +1317,8 @@ export default function YouTab() {
         latitude: chartData.latitude,
         longitude: chartData.longitude,
         timezone: chartData.timezone || "UTC",
+        // Same system as the chart, or the backfilled points would be tropical.
+        ...chartCalcParams(chartData.system ?? chartSystemFromRow(null)),
       }),
     })
       .then((r) => {
@@ -1427,6 +1463,11 @@ export default function YouTab() {
           {unknownTime && " (approx)"}
           {chartData.cityName ? ` · ${chartData.cityName}` : ""}
         </p>
+        {chartData.system && (
+          <p className="text-[9px] tracking-[0.2em] uppercase font-semibold mt-1.5" style={{ color: "var(--foreground-faint)" }}>
+            {chartSystemLabel(chartData.system)}
+          </p>
+        )}
         <button
           onClick={() => router.push("/chart/new?edit=true")}
           className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full
@@ -1443,7 +1484,14 @@ export default function YouTab() {
 
       {/* Chart Wheel — plum star-map */}
       <div className="mt-4 mb-2">
-        <ChartWheelStar planets={planets} houses={unknownTime ? [] : effectiveHouses} aspects={chartData.aspects || []} />
+        <ChartWheelStar
+          planets={planets}
+          houses={unknownTime ? [] : effectiveHouses}
+          aspects={chartData.aspects || []}
+          // Whole-sign cusps sit at 0° of each sign, so orient on the real angles.
+          ascendant={chartData.system?.houseSystem === "whole_sign" && !unknownTime ? chartData.ascendant?.absPosition : null}
+          midheaven={chartData.system?.houseSystem === "whole_sign" && !unknownTime ? midheaven?.absPosition : null}
+        />
       </div>
 
       {/* Aspect legend */}
@@ -1526,6 +1574,8 @@ export default function YouTab() {
             { key: "placements" as const, label: "Placements" },
             { key: "aspects" as const, label: "Aspects" },
             { key: "insights" as const, label: "Insights" },
+            // Sidereal charts get the Jyotish view: nakshatras, D9, dashas.
+            ...(chartData.vedic ? [{ key: "vedic" as const, label: "Vedic" }] : []),
           ]).map((tab) => {
             const active = pageTab === tab.key;
             return (
@@ -1546,6 +1596,9 @@ export default function YouTab() {
       {pageTab === "insights" && chartAnalysis && (
         <ChartInsightsPanel analysis={chartAnalysis} planets={[...chartData.planets, ...(chartData.specialPoints || []).map(sp => ({ ...sp, house: sp.house != null ? String(sp.house) : null }))]} />
       )}
+
+      {/* ═══ VEDIC TAB (sidereal charts) ═══ */}
+      {pageTab === "vedic" && chartData.vedic && <VedicChartPanel vedic={chartData.vedic} />}
 
       {/* ═══ PLACEMENTS TAB ═══ */}
       {pageTab === "placements" && (<>

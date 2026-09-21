@@ -10,7 +10,8 @@
  */
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import PanchangGrid from "@/components/PanchangGrid";
 import WebShell, { useWebTheme } from "./WebShell";
 import { useLiveSky } from "./useLiveSky";
 import { getOnThisDay } from "@/lib/onThisDay";
@@ -102,6 +103,11 @@ function heroStars(seed: number, n = 26): React.CSSProperties[] {
 const card: React.CSSProperties = { borderRadius: 20, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 18px var(--shadow)" };
 
 export default function WebAlmanac() {
+  // Set after mount: this page is prerendered, and the panchang depends on the
+  // viewer's clock and timezone.
+  const [panchangAt, setPanchangAt] = useState<Date | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setPanchangAt(new Date()); }, []);
   const { theme, toggle } = useWebTheme();
   const stars = useMemo(() => heroStars(90210), []);
   const sky = useLiveSky();
@@ -242,6 +248,11 @@ export default function WebAlmanac() {
                   </div>
                 ))}
               </div>
+            </div>
+            <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
+              {panchangAt
+                ? <PanchangGrid at={panchangAt} tone="web" />
+                : <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: 0 }}>Panchang today</p>}
             </div>
             <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>{born.head}</p>

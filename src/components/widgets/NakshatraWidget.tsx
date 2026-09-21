@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCurrentNakshatra } from "@/lib/celestialCalendar";
+import PanchangGrid from "@/components/PanchangGrid";
 
 interface Nakshatra {
   name: string;
@@ -13,9 +14,10 @@ interface Nakshatra {
 export default function NakshatraWidget() {
   const [nakshatra, setNakshatra] = useState<Nakshatra | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [now] = useState(() => new Date());
 
   useEffect(() => {
-    const nakshatraData = getCurrentNakshatra(new Date());
+    const nakshatraData = getCurrentNakshatra(now);
     setNakshatra({
       name: nakshatraData.name,
       deity: nakshatraData.deity,
@@ -23,7 +25,7 @@ export default function NakshatraWidget() {
       brief: nakshatraData.brief,
     });
     setIsLoading(false);
-  }, []);
+  }, [now]);
 
   if (isLoading) {
     return (
@@ -42,7 +44,8 @@ export default function NakshatraWidget() {
       </p>
       <p className="text-foreground font-medium text-sm mb-1">{nakshatra.name}</p>
       <p className="text-muted text-xs mb-2">{nakshatra.deity}</p>
-      <p className="text-secondary text-xs leading-relaxed">{nakshatra.brief}</p>
+      <p className="text-secondary text-xs leading-relaxed mb-3">{nakshatra.brief}</p>
+      <PanchangGrid at={now} />
     </div>
   );
 }
