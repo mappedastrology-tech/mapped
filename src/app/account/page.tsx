@@ -34,6 +34,7 @@ import {
   type UserLocation,
 } from "@/lib/userLocation";
 import { goBack } from "@/lib/goBack";
+import { isAdmin } from "@/lib/admin";
 
 export default function AccountPageWrapper() {
   return (
@@ -628,6 +629,9 @@ function NotificationSettingsSection() {
   const [blocker, setBlocker] = useState<string>("ok");
   const [testState, setTestState] = useState<{ kind: "idle" | "sending" | "sent" | "error"; msg?: string }>({ kind: "idle" });
   const [showDetail, setShowDetail] = useState(false);
+  // Only decides whether the link is drawn. The send page and its API check
+  // admin status on the server themselves; hiding a link protects nothing.
+  const [adminUser, setAdminUser] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -640,6 +644,7 @@ function NotificationSettingsSection() {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
+      setAdminUser(isAdmin(session.user.id));
       const { data } = await supabase.from("profiles").select("notification_preferences").eq("id", session.user.id).single();
       // Merged over the defaults so a preference added since this profile was
       // last saved arrives with its intended default rather than undefined.
@@ -830,6 +835,15 @@ function NotificationSettingsSection() {
           >
             {testState.kind === "sending" ? "Sending…" : "Send me a test notification"}
           </button>
+          {adminUser && (
+            <Link
+              href="/admin/push"
+              className="ml-4 text-[12px] font-semibold underline underline-offset-2"
+              style={{ color: "var(--brass)" }}
+            >
+              Write a push
+            </Link>
+          )}
           {testState.msg && (
             <p
               className="text-[11px] mt-1.5 max-w-[19rem]"

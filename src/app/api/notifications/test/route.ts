@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       ok: false,
       step: "server-config",
       error: "VAPID keys are not set on the server, so nothing can be sent.",
-      fix: "Add NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Vercel, then redeploy.",
+      fix: "Add NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Netlify's environment variables, then redeploy.",
     }, { status: 503 });
   }
 
@@ -67,9 +67,12 @@ export async function POST(request: Request) {
   const webpush: any = require("web-push");
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
 
+  // The phone already prints "MAPPED" above every notification, so a title of
+  // "Mapped" said the app's name twice and nothing else. The test is also the
+  // first push anyone sees from us — it should sound like Dolly, not a system.
   const payload = JSON.stringify({
-    title: "Mapped",
-    body: "Notifications are working. This is the test you sent yourself.",
+    title: "Testing, testing",
+    body: "It's me. If you're reading this, I can reach you. Next time it'll be about the sky.",
     url: "/home",
     tag: "mapped-test",
   });
