@@ -492,7 +492,9 @@ export default function OnboardingPage() {
         ? "bg-terracotta hover:opacity-90 active:scale-[0.98]"
         : "bg-foreground/15 text-muted cursor-not-allowed"
     }`;
-  const ctaTextColor = { color: "var(--terracotta-text)" }; // dark brown — readable on brass/gold
+  // --on-brass: dark ink on the dark theme's light gold, cream on the light
+  // theme's dark gold. The old dark brown was ~2:1 on light-theme brass.
+  const ctaTextColor = { color: "var(--on-brass)" };
 
   const ctaShadow = {
     boxShadow: "0 8px 20px -6px rgba(180, 81, 40, 0.4), 0 3px 8px -3px rgba(180, 81, 40, 0.25)",

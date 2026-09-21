@@ -102,6 +102,8 @@
   /* Legacy aliases — keep existing Tailwind classes working */
   --terracotta: var(--brass);
   --terracotta-text: #3d2415;
+  /* Text ON a brass button — dark ink on light gold, about 8:1. */
+  --on-brass: #1a1420;
   --terracotta-bg: var(--plum-deep);
   --terracotta-light: var(--brass-light);
   --amber: var(--brass);
@@ -212,6 +214,8 @@
 
   --terracotta: var(--brass);
   --terracotta-text: #3d2415;
+  /* Text ON a brass button — dark ink on light gold, about 8:1. */
+  --on-brass: #1a1420;
   --terracotta-bg: var(--plum-deep);
   --terracotta-light: var(--brass-light);
   --amber: var(--brass);
@@ -334,6 +338,9 @@
 
   --terracotta: var(--brass);
   --terracotta-text: #3d2415;
+  /* Text ON a brass button. Light-theme brass is a dark gold, so the dark
+     brown above sat at about 2:1 on it — unreadable. Cream is 5:1. */
+  --on-brass: #fbf6ea;
   --terracotta-bg: #faf0e0;
   --terracotta-light: var(--brass-light);
   --amber: var(--brass);

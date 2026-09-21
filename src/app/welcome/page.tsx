@@ -34,13 +34,20 @@ import { supabase } from "@/lib/supabase";
  */
 const ONBOARDING_STEP_KEY = "mapped:onboarding-step";
 
-const INPUT = `w-full px-4 py-3.5 rounded-xl bg-surface border border-foreground/18
+const INPUT = `w-full px-4 py-3.5 rounded-xl bg-surface border border-foreground/18 [font-family:inherit]
                text-foreground placeholder:text-muted text-base
                focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25`;
 
+/*
+ * --on-brass, not --terracotta-text: in the light theme brass is a dark gold and
+ * the dark-brown text on it measured about 2:1 — "Create my chart" was barely
+ * legible. --on-brass flips to cream there (5:1) and stays dark ink on the
+ * light gold of the dark theme (8:1).
+ */
 const PRIMARY = {
   backgroundColor: "var(--brass)",
-  color: "var(--terracotta-text)",
+  color: "var(--on-brass)",
+  fontFamily: "var(--font-ui)",
   boxShadow: "0 8px 20px -6px rgba(180, 81, 40, 0.4), 0 3px 8px -3px rgba(180, 81, 40, 0.25)",
 };
 
@@ -138,7 +145,13 @@ function WelcomePage() {
   return (
     <main
       className="min-h-dvh flex flex-col bg-background px-6"
-      style={{ paddingTop: "max(env(safe-area-inset-top), 1.5rem)", paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)" }}
+      style={{
+        // Interface, not reading: buttons, fields and links in the UI sans.
+        // The wordmark, tagline and headings set their own faces below.
+        fontFamily: "var(--font-ui)",
+        paddingTop: "max(env(safe-area-inset-top), 1.5rem)",
+        paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)",
+      }}
     >
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
         <h1 className="text-[52px] leading-none tracking-tight text-foreground" aria-label="Mapped">
@@ -148,7 +161,7 @@ function WelcomePage() {
 
         {view === "choose" && (
           <>
-            <p className="mt-6 text-center text-secondary text-base leading-relaxed">
+            <p className="mt-6 text-center text-secondary text-base leading-relaxed" style={{ fontFamily: "var(--font-body)" }}>
               Astrology for your actual life.
             </p>
             <div className="mt-12 w-full flex flex-col gap-3">
@@ -162,6 +175,7 @@ function WelcomePage() {
               <button
                 onClick={() => { setView("signin"); setError(""); }}
                 className="w-full py-3.5 rounded-full border border-foreground/20 text-foreground font-semibold text-sm active:scale-[0.98] transition-all"
+                style={{ fontFamily: "var(--font-ui)" }}
               >
                 I already have an account
               </button>
