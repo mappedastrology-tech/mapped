@@ -9,6 +9,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CitySearch, { LocationResult } from "@/components/CitySearch";
 import { supabase } from "@/lib/supabase";
 import { saveChart, updateChart } from "@/lib/saveChart";
+import { loadChartSystemPreference } from "@/lib/chartSystemSync";
+import { chartSystemFromRow, type ChartSystem } from "@/lib/astro/vedic/system";
 import { goBack } from "@/lib/goBack";
 
 export default function NewChartWrapper() {
@@ -56,6 +58,15 @@ function NewChart() {
 
         if (!data) return;
 
+        // Keep the user's chart system when they edit their birth details —
+        // otherwise re-saving would silently flip a Vedic chart back to Western.
+        try {
+          const sys = chartSystemFromRow(await loadChartSystemPreference(session.user.id));
+          setZodiacSystem(sys.zodiacSystem);
+          setAyanamsa(sys.ayanamsa);
+          setSavedSystem(sys);
+        } catch { /* keep defaults */ }
+
         setName(data.name || "");
         setBirthDate(data.birth_date || "");
         setBirthTime(data.birth_time || "12:00");
@@ -78,6 +89,9 @@ function NewChart() {
   // Zodiac system preference
   const [zodiacSystem, setZodiacSystem] = useState<"tropical" | "sidereal">("tropical");
   const [ayanamsa, setAyanamsa] = useState<"lahiri" | "krishnamurti" | "raman">("lahiri");
+  // House system and node type aren't on this form (they're set in Account);
+  // when editing, carry the saved ones through so the edit keeps them.
+  const [savedSystem, setSavedSystem] = useState<ChartSystem | null>(null);
 
   // Save / account fields
   const [wantsSave, setWantsSave] = useState(false);
@@ -118,6 +132,10 @@ function NewChart() {
           cityName: location!.display_name,
           zodiacSystem,
           ...(zodiacSystem === "sidereal" ? { ayanamsa } : {}),
+          nodeType: savedSystem?.nodeType ?? null,
+          // A saved house system belongs to the zodiac it was chosen with; if the
+          // zodiac changed here, fall back to that zodiac's default (null).
+          houseSystem: savedSystem?.zodiacSystem === zodiacSystem ? savedSystem.houseSystem : null,
         }),
       });
 

@@ -35,6 +35,7 @@ import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import { DEFAULT_COORDS } from "@/lib/celestialMechanics";
 import NightSky from "./NightSky";
+import { chartCalcParams, chartSystemFromChart, chartSystemFromRow, type ChartSystem } from "@/lib/astro/vedic/system";
 
 /* ═══════════════════════════════════════════
    Error Boundary — catches rendering crashes
@@ -154,6 +155,8 @@ interface UserChart {
   timezone?: string;
   zodiacSystem?: string;
   ayanamsa?: string;
+  houseSystem?: string;
+  nodeType?: string;
 }
 
 interface AstroLine {
@@ -2562,6 +2565,9 @@ export default function MapsTab() {
       } catch { /* continue without auth */ }
 
       let foundChart = false;
+      // Connections are recalculated in the USER's system so synastry and
+      // comparisons never mix zodiacs (a tropical Venus vs a sidereal Mars).
+      let userSystem: ChartSystem = chartSystemFromRow(null);
       if (signedInUserId) {
         const { data: chartData } = await supabase
           .from("charts")
@@ -2581,9 +2587,9 @@ export default function MapsTab() {
             latitude: chartData.latitude,
             longitude: chartData.longitude,
             timezone: chartData.timezone,
-            zodiacSystem: chartData.zodiac_system || "tropical",
-            ayanamsa: chartData.ayanamsa || "lahiri",
+            ...chartSystemFromRow(chartData),
           });
+          userSystem = chartSystemFromRow(chartData);
           foundChart = true;
         }
       }
@@ -2604,9 +2610,9 @@ export default function MapsTab() {
                 latitude: parsed.latitude,
                 longitude: parsed.longitude,
                 timezone: parsed.timezone,
-                zodiacSystem: parsed.zodiacSystem || "tropical",
-                ayanamsa: parsed.ayanamsa || "lahiri",
+                ...chartSystemFromChart(parsed),
               });
+              userSystem = chartSystemFromChart(parsed);
             }
           }
         } catch { /* ignore */ }
@@ -2632,8 +2638,7 @@ export default function MapsTab() {
                   latitude: conn.latitude,
                   longitude: conn.longitude,
                   cityName: conn.city_name,
-                  zodiacSystem: conn.zodiac_system || "tropical",
-                  ...(conn.zodiac_system === "sidereal" ? { ayanamsa: conn.ayanamsa || "lahiri" } : {}),
+                  ...chartCalcParams(userSystem),
                 }) as any;
                 return {
                   ...conn,
@@ -2789,8 +2794,8 @@ export default function MapsTab() {
 
     try {
       // Use same zodiac system as the user's chart
-      const zodSystem = userChart?.zodiacSystem || "tropical";
-      const ayan = userChart?.ayanamsa || "lahiri";
+      // Same system as the user's chart (zodiac, ayanamsa, houses, nodes).
+      const userCalcParams = chartCalcParams(chartSystemFromChart(userChart));
 
       const calcRes = await fetch("/api/chart/calculate", {
         method: "POST",
@@ -2802,8 +2807,7 @@ export default function MapsTab() {
           latitude: formLat,
           longitude: formLng,
           cityName: formCity,
-          zodiacSystem: zodSystem,
-          ...(zodSystem === "sidereal" ? { ayanamsa: ayan } : {}),
+          ...userCalcParams,
         }),
       });
 
@@ -2929,8 +2933,8 @@ export default function MapsTab() {
       let synastryResult = oldConn.synastry;
 
       if (birthChanged) {
-        const zodSystem = userChart?.zodiacSystem || "tropical";
-        const ayan = userChart?.ayanamsa || "lahiri";
+        // Same system as the user's chart (zodiac, ayanamsa, houses, nodes).
+        const userCalcParams = chartCalcParams(chartSystemFromChart(userChart));
 
         const calcRes = await fetch("/api/chart/calculate", {
           method: "POST",
@@ -2942,8 +2946,7 @@ export default function MapsTab() {
             latitude: formLat,
             longitude: formLng,
             cityName: formCity,
-            zodiacSystem: zodSystem,
-            ...(zodSystem === "sidereal" ? { ayanamsa: ayan } : {}),
+            ...userCalcParams,
           }),
         });
         if (!calcRes.ok) {
@@ -3071,7 +3074,7 @@ export default function MapsTab() {
       const connVertex = chartVertex(
         conn.birth_date, conn.birth_time,
         (conn as any).latitude, (conn as any).longitude,
-        (conn as any).unknown_time, (conn as any).zodiac_system, (conn as any).ayanamsa,
+        (conn as any).unknown_time, (userChart as any).zodiacSystem, (userChart as any).ayanamsa,
       );
       const res = await fetch("/api/synastry", {
         method: "POST",

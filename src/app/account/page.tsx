@@ -35,6 +35,9 @@ import {
 } from "@/lib/userLocation";
 import { goBack } from "@/lib/goBack";
 import { isAdmin } from "@/lib/admin";
+import { applyChartSystem, loadChartSystemPreference, saveChartSystemPreference } from "@/lib/chartSystemSync";
+import { chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
+import { defaultHouseSystem } from "@/lib/astro/vedic/houses";
 
 export default function AccountPageWrapper() {
   return (
@@ -1405,6 +1408,46 @@ function SourcesSection() {
   );
 }
 
+/* ─── Chart system (zodiac / ayanamsa / houses / nodes) ─── */
+
+/** One row of equal-width choices. Tapping saves, so it is disabled while a save runs. */
+function SystemChoice<T extends string>({ label, value, options, onPick, disabled, small }: {
+  label?: string;
+  value: T;
+  options: { value: T; label: string; sub?: string }[];
+  onPick: (v: T) => void;
+  disabled: boolean;
+  small?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {label && <p className="text-xs text-muted">{label}</p>}
+      <div className="flex gap-2" role="radiogroup" aria-label={label}>
+        {options.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              role="radio"
+              aria-checked={active}
+              disabled={disabled}
+              onClick={() => { if (!active) onPick(opt.value); }}
+              className={`flex-1 ${small ? "py-2 rounded-lg text-xs" : "py-2.5 rounded-xl text-sm"} font-medium transition-all border disabled:opacity-60
+                ${active
+                  ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
+                  : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
+                }`}
+            >
+              {opt.label}
+              {opt.sub && <span className="block text-[10px] mt-0.5 opacity-60">{opt.sub}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main account page ─── */
 
 function AccountPage() {
@@ -1421,10 +1464,11 @@ function AccountPage() {
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Zodiac system preference
-  const [zodiacSystem, setZodiacSystem] = useState<"tropical" | "sidereal">("tropical");
-  const [ayanamsa, setAyanamsa] = useState<"lahiri" | "krishnamurti" | "raman">("lahiri");
+  // Chart system preference. Saving it recalculates the user's chart and
+  // connections (lib/chartSystemSync.ts), so it is authoritative everywhere.
+  const [chartSystem, setChartSystem] = useState<ChartSystem>(() => chartSystemFromRow(null));
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsStatus, setPrefsStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   // Auth form state
   const [mode, setMode] = useState<"signup" | "signin">(initialMode);
@@ -1477,14 +1521,27 @@ function AccountPage() {
         setEmail(session.user.email || null);
         setUserName(session.user.user_metadata?.name || null);
         try {
-          const { data: profile } = await supabase
-            .from("profiles")
+          const profile = await loadChartSystemPreference(session.user.id);
+          // The chart row is what the user actually sees. People who picked
+          // Vedic during onboarding may have a chart that says sidereal while
+          // the profile still holds the tropical default — show the chart's
+          // system and quietly bring the profile into line.
+          const { data: chartRow } = await supabase
+            .from("charts")
             .select("zodiac_system, ayanamsa")
-            .eq("id", session.user.id)
-            .single();
-          if (profile) {
-            if (profile.zodiac_system) setZodiacSystem(profile.zodiac_system as "tropical" | "sidereal");
-            if (profile.ayanamsa) setAyanamsa(profile.ayanamsa as "lahiri" | "krishnamurti" | "raman");
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const fromProfile = chartSystemFromRow(profile);
+          const fromChart = chartRow ? chartSystemFromRow(chartRow) : null;
+          if (fromChart && (fromChart.zodiacSystem !== fromProfile.zodiacSystem
+            || (fromChart.zodiacSystem === "sidereal" && fromChart.ayanamsa !== fromProfile.ayanamsa))) {
+            const aligned = chartSystemFromRow({ ...profile, zodiac_system: fromChart.zodiacSystem, ayanamsa: fromChart.ayanamsa, house_system: null });
+            setChartSystem(aligned);
+            void saveChartSystemPreference(session.user.id, aligned);
+          } else {
+            setChartSystem(fromProfile);
           }
         } catch {
           // Profile fetch failed — use defaults
@@ -1707,18 +1764,22 @@ function AccountPage() {
     }
   }
 
-  async function saveZodiacPreference(system: "tropical" | "sidereal", ayan: "lahiri" | "krishnamurti" | "raman") {
+  async function saveChartSystem(next: ChartSystem) {
+    if (!userId || savingPrefs) return;
+    const previous = chartSystem;
+    setChartSystem(next);
     setSavingPrefs(true);
+    setPrefsStatus(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await supabase
-          .from("profiles")
-          .update({ zodiac_system: system, ayanamsa: ayan })
-          .eq("id", session.user.id);
-      }
+      const r = await applyChartSystem(userId, next);
+      const people = r.connections ? ` and ${r.connections} ${r.connections === 1 ? "person" : "people"} on your map` : "";
+      setPrefsStatus(r.failed
+        ? { kind: "error", text: `Saved, but ${r.failed} chart${r.failed === 1 ? "" : "s"} couldn't be recalculated. Try again, or re-enter the birth details.` }
+        : { kind: "ok", text: `Done — your chart${people} now use${r.charts + r.connections === 1 ? "s" : ""} ${chartSystemLabel(next)}.` });
     } catch (err) {
-      console.error("Failed to save zodiac preference:", err);
+      console.error("Failed to save chart system:", err);
+      setChartSystem(previous);
+      setPrefsStatus({ kind: "error", text: "Couldn't save that. Check your connection and try again." });
     } finally {
       setSavingPrefs(false);
     }
@@ -1901,73 +1962,68 @@ function AccountPage() {
           {/* ─── Zodiac System Preference ─── */}
           <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
             <p className="text-xs uppercase tracking-widest text-muted mb-3">Zodiac System</p>
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => {
-                  setZodiacSystem("tropical");
-                  saveZodiacPreference("tropical", ayanamsa);
-                }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border
-                  ${zodiacSystem === "tropical"
-                    ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                    : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
-                  }`}
-              >
-                Western
-                <span className="block text-[10px] mt-0.5 opacity-60">Tropical</span>
-              </button>
-              <button
-                onClick={() => {
-                  setZodiacSystem("sidereal");
-                  saveZodiacPreference("sidereal", ayanamsa);
-                }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border
-                  ${zodiacSystem === "sidereal"
-                    ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
-                    : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
-                  }`}
-              >
-                Vedic
-                <span className="block text-[10px] mt-0.5 opacity-60">Sidereal</span>
-              </button>
+            <div className="flex flex-col gap-4">
+              <SystemChoice
+                value={chartSystem.zodiacSystem}
+                disabled={savingPrefs}
+                options={[
+                  { value: "tropical", label: "Western", sub: "Tropical" },
+                  { value: "sidereal", label: "Vedic", sub: "Sidereal" },
+                ]}
+                // Switching zodiac resets houses to that zodiac's convention
+                // (whole sign for Vedic, Placidus for Western).
+                onPick={(z) => saveChartSystem({ ...chartSystem, zodiacSystem: z, houseSystem: defaultHouseSystem(z) })}
+              />
+
+              {chartSystem.zodiacSystem === "sidereal" && (
+                <>
+                  <SystemChoice
+                    small
+                    label="Ayanamsa"
+                    value={chartSystem.ayanamsa}
+                    disabled={savingPrefs}
+                    options={[
+                      { value: "lahiri", label: "Lahiri" },
+                      { value: "krishnamurti", label: "KP" },
+                      { value: "raman", label: "Raman" },
+                    ]}
+                    onPick={(a) => saveChartSystem({ ...chartSystem, ayanamsa: a })}
+                  />
+                  <SystemChoice
+                    small
+                    label="Rahu & Ketu"
+                    value={chartSystem.nodeType}
+                    disabled={savingPrefs}
+                    options={[
+                      { value: "mean", label: "Mean node" },
+                      { value: "true", label: "True node" },
+                    ]}
+                    onPick={(n) => saveChartSystem({ ...chartSystem, nodeType: n })}
+                  />
+                  <p className="text-[10px] text-muted -mt-2">
+                    Most Vedic astrologers use Lahiri and the mean node. Choose based on your tradition.
+                  </p>
+                </>
+              )}
+
+              <SystemChoice
+                small
+                label="Houses"
+                value={chartSystem.houseSystem}
+                disabled={savingPrefs}
+                options={[
+                  { value: "whole_sign", label: "Whole sign" },
+                  { value: "placidus", label: "Placidus" },
+                ]}
+                onPick={(h) => saveChartSystem({ ...chartSystem, houseSystem: h })}
+              />
             </div>
 
-            {zodiacSystem === "sidereal" && (
-              <div className="flex flex-col gap-2 animate-in fade-in duration-200">
-                <p className="text-xs text-muted">Ayanamsa</p>
-                <div className="flex gap-2">
-                  {([
-                    { value: "lahiri" as const, label: "Lahiri" },
-                    { value: "krishnamurti" as const, label: "KP" },
-                    { value: "raman" as const, label: "Raman" },
-                  ]).map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        setAyanamsa(opt.value);
-                        saveZodiacPreference(zodiacSystem, opt.value);
-                      }}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all border
-                        ${ayanamsa === opt.value
-                          ? "bg-amber/15 border-amber/40 text-amber"
-                          : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted">
-                  Most Vedic astrologers use Lahiri. Choose based on your tradition.
-                </p>
-              </div>
-            )}
-
-            {savingPrefs && (
-              <p className="text-[10px] text-amber/50 mt-2">Saving...</p>
-            )}
-            <p className="text-muted text-[10px] mt-2">
-              Changing this will affect how new charts are calculated. Existing charts keep their original system.
+            <p className="text-[10px] mt-3" aria-live="polite" style={{ color: prefsStatus?.kind === "error" ? "var(--terracotta)" : undefined }}>
+              {savingPrefs ? "Recalculating your chart…" : prefsStatus?.text ?? ""}
+            </p>
+            <p className="text-muted text-[10px] mt-1">
+              Changing this recalculates your chart and the people on your map. Your horoscope, transits and Dolly all use it.
             </p>
           </div>
 

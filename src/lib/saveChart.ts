@@ -1,4 +1,6 @@
 import { supabase } from "./supabase";
+import { isMissingColumnError, saveChartSystemPreference } from "./chartSystemSync";
+import { chartSystemFromChart } from "./astro/vedic/system";
 
 /**
  * Save a chart to Supabase.
@@ -21,6 +23,9 @@ interface ChartData {
   timezone?: string;
   zodiacSystem?: string;
   ayanamsa?: string;
+  houseSystem?: string;
+  nodeType?: string;
+  ascendant?: unknown | null;
   bigThree: { sun: string; moon: string; rising: string };
   planets: unknown[];
   houses: unknown[];
@@ -40,30 +45,39 @@ export async function saveChart(
   chartData: ChartData,
   interpretations?: Interpretations | null
 ): Promise<string> {
-  const { data, error } = await supabase
-    .from("charts")
-    .insert({
-      user_id: userId,
-      name: chartData.name,
-      birth_date: chartData.birthDate,
-      birth_time: chartData.birthTime,
-      unknown_time: chartData.unknownTime || false,
-      city_name: chartData.cityName || null,
-      latitude: chartData.latitude,
-      longitude: chartData.longitude,
-      timezone: chartData.timezone || null,
-      big_three: chartData.bigThree,
-      planets: chartData.planets,
-      houses: chartData.houses,
-      aspects: chartData.aspects,
-      special_points: chartData.specialPoints || null,
-      midheaven: chartData.midheaven || null,
-      zodiac_system: chartData.zodiacSystem || "tropical",
-      ayanamsa: chartData.ayanamsa || "lahiri",
-      interpretations: interpretations || null,
-    })
-    .select("id")
-    .single();
+  const sys = chartSystemFromChart(chartData);
+  const row = {
+    user_id: userId,
+    name: chartData.name,
+    birth_date: chartData.birthDate,
+    birth_time: chartData.birthTime,
+    unknown_time: chartData.unknownTime || false,
+    city_name: chartData.cityName || null,
+    latitude: chartData.latitude,
+    longitude: chartData.longitude,
+    timezone: chartData.timezone || null,
+    big_three: chartData.bigThree,
+    planets: chartData.planets,
+    houses: chartData.houses,
+    aspects: chartData.aspects,
+    special_points: chartData.specialPoints || null,
+    midheaven: chartData.midheaven || null,
+    zodiac_system: sys.zodiacSystem,
+    ayanamsa: sys.ayanamsa,
+    interpretations: interpretations || null,
+  };
+  // Added by migration 20260921_vedic_chart_system.sql. Until it is applied
+  // the insert is retried without them (defaults are derived from zodiac_system).
+  const optional = {
+    house_system: sys.houseSystem,
+    node_type: sys.nodeType,
+    ascendant: chartData.ascendant || null,
+  };
+
+  let { data, error } = await supabase.from("charts").insert({ ...row, ...optional }).select("id").single();
+  if (error && isMissingColumnError(error)) {
+    ({ data, error } = await supabase.from("charts").insert(row).select("id").single());
+  }
 
   if (error) {
     // PostgrestError fields aren't enumerable, so logging `error` directly
@@ -83,7 +97,11 @@ export async function saveChart(
     throw new Error(error.message || error.details || error.hint || human);
   }
 
-  return data.id;
+  // The user's own chart defines their preference: keep the profile in step so
+  // Account shows (and re-applies) the system their chart really uses.
+  try { await saveChartSystemPreference(userId, sys); } catch { /* non-fatal */ }
+
+  return data!.id;
 }
 
 /**

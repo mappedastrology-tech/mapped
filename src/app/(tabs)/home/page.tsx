@@ -103,6 +103,7 @@ import SolarEventScreen from "@/components/SolarEventScreen";
 import { getTodaysMoonEvent, getTodaysSolarEvent } from "@/lib/celestialCalendar";
 import { getCurrentMoonSign, getCurrentPlanetSign, getActiveRetrogrades } from "@/lib/astro/currentSky";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
+import { FORCE_HOROSCOPE_KEY } from "@/lib/chartSystemSync";
 
 interface DailyHoroscope {
   headline: string;
@@ -648,6 +649,11 @@ export default function HomeTab() {
           }
         } catch { /* storage full or unavailable */ }
 
+        // After a zodiac/house change in Account, today's server-cached reading
+        // was written for the old chart — ask for a fresh one, once.
+        let forceRefresh = false;
+        try { forceRefresh = localStorage.getItem(FORCE_HOROSCOPE_KEY) === "1"; } catch { /* storage unavailable */ }
+
         const res = await authedFetch("/api/horoscope", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -665,6 +671,7 @@ export default function HomeTab() {
             userName: userName || undefined,
             userId: authSession.user.id,
             localDate: todayLocal,
+            ...(forceRefresh ? { forceRefresh: true } : {}),
           }),
         });
 
@@ -674,6 +681,7 @@ export default function HomeTab() {
         }
 
         const data = await res.json();
+        if (forceRefresh) { try { localStorage.removeItem(FORCE_HOROSCOPE_KEY); } catch { /* */ } }
         setHoroscope(data);
         setHoroscopeStatus("done");
         setHoroscopeUpgrading(false);
