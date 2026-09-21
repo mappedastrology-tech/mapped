@@ -256,3 +256,14 @@ test("panchang: naming helpers", () => {
   assert.equal(karanaName(56), "Vishti");
   assert.equal(karanaName(57), "Shakuni");
 });
+
+// ─── Current-sky Sun (feeds zodiac season and the sidereal Sun line) ─────────
+
+test("currentSky: Sun longitude agrees with the chart ephemeris", async () => {
+  const { getSunLongitude } = await import("@/lib/astro/currentSky");
+  const { getPlanetLongitude } = await import("@/lib/astro/ephemeris");
+  for (const iso of ["2026-05-05T12:00:00Z", "2026-08-05T12:00:00Z", "2026-12-21T00:00:00Z"]) {
+    const d = new Date(iso);
+    near(getSunLongitude(d), getPlanetLongitude(d.getTime() / 86400000 + 2440587.5, "Sun"), ARCMIN, `Sun ${iso}`);
+  }
+});

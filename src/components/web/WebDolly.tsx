@@ -15,6 +15,7 @@ import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 import { supabase } from "@/lib/supabase";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
+import { chartSystemFromChart, chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
 
 // U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const SIGN_GLYPH: Record<string, string> = {
@@ -65,7 +66,11 @@ export default function WebDolly() {
     (async () => {
       try {
         // Resolve the chart: sessionStorage first, else the saved chart in Supabase.
-        let chart: { bigThree?: unknown; planets?: unknown[]; houses?: unknown[]; specialPoints?: unknown[]; birthDate?: string; birthTime?: string } | null = null;
+        let chart: {
+          bigThree?: unknown; planets?: unknown[]; houses?: unknown[]; specialPoints?: unknown[];
+          birthDate?: string; birthTime?: string; ascendant?: unknown; midheaven?: unknown;
+          zodiacSystem?: string; ayanamsa?: string; houseSystem?: string; nodeType?: string;
+        } | null = null;
         try { const s = sessionStorage.getItem("chartResult"); if (s) chart = JSON.parse(s); } catch { /* */ }
 
         const { data: { session } } = await supabase.auth.getSession();
@@ -88,6 +93,9 @@ export default function WebDolly() {
               specialPoints: c.special_points || [],
               birthDate: c.birth_date,
               birthTime: c.birth_time,
+              ascendant: c.ascendant || null,
+              midheaven: c.midheaven || null,
+              ...chartSystemFromRow(c),
             };
             userNameRef.current = c.name || "";
             try { sessionStorage.setItem("chartResult", JSON.stringify(chart)); } catch { /* */ }
@@ -123,7 +131,8 @@ export default function WebDolly() {
                 natalPlanets: planets,
                 natalHouses: chart?.houses ?? [],
                 transitDate: today,
-                zodiacSystem: "tropical",
+                // The chart's own zodiac — never assume tropical.
+                ...transitParams(chartSystemFromChart(chart)),
               }),
             });
             if (!cancelled && res.ok) transitsRef.current = await res.json();

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { chartSystemContext } from "@/lib/astro/vedic/system";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,9 @@ interface ChartData {
   planets?: { name: string; sign: string; house: string | null; retrograde: boolean }[];
   houses?: { number: number; sign: string }[];
   specialPoints?: { name: string; sign: string; house: string | null }[];
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
 }
 
 interface TransitData {
@@ -51,6 +55,7 @@ function buildContext(chart?: ChartData, transits?: TransitData): string {
   if (!chart?.bigThree) return "";
 
   const lines: string[] = [];
+  lines.push(chartSystemContext(chart));
   lines.push("## User's Chart");
   lines.push(`Big Three: ${expandSign(chart.bigThree.sun)} Sun, ${expandSign(chart.bigThree.moon)} Moon, ${expandSign(chart.bigThree.rising)} Rising`);
 

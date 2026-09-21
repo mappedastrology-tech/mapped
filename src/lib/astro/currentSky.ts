@@ -46,10 +46,11 @@ export function getCurrentMoonSign(date: Date = new Date()): { abbr: string; ful
 
 /** Get the Sun's ecliptic longitude for a given date. */
 export function getSunLongitude(date: Date): number {
-  const time = dateToAstroTime(date);
-  const equ = Astronomy.SunPosition(time);
-  const ecl = Astronomy.Ecliptic(equ.vec);
-  return ecl.elon;
+  // SunPosition already returns TRUE-ECLIPTIC-OF-DATE coordinates. (This used
+  // to feed its ecliptic vector back through Ecliptic(), which expects an
+  // equatorial J2000 vector — rotating it by the obliquity a second time and
+  // putting the Sun up to ~3° off, i.e. sign ingresses up to ~3 days wrong.)
+  return Astronomy.SunPosition(dateToAstroTime(date)).elon;
 }
 
 /** Get the Sun's current zodiac sign. */

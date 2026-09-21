@@ -19,6 +19,7 @@ import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
+import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
 
 /* ═══════════════════════════════════════════
    Types
@@ -38,6 +39,13 @@ interface ChartContext {
   specialPoints?: { name: string; sign: string; position: number; house: string | null }[];
   birthDate?: string;
   birthTime?: string;
+  ascendant?: { sign: string; position: number } | null;
+  midheaven?: { sign: string; position: number } | null;
+  // Which zodiac/houses the positions are in — so Dolly never mixes systems.
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
+  nodeType?: string;
 }
 
 interface TransitContext {
@@ -203,6 +211,7 @@ export default function DollyTab() {
         .single();
 
       if (chartData) {
+        const system = chartSystemFromRow(chartData);
         setChart({
           bigThree: chartData.big_three,
           planets: chartData.planets || [],
@@ -210,6 +219,9 @@ export default function DollyTab() {
           specialPoints: chartData.special_points || [],
           birthDate: chartData.birth_date,
           birthTime: chartData.birth_time,
+          ascendant: chartData.ascendant || null,
+          midheaven: chartData.midheaven || null,
+          ...system,
         });
         setUserName(chartData.name || "");
 
@@ -226,7 +238,7 @@ export default function DollyTab() {
               transitDate: today,
               latitude: chartData.latitude ?? loc?.lat,
               longitude: chartData.longitude ?? loc?.lng,
-              zodiacSystem: chartData.zodiac_system || "tropical",
+              ...transitParams(system),
             }),
           });
           if (res.ok) {

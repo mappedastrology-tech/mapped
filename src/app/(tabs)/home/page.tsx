@@ -102,6 +102,7 @@ import MoonEventScreen from "@/components/MoonEventScreen";
 import SolarEventScreen from "@/components/SolarEventScreen";
 import { getTodaysMoonEvent, getTodaysSolarEvent } from "@/lib/celestialCalendar";
 import { getCurrentMoonSign, getCurrentPlanetSign, getActiveRetrogrades } from "@/lib/astro/currentSky";
+import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
 
 interface DailyHoroscope {
   headline: string;
@@ -601,6 +602,10 @@ export default function HomeTab() {
           return;
         }
 
+        // The chart's own zodiac decides the transit zodiac — a sidereal natal
+        // chart compared against tropical transits puts every aspect ~24° off.
+        const system = chartSystemFromRow(chartData);
+
         // Try to get transits (optional)
         let transits = undefined;
         try {
@@ -610,7 +615,9 @@ export default function HomeTab() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 natalPlanets: chartData.planets,
+                natalHouses: chartData.houses || [],
                 transitDate: todayLocal,
+                ...transitParams(system),
               }),
             });
             if (transitRes.ok) transits = await transitRes.json();
@@ -623,6 +630,8 @@ export default function HomeTab() {
           planets: chartData.planets || [],
           houses: chartData.houses || [],
           specialPoints: chartData.special_points || [],
+          ascendant: chartData.ascendant || null,
+          ...system,
         };
         transitsRef.current = transits || null;
 
@@ -632,6 +641,7 @@ export default function HomeTab() {
             bigThree: chartData.big_three,
             planets: chartData.planets || [],
             lordOfYear: chartData.lord_of_year || undefined,
+            ...system,
           }));
           if (transits?.transitAspects) {
             sessionStorage.setItem("mapped:transits", JSON.stringify(transits.transitAspects));
@@ -648,6 +658,7 @@ export default function HomeTab() {
               houses: chartData.houses || [],
               aspects: chartData.aspects || [],
               specialPoints: chartData.special_points || [],
+              ...system,
             },
             celestial,
             transits,

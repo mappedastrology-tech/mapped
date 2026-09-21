@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createMessageResilient } from "@/lib/aiModel";
+import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
+import { AYANAMSA_LABELS, jdFromDate, toSidereal } from "@/lib/astro/vedic/ayanamsa";
+import { getSunLongitude } from "@/lib/astro/currentSky";
+import { SIGN_NAMES } from "@/lib/astro/constants";
 
 export const runtime = "nodejs";
 
@@ -34,6 +38,12 @@ interface ChartData {
   houses?: { number: number; sign: string; position: number }[];
   specialPoints?: { name: string; sign: string; position: number; house: string | null }[];
   aspects?: { planet1: string; planet2: string; aspect: string; orb: number }[];
+  // The system the positions are in (from the chart row) — sidereal charts
+  // get sidereal transits and must be read as sidereal.
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
+  nodeType?: string;
 }
 
 interface CelestialData {
@@ -123,11 +133,20 @@ function buildChartBlock(chart: ChartData, userName?: string): string {
   return lines.join("\n");
 }
 
-function buildCelestialBlock(celestial: CelestialData): string {
+function buildCelestialBlock(celestial: CelestialData, chart: ChartData): string {
+  // "Zodiac season" is the TROPICAL Sun sign. For a sidereal reader, name the
+  // sidereal Sun sign instead so the prompt never mixes the two zodiacs.
+  const sys = chartSystemFromChart(chart);
+  let seasonLine = `Zodiac season: ${celestial.zodiacSeason} (${celestial.seasonElement} element)`;
+  if (sys.zodiacSystem === "sidereal") {
+    const now = new Date();
+    const sunSid = toSidereal(getSunLongitude(now), jdFromDate(now), sys.ayanamsa);
+    seasonLine = `The Sun is in sidereal ${expandSign(SIGN_NAMES[Math.floor(sunSid / 30)])} (${AYANAMSA_LABELS[sys.ayanamsa]} ayanamsa)`;
+  }
   return [
     "## Today's Sky (real astronomical data)",
     `Moon phase: ${celestial.moonPhase} (${celestial.moonIllumination}% illuminated)`,
-    `Zodiac season: ${celestial.zodiacSeason} (${celestial.seasonElement} element)`,
+    seasonLine,
     `Planetary day: ${celestial.planetaryDay} — ruled by ${celestial.planetaryDayPlanet}`,
     `Nakshatra (lunar mansion): ${celestial.nakshatra} — ${celestial.nakshatraQuality}`,
   ].join("\n");
@@ -308,8 +327,10 @@ export async function POST(request: NextRequest) {
 
     // Build the context
     const contextParts: string[] = [];
+    // Which zodiac the numbers are in, first — so the reading never mixes systems.
+    contextParts.push(chartSystemContext(chart));
     contextParts.push(buildChartBlock(chart, userName));
-    contextParts.push(buildCelestialBlock(celestial));
+    contextParts.push(buildCelestialBlock(celestial, chart));
     if (transits) contextParts.push(buildTransitBlock(transits));
 
     // Add Lord of the Year context if available

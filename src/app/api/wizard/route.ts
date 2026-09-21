@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { chartSystemContext } from "@/lib/astro/vedic/system";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,9 @@ interface WizardRequest {
     planets?: { name: string; sign: string; position: number; house: string | null; retrograde: boolean }[];
     houses?: { number: number; sign: string; position: number }[];
     birthDate?: string;
+    zodiacSystem?: string;
+    ayanamsa?: string;
+    houseSystem?: string;
   };
   transits?: {
     transitDate?: string;
@@ -72,6 +76,7 @@ function buildChartContext(chart: WizardRequest["chart"], userName?: string): st
   if (!chart?.bigThree) return "No chart available — skip chart-specific correspondences and lean on moon phase + day of week only.";
 
   const lines: string[] = [];
+  lines.push(chartSystemContext(chart));
   lines.push(`USER: ${userName || "User"}`);
   lines.push(`Big Three: ${expandSign(chart.bigThree.sun)} Sun, ${expandSign(chart.bigThree.moon)} Moon, ${expandSign(chart.bigThree.rising)} Rising`);
 

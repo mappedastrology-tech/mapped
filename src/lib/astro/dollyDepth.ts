@@ -17,6 +17,9 @@ export interface DepthChart {
   }[];
   houses?: { number: number; sign: string; position: number }[];
   birthDate?: string; // e.g. "1994-11-07"
+  /** Exact Ascendant. With whole-sign houses the house-1 cusp is 0° of the sign, so prefer this. */
+  ascendant?: { sign: string; position: number } | null;
+  houseSystem?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -484,9 +487,13 @@ function sectionFortune(chart: DepthChart, planets: PlanetMap): string {
   const sun = planets["Sun"];
   const moon = planets["Moon"];
 
-  // Ascendant absolute longitude from house-1 cusp.
+  // Ascendant absolute longitude: the explicit field, else the house-1 cusp —
+  // but only for quadrant houses, where house 1 starts AT the Ascendant.
   let ascLong: number | null = null;
-  if (chart.houses) {
+  if (chart.ascendant) {
+    const idx = signIndex(chart.ascendant.sign);
+    if (idx >= 0 && typeof chart.ascendant.position === "number") ascLong = norm360(idx * 30 + chart.ascendant.position);
+  } else if (chart.houses && chart.houseSystem !== "whole_sign") {
     const h1 = chart.houses.find((x) => x.number === 1);
     if (h1) {
       const idx = signIndex(h1.sign);

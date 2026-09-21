@@ -10,10 +10,17 @@
  */
 
 import * as Astronomy from "astronomy-engine";
+import { ayanamsaDegrees, jdFromDate, normalizeAyanamsa, type AyanamsaName } from "./vedic/ayanamsa";
 
 export interface TimingChart {
   planets?: { name: string; sign: string; position: number; house: string | null; retrograde: boolean }[];
   houses?: { number: number; sign: string; position: number }[];
+  ascendant?: { sign: string; position: number } | null;
+  midheaven?: { sign: string; position: number } | null;
+  /** The natal chart's zodiac. Sidereal charts get sidereal transit longitudes. */
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
 }
 
 const SIGN_NAMES = [
@@ -69,11 +76,16 @@ function toAbsLon(sign: string, position: number): number | null {
   return idx * 30 + position;
 }
 
-/** Ecliptic longitude of a transiting body on a date (matches currentSky.ts). */
-function eclipticLongitude(body: Astronomy.Body, date: Date): number {
+/**
+ * Ecliptic longitude of a transiting body on a date (matches currentSky.ts),
+ * converted to sidereal with that DATE's ayanamsa when the natal chart is
+ * sidereal — otherwise every exact date would be ~24° (weeks to years) off.
+ */
+function eclipticLongitude(body: Astronomy.Body, date: Date, ayanamsa: AyanamsaName | null): number {
   const time = Astronomy.MakeTime(date);
   const vec = Astronomy.GeoVector(body, time, true);
-  return Astronomy.Ecliptic(vec).elon;
+  const lon = Astronomy.Ecliptic(vec).elon;
+  return ayanamsa ? (((lon - ayanamsaDegrees(jdFromDate(date), ayanamsa)) % 360) + 360) % 360 : lon;
 }
 
 /** Fold an angle to the range (-180, 180]. */
@@ -98,13 +110,17 @@ function collectNatalPoints(chart: TimingChart): NatalPoint[] {
     points.push({ label: p.name, lon });
   }
 
+  // Angles: prefer the explicit fields. Cusps 1/10 only stand in for the
+  // Ascendant/MC in quadrant (Placidus) houses — in whole-sign houses they are
+  // 0° of a sign, not the angles.
   const houses = chart.houses ?? [];
-  const asc = houses.find((h) => h.number === 1);
+  const quadrant = chart.houseSystem !== "whole_sign";
+  const asc = chart.ascendant ?? (quadrant ? houses.find((h) => h.number === 1) : undefined);
   if (asc) {
     const lon = toAbsLon(asc.sign, asc.position);
     if (lon != null) points.push({ label: "Ascendant", lon });
   }
-  const mc = houses.find((h) => h.number === 10);
+  const mc = chart.midheaven ?? (quadrant ? houses.find((h) => h.number === 10) : undefined);
   if (mc) {
     const lon = toAbsLon(mc.sign, mc.position);
     if (lon != null) points.push({ label: "Midheaven", lon });
@@ -128,6 +144,7 @@ export function getUpcomingTransitWindows(
 ): string {
   const natalPoints = collectNatalPoints(chart);
   if (natalPoints.length === 0) return "";
+  const ayanamsa = chart.zodiacSystem === "sidereal" ? normalizeAyanamsa(chart.ayanamsa) : null;
 
   const start = new Date(Date.UTC(
     fromDate.getUTCFullYear(),
@@ -148,7 +165,7 @@ export function getUpcomingTransitWindows(
     for (let d = 0; d <= totalDays; d++) {
       const dt = new Date(start.getTime() + d * MS_PER_DAY);
       dayDate[d] = dt;
-      dayLon[d] = eclipticLongitude(transit.body, dt);
+      dayLon[d] = eclipticLongitude(transit.body, dt, ayanamsa);
     }
 
     for (const point of natalPoints) {

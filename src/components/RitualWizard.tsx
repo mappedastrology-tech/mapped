@@ -21,6 +21,7 @@ import {
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { getWizardUsageThisMonth, incrementWizardUsage } from "@/lib/tier";
+import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,9 @@ interface ChartData {
   planets?: { name: string; sign: string; position: number; house: string | null; retrograde: boolean }[];
   houses?: { number: number; sign: string; position: number }[];
   birthDate?: string;
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
 }
 
 interface TransitData {
@@ -111,6 +115,7 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
               planets: chartData.planets || [],
               houses: chartData.houses || [],
               birthDate: chartData.birth_date,
+              ...chartSystemFromRow(chartData),
             });
             setUserName(chartData.name || "");
 
@@ -129,7 +134,8 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
                   transitDate: today,
                   latitude: chartData.latitude ?? loc?.lat,
                   longitude: chartData.longitude ?? loc?.lng,
-                  zodiacSystem: chartData.zodiac_system || "tropical",
+                  // Same zodiac + ayanamsa as the natal chart being compared against.
+                  ...transitParams(chartSystemFromRow(chartData)),
                 }),
               });
               if (res.ok) setTransits(await res.json());

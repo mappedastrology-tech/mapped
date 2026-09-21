@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
+import { HOUSE_SYSTEM_LABELS } from "@/lib/astro/vedic/houses";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,14 @@ const SIGN_FULL: Record<string, string> = {
   Sag: "Sagittarius", Cap: "Capricorn", Aqu: "Aquarius", Pis: "Pisces",
 };
 
+/** Rahu/Ketu are the Jyotish names for the lunar nodes; use them for sidereal charts. */
+function nodeLabel(name: string, zodiac: string): string {
+  if (zodiac !== "sidereal") return name;
+  if (name === "North Node") return "Rahu (North Node)";
+  if (name === "South Node") return "Ketu (South Node)";
+  return name;
+}
+
 function expandSign(s: string): string {
   return SIGN_FULL[s] || SIGN_FULL[s?.slice(0, 3)] || s;
 }
@@ -31,6 +41,14 @@ interface ChartContext {
   specialPoints?: { name: string; sign: string; position: number; house: string | null }[];
   birthDate?: string;
   birthTime?: string;
+  /** Exact Ascendant / MC. Needed because with whole-sign houses the house-1 cusp is 0° of the sign. */
+  ascendant?: { sign: string; position: number } | null;
+  midheaven?: { sign: string; position: number } | null;
+  zodiacSystem?: string;
+  ayanamsa?: string;
+  houseSystem?: string;
+  nodeType?: string;
+  ayanamsaDegrees?: number;
 }
 
 interface TransitContext {
@@ -85,12 +103,17 @@ function buildChartSummary(chart: ChartContext, userName?: string): string {
 
   lines.push(`\nBig Three: ${expandSign(chart.bigThree.sun)} Sun, ${expandSign(chart.bigThree.moon)} Moon, ${expandSign(chart.bigThree.rising)} Rising`);
 
-  // Exact angle degrees (from the house cusps) — needed for the Lots/Part of
-  // Fortune, profections, and zodiacal releasing.
-  const ascCusp = chart.houses?.find((h) => Number(h.number) === 1);
-  const mcCusp = chart.houses?.find((h) => Number(h.number) === 10);
-  if (ascCusp) lines.push(`Ascendant (Rising) EXACT: ${expandSign(ascCusp.sign)} at ${Math.floor(ascCusp.position)}° — use this exact degree for the Lots/Part of Fortune, annual profections, and zodiacal releasing.`);
-  if (mcCusp) lines.push(`Midheaven (MC) EXACT: ${expandSign(mcCusp.sign)} at ${Math.floor(mcCusp.position)}°`);
+  // Exact angle degrees — needed for the Lots/Part of Fortune, profections,
+  // and zodiacal releasing. Prefer the explicit ascendant/midheaven fields:
+  // with WHOLE-SIGN houses the house-1 cusp is 0° of the rising sign and the
+  // 10th cusp is not the MC, so the cusps are only a fallback for Placidus.
+  const sys = chartSystemFromChart(chart);
+  const quadrant = sys.houseSystem === "placidus";
+  const asc = chart.ascendant ?? (quadrant ? chart.houses?.find((h) => Number(h.number) === 1) : undefined);
+  const mc = chart.midheaven ?? (quadrant ? chart.houses?.find((h) => Number(h.number) === 10) : undefined);
+  if (asc) lines.push(`Ascendant (Rising) EXACT: ${expandSign(asc.sign)} at ${Math.floor(asc.position)}° — use this exact degree for the Lots/Part of Fortune, annual profections, and zodiacal releasing.`);
+  else if (chart.bigThree.rising) lines.push(`Ascendant (Rising) sign: ${expandSign(chart.bigThree.rising)} — the exact degree isn't in this data, so don't compute anything that needs it.`);
+  if (mc) lines.push(`Midheaven (MC) EXACT: ${expandSign(mc.sign)} at ${Math.floor(mc.position)}°`);
 
   if (chart.planets?.length) {
     lines.push("\nPlanet placements (HOUSE numbers are EXACT — use these, do not change them):");
@@ -105,12 +128,12 @@ function buildChartSummary(chart: ChartContext, userName?: string): string {
     lines.push("\nSpecial points:");
     for (const sp of chart.specialPoints) {
       const house = sp.house ? ` [HOUSE: ${ordinalHouse(sp.house)}]` : "";
-      lines.push(`- ${sp.name}: ${expandSign(sp.sign)}${house}`);
+      lines.push(`- ${nodeLabel(sp.name, sys.zodiacSystem)}: ${expandSign(sp.sign)}${house}`);
     }
   }
 
   if (chart.houses?.length) {
-    lines.push("\nHouse cusps:");
+    lines.push(`\nHouse cusps (${HOUSE_SYSTEM_LABELS[sys.houseSystem]}):`);
     for (const h of chart.houses) {
       lines.push(`- House ${h.number}: ${expandSign(h.sign)} at ${Math.floor(h.position)}°`);
     }
@@ -301,6 +324,8 @@ export async function POST(request: NextRequest) {
     // Build the context block from chart data
     const contextParts: string[] = [];
     if (chart) {
+      // Which zodiac the numbers are in, first — so no reading mixes systems.
+      contextParts.push(chartSystemContext(chart));
       contextParts.push(buildChartSummary(chart, userName));
       // Precomputed depth so Dolly never has to do the math herself.
       try {
