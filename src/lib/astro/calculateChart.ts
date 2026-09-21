@@ -1,22 +1,33 @@
 /**
  * Birth chart calculator — TypeScript port of calculate_chart.py.
  *
- * Uses Swiss Ephemeris (via swisseph npm) to calculate:
- * - All 10 main planets + Chiron, North Node, South Node
- * - 12 house cusps (Placidus system)
- * - Midheaven
+ * Uses astronomy-engine (see ephemeris.ts) to calculate:
+ * - All 10 main planets + Chiron, North Node, South Node, Lilith
+ * - 12 house cusps — Placidus or whole-sign (see vedic/houses.ts)
+ * - Ascendant, Midheaven, Vertex
  * - Aspects between all planets
- * - Supports Tropical and Sidereal (Vedic) zodiac
+ * - Tropical or Sidereal (Vedic) zodiac. Sidereal positions subtract the
+ *   ayanamsa for the BIRTH INSTANT (vedic/ayanamsa.ts), and sidereal charts
+ *   also carry a `vedic` block: nakshatras, padas, navamsa, dasha inputs.
+ *
+ * Defaults (the conventions Mapped states in the UI):
+ * - tropical → Placidus houses; sidereal → whole-sign houses
+ * - mean lunar node unless nodeType "true" is asked for
+ * - sidereal ayanamsa: Lahiri unless told otherwise
  */
 
 import {
-  SIGN_NAMES, AYANAMSA_VALUES, ASPECTS,
-  posToSign, applySidereal, findAspect,
+  SIGN_NAMES, ASPECTS,
+  posToSign, findAspect,
 } from "./constants";
 import {
   julday, getAllPlanetPositions, getSpecialPoints, getHouses,
 } from "./ephemeris";
 import { getTimezoneForCoords } from "./timezone";
+import { ayanamsaDegrees, normalizeAyanamsa, type AyanamsaName } from "./vedic/ayanamsa";
+import { normalizeHouseSystem, wholeSignCusps, wholeSignHouse, type HouseSystem } from "./vedic/houses";
+import { normalizeNodeType, trueNodeLongitude, type NodeType } from "./vedic/nodes";
+import { buildVedicDetails } from "./vedic/vedicChart";
 
 interface ChartInput {
   name: string;
@@ -27,7 +38,11 @@ interface ChartInput {
   cityName?: string;
   unknownTime?: boolean;
   zodiacSystem?: "tropical" | "sidereal";
-  ayanamsa?: "lahiri" | "krishnamurti" | "raman";
+  ayanamsa?: AyanamsaName | string | null;
+  /** null/omitted → default for the zodiac (whole sign for sidereal, Placidus for tropical). */
+  houseSystem?: HouseSystem | string | null;
+  /** null/omitted → mean node. */
+  nodeType?: NodeType | string | null;
 }
 
 /** Offset (hours, east-positive) of `tzName` at a specific UTC instant. */
@@ -77,10 +92,11 @@ export function calculateChart(data: ChartInput) {
   const [hour, minute] = data.birthTime.split(":").map(Number);
   const decimalHour = hour + minute / 60;
 
-  const zodiacSystem = data.zodiacSystem || "tropical";
-  const ayanamsaName = data.ayanamsa || "lahiri";
+  const zodiacSystem = data.zodiacSystem === "sidereal" ? "sidereal" : "tropical";
   const isSidereal = zodiacSystem === "sidereal";
-  const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
+  const ayanamsaName = normalizeAyanamsa(data.ayanamsa);
+  const houseSystem = normalizeHouseSystem(data.houseSystem, zodiacSystem);
+  const nodeType = normalizeNodeType(data.nodeType);
 
   // Convert local birth time to UTC using the real timezone for this location.
   // Pure-JS timezone lookup determines the IANA timezone from coordinates,
@@ -89,23 +105,17 @@ export function calculateChart(data: ChartInput) {
   const utcHour = decimalHour - tzOffset;
   const jd = julday(year, month, day, utcHour);
 
-  // --- Planets ---
-  const rawPlanets = getAllPlanetPositions(jd);
-  const planets = rawPlanets.map((p) => {
-    const tropicalAbs = p.longitude;
-    if (isSidereal) {
-      const sid = applySidereal(tropicalAbs, ayanamsaOffset);
-      return {
-        name: p.name,
-        sign: sid.sign,
-        signNum: sid.signNum,
-        position: sid.position,
-        absPosition: sid.absPosition,
-        house: null as number | null,
-        retrograde: p.retrograde,
-      };
-    }
-    const info = posToSign(tropicalAbs);
+  // The ayanamsa AT THE BIRTH INSTANT (it grows ~50" a year — never a constant).
+  const ayanamsaOffset = isSidereal ? ayanamsaDegrees(jd, ayanamsaName) : 0;
+  /** Tropical longitude → the chart's zodiac, unrounded. */
+  const toZodiac = (tropicalLon: number) =>
+    isSidereal ? (((tropicalLon - ayanamsaOffset) % 360) + 360) % 360 : tropicalLon;
+
+  // --- Planets --- (precise longitudes; rounded only when shaped for output)
+  const rawPlanets = getAllPlanetPositions(jd, true);
+  const planetLons = rawPlanets.map((p) => toZodiac(p.longitude));
+  const planets = rawPlanets.map((p, i) => {
+    const info = posToSign(planetLons[i]);
     return {
       name: p.name,
       sign: info.sign,
@@ -119,21 +129,17 @@ export function calculateChart(data: ChartInput) {
 
   // --- Special points ---
   const rawSpecial = getSpecialPoints(jd);
-  const specialPoints = rawSpecial.map((p) => {
-    const tropicalAbs = p.longitude;
-    if (isSidereal) {
-      const sid = applySidereal(tropicalAbs, ayanamsaOffset);
-      return {
-        name: p.name,
-        sign: sid.sign,
-        signNum: sid.signNum,
-        position: sid.position,
-        absPosition: sid.absPosition,
-        house: null as number | null,
-        retrograde: p.retrograde,
-      };
+  if (nodeType === "true") {
+    // Swap the mean nodes for the true (osculating) node pair.
+    const tn = trueNodeLongitude(jd);
+    for (const p of rawSpecial) {
+      if (p.name === "North Node") p.longitude = tn;
+      if (p.name === "South Node") p.longitude = (tn + 180) % 360;
     }
-    const info = posToSign(tropicalAbs);
+  }
+  const specialLons = rawSpecial.map((p) => toZodiac(p.longitude));
+  const specialPoints = rawSpecial.map((p, i) => {
+    const info = posToSign(specialLons[i]);
     return {
       name: p.name,
       sign: info.sign,
@@ -145,15 +151,14 @@ export function calculateChart(data: ChartInput) {
     };
   });
 
-  // --- Houses ---
+  // --- Angles & houses ---
   const houseData = getHouses(jd, data.latitude, data.longitude);
-  const houses = houseData.cusps.map((cusp, i) => {
-    const tropicalAbs = cusp;
-    if (isSidereal) {
-      const sid = applySidereal(tropicalAbs, ayanamsaOffset);
-      return { number: i + 1, sign: sid.sign, signNum: sid.signNum, position: sid.position, absPosition: sid.absPosition };
-    }
-    const info = posToSign(tropicalAbs);
+  const ascLon = toZodiac(houseData.ascendant);
+  const cusps = houseSystem === "whole_sign"
+    ? wholeSignCusps(ascLon)
+    : houseData.cusps.map(toZodiac);
+  const houses = cusps.map((c, i) => {
+    const info = posToSign(c);
     return { number: i + 1, sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   });
 
@@ -164,22 +169,25 @@ export function calculateChart(data: ChartInput) {
   // them as fact. Planet signs/degrees are kept (noon is the standard convention).
   if (!data.unknownTime) {
     for (const p of [...planets, ...specialPoints]) {
-      // Use the tropical positions for house assignment (houses are tropical internally)
-      p.house = assignHouseFromCusps(p.absPosition, houses);
+      p.house = houseSystem === "whole_sign"
+        ? wholeSignHouse(p.absPosition, ascLon)
+        : assignHouseFromCusps(p.absPosition, houses);
     }
+  }
+
+  // --- Ascendant --- Its own field, because with whole-sign houses the
+  // house-1 cusp is 0° of the rising sign, not the Ascendant degree.
+  let ascendant: { sign: string; signNum: number; position: number; absPosition: number } | null = null;
+  if (!data.unknownTime) {
+    const info = posToSign(ascLon);
+    ascendant = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   }
 
   // --- Midheaven --- (time-dependent; omitted for unknown-time charts)
   let midheaven: { sign: string; signNum: number; position: number; absPosition: number } | null = null;
   if (!data.unknownTime) {
-    const mcLon = houseData.mc;
-    if (isSidereal) {
-      const sid = applySidereal(mcLon, ayanamsaOffset);
-      midheaven = { sign: sid.sign, signNum: sid.signNum, position: sid.position, absPosition: sid.absPosition };
-    } else {
-      const info = posToSign(mcLon);
-      midheaven = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
-    }
+    const info = posToSign(toZodiac(houseData.mc));
+    midheaven = { sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   }
 
   // --- Vertex (fated point) ---
@@ -188,8 +196,7 @@ export function calculateChart(data: ChartInput) {
   // Requires an accurate birth time, so it's omitted for unknown-time charts.
   let vertex: { sign: string; signNum: number; position: number; absPosition: number } | null = null;
   if (!data.unknownTime) {
-    const vLon = houseData.vertex;
-    const vInfo = isSidereal ? applySidereal(vLon, ayanamsaOffset) : posToSign(vLon);
+    const vInfo = posToSign(toZodiac(houseData.vertex));
     vertex = { sign: vInfo.sign, signNum: vInfo.signNum, position: vInfo.position, absPosition: vInfo.absPosition };
   }
 
@@ -218,27 +225,26 @@ export function calculateChart(data: ChartInput) {
   const bigThree = {
     sun: planets[0]?.sign || "",
     moon: planets[1]?.sign || "",
-    rising: data.unknownTime ? "" : (houses[0]?.sign || ""),
+    rising: ascendant?.sign || "",
   };
 
   // --- Rising sign cusp check --- (meaningless without a real Ascendant)
   let risingCusp = null;
-  const risingPosition = data.unknownTime ? 15 : (houses[0]?.position ?? 15);
-  if (risingPosition < 1.0) {
-    const prevSign = SIGN_NAMES[(houses[0].signNum - 1 + 12) % 12];
+  if (ascendant && ascendant.position < 1.0) {
+    const prevSign = SIGN_NAMES[(ascendant.signNum - 1 + 12) % 12];
     risingCusp = {
-      current: houses[0].sign,
+      current: ascendant.sign,
       alternate: prevSign,
-      position: Math.round(risingPosition * 100) / 100,
-      message: `Your rising sign is right on the ${prevSign}/${houses[0].sign} cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that.`,
+      position: Math.round(ascendant.position * 100) / 100,
+      message: `Your rising sign is right on the ${prevSign}/${ascendant.sign} cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that.`,
     };
-  } else if (risingPosition > 29.0) {
-    const nextSign = SIGN_NAMES[(houses[0].signNum + 1) % 12];
+  } else if (ascendant && ascendant.position > 29.0) {
+    const nextSign = SIGN_NAMES[(ascendant.signNum + 1) % 12];
     risingCusp = {
-      current: houses[0].sign,
+      current: ascendant.sign,
       alternate: nextSign,
-      position: Math.round(risingPosition * 100) / 100,
-      message: `Your rising sign is right on the ${houses[0].sign}/${nextSign} cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that.`,
+      position: Math.round(ascendant.position * 100) / 100,
+      message: `Your rising sign is right on the ${ascendant.sign}/${nextSign} cusp. A difference of just a few minutes in birth time could change it. If you know your rising sign from another source, trust that.`,
     };
   }
 
@@ -253,9 +259,12 @@ export function calculateChart(data: ChartInput) {
     longitude: data.longitude,
     timezone: "UTC", // Simplified — full timezone detection would need a lookup table
     zodiacSystem,
+    houseSystem,
+    nodeType,
     bigThree,
     planets,
     specialPoints,
+    ascendant,
     midheaven,
     vertex,
     // House cusps are time-dependent — emit none for unknown-time charts so no
@@ -267,7 +276,20 @@ export function calculateChart(data: ChartInput) {
 
   if (isSidereal) {
     result.ayanamsa = ayanamsaName;
-    result.ayanamsaDegrees = ayanamsaOffset;
+    result.ayanamsaDegrees = Math.round(ayanamsaOffset * 10000) / 10000;
+    result.vedic = buildVedicDetails({
+      bodies: [
+        ...rawPlanets.map((p, i) => ({ name: p.name, longitude: planetLons[i], retrograde: p.retrograde, house: planets[i].house })),
+        ...rawSpecial.map((p, i) => ({ name: p.name, longitude: specialLons[i], retrograde: p.retrograde, house: specialPoints[i].house })),
+      ],
+      ascendantLongitude: data.unknownTime ? null : ascLon,
+      ayanamsa: ayanamsaName,
+      ayanamsaDegrees: ayanamsaOffset,
+      houseSystem,
+      nodeType,
+      birthUtc: new Date((jd - 2440587.5) * 86400000),
+      unknownTime: !!data.unknownTime,
+    });
   }
 
   return result;

@@ -9,7 +9,6 @@
 
 import {
   ASPECTS_WITH_QUINCUNX,
-  AYANAMSA_VALUES,
   angleDiff,
   findAspect,
   posToSign,
@@ -24,6 +23,7 @@ import {
   PlanetName,
 } from "./ephemeris";
 import { getTransitIntensity } from "../transitIntensity";
+import { ayanamsaDegrees, normalizeAyanamsa, type AyanamsaName } from "./vedic/ayanamsa";
 
 // ---------- Constants ----------
 
@@ -98,7 +98,8 @@ function findTransitWindow(
   aspectDeg: number,
   maxOrb: number,
   todayJd: number,
-  ayanamsaOffset: number = 0,
+  /** Set for sidereal charts: the ayanamsa is recomputed for every scanned day. */
+  ayanamsa: AyanamsaName | null = null,
 ): { startDate: string; exactDate: string; endDate: string } | null {
   const planetId = PLANETS[planetName as PlanetName];
   if (planetId === undefined) return null;
@@ -107,8 +108,8 @@ function findTransitWindow(
 
   function orbAt(jd: number): number {
     let lon = getPlanetLongitude(jd, planetId);
-    if (ayanamsaOffset) {
-      lon = ((lon - ayanamsaOffset) % 360 + 360) % 360;
+    if (ayanamsa) {
+      lon = ((lon - ayanamsaDegrees(jd, ayanamsa)) % 360 + 360) % 360;
     }
     return Math.abs(angleDiff(lon, natalAbs) - aspectDeg);
   }
@@ -195,14 +196,17 @@ export function calculateTransits(data: TransitInput) {
   // Note: data.latitude/longitude are accepted for API compatibility but transit
   // positions are location-independent; no coordinate fallback is needed here.
 
-  const zodiacSystem = data.zodiacSystem || "tropical";
-  const ayanamsaName = data.ayanamsa || "lahiri";
+  // The natal chart's zodiac decides the transit zodiac. Comparing tropical
+  // transits against a sidereal natal chart puts every aspect ~24° off.
+  const zodiacSystem = data.zodiacSystem === "sidereal" ? "sidereal" : "tropical";
+  const ayanamsaName = normalizeAyanamsa(data.ayanamsa);
   const isSidereal = zodiacSystem === "sidereal";
-  const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
 
   // Parse transit date
   const [year, month, day] = transitDate.split("-").map(Number);
   const jd = julday(year, month, day, 12); // noon
+  // Ayanamsa at the TRANSIT moment (not the birth moment, not a constant).
+  const ayanamsaOffset = isSidereal ? ayanamsaDegrees(jd, ayanamsaName) : 0;
 
   // Calculate transiting planet positions using Swiss Ephemeris
   const transitPlanetNames: PlanetName[] = [
@@ -290,7 +294,7 @@ export function calculateTransits(data: TransitInput) {
       aspectDeg,
       maxOrbForAspect,
       todayJd,
-      ayanamsaOffset,
+      isSidereal ? ayanamsaName : null,
     );
     if (window) {
       ta.startDate = window.startDate;
@@ -308,6 +312,7 @@ export function calculateTransits(data: TransitInput) {
 
   if (isSidereal) {
     result.ayanamsa = ayanamsaName;
+    result.ayanamsaDegrees = Math.round(ayanamsaOffset * 10000) / 10000;
   }
 
   return result;

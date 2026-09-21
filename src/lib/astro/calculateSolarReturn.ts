@@ -10,8 +10,6 @@
  */
 
 import {
-  SIGN_NAMES,
-  AYANAMSA_VALUES,
   ASPECTS,
   posToSign,
   applySidereal,
@@ -28,6 +26,8 @@ import {
   getAllPlanetPositions,
   PLANETS,
 } from "./ephemeris";
+import { ayanamsaDegrees, normalizeAyanamsa, type AyanamsaName } from "./vedic/ayanamsa";
+import { normalizeHouseSystem, wholeSignCusps, wholeSignHouse, type HouseSystem } from "./vedic/houses";
 
 // ---------- Types ----------
 
@@ -41,15 +41,20 @@ interface SolarReturnInput {
   cityName?: string;
   zodiacSystem?: "tropical" | "sidereal";
   ayanamsa?: string;
+  houseSystem?: HouseSystem | string | null;
 }
 
 // ---------- Helpers ----------
 
 /**
- * Get the Sun's ecliptic longitude at a given Julian Day.
+ * Get the Sun's ecliptic longitude at a given Julian Day — sidereal when an
+ * ayanamsa is given. A sidereal (Vedic "varshaphal") return is the moment the
+ * SIDEREAL Sun comes back to its natal sidereal degree; that falls about a day
+ * later per 72 years of age than the tropical return, because the ayanamsa grows.
  */
-function getSunLongitude(jd: number): number {
-  return getPlanetLongitude(jd, PLANETS.Sun);
+function getSunLongitude(jd: number, ayanamsa: AyanamsaName | null = null): number {
+  const lon = getPlanetLongitude(jd, PLANETS.Sun);
+  return ayanamsa ? (((lon - ayanamsaDegrees(jd, ayanamsa)) % 360) + 360) % 360 : lon;
 }
 
 /**
@@ -61,6 +66,7 @@ function findSolarReturnJd(
   birthMonth: number,
   birthDay: number,
   targetYear: number,
+  ayanamsa: AyanamsaName | null = null,
 ): number {
   // Start searching 2 days before the birthday in the target year
   const searchStartJd = julday(targetYear, birthMonth, birthDay, 0) - 2;
@@ -72,7 +78,7 @@ function findSolarReturnJd(
   const totalHours = 5 * 24;
   for (let h = 0; h < totalHours; h++) {
     const jd = searchStartJd + h / 24;
-    const sunPos = getSunLongitude(jd);
+    const sunPos = getSunLongitude(jd, ayanamsa);
     // Angular difference handling 360-degree wrap
     let diff = ((sunPos - natalSunAbs + 180) % 360 + 360) % 360 - 180;
     if (Math.abs(diff) < Math.abs(bestDiff)) {
@@ -88,7 +94,7 @@ function findSolarReturnJd(
 
   for (let i = 0; i < 20; i++) {
     mid = (low + high) / 2;
-    const sunPos = getSunLongitude(mid);
+    const sunPos = getSunLongitude(mid, ayanamsa);
     const diff = ((sunPos - natalSunAbs + 180) % 360 + 360) % 360 - 180;
     if (diff < 0) {
       low = mid;
@@ -122,13 +128,15 @@ export function calculateSolarReturn(data: SolarReturnInput) {
   const lat = data.latitude;
   const lng = data.longitude;
 
-  const zodiacSystem = data.zodiacSystem || "tropical";
-  const ayanamsaName = data.ayanamsa || "lahiri";
+  const zodiacSystem = data.zodiacSystem === "sidereal" ? "sidereal" : "tropical";
+  const ayanamsaName = normalizeAyanamsa(data.ayanamsa);
   const isSidereal = zodiacSystem === "sidereal";
-  const ayanamsaOffset = isSidereal ? (AYANAMSA_VALUES[ayanamsaName] ?? 24.17) : 0;
+  const houseSystem = normalizeHouseSystem(data.houseSystem, zodiacSystem);
 
-  // Find the exact return moment
-  const returnJd = findSolarReturnJd(natalSunAbs, birthMonth, birthDay, targetYear);
+  // Find the exact return moment (natalSunAbs is in the chart's own zodiac)
+  const returnJd = findSolarReturnJd(natalSunAbs, birthMonth, birthDay, targetYear, isSidereal ? ayanamsaName : null);
+  // Ayanamsa at the RETURN moment.
+  const ayanamsaOffset = isSidereal ? ayanamsaDegrees(returnJd, ayanamsaName) : 0;
   const { dateStr: returnDateStr, timeStr: returnTimeStr } = jdToDateTime(returnJd);
 
   // --- Planets ---
@@ -189,19 +197,20 @@ export function calculateSolarReturn(data: SolarReturnInput) {
 
   // --- Houses ---
   const houseData = getHouses(returnJd, lat, lng);
-  const houses = houseData.cusps.map((cusp, i) => {
-    const tropicalAbs = cusp;
-    if (isSidereal) {
-      const sid = applySidereal(tropicalAbs, ayanamsaOffset);
-      return { number: i + 1, sign: sid.sign, signNum: sid.signNum, position: sid.position, absPosition: sid.absPosition };
-    }
-    const info = posToSign(tropicalAbs);
+  const ascLon = (((houseData.ascendant - ayanamsaOffset) % 360) + 360) % 360;
+  const cuspLons = houseSystem === "whole_sign"
+    ? wholeSignCusps(ascLon)
+    : houseData.cusps.map((c) => (((c - ayanamsaOffset) % 360) + 360) % 360);
+  const houses = cuspLons.map((c, i) => {
+    const info = posToSign(c);
     return { number: i + 1, sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   });
+  const ascInfo = posToSign(ascLon);
+  const ascendant = { sign: ascInfo.sign, signNum: ascInfo.signNum, position: ascInfo.position, absPosition: ascInfo.absPosition };
 
   // Assign house numbers to planets and special points
   for (const p of [...planets, ...specialPoints]) {
-    p.house = assignHouse(p.absPosition, houses);
+    p.house = houseSystem === "whole_sign" ? wholeSignHouse(p.absPosition, ascLon) : assignHouse(p.absPosition, houses);
   }
 
   // --- Midheaven ---
@@ -240,7 +249,7 @@ export function calculateSolarReturn(data: SolarReturnInput) {
   const bigThree = {
     sun: planets[0]?.sign || "",
     moon: planets[1]?.sign || "",
-    rising: houses[0]?.sign || "",
+    rising: ascendant.sign,
   };
 
   const result: Record<string, unknown> = {
@@ -251,10 +260,12 @@ export function calculateSolarReturn(data: SolarReturnInput) {
     bigThree,
     planets,
     specialPoints,
+    ascendant,
     midheaven,
     houses,
     aspects,
     zodiacSystem,
+    houseSystem,
   };
 
   if (isSidereal) {

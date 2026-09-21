@@ -16,6 +16,7 @@ import {
   nextMoonEventInstant,
   isSameLocalDay,
 } from "@/lib/astro/currentSky";
+import { jdFromDate, toSidereal, type AyanamsaName } from "@/lib/astro/vedic/ayanamsa";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -799,11 +800,9 @@ export function getMoonPhaseImage(phase: string): string {
 }
 
 // Nakshatra from real Moon longitude (astronomy-engine) converted to sidereal
-export function getCurrentNakshatra(date: Date): NakshatraInfo {
-  const tropicalLon = getMoonLongitude(date);
-  // Convert tropical to sidereal (Lahiri ayanamsa ≈ 24.17° for 2024-2028)
-  const AYANAMSA = 24.17;
-  const siderealLon = ((tropicalLon - AYANAMSA) % 360 + 360) % 360;
+// with the Lahiri ayanamsa FOR THIS DATE (it drifts ~50" a year — never a constant).
+export function getCurrentNakshatra(date: Date, ayanamsa: AyanamsaName = "lahiri"): NakshatraInfo {
+  const siderealLon = toSidereal(getMoonLongitude(date), jdFromDate(date), ayanamsa);
   // Each nakshatra spans 13°20' = 13.3333°
   const nakshatraIndex = Math.floor(siderealLon / (360 / 27)) % 27;
   return NAKSHATRAS[nakshatraIndex];

@@ -14,11 +14,9 @@ export const SIGN_ELEMENT: Record<string, string> = {
   Can: "water", Pis: "water", Sco: "water",
 };
 
-export const AYANAMSA_VALUES: Record<string, number> = {
-  lahiri: 24.17,
-  krishnamurti: 23.98,
-  raman: 22.47,
-};
+// NOTE: there is deliberately no ayanamsa constant here. The ayanamsa changes
+// ~50" a year and must be computed for the moment in question — see
+// vedic/ayanamsa.ts (ayanamsaDegrees).
 
 /** Standard aspect definitions: [name, exactDegrees, maxOrb] */
 export const ASPECTS: [string, number, number][] = [
@@ -68,7 +66,10 @@ export function posToSign(absPos: number) {
   };
 }
 
-/** Apply sidereal correction to a tropical absolute position. */
+/**
+ * Apply sidereal correction to a tropical absolute position.
+ * `ayanamsaOffset` must be the ayanamsa for THAT moment (vedic/ayanamsa.ts).
+ */
 export function applySidereal(absPosition: number, ayanamsaOffset: number) {
   const siderealPos = ((absPosition - ayanamsaOffset) % 360 + 360) % 360;
   return posToSign(siderealPos);

@@ -435,8 +435,12 @@ export function getHouses(
 
 /**
  * Calculate all planet positions for a given moment.
+ *
+ * Longitudes are rounded to 0.01° for storage/display unless `precise` is set.
+ * Pass precise for anything derived from the Moon's exact degree (nakshatra
+ * fraction, Vimshottari dasha): the Moon covers 0.01° in about a minute.
  */
-export function getAllPlanetPositions(jd: number) {
+export function getAllPlanetPositions(jd: number, precise = false) {
   const planetNames: PlanetName[] = [
     "Sun", "Moon", "Mercury", "Venus", "Mars",
     "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
@@ -446,7 +450,7 @@ export function getAllPlanetPositions(jd: number) {
     const data = getPlanetData(jd, name);
     return {
       name,
-      longitude: Math.round(data.longitude * 100) / 100,
+      longitude: precise ? data.longitude : Math.round(data.longitude * 100) / 100,
       retrograde: data.retrograde,
     };
   });
