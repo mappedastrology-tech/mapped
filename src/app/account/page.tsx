@@ -123,8 +123,7 @@ function ConfirmDialog({
       >
         <h3
           id={titleId}
-          className="text-lg text-foreground mb-2"
-          style={{ fontFamily: "var(--font-display)" }}
+          className="text-[19px] font-semibold tracking-[-0.01em] text-foreground mb-2"
         >
           {title}
         </h3>
@@ -2057,8 +2056,7 @@ function AccountPage() {
             /* ─── Forgot password form ─── */
             <div className="rounded-2xl bg-surface border border-foreground/15 p-6 animate-in fade-in duration-200">
               <h3
-                className="text-lg text-foreground mb-1"
-                style={{ fontFamily: "var(--font-display)" }}
+                className="text-[19px] font-semibold tracking-[-0.01em] text-foreground mb-1"
               >
                 Reset your password
               </h3>
@@ -2132,8 +2130,7 @@ function AccountPage() {
             /* ─── Sign up / Sign in form ─── */
             <div className="rounded-2xl bg-surface border border-foreground/15 p-6">
               <h3
-                className="text-lg text-foreground mb-1"
-                style={{ fontFamily: "var(--font-display)" }}
+                className="text-[19px] font-semibold tracking-[-0.01em] text-foreground mb-1"
               >
                 {mode === "signup" ? "Create an account" : "Welcome back"}
               </h3>
