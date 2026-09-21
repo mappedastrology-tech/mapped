@@ -1220,3 +1220,35 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .pf-page [style*="animation"] { animation: none !important; }
 }
+
+/* ─── Account settings: plum accent + sans type ───
+   Account is a utility screen, so it reads in the UI sans rather than the
+   reading serif, and it swaps the brass accent for plum. Scoped here so the
+   rest of the app keeps its palette. Every brass alias is repointed because
+   this page reaches it through terracotta, amber and brass interchangeably. */
+.acct-scope {
+  --acct-accent: #5e2d52;
+  --acct-accent-hi: #7a4570;
+  --acct-fill: #5e2d52;
+  --acct-fill-hi: #7a4570;
+  --brass: var(--acct-accent);
+  --brass-light: var(--acct-accent-hi);
+  --brass-dark: var(--acct-accent);
+  --terracotta: var(--acct-accent);
+  --terracotta-light: var(--acct-accent-hi);
+  --amber: var(--acct-accent);
+  --amber-light: var(--acct-accent-hi);
+  --border-accent: var(--acct-accent);
+  font-family: var(--font-ui);
+}
+[data-theme="dark"] .acct-scope {
+  /* Readable plum for text on the near-black page; solid fills stay deeper so
+     cream labels and the white toggle knob keep their contrast. */
+  --acct-accent: #c89bbd;
+  --acct-accent-hi: #dcb9d3;
+  --acct-fill: #7a4570;
+  --acct-fill-hi: #8e5582;
+}
+.acct-scope .bg-terracotta { background-color: var(--acct-fill); }
+.acct-scope .hover\:bg-terracotta-light:hover { background-color: var(--acct-fill-hi); }
+.acct-scope input, .acct-scope button, .acct-scope select, .acct-scope textarea { font-family: inherit; }

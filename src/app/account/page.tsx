@@ -39,7 +39,7 @@ import { isAdmin } from "@/lib/admin";
 export default function AccountPageWrapper() {
   return (
     <Suspense fallback={
-      <main className="flex-1 flex items-center justify-center">
+      <main className="acct-scope flex-1 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     }>
@@ -765,31 +765,31 @@ function NotificationSettingsSection() {
   // something happened overhead, something happened in your chart, something
   // of yours is waiting.
   const groups: { key: NotificationGroup; label: string; desc: string }[] = [
-    { key: "sky", label: "The sky", desc: "Moons, eclipses, retrogrades, ingresses" },
-    { key: "chart", label: "My chart", desc: "Transits to your placements, your solar return" },
-    { key: "practice", label: "My practice", desc: "Journal prompts and rituals you've saved" },
+    { key: "sky", label: "The sky", desc: "Full moons, eclipses, retrogrades. A heads-up when the sky shifts, so you can plan around it instead of finding out after." },
+    { key: "chart", label: "My chart", desc: "When a planet lands on a point in your own chart: the moments that are about you, not everyone. Plus your solar return." },
+    { key: "practice", label: "My practice", desc: "Reminders for the journal prompts and rituals you've saved, on the night they're meant for." },
   ];
 
   // Everything, for anyone who wants to tune it. Astrologers disagree with each
   // other about most of this, so the per-alert switches are a real answer
   // rather than a hedge.
   const detail: { key: keyof NotificationPreferences; label: string; desc: string }[] = [
-    { key: "new_moon", label: "New moons", desc: "On the night it peaks" },
-    { key: "new_moon_act", label: "Four days after a new moon", desc: "The beat where an intention wants an action" },
-    { key: "full_moon", label: "Full moons", desc: "On the night it peaks" },
-    { key: "quarter_moon", label: "Quarter moons", desc: "The quieter two" },
-    { key: "eclipses", label: "Eclipses", desc: "Four to six a year" },
-    { key: "eclipse_season", label: "Eclipse season opening", desc: "Five weeks' notice, twice a year" },
-    { key: "retrograde_stations", label: "Retrograde stations", desc: "The day a planet stops, either direction" },
-    { key: "retrograde_shadow", label: "Shadow periods clearing", desc: "When a planet finishes re-crossing its own ground" },
-    { key: "major_ingresses", label: "Planets changing sign", desc: "Jupiter and slower only" },
-    { key: "major_transits", label: "Transits to your chart", desc: "Only when genuinely exact" },
-    { key: "transit_approaching", label: "Transits approaching", desc: "Four days before it lands" },
-    { key: "solar_return", label: "Your solar return", desc: "The exact moment, once a year" },
-    { key: "birthday_week", label: "Birthday week", desc: "A few days ahead of it" },
-    { key: "journal_checkin", label: "Journal check-ins", desc: "A question written for the transit you're in" },
-    { key: "practice_reminders", label: "Saved rituals", desc: "On the night they're for" },
-    { key: "learning_reminder", label: "Learning streak", desc: "Only if you want to be nudged about it" },
+    { key: "new_moon", label: "New moons", desc: "A fresh start. The night to set an intention." },
+    { key: "new_moon_act", label: "Four days after a new moon", desc: "When it's time to take the first real step on what you intended." },
+    { key: "full_moon", label: "Full moons", desc: "Things come to a head. A night for letting go and wrapping up." },
+    { key: "quarter_moon", label: "Quarter moons", desc: "Mid-cycle check-ins: adjust course or push through." },
+    { key: "eclipses", label: "Eclipses", desc: "Four to six a year, and they tend to mark turning points. Better to know before than after." },
+    { key: "eclipse_season", label: "Eclipse season opening", desc: "Five weeks' notice, so big decisions don't land in the most unpredictable stretch." },
+    { key: "retrograde_stations", label: "Retrograde stations", desc: "The day a planet turns. Mercury is the famous one: traditionally a time to double-check plans and hold off on big commitments." },
+    { key: "retrograde_shadow", label: "Shadow periods clearing", desc: "The all-clear: a retrograde's aftereffects are over and it's safe to move forward." },
+    { key: "major_ingresses", label: "Planets changing sign", desc: "Jupiter and slower. The shifts that set the tone for a year or more." },
+    { key: "major_transits", label: "Transits to your chart", desc: "When a planet exactly hits your chart. Only the real ones, no filler." },
+    { key: "transit_approaching", label: "Transits approaching", desc: "Four days' warning before a big one, so it doesn't catch you off guard." },
+    { key: "solar_return", label: "Your solar return", desc: "Your astrological new year, to the minute. A good moment to set the year's intentions." },
+    { key: "birthday_week", label: "Birthday week", desc: "A few days ahead, to look at what your coming year holds." },
+    { key: "journal_checkin", label: "Journal check-ins", desc: "A journal question written for what you're moving through right now." },
+    { key: "practice_reminders", label: "Saved rituals", desc: "On the night they're for, so you don't miss the moon you planned around." },
+    { key: "learning_reminder", label: "Learning streak", desc: "A nudge to keep your learning streak going, if you want one." },
   ];
 
   return (
@@ -798,6 +798,11 @@ function NotificationSettingsSection() {
       <div className="flex items-center justify-between px-5 py-4">
         <div>
           <p className="text-foreground text-[15px] font-semibold">Notifications</p>
+          {blocker === "ok" && permissionState !== "denied" && (
+            <p className="text-muted text-[12px] mt-0.5 max-w-[16rem]">
+              A heads-up when something in the sky, or in your chart, is worth knowing about. You choose what counts.
+            </p>
+          )}
           {blocker === "ios-needs-install" && (
             <p className="text-muted text-[11px] mt-0.5 max-w-[15rem]">
               On iPhone, add Mapped to your Home Screen first — tap Share, then Add to Home Screen, and open it from there.
@@ -874,7 +879,7 @@ function NotificationSettingsSection() {
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-foreground/5">
             <div className="flex-1 mr-4">
               <p className="text-foreground text-[14px] font-medium">A reading every day</p>
-              <p className="text-muted text-[12px] mt-0.5">One a day, drawn from your own chart</p>
+              <p className="text-muted text-[12px] mt-0.5">One short reading from your own chart each day, so you have a reason to check in without having to remember.</p>
             </div>
             <ToggleSwitch
               checked={!!prefs.daily_content}
@@ -1055,7 +1060,7 @@ function SubscriptionSection() {
             <span className={`w-2.5 h-2.5 rounded-full ${
               isPaid ? "bg-sage" : "bg-foreground/30"
             }`} />
-            <span className="text-foreground text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+            <span className="text-foreground text-base font-semibold">
               {isPaid ? "Mapped+" : "Free"}
             </span>
           </div>
@@ -1273,8 +1278,8 @@ function OracleDeckSection() {
           </p>
           <Link
             href="/tarot?store=1"
-            className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-[13px] font-semibold"
-            style={{ minHeight: 44, backgroundColor: "var(--brass)", color: "var(--btn-ink)" }}
+            className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-[13px] font-semibold bg-terracotta text-cream hover:bg-terracotta-light"
+            style={{ minHeight: 44 }}
           >
             Choose your free deck
           </Link>
@@ -1758,14 +1763,14 @@ function AccountPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 flex items-center justify-center">
+      <main className="acct-scope flex-1 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
       </main>
     );
   }
 
   return (
-    <main className="flex-1 flex flex-col px-6 py-8 max-w-lg mx-auto w-full">
+    <main className="acct-scope flex-1 flex flex-col px-6 py-8 max-w-lg mx-auto w-full">
       <button
         onClick={() => goBack("/home", (href) => router.push(href))}
         className="text-muted text-sm mb-8 self-start hover:text-foreground transition-colors"
