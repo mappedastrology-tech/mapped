@@ -70,6 +70,11 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const [autoWithoutLocation, setAutoWithoutLocation] = useState(false);
   const [mounted, setMounted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The scheduled re-check calls through this rather than naming applyAuto
+  // inside its own body: a function cannot reference itself in the callback it
+  // is still being defined by without the linter — rightly — pointing out that
+  // the captured binding would go stale if it ever gained dependencies.
+  const applyAutoRef = useRef<() => void>(() => {});
 
   /**
    * Work out what auto should show right now and set it, then schedule the
@@ -88,8 +93,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     apply(next);
 
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(applyAuto, msUntilNextSwitch(new Date(), coords));
+    timerRef.current = setTimeout(() => applyAutoRef.current(), msUntilNextSwitch(new Date(), coords));
   }, []);
+
+  useEffect(() => { applyAutoRef.current = applyAuto; }, [applyAuto]);
 
   // Initial resolution, from the stored mode.
   useEffect(() => {
