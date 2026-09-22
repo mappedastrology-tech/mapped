@@ -1162,19 +1162,16 @@ export default function HomeTab() {
           {todayHasEntry ? (
             <>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span className="text-[11px] tracking-[0.18em] uppercase font-medium">
-                Today&apos;s check-in complete
+              <span className="text-[14px] font-semibold" style={{ fontFamily: "var(--font-ui)" }}>
+                Today&apos;s check-in is done
               </span>
             </>
           ) : (
             <>
-              <span className="text-[14px]" style={{ fontFamily: "var(--font-ui)" }}>
-                Begin
+              <span className="text-[14px] font-semibold" style={{ fontFamily: "var(--font-ui)" }}>
+                Begin today&apos;s check-in
               </span>
-              <span className="text-[11px] tracking-[0.18em] uppercase font-medium">
-                today&apos;s check-in
-              </span>
-              <span className="text-[14px] ml-1">&rarr;</span>
+              <span className="text-[14px]" aria-hidden="true">&rarr;</span>
             </>
           )}
         </button>
@@ -1190,9 +1187,9 @@ export default function HomeTab() {
               router.push("/dolly");
             }}
             className="w-full rounded-full py-2.5 text-center active:scale-[0.97] transition-all"
-            style={{ border: "0.5px solid var(--foreground)", color: "var(--foreground)", opacity: 0.6 }}
+            style={{ border: "1px solid color-mix(in srgb, var(--foreground) 35%, transparent)", color: "var(--foreground)" }}
           >
-            <span className="text-[11px] tracking-[0.15em] uppercase font-medium">Go deeper</span>
+            <span className="text-[14px] font-medium" style={{ fontFamily: "var(--font-ui)" }}>Go deeper with Dolly</span>
           </button>
         </div>
 
