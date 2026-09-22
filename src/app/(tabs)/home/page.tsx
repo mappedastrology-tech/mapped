@@ -944,9 +944,9 @@ export default function HomeTab() {
                   src="/images/learn/almanac-sunday-sun.webp"
                   alt=""
                   aria-hidden="true"
-                  width={34}
-                  height={34}
-                  style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
+                  width={44}
+                  height={44}
+                  style={{ width: 44, height: 44, objectFit: "contain", flexShrink: 0 }}
                 />
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
@@ -1875,10 +1875,20 @@ export default function HomeTab() {
                   onClick={() => toggleFolder(cardId)}
                   className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0" style={{ backgroundColor: "#5a1f1a" }}>
-                    <p className="text-[7px] uppercase tracking-wider leading-none" style={{ color: "#f0e6d2", opacity: 0.75 }}>{event.date.toLocaleDateString("en-US", { month: "short" })}</p>
-                    <p className="text-[14px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
-                  </div>
+                  {/* Solstices and equinoxes get the painted sun instead of a
+                      date chip: they are the one category whose takeover screen
+                      opens on that same sun, so the card previews it. */}
+                  {event.category === "solar" ? (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#3a2410" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/learn/almanac-sunday-sun.webp" alt="" aria-hidden="true" width={30} height={30} className="w-[30px] h-[30px] object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0" style={{ backgroundColor: "#5a1f1a" }}>
+                      <p className="text-[7px] uppercase tracking-wider leading-none" style={{ color: "#f0e6d2", opacity: 0.75 }}>{event.date.toLocaleDateString("en-US", { month: "short" })}</p>
+                      <p className="text-[14px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>{horizonEyebrow(event.category, event.tradition)}</p>
                     <p className="text-[16px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{event.name}</p>

@@ -41,6 +41,11 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 const SUN_IMAGE = "/images/learn/almanac-sunday-sun.webp";
 
 function SunVisual({ size, glow }: { size: number; glow: string }) {
+  // theme.sun measured the old SVG's disc, whose rays then reached about 1.4x
+  // further out. The painted sun carries its rays inside the image, so drawing
+  // it at the bare disc size would land noticeably smaller than what it
+  // replaced. Scaling back up keeps the composition the screen was built for.
+  const px = Math.round(size * 1.35);
   return (
     <div className="relative w-[180px] h-[180px] mx-auto flex items-center justify-center">
       <div className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle, ${glow} 0%, transparent 68%)` }} />
@@ -49,10 +54,10 @@ function SunVisual({ size, glow }: { size: number; glow: string }) {
         src={SUN_IMAGE}
         alt=""
         aria-hidden="true"
-        width={size}
-        height={size}
+        width={px}
+        height={px}
         className="relative z-10"
-        style={{ width: size, height: size, objectFit: "contain", filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.35))" }}
+        style={{ width: px, height: px, objectFit: "contain", filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.35))" }}
       />
     </div>
   );
