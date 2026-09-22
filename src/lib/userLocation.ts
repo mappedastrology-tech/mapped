@@ -11,6 +11,7 @@
 // need to await Supabase.
 
 import { supabase } from "@/lib/supabase";
+import { writeThemeCoords } from "@/lib/autoTheme";
 
 export interface UserLocation {
   lat: number;
@@ -44,6 +45,16 @@ export function cacheLocation(userId: string, loc: UserLocation): void {
     localStorage.setItem(cacheKey(userId), JSON.stringify(loc));
   } catch {
     // storage full/unavailable — non-fatal
+  }
+  // The automatic light/dark theme needs coordinates before it knows who is
+  // signed in — ThemeProvider sits above the session and also runs on the
+  // signed-out pages — so a copy goes somewhere it can read without a user id.
+  // Every path that caches a location comes through here, which is why this is
+  // the one place it has to happen.
+  try {
+    writeThemeCoords({ lat: loc.lat, lng: loc.lng });
+  } catch {
+    // non-fatal: auto falls back to the system appearance setting
   }
 }
 

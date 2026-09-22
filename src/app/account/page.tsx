@@ -1409,7 +1409,7 @@ function PromoCodeSection() {
 /* ─── Theme / Appearance section ─── */
 
 function ThemeSection() {
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode, theme, autoWithoutLocation } = useTheme();
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
@@ -1418,15 +1418,18 @@ function ThemeSection() {
         {([
           { value: "light" as const, label: "Day", desc: "Cream canvas", icon: "☀️" },
           { value: "dark" as const, label: "Night", desc: "Midnight canvas", icon: "🌙" },
+          { value: "auto" as const, label: "Auto", desc: "Follows the sun", icon: "🌗" },
         ]).map((opt) => (
           <button
             key={opt.value}
-            onClick={() => setTheme(opt.value)}
+            onClick={() => setMode(opt.value)}
+            aria-pressed={mode === opt.value}
             className={`flex-1 flex flex-col items-center gap-1.5 py-4 rounded-xl text-sm font-medium transition-all border ${
-              theme === opt.value
+              mode === opt.value
                 ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
                 : "bg-background border-foreground/18 text-muted hover:border-foreground/20"
             }`}
+            style={{ minHeight: 44 }}
           >
             <span className="text-lg">{opt.icon}</span>
             <span>{opt.label}</span>
@@ -1434,9 +1437,27 @@ function ThemeSection() {
           </button>
         ))}
       </div>
-      <p className="text-muted text-[10px] mt-2">
-        Changes how the entire app looks. Defaults to your device setting.
-      </p>
+
+      {mode === "auto" ? (
+        autoWithoutLocation ? (
+          // Auto is on but there is nowhere to compute a sunrise for, so it is
+          // quietly following the device instead. Saying so beats letting
+          // someone wonder why it never changes at dusk.
+          <p className="text-muted text-[10px] mt-2 leading-relaxed">
+            Following your device setting for now — add your location above and this
+            will switch at your own sunrise and sunset.
+          </p>
+        ) : (
+          <p className="text-muted text-[10px] mt-2 leading-relaxed">
+            Light from sunrise to sunset where you are, dark the rest of the time.
+            Currently {theme === "light" ? "day" : "night"}.
+          </p>
+        )
+      ) : (
+        <p className="text-muted text-[10px] mt-2">
+          Changes how the entire app looks.
+        </p>
+      )}
     </div>
   );
 }
