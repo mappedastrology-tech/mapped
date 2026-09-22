@@ -21,6 +21,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { storedUserId } from "@/lib/accountIsolation";
 
 export interface CachedProfile {
   id: string;
@@ -69,6 +70,27 @@ let generation = 0;
  * here would take out every section at once instead of one.
  */
 export function getProfile(): Promise<CachedProfile | null> {
+  // Never hand one account's row to another.
+  //
+  // Signing in does NOT reload the page — it is a client-side navigation — so
+  // this module's memory survives the switch even though localStorage and
+  // sessionStorage have both been cleared around it. Without this check the
+  // next caller within the TTL joins the previous account's read, and since
+  // TierProvider resolves entitlements through here, the incoming user could
+  // be handed the outgoing user's profile and their paid tier with it.
+  //
+  // Read synchronously from the stored session rather than awaiting
+  // getSession(), because the decision has to be made before returning the
+  // cached promise. A null answer means the session could not be parsed, and
+  // the check simply abstains — the auth listener in AccountIsolation clears
+  // this cache on every sign-in and sign-out, independently of this path.
+  const asker = storedUserId();
+  if (cachedFor !== null && asker !== null && asker !== cachedFor) {
+    inflight = null;
+    resolvedAt = 0;
+    cachedFor = null;
+  }
+
   // A request still in flight is always joined, whatever the clock says —
   // that is the case this exists for, and starting a second one would defeat
   // the whole point.
@@ -81,7 +103,9 @@ export function getProfile(): Promise<CachedProfile | null> {
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) return null;
-      cachedFor = uid;
+      // Recorded before the row is fetched, so a read that is still in flight
+      // is already attributable to its owner rather than looking unowned.
+      if (myGeneration === generation) cachedFor = uid;
 
       // select("*") rather than a column list: the whole point is that one
       // read serves every section, and each section wants different columns.

@@ -34,6 +34,7 @@ import {
   lastUserId,
 } from "@/lib/accountIsolation";
 import { installScopedStorage, migrateLegacyKeys } from "@/lib/scopedStorage";
+import { invalidateProfile } from "@/lib/profileCache";
 
 /**
  * A switch also has to give up this device's push subscription.
@@ -77,6 +78,13 @@ export default function AccountIsolation() {
   useEffect(() => {
     // Catch a sign-in that happens without a page load.
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Storage is cleared around a switch, but this module's MEMORY is not:
+      // signing in is a client-side navigation, not a page load, so anything
+      // cached in a module variable outlives the account it was read for. The
+      // profile row is the one that matters — entitlements resolve through it.
+      // Dropped on every auth event, including signing out.
+      invalidateProfile();
+
       const id = session?.user?.id;
       if (!id) return;
       // Someone signing in without a reload has been writing to raw keys up to
