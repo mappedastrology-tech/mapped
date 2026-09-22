@@ -701,9 +701,21 @@ export default function HomeTab() {
       }
     }
 
+    // Free accounts keep the local reading and never call the AI route.
+    //
+    // This is not a degraded experience: buildFallbackHoroscope composes from
+    // today's sky and their own Sun, Moon and Rising, so it is already specific
+    // to this person on this day, and it is instant and works offline. Calling
+    // the AI route for a free account would only earn a 402 and a visible
+    // "upgrading" hint that never resolves.
+    if (tier === "free") {
+      setHoroscopeUpgrading(false);
+      return;
+    }
+
     doFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasChart, horoscopeStatus]);
+  }, [hasChart, horoscopeStatus, tier]);
 
 
   // Moon sign label (sidereal, from almanac data or celestial calendar)

@@ -26,6 +26,9 @@ import {
   type NotificationPreferences, type NotificationGroup,
 } from "@/lib/notifications/catalogue";
 import { useOracleAccess } from "@/lib/oracleAccess";
+import { getProfile, invalidateProfile } from "@/lib/profileCache";
+import { describeRedemption } from "@/lib/promoCodes";
+import { TIERS, TRIAL_DAYS, type TierLevel } from "@/lib/tier";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import {
   getCachedLocation,
@@ -359,15 +362,10 @@ function BirthTimeSettingsSection() {
   useEffect(() => {
     (async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
-
-        // First check if profiles has explicit precision
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("birth_time_precision, birth_time, birth_time_window")
-          .eq("id", user.id)
-          .single();
+        // Shared with every other section on this screen; see lib/profileCache.
+        const profile = await getProfile();
+        if (!profile) { setLoading(false); return; }
+        const user = { id: profile.id };
 
         if (profile?.birth_time_precision) {
           setPrecision(profile.birth_time_precision);
@@ -644,13 +642,12 @@ function NotificationSettingsSection() {
     import("@/lib/notifications").then(({ pushBlocker }) => setBlocker(pushBlocker()));
 
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      setAdminUser(isAdmin(session.user.id));
-      const { data } = await supabase.from("profiles").select("notification_preferences").eq("id", session.user.id).single();
+      const profile = await getProfile();
+      if (!profile) return;
+      setAdminUser(isAdmin(profile.id));
       // Merged over the defaults so a preference added since this profile was
       // last saved arrives with its intended default rather than undefined.
-      setPrefs({ ...DEFAULT_PREFERENCES, ...(data?.notification_preferences ?? {}) });
+      setPrefs({ ...DEFAULT_PREFERENCES, ...(profile.notification_preferences ?? {}) });
       setLoaded(true);
     }
     load();
@@ -741,6 +738,7 @@ function NotificationSettingsSection() {
       // from four switches every time, which meant saving any toggle silently
       // reset the delivery hour to 19 and cleared any pause.
       await supabase.from("profiles").update({ notification_preferences: updated }).eq("id", session.user.id);
+      invalidateProfile();
     }
     setSaving(false);
   }
@@ -991,17 +989,25 @@ function NotificationSettingsSection() {
 /* ─── Subscription / Plan section ─── */
 
 function SubscriptionSection() {
-  const { tier, refreshTier } = useTier();
+  const { tier, refreshTier, trialDaysLeft } = useTier();
   const [showPlans, setShowPlans] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
 
-  const isPaid = tier === "mid";
+  // Any paid tier, not just Mapped+. Testing for "mid" alone showed a Mapped
+  // Complete subscriber the Free card and an upgrade button.
+  const isPaid = tier !== "free";
+  const onTrial = trialDaysLeft > 0 && tier === "mid";
+  const planName = TIERS[tier].name;
+  const planPrice = tier === "free" ? "Free" : `$${TIERS[tier].price.toFixed(2)}/mo`;
 
-  // Show a few highlighted features for the current tier
-  const highlights = tier === "free"
-    ? ["Basic birth chart", "Daily horoscope", "1 card pull/day", "Dolly (5 msgs/day)"]
-    : ["Unlimited Dolly", "Unlimited card pulls", "All map connections", "Astrocartography"];
+  // What this plan actually includes now. The old free list promised a daily
+  // horoscope and five Dolly messages, neither of which free has any more.
+  const highlights: Record<TierLevel, string[]> = {
+    free: ["Your full birth chart", "Almanac and transits", "One oracle deck", "A card pull each day"],
+    mid: ["Dolly, whenever you want her", "Daily horoscopes for your chart", "Unlimited card pulls", "Astrocartography"],
+    max: ["Everything in Mapped+", "Every oracle deck included", "New decks as they arrive"],
+  };
 
   async function handleManageSubscription() {
     setLoadingPortal(true);
@@ -1063,17 +1069,29 @@ function SubscriptionSection() {
               isPaid ? "bg-sage" : "bg-foreground/30"
             }`} />
             <span className="text-foreground text-base font-semibold">
-              {isPaid ? "Mapped+" : "Free"}
+              {planName}
             </span>
           </div>
           <span className="text-muted text-sm">
-            {isPaid ? "$11.11/mo" : "Free"}
+            {planPrice}
           </span>
         </div>
 
+        {/* On the house right now. Said plainly and with the end date, because
+            the thing people resent is not the trial ending, it is not having
+            been told it would. */}
+        {onTrial && (
+          <p className="text-[11.5px] leading-relaxed mb-3 px-3 py-2 rounded-lg"
+             style={{ backgroundColor: "var(--sage-soft, rgba(140,160,120,0.12))", color: "var(--foreground-on-card, inherit)", fontFamily: "var(--font-ui)" }}>
+            Dolly is on us for your first {TRIAL_DAYS} days —{" "}
+            <strong>{trialDaysLeft} {trialDaysLeft === 1 ? "day" : "days"} left</strong>.
+            After that she lives in Mapped+.
+          </p>
+        )}
+
         {/* Feature highlights */}
         <div className="space-y-1.5 mb-4">
-          {highlights.map((h, i) => (
+          {highlights[tier].map((h, i) => (
             <div key={i} className="flex items-center gap-2 text-secondary text-xs">
               <span className="text-sage">&#10003;</span>
               <span>{h}</span>
@@ -1110,7 +1128,7 @@ function SubscriptionSection() {
                   Connecting...
                 </span>
               ) : (
-                "Upgrade to Mapped+ — $11.11/mo"
+                `Upgrade to ${TIERS.mid.name} — $${TIERS.mid.price.toFixed(2)}/mo`
               )}
             </button>
             <button
@@ -1128,6 +1146,12 @@ function SubscriptionSection() {
             Cancel or change plan anytime through the billing portal.
           </p>
         )}
+
+        {/* Fair use. No number, but it says a ceiling exists, which is what
+            app stores and consumer rules expect a subscription to disclose. */}
+        <p className="text-center text-muted text-[10px] mt-2">
+          Dolly and the other AI features are subject to fair use.
+        </p>
       </div>
 
       {/* Plans comparison modal */}
@@ -1148,6 +1172,31 @@ function PromoCodeSection() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const { refreshTier } = useTier();
+  // Anything this account was given for free is listed below, rather than only
+  // quietly changing what works. Someone who redeemed a code months ago should
+  // be able to see what they hold and when it runs out.
+  const [perks, setPerks] = useState<{ label: string; detail: string }[]>([]);
+
+  const loadPerks = useCallback(async () => {
+    try {
+      const profile = await getProfile();
+      if (!profile) { setPerks([]); return; }
+      const { data } = await supabase
+        .from("promo_redemptions")
+        .select("*")
+        .eq("user_id", profile.id);
+      const active = (data ?? [])
+        .map((r) => describeRedemption(r as Parameters<typeof describeRedemption>[0]))
+        .filter((x): x is { label: string; detail: string } => x !== null);
+      setPerks(active);
+    } catch {
+      // The table may not exist in every environment — an empty list is the
+      // right answer, not an error message about promo plumbing.
+      setPerks([]);
+    }
+  }, []);
+
+  useEffect(() => { loadPerks(); }, [loadPerks]);
 
   const handleRedeem = async () => {
     if (!code.trim()) return;
@@ -1177,8 +1226,10 @@ function PromoCodeSection() {
         setStatus("success");
         setMessage(data.message || "Code redeemed!");
         setCode("");
-        // Refresh tier in case it was upgraded
+        // Refresh tier in case it was upgraded, and show the new perk in the
+        // list straight away rather than only after a reload.
         await refreshTier();
+        await loadPerks();
       } else {
         setStatus("error");
         setMessage(data.error || "Invalid code.");
@@ -1215,6 +1266,20 @@ function PromoCodeSection() {
         <p className={`text-xs mt-2 ${status === "success" ? "text-sage" : "text-red-400"}`}>
           {message}
         </p>
+      )}
+
+      {perks.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-foreground/10">
+          <p className="text-[11px] uppercase tracking-widest text-muted mb-2">Active on your account</p>
+          <ul className="space-y-2">
+            {perks.map((perk, i) => (
+              <li key={i} className="flex items-baseline justify-between gap-3">
+                <span className="text-secondary text-[12.5px]">{perk.label}</span>
+                <span className="text-muted text-[11px] shrink-0">{perk.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -1715,6 +1780,7 @@ function AccountPage() {
       // Also update the profiles table
       if (userId) {
         await supabase.from("profiles").update({ name: newName }).eq("id", userId);
+        invalidateProfile();
       }
       setUserName(newName);
       return null;

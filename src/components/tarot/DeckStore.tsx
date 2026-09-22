@@ -21,6 +21,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { STORE_DECKS, formatPrice, type StoreDeck } from "@/lib/deckStore";
 import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
@@ -42,6 +43,7 @@ const CARD_RATIO = "9 / 16";
 const TILE_RATIO = "20 / 23";
 
 export default function DeckStore({ justPurchased }: Props) {
+  const router = useRouter();
   const [ent, setEnt] = useState<DeckEntitlements>(NO_ENTITLEMENTS);
   const owned = ent.owned;
   const [buying, setBuying] = useState<string | null>(null);
@@ -109,7 +111,15 @@ export default function DeckStore({ justPurchased }: Props) {
     // the fix for that is the same as the success path.
     await loadEntitlements();
     setClaiming(null);
-    if (res.ok) setOpenDeck(null);
+    if (res.ok) {
+      setOpenDeck(null);
+      // Back to account settings, which is where the deck actually gets used:
+      // the oracle chooser there is the only place a deck becomes the one on
+      // the home screen, and it is where the "Choose your free deck" link that
+      // sends most people here lives. Leaving them in the store after the one
+      // free pick is spent just shows them things they cannot take.
+      router.push("/account");
+    }
   }
 
   function openProduct(deck: StoreDeck) {

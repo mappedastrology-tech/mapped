@@ -146,6 +146,42 @@ export function describePromo(code: PromoCode): string {
   }
 }
 
+/**
+ * A plain description of something a person was actually given, for the list
+ * of active perks in account settings.
+ *
+ * describePromo() above describes a CODE, in the shop sense ("30 days free").
+ * This describes a REDEMPTION — what this account holds right now and until
+ * when — which is the thing someone needs to be able to see, both so they know
+ * what they have and so they are not surprised when it lapses.
+ *
+ * A duration at or beyond a century is shown as lifetime rather than as a date
+ * in 2126, which reads like a bug.
+ */
+export function describeRedemption(
+  r: Pick<PromoRedemption, "type" | "expires_at" | "discount_percent">,
+  now: Date = new Date(),
+): { label: string; detail: string } | null {
+  const expires = new Date(r.expires_at);
+  if (Number.isNaN(expires.getTime()) || expires <= now) return null;
+
+  const lifetime = expires.getFullYear() - now.getFullYear() >= 100;
+  const until = lifetime
+    ? "Doesn't expire"
+    : `Until ${expires.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+
+  switch (r.type) {
+    case "free_subscription":
+      return { label: lifetime ? "Mapped+, on the house for good" : "Mapped+, on the house", detail: until };
+    case "extended_trial":
+      return { label: "Extended Mapped+ trial", detail: until };
+    case "discount_percent":
+      return { label: `${r.discount_percent ?? 0}% off your subscription`, detail: until };
+    default:
+      return { label: "Promotional offer", detail: until };
+  }
+}
+
 export function getExpirationDate(durationDays: number): string {
   const d = new Date();
   d.setDate(d.getDate() + durationDays);

@@ -15,8 +15,11 @@ import {
   hasAccess as checkAccess,
   getLimits,
   USAGE_LIMITS,
+  effectiveTier,
+  trialDaysLeft,
 } from "@/lib/tier";
 import { getActivePromoTier } from "@/lib/promoCodes";
+import { getProfile, invalidateProfile } from "@/lib/profileCache";
 
 type Limits = { dollyMessagesPerDay: number; pullsPerDay: number; synastryPartners: number; familyMembers: number; wizardPerMonth: number; transitsShown: number };
 
@@ -29,6 +32,12 @@ interface TierContextValue {
   limits: Limits;
   /** Force-refresh tier from Supabase */
   refreshTier: () => Promise<void>;
+  /**
+   * Whole days left of the opening trial, 0 once it has ended. Drives the
+   * "N days left" note in account settings — the tier itself already reflects
+   * the trial, so nothing needs to branch on this to decide access.
+   */
+  trialDaysLeft: number;
 }
 
 const TierContext = createContext<TierContextValue>({
@@ -37,34 +46,37 @@ const TierContext = createContext<TierContextValue>({
   hasAccess: () => true,
   limits: USAGE_LIMITS.free as unknown as Limits,
   refreshTier: async () => {},
+  trialDaysLeft: 0,
 });
 
 export function TierProvider({ children }: { children: ReactNode }) {
   const [tier, setTier] = useState<TierLevel>("free");
+  const [trialLeft, setTrialLeft] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchTier = useCallback(async () => {
+  const fetchTier = useCallback(async (opts?: { fresh?: boolean }) => {
+    // refreshTier is called right after something changed the tier (a promo
+    // redemption, a return from checkout), so it has to bypass the cache or it
+    // would re-read the row it is trying to replace.
+    if (opts?.fresh) invalidateProfile();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // The shared profile read, not a fetch of our own: the account screen
+      // mounts several sections that all want this row, and this used to be one
+      // of two places that additionally paid for a networked auth.getUser().
+      const profile = await getProfile();
+      const userId = profile?.id ?? null;
+      if (!userId) {
         setTier("free");
         setLoading(false);
         return;
       }
-
-      // Fetch tier from profiles first (set by Stripe webhook or promo code)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("tier")
-        .eq("id", user.id)
-        .single();
 
       // Check for active promo-based tier (non-fatal — table may not exist)
       try {
         const { data: redemptions } = await supabase
           .from("promo_redemptions")
           .select("*")
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
         if (redemptions && redemptions.length > 0) {
           const promoTier = getActivePromoTier(redemptions);
           if (promoTier) {
@@ -75,15 +87,12 @@ export function TierProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* promo_redemptions table may not exist — skip */ }
 
-      // Whitelisted rather than trusted, so a stray value in the column can
-      // only ever read as free. Keep this list in step with TierLevel — a tier
-      // missing here does not fail loudly, it silently downgrades a paying
-      // subscriber to free everywhere in the UI.
-      if (profile?.tier === "free" || profile?.tier === "mid" || profile?.tier === "max") {
-        setTier(profile.tier);
-      } else {
-        setTier("free");
-      }
+      // effectiveTier whitelists the stored value (so a stray entry in the
+      // column can only read as free) and layers the opening trial on top. The
+      // AI routes resolve the tier through the same function, so what this
+      // offers and what the server allows cannot drift apart.
+      setTier(effectiveTier(profile?.tier, profile?.created_at));
+      setTrialLeft(trialDaysLeft(profile?.created_at));
     } catch {
       setTier("free");
     }
@@ -99,7 +108,8 @@ export function TierProvider({ children }: { children: ReactNode }) {
     loading,
     hasAccess: (feature: FeatureKey) => checkAccess(tier, feature),
     limits: getLimits(tier),
-    refreshTier: fetchTier,
+    refreshTier: () => fetchTier({ fresh: true }),
+    trialDaysLeft: trialLeft,
   };
 
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;

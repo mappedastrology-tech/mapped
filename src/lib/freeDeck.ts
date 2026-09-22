@@ -13,6 +13,8 @@
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
 import { STORE_DECKS } from "@/lib/deckStore";
+import { getProfile } from "@/lib/profileCache";
+import { effectiveTier } from "@/lib/tier";
 
 export interface DeckEntitlements {
   /** Deck ids the user owns, however they got them. */
@@ -31,16 +33,13 @@ export async function fetchDeckEntitlements(): Promise<DeckEntitlements> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return NO_ENTITLEMENTS;
 
-  const [{ data, error }, { data: profile }] = await Promise.all([
+  const [{ data, error }, profile] = await Promise.all([
     supabase
       .from("purchased_decks")
       .select("deck_id, source")
       .eq("user_id", session.user.id),
-    supabase
-      .from("profiles")
-      .select("tier")
-      .eq("id", session.user.id)
-      .maybeSingle(),
+    // Shared with the rest of the screen rather than a read of its own.
+    getProfile(),
   ]);
 
   // On a failed read, offer nothing rather than wrongly offering a free deck
@@ -56,7 +55,7 @@ export async function fetchDeckEntitlements(): Promise<DeckEntitlements> {
   // back to what they actually own if the subscription lapses. The free pick is
   // still tracked separately, so someone who subscribes before choosing it does
   // not silently lose it on cancelling.
-  if (profile?.tier === "max") {
+  if (effectiveTier(profile?.tier, profile?.created_at) === "max") {
     for (const deck of STORE_DECKS) owned.add(deck.id);
   }
 

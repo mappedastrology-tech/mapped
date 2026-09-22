@@ -21,7 +21,7 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { TierLevel } from "@/lib/tier";
+import { effectiveTier, type TierLevel } from "@/lib/tier";
 import { costMicros, type TokenUsage } from "@/lib/ai/pricing";
 
 /**
@@ -87,7 +87,7 @@ export async function checkAiBudget(userId: string): Promise<BudgetVerdict> {
 
   const { data: profile, error: profileErr } = await db
     .from("profiles")
-    .select("tier")
+    .select("tier, created_at")
     .eq("id", userId)
     .maybeSingle();
 
@@ -96,7 +96,11 @@ export async function checkAiBudget(userId: string): Promise<BudgetVerdict> {
     return { allowed: false, tier: "free", message: AI_RESTING_MESSAGE, status: 429 };
   }
 
-  const tier = normalizeTier(profile?.tier);
+  // effectiveTier, not the stored column: a new account is inside its opening
+  // trial and gets Mapped+ without having paid. The browser resolves the tier
+  // through the same function, so the plan the UI offers and the one this
+  // enforces cannot drift apart.
+  const tier = effectiveTier(profile?.tier, profile?.created_at);
   const budget = MONTHLY_BUDGET_MICROS[tier];
 
   if (budget <= 0) {
@@ -151,9 +155,4 @@ export async function recordAiUsage(args: {
   } catch (err) {
     console.error("[ai-budget] could not record usage:", err instanceof Error ? err.message : err);
   }
-}
-
-/** Anything unrecognised is treated as free — an unknown tier must not buy access. */
-function normalizeTier(value: unknown): TierLevel {
-  return value === "mid" || value === "max" ? value : "free";
 }

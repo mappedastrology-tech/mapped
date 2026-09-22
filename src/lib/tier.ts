@@ -37,6 +37,59 @@ export const TIERS: Record<TierLevel, TierInfo> = {
 
 export const DECK_PRICE = 5.55;
 
+/* ─── The new-account trial ─── */
+
+/** Days of Mapped+ every new account gets, so people meet Dolly before paying. */
+export const TRIAL_DAYS = 5;
+
+/**
+ * Whether an account is still inside its opening trial.
+ *
+ * Derived from the profile's created_at rather than a trial_ends_at column
+ * that gets written at signup. created_at is set by the database default, so
+ * there is nothing for a client to set, nothing to backfill for accounts that
+ * already exist, and no way for the trial to be silently re-armed by writing a
+ * new date. The cost is that a trial cannot be extended by hand — if that is
+ * ever wanted, it should be a promo code, which is already built.
+ *
+ * A missing or unparseable created_at means no trial: an unknown signup date
+ * must not hand out paid access.
+ */
+export function isTrialActive(createdAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (!createdAt) return false;
+  const started = new Date(createdAt).getTime();
+  if (Number.isNaN(started)) return false;
+  return now.getTime() < started + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/** Whole days of trial left, rounded up, for display. Zero once it has ended. */
+export function trialDaysLeft(createdAt: string | null | undefined, now: Date = new Date()): number {
+  if (!isTrialActive(createdAt, now)) return 0;
+  const endsAt = new Date(createdAt as string).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.ceil((endsAt - now.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
+/**
+ * The tier a user actually gets right now: whatever they pay for, or Mapped+
+ * while the trial runs, whichever is higher.
+ *
+ * Taking the higher of the two matters — a trialling user who subscribes to
+ * Mapped Complete on day two must not be dropped to Mapped+ for three days.
+ *
+ * Both the browser (TierProvider) and the server (src/lib/ai/budget.ts) call
+ * this, so what the UI offers and what the API allows cannot drift apart.
+ */
+export function effectiveTier(
+  storedTier: string | null | undefined,
+  createdAt: string | null | undefined,
+  now: Date = new Date(),
+): TierLevel {
+  const paid: TierLevel =
+    storedTier === "mid" || storedTier === "max" ? storedTier : "free";
+  if (paid === "free" && isTrialActive(createdAt, now)) return "mid";
+  return paid;
+}
+
 /* ─── Feature definitions ─── */
 
 export type FeatureKey =
