@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import PanchangGrid from "@/components/PanchangGrid";
 import WebShell, { useWebTheme } from "./WebShell";
+import HappeningNow from "@/components/almanac/HappeningNow";
 import { useLiveSky } from "./useLiveSky";
 import { getOnThisDay } from "@/lib/onThisDay";
 
@@ -147,6 +148,12 @@ export default function WebAlmanac() {
     <WebShell current="almanac" theme={theme} onToggleTheme={toggle} footerTagline="Read the sky, then trust yourself.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "44px 32px 20px" }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)", margin: "0 0 18px" }}><Link href="/home" style={{ color: "var(--muted)" }}>Home</Link> &nbsp;/&nbsp; Almanac</p>
+
+        {/* Whatever the sky is in the middle of, for as long as it lasts. The
+            home banner can be dismissed; the almanac keeps it. Desktop needs
+            its own mount because WebAlmanac is a separate page from the mobile
+            AlmanacPageContent. */}
+        <HappeningNow />
 
         {/* HERO */}
         <div style={{ position: "relative", overflow: "hidden", borderRadius: 26, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 78% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 20px 60px var(--shadow)", padding: "46px 48px", display: "grid", gridTemplateColumns: "1fr auto", gap: 40, alignItems: "center" }}>

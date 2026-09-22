@@ -38,6 +38,7 @@ import { getGardeningData, getPlantingCalendar, USDA_ZONES } from "@/lib/gardeni
 import { getZoneFromZip } from "@/lib/zipToZone";
 import { fetchSetting, saveSetting, clearSetting } from "@/lib/syncedSettings";
 import { getSabianSymbolForDate } from "@/lib/sabianSymbols";
+import HappeningNow from "@/components/almanac/HappeningNow";
 import { getOnThisDay } from "@/lib/onThisDay";
 // weatherLore removed — kept in celestialCalendar only
 import { getFishingForecast, getUniversalBiteForecast, searchWaterBodies } from "@/lib/fishingForecast";
@@ -1171,6 +1172,11 @@ export default function AlmanacPageContent() {
               : dateLabel.toUpperCase()}
           </h1>
         </header>
+
+        {/* Whatever the sky is in the middle of, for as long as it lasts.
+            Independent of the home screen's banner, which can be dismissed —
+            see components/almanac/HappeningNow. */}
+        <HappeningNow />
 
         {/* ━━━ View Mode Tabs ━━━ */}
         <div
