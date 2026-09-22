@@ -28,6 +28,7 @@ import {
 import { useOracleAccess } from "@/lib/oracleAccess";
 import { getProfile, invalidateProfile } from "@/lib/profileCache";
 import { describeRedemption } from "@/lib/promoCodes";
+import { clearOnSignOut } from "@/lib/accountIsolation";
 import { TIERS, TRIAL_DAYS, type TierLevel } from "@/lib/tier";
 import { fetchSetting, saveSetting } from "@/lib/syncedSettings";
 import {
@@ -948,9 +949,13 @@ function NotificationSettingsSection() {
         )}
       </div>
 
-      {/* A push that never arrives looks identical to one that was never sent.
-          This is the only way to tell the two apart from the device itself. */}
-      {isEnabled && (
+      {/* Diagnostics, not a feature. A push that never arrives looks identical
+          to one that was never sent, and this is the only way to tell the two
+          apart from the device itself — but that is a thing the people who run
+          Mapped need, not something to put in front of every subscriber. Both
+          controls are admin-only; the real lock is the server-side check in the
+          routes they call, this just stops them cluttering the screen. */}
+      {isEnabled && adminUser && (
         <div className="px-5 pb-4 -mt-1">
           <button
             type="button"
@@ -961,15 +966,13 @@ function NotificationSettingsSection() {
           >
             {testState.kind === "sending" ? "Sending…" : "Send me a test notification"}
           </button>
-          {adminUser && (
-            <Link
-              href="/admin/push"
-              className="ml-4 text-[12px] font-semibold underline underline-offset-2"
-              style={{ color: "var(--brass)" }}
-            >
-              Write a push
-            </Link>
-          )}
+          <Link
+            href="/admin/push"
+            className="ml-4 text-[12px] font-semibold underline underline-offset-2"
+            style={{ color: "var(--brass)" }}
+          >
+            Write a push
+          </Link>
           {testState.msg && (
             <p
               className="text-[11px] mt-1.5 max-w-[19rem]"
@@ -1440,17 +1443,16 @@ function ThemeSection() {
 
       {mode === "auto" ? (
         autoWithoutLocation ? (
-          // Auto is on but there is nowhere to compute a sunrise for, so it is
-          // quietly following the device instead. Saying so beats letting
-          // someone wonder why it never changes at dusk.
+          // Only reachable if the device will not report a timezone at all,
+          // which is rare — but silently doing nothing would be worse.
           <p className="text-muted text-[10px] mt-2 leading-relaxed">
-            Following your device setting for now — add your location above and this
-            will switch at your own sunrise and sunset.
+            Following your device appearance setting — this device isn&apos;t reporting
+            a timezone, so there&apos;s no sunrise to follow.
           </p>
         ) : (
           <p className="text-muted text-[10px] mt-2 leading-relaxed">
-            Light from sunrise to sunset where you are, dark the rest of the time.
-            Currently {theme === "light" ? "day" : "night"}.
+            Light from sunrise to sunset wherever your device says you are, so it
+            follows you when you travel. Currently {theme === "light" ? "day" : "night"}.
           </p>
         )
       ) : (
@@ -1995,26 +1997,13 @@ function AccountPage() {
 
   async function handleSignOut() {
     try { await supabase.auth.signOut(); } catch { /* clear local state anyway */ }
-    sessionStorage.clear();
-    // Clean up personal data from localStorage to prevent leaking to next user on this device
-    const personalPrefixes = [
-      "mapped_connections", "mapped:city", "mapped:tarot-history",
-      "mapped:dolly-conversations", "mapped:dolly-usage", "mapped:pull-usage",
-      "mapped:wizard-history", "mapped:completions", "mapped:journal_shown_prompts",
-      "mapped:birth_time_reprompt", "mapped:vibe-recent",
-    ];
-    const personalPatterns = ["horoscope-v", "mapped:tarot-revealed-", "mapped:oracle-revealed-", "mapped_timeline"];
-    try {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key) continue;
-        if (personalPrefixes.includes(key) || personalPatterns.some(p => key.startsWith(p)) || key.match(/[a-f0-9]{8}-[a-f0-9]{4}/)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch { /* localStorage not available — ignore */ }
+    // Everything cached for this account goes, keeping only the handful of
+    // device-level preferences. This used to be an allowlist of about a dozen
+    // known-personal keys, which meant every feature added afterwards was
+    // silently left behind on the device — journal entries, the chart, the
+    // profile photo and the numerology name among them. See lib/accountIsolation.
+    clearOnSignOut();
+    invalidateProfile();
     setEmail(null);
     setUserName(null);
     setUserId(null);

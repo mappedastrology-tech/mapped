@@ -163,3 +163,34 @@ export function getTimezoneForCoords(lat: number, lon: number): string {
   if (offsetHours > 0) return `Etc/GMT-${offsetHours}`;
   return `Etc/GMT+${Math.abs(offsetHours)}`;
 }
+
+/**
+ * The bounding box this table holds for a named zone, if it knows one.
+ *
+ * The table exists to answer coords → zone. The automatic light/dark theme
+ * needs the opposite: the device tells us which zone the reader is in right
+ * now, and the sun needs a latitude and longitude. A box centre is a coarse
+ * answer — the Central US box spans Texas to Manitoba — but it is a coarse
+ * answer in the right timezone, which beats a precise answer in the wrong one.
+ * Callers that hold the reader's actual coordinates should prefer those when
+ * they fall inside the box; see lib/autoTheme.
+ */
+export function getZoneBounds(tz: string): { latMin: number; latMax: number; lonMin: number; lonMax: number } | null {
+  const zone = TIMEZONE_ZONES.find((z) => z.tz === tz);
+  if (!zone) return null;
+  return { latMin: zone.latMin, latMax: zone.latMax, lonMin: zone.lonMin, lonMax: zone.lonMax };
+}
+
+/** Representative coordinates for a named zone — the centre of its box. */
+export function getZoneCenter(tz: string): { lat: number; lng: number } | null {
+  const b = getZoneBounds(tz);
+  if (!b) return null;
+  return { lat: (b.latMin + b.latMax) / 2, lng: (b.lonMin + b.lonMax) / 2 };
+}
+
+/** Whether a point falls inside the box this table holds for a zone. */
+export function isInsideZone(tz: string, lat: number, lng: number): boolean {
+  const b = getZoneBounds(tz);
+  if (!b) return false;
+  return lat >= b.latMin && lat <= b.latMax && lng >= b.lonMin && lng <= b.lonMax;
+}

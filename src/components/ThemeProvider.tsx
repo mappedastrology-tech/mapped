@@ -20,7 +20,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import {
   themeForMoment,
   msUntilNextSwitch,
-  readThemeCoords,
+  activeCoords,
   type ResolvedTheme as Theme,
   type ThemeMode,
 } from "@/lib/autoTheme";
@@ -85,7 +85,9 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
    * waking to recompute the sun's position every minute all day.
    */
   const applyAuto = useCallback(() => {
-    const coords = readThemeCoords();
+    // Where the DEVICE says the reader is, not where their profile says they
+    // live — see lib/autoTheme.
+    const coords = activeCoords();
     const resolved = themeForMoment(new Date(), coords);
     setAutoWithoutLocation(resolved === null);
     const next = resolved ?? systemTheme();
@@ -155,7 +157,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     const handler = (e: MediaQueryListEvent) => {
       let stored: string | null = null;
       try { stored = localStorage.getItem(STORAGE_KEY); } catch { /* blocked */ }
-      const following = !stored || (stored === "auto" && !readThemeCoords());
+      const following = !stored || (stored === "auto" && !activeCoords());
       if (!following) return;
       const next = e.matches ? "dark" : "light";
       setThemeState(next);

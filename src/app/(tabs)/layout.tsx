@@ -23,6 +23,7 @@ import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
+import { ensureAccountIsolation } from "@/lib/accountIsolation";
 import { isInstalledApp } from "@/lib/isNativeApp";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import WebToday from "@/components/web/WebToday";
@@ -91,6 +92,11 @@ export default function TabsLayout({
         router.replace(isInstalledApp() ? "/welcome" : "/");
         return;
       }
+      // Before anything renders for this account, make sure nothing cached on
+      // this device belongs to a different one. Someone who closes the tab
+      // never signs out, so sign-out cleanup alone would not catch them.
+      ensureAccountIsolation(session.user.id);
+
       try {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")

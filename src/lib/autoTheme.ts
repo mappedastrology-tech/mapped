@@ -11,16 +11,24 @@
  * computable from a date and a pair of coordinates without touching the
  * network, the database or the session.
  *
- * On which clock: getSunriseSunset returns decimal hours already expressed in
- * the *device's* local timezone, so the comparison below is like for like with
- * the device clock. For the ordinary case — someone in roughly the place their
- * phone thinks it is — that is exactly right. Someone whose saved location is
- * a continent away from their device gets the sun of their saved place on the
- * clock they are reading by, which is the more useful of the two wrong answers
- * and is what the almanac already does.
+ * WHERE the reader is comes from the DEVICE, not from their saved location.
+ * The saved one is where they live or were born; the phone knows where they
+ * are standing. Someone born in Manila and reading in Texas wants the app to
+ * go dark at a Texas sunset, and someone on holiday wants it to follow them.
+ *
+ * The device tells us its timezone, which is the part of "where am I" a phone
+ * updates by itself as you travel and which needs no permission to read — a
+ * location prompt to decide a colour scheme would be a poor trade, and on iOS
+ * it would need a usage description justifying it to review.
+ *
+ * A timezone is a wide thing, so the reader's own coordinates are preferred
+ * whenever they fall inside the device's current zone: at home that gives an
+ * exact sunrise, and the moment they cross into another zone it falls back to
+ * that zone instead of following them around with the sun of somewhere else.
  */
 
 import { getSunriseSunset } from "./celestialMechanics";
+import { getTimezoneForCoords, getZoneCenter, isInsideZone } from "./astro/timezone";
 
 export type ResolvedTheme = "light" | "dark";
 export type ThemeMode = "light" | "dark" | "auto";
@@ -141,13 +149,18 @@ export function msUntilNextSwitch(now: Date, coords: Coords | null): number {
 /* ─── Where the coordinates come from ─── */
 
 /**
- * A copy of the reader's coordinates that is not keyed by user id.
+ * The reader's own saved coordinates, if the app has written them here.
  *
  * lib/userLocation caches the full location under mapped:location:<userId>,
  * which the theme cannot read: ThemeProvider sits above the session and has no
  * user id to look one up with, and it also runs on pages where nobody is
  * signed in. So saving a location also writes this, which holds two numbers
- * and no label — the least that answers "where is the sun right now".
+ * and no label.
+ *
+ * Deliberately NOT found by scanning localStorage for any mapped:location:*
+ * key. Two accounts used in one browser both leave one behind, and a scan
+ * would happily hand one person's home coordinates to the other. It is only
+ * ever this key, written for whoever is signed in.
  */
 const COORDS_KEY = "mapped:theme-coords";
 
@@ -155,47 +168,13 @@ export function readThemeCoords(): Coords | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(COORDS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Coords;
-      if (Number.isFinite(parsed?.lat) && Number.isFinite(parsed?.lng)) {
-        return { lat: parsed.lat, lng: parsed.lng };
-      }
-    }
-    return adoptExistingLocation();
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Coords;
+    if (!Number.isFinite(parsed?.lat) || !Number.isFinite(parsed?.lng)) return null;
+    return { lat: parsed.lat, lng: parsed.lng };
   } catch {
     return null;
   }
-}
-
-/**
- * One-time pickup of a location saved before this key existed.
- *
- * Everyone already using the app has coordinates cached under
- * mapped:location:<userId>, and without this they would turn Auto on and find
- * it following their device exactly as before, with nothing to explain why.
- * Waiting for the next location save would fix it eventually; this fixes it on
- * the first read.
- *
- * Scanning for the key is the price of the theme sitting above the session and
- * having no user id to construct one with. It runs once — the value is written
- * to the stable key immediately after.
- */
-function adoptExistingLocation(): Coords | null {
-  try {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (!key || !key.startsWith("mapped:location:")) continue;
-      const parsed = JSON.parse(window.localStorage.getItem(key) || "null") as Coords | null;
-      if (parsed && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lng)) {
-        const coords = { lat: parsed.lat, lng: parsed.lng };
-        writeThemeCoords(coords);
-        return coords;
-      }
-    }
-  } catch {
-    // unreadable storage — auto falls back to the system setting
-  }
-  return null;
 }
 
 export function writeThemeCoords(coords: Coords): void {
@@ -203,6 +182,78 @@ export function writeThemeCoords(coords: Coords): void {
   try {
     window.localStorage.setItem(COORDS_KEY, JSON.stringify({ lat: coords.lat, lng: coords.lng }));
   } catch {
-    // storage full or blocked — auto just falls back to the system preference
+    // storage full or blocked — auto falls back to the system preference
   }
 }
+
+export function clearThemeCoords(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(COORDS_KEY);
+  } catch {
+    // non-fatal
+  }
+}
+
+/** The device's IANA timezone, or null where it cannot be read. */
+function deviceZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where to put the sun for this reader, right now.
+ *
+ * In order:
+ *   1. Their own coordinates, when those sit inside the device's current
+ *      timezone — they are at home, so use the exact spot.
+ *   2. The centre of the device's timezone — they have travelled, or we have
+ *      no saved location. Coarse, but in the right zone and on the right clock.
+ *   3. A longitude derived from the device's UTC offset, which is all a zone
+ *      the table has never heard of can tell us. Latitude falls to the equator,
+ *      giving a neutral six-to-six day rather than a confidently wrong one.
+ *
+ * Returns null only when even the device clock is unreadable, so the caller
+ * can fall back to the operating system's appearance setting.
+ */
+export function activeCoords(now: Date = new Date()): Coords | null {
+  const zone = deviceZone();
+  const saved = readThemeCoords();
+
+  if (zone) {
+    if (saved && isInsideZone(zone, saved.lat, saved.lng)) return saved;
+    const center = getZoneCenter(zone);
+    if (center) return center;
+  }
+
+  // Unknown zone: the offset still pins the longitude to within a zone's width.
+  // getTimezoneOffset is minutes BEHIND UTC, so it is negated here.
+  try {
+    const offsetHours = -now.getTimezoneOffset() / 60;
+    if (Number.isFinite(offsetHours)) return { lat: 0, lng: offsetHours * 15 };
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
+/** For tests and diagnostics: which of the three routes above was taken. */
+export function activeCoordsSource(now: Date = new Date()): "saved" | "zone" | "offset" | "none" {
+  const zone = deviceZone();
+  const saved = readThemeCoords();
+  if (zone) {
+    if (saved && isInsideZone(zone, saved.lat, saved.lng)) return "saved";
+    if (getZoneCenter(zone)) return "zone";
+  }
+  try {
+    if (Number.isFinite(-now.getTimezoneOffset() / 60)) return "offset";
+  } catch { /* ignore */ }
+  return "none";
+}
+
+// getTimezoneForCoords is re-exported for callers that want to explain the
+// choice to the reader ("following Chicago"), without importing the astro tree.
+export { getTimezoneForCoords };
