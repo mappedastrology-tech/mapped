@@ -135,20 +135,60 @@ export function storedUserId(): string | null {
       const id = JSON.parse(shim)?.user?.id;
       if (typeof id === "string") return id;
     }
+
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (!key || !/^sb-.+-auth-token$/.test(key)) continue;
+      if (!key || !/^sb-.+-auth-token(-user)?$/.test(key)) continue;
       const raw = window.localStorage.getItem(key);
       if (!raw) continue;
-      const parsed = JSON.parse(raw);
-      // supabase-js has stored this both bare and wrapped over its versions.
-      const id = parsed?.user?.id ?? parsed?.currentSession?.user?.id;
-      if (typeof id === "string") return id;
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      const obj = parsed as Record<string, never> | null;
+      const fromShape =
+        (obj?.["user"] as { id?: string } | undefined)?.id ??
+        (obj?.["currentSession"] as { user?: { id?: string } } | undefined)?.user?.id;
+      if (typeof fromShape === "string") return fromShape;
+
+      // Shape-independent fallback. supabase-js moves the user between the
+      // session key and a companion "-user" key depending on how storage is
+      // configured, and has changed that layout across versions — but the
+      // access token is a JWT whose `sub` is the user id, whatever the
+      // wrapper looks like. Resting account separation on the wrapper's shape
+      // is how this would quietly stop working after a dependency bump.
+      const token = obj?.["access_token"] as string | undefined;
+      const fromToken = subjectOf(token);
+      if (fromToken) return fromToken;
     }
   } catch {
     // unreadable or unparseable — fall through to no opinion
   }
   return null;
+}
+
+/**
+ * The `sub` claim of a JWT, without verifying it.
+ *
+ * Verification is beside the point here: this decides whether to clear caches
+ * on THIS device, never whether to grant access. A forged token would at worst
+ * make someone's own cache be discarded. Every real authorisation decision is
+ * made server-side against a verified token.
+ */
+function subjectOf(jwt: string | undefined): string | null {
+  if (!jwt) return null;
+  const payload = jwt.split(".")[1];
+  if (!payload) return null;
+  try {
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const sub = JSON.parse(json)?.sub;
+    return typeof sub === "string" ? sub : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

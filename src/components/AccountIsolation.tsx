@@ -64,7 +64,28 @@ export default function AccountIsolation() {
       const id = session?.user?.id;
       if (id && ensureAccountIsolation(id)) void revokeDevicePush();
     });
-    return () => data.subscription.unsubscribe();
+
+    /**
+     * A tab the previous account left open is still holding their data in
+     * React state. Clearing storage does not touch that, so the screen would
+     * keep showing one person's chart and journal to the next.
+     *
+     * The storage event fires in OTHER tabs when a different one writes, so a
+     * change of account id is the signal to start over. Reloading is blunt,
+     * but a stale tab showing someone else's data is not a thing to be subtle
+     * about, and it only happens on a genuine switch.
+     */
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "mapped:last-user") return;
+      if (!e.newValue || e.newValue === e.oldValue) return;
+      window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      data.subscription.unsubscribe();
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   return null;
