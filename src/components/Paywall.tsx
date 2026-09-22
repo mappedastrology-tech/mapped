@@ -112,10 +112,15 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
 
 /* ─── Plans Page Component ─── */
 
+/**
+ * Note the absence of an `onSelectTier` escape hatch. Picking a plan has to go
+ * through /api/stripe/checkout below, because the database now pins the billing
+ * columns to the server (20260922_lock_profile_tier_to_server.sql) — a client
+ * writing `tier` straight to its own profiles row is silently reverted.
+ */
 interface PlansPageProps {
   currentTier: "free" | "mid";
   onClose: () => void;
-  onSelectTier?: (tier: "free" | "mid") => void;
 }
 
 export function PlansPage({ currentTier, onClose }: PlansPageProps) {
