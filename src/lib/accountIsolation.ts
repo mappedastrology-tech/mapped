@@ -19,6 +19,8 @@
  * before the new session renders anything.
  */
 
+import { rawStorage } from "./scopedStorage";
+
 /**
  * Keys that describe the DEVICE rather than the person, and survive a switch.
  *
@@ -56,12 +58,16 @@ export function personalKeys(allKeys: readonly string[]): string[] {
 export function clearPersonalData(): void {
   if (typeof window === "undefined") return;
   try {
+    // The raw store, not the namespaced view: this has to reach EVERY
+    // account's namespace on the device, and the view by design shows one.
+    const store = rawStorage();
+    if (!store) return;
     const all: string[] = [];
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const k = window.localStorage.key(i);
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
       if (k) all.push(k);
     }
-    for (const key of personalKeys(all)) window.localStorage.removeItem(key);
+    for (const key of personalKeys(all)) store.removeItem(key);
   } catch {
     // storage unavailable — nothing cached, so nothing to leak
   }
@@ -91,7 +97,7 @@ export function ensureAccountIsolation(userId: string | null | undefined): boole
   if (typeof window === "undefined" || !userId) return false;
   let previous: string | null = null;
   try {
-    previous = window.localStorage.getItem(LAST_USER_KEY);
+    previous = (rawStorage() ?? window.localStorage).getItem(LAST_USER_KEY);
   } catch {
     return false;
   }
@@ -105,7 +111,7 @@ export function ensureAccountIsolation(userId: string | null | undefined): boole
   if (switched) clearPersonalData();
 
   try {
-    window.localStorage.setItem(LAST_USER_KEY, userId);
+    (rawStorage() ?? window.localStorage).setItem(LAST_USER_KEY, userId);
   } catch {
     // if it cannot be recorded, the next load simply checks again
   }
@@ -128,18 +134,24 @@ export function ensureAccountIsolation(userId: string | null | undefined): boole
  */
 export function storedUserId(): string | null {
   if (typeof window === "undefined") return null;
+  // The RAW store, never the namespaced view. The view has to ask who is
+  // signed in before it can map a key, so reading it from here would call
+  // straight back into this function and never return — the app would hang on
+  // first paint.
+  const store = rawStorage();
+  if (!store) return null;
   try {
     // The dev-only preview shim, when present, is the session in use.
-    const shim = window.localStorage.getItem("mapped:test-auth");
+    const shim = store.getItem("mapped:test-auth");
     if (shim) {
       const id = JSON.parse(shim)?.user?.id;
       if (typeof id === "string") return id;
     }
 
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
       if (!key || !/^sb-.+-auth-token(-user)?$/.test(key)) continue;
-      const raw = window.localStorage.getItem(key);
+      const raw = store.getItem(key);
       if (!raw) continue;
 
       let parsed: unknown;
@@ -200,11 +212,21 @@ export function isolateFromStoredSession(): boolean {
   return ensureAccountIsolation(storedUserId());
 }
 
+/** Who this device last had signed in, or null if nobody yet. */
+export function lastUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (rawStorage() ?? window.localStorage).getItem(LAST_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /** Sign-out: clear everything personal and forget who was here. */
 export function clearOnSignOut(): void {
   clearPersonalData();
   try {
-    window.localStorage.removeItem(LAST_USER_KEY);
+    (rawStorage() ?? window.localStorage).removeItem(LAST_USER_KEY);
   } catch {
     // ignore
   }
