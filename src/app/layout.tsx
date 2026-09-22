@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import AccountIsolation from "@/components/AccountIsolation";
 import ToastProvider from "@/components/Toast";
 import ErrorMonitorInit from "@/components/ErrorMonitorInit";
 import ApiBaseInit from "@/components/ApiBaseInit";
@@ -88,6 +89,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-dvh flex flex-col antialiased" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
         <ApiBaseInit />
         <ErrorMonitorInit />
+        <AccountIsolation />
         <ThemeProvider>
           <ToastProvider>
             {children}

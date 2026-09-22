@@ -1996,6 +1996,16 @@ function AccountPage() {
   }
 
   async function handleSignOut() {
+    // Before the session goes, hand back this device's push subscription.
+    // push_subscriptions is unique per endpoint and keyed to a user, so leaving
+    // it behind means this phone keeps receiving notifications written for the
+    // account that just left it. Done first, because deleting the row needs the
+    // session that is about to end.
+    try {
+      const { unsubscribeFromPush } = await import("@/lib/notifications");
+      await unsubscribeFromPush();
+    } catch { /* the sign-out matters more than the tidy-up */ }
+
     try { await supabase.auth.signOut(); } catch { /* clear local state anyway */ }
     // Everything cached for this account goes, keeping only the handful of
     // device-level preferences. This used to be an allowlist of about a dozen

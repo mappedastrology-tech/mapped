@@ -112,6 +112,54 @@ export function ensureAccountIsolation(userId: string | null | undefined): boole
   return switched;
 }
 
+/**
+ * The signed-in user id, read straight out of stored session, synchronously.
+ *
+ * Supabase keeps the session in localStorage under sb-<projectRef>-auth-token.
+ * Going to the client library for it means awaiting a promise, and by the time
+ * that resolves React has already mounted the page and the page has already
+ * read whatever was cached — which is precisely how the previous attempt at
+ * this leaked. Reading the key directly lets the check happen before anything
+ * renders.
+ *
+ * The key is matched by shape rather than by constructing the project ref, so
+ * it keeps working if the Supabase URL changes. It is this browser's own
+ * session; there is only ever one.
+ */
+export function storedUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    // The dev-only preview shim, when present, is the session in use.
+    const shim = window.localStorage.getItem("mapped:test-auth");
+    if (shim) {
+      const id = JSON.parse(shim)?.user?.id;
+      if (typeof id === "string") return id;
+    }
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key || !/^sb-.+-auth-token$/.test(key)) continue;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      // supabase-js has stored this both bare and wrapped over its versions.
+      const id = parsed?.user?.id ?? parsed?.currentSession?.user?.id;
+      if (typeof id === "string") return id;
+    }
+  } catch {
+    // unreadable or unparseable — fall through to no opinion
+  }
+  return null;
+}
+
+/**
+ * Run the check from whatever session is already in storage.
+ *
+ * Safe to call repeatedly: once the id has been recorded it is a no-op.
+ */
+export function isolateFromStoredSession(): boolean {
+  return ensureAccountIsolation(storedUserId());
+}
+
 /** Sign-out: clear everything personal and forget who was here. */
 export function clearOnSignOut(): void {
   clearPersonalData();

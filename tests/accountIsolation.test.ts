@@ -78,3 +78,38 @@ test("a new feature's key is cleaned up without anyone remembering to add it", (
     ["mapped:some-feature-invented-next-year"],
   );
 });
+
+/* ─── Where the check is wired in ─── */
+
+import { readFileSync } from "node:fs";
+
+test("the isolation check is mounted in the ROOT layout, not a route group", () => {
+  // This is how it failed the first time. It was hooked into the (tabs) layout,
+  // but /account — where signing in actually happens — and /onboarding,
+  // /library, /chart and /rectification all sit outside that group, so on those
+  // routes it never ran and the previous account's cache survived. Moving it
+  // back into a route group would silently reintroduce that, so the mount point
+  // is asserted here rather than left to memory.
+  const root = readFileSync("src/app/layout.tsx", "utf8");
+  assert.match(root, /<AccountIsolation\s*\/>/, "AccountIsolation missing from the root layout");
+  assert.match(root, /from "@\/components\/AccountIsolation"/);
+});
+
+test("the check runs at module scope, before React renders", () => {
+  // Effects run child-first and promises resolve later still, so a check that
+  // waits for either has already lost: the page has read the cache by then.
+  const src = readFileSync("src/components/AccountIsolation.tsx", "utf8");
+  const moduleScope = src.slice(0, src.indexOf("export default function"));
+  assert.match(moduleScope, /isolateFromStoredSession\(\)/,
+    "the synchronous pre-render check is gone from module scope");
+});
+
+test("a switch also gives up the device's push subscription", () => {
+  // push_subscriptions is unique per endpoint and carries a user id, so a row
+  // left behind keeps sending the previous account's notifications to a phone
+  // that now belongs to someone else.
+  const src = readFileSync("src/components/AccountIsolation.tsx", "utf8");
+  assert.match(src, /revokeDevicePush/);
+  const signOut = readFileSync("src/app/account/page.tsx", "utf8");
+  assert.match(signOut, /unsubscribeFromPush/, "sign-out no longer releases the push subscription");
+});
