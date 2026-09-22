@@ -136,6 +136,14 @@ type HorizonEvent = {
 };
 
 
+/** Small caps label over each "On the horizon" card, matching Today's energy. */
+function horizonEyebrow(category: string, tradition: string): string {
+  const kind: Record<string, string> = { solar: "Turning point", festival: "Festival", season: "Season", planetary: "Planetary" };
+  const k = kind[category] ?? "Coming up";
+  if (!tradition || tradition === "astronomical" || tradition === "western") return k;
+  return `${k} · ${tradition.charAt(0).toUpperCase()}${tradition.slice(1)}`;
+}
+
 export default function HomeTab() {
   const router = useRouter();
   const { gate, PaywallModal } = usePaywall();
@@ -1791,7 +1799,7 @@ export default function HomeTab() {
         >
           On the horizon
         </p>
-        <div className="flex flex-col gap-2.5 mb-12">
+        <div className="flex flex-col gap-3 mb-12">
           {/* Moon events */}
           {[
             nextMoons.nextFull ? { event: nextMoons.nextFull, sheetKind: "next-full-moon" as const, color: "var(--plum)" } : null,
@@ -1804,16 +1812,17 @@ export default function HomeTab() {
                 <button
                   type="button"
                   onClick={() => isToday ? setShowMoonEvent(true) : toggleFolder(cardId)}
-                  className="w-full px-4 py-3.5 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+                  className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
                 >
-                  <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: item!.color }}>
-                    <MoonPhaseIcon phase={item!.event.kind === "full" ? "Full Moon" : "New Moon"} size={24} />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: item!.color }}>
+                    <MoonPhaseIcon phase={item!.event.kind === "full" ? "Full Moon" : "New Moon"} size={22} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-on-card)" }}>{item!.event.label}</p>
-                    <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{formatMoonDate(item!.event.date)} · {daysPhrase(item!.event.daysUntil)}</p>
+                    <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>{item!.event.kind === "full" ? "Full moon" : "New moon"}</p>
+                    <p className="text-[16px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{item!.event.label}</p>
+                    <p className="text-[12px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.8 }}>{formatMoonDate(item!.event.date)} · {daysPhrase(item!.event.daysUntil)}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-30 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </button>
@@ -1864,17 +1873,18 @@ export default function HomeTab() {
                 <button
                   type="button"
                   onClick={() => toggleFolder(cardId)}
-                  className="w-full px-4 py-3.5 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
+                  className="w-full px-4 py-4 flex items-center gap-3.5 text-left active:scale-[0.98] transition-all"
                 >
-                  <div className="w-11 h-11 rounded-lg flex flex-col items-center justify-center shrink-0" style={{ backgroundColor: "#5a1f1a" }}>
-                    <p className="text-[8px] uppercase tracking-wider leading-none" style={{ color: "#f0e6d2", opacity: 0.7 }}>{event.date.toLocaleDateString("en-US", { month: "short" })}</p>
-                    <p className="text-[15px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
+                  <div className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0" style={{ backgroundColor: "#5a1f1a" }}>
+                    <p className="text-[7px] uppercase tracking-wider leading-none" style={{ color: "#f0e6d2", opacity: 0.75 }}>{event.date.toLocaleDateString("en-US", { month: "short" })}</p>
+                    <p className="text-[14px] font-semibold leading-tight" style={{ color: "#f0e6d2" }}>{event.date.getDate()}</p>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-on-card)" }}>{event.name}</p>
-                    <p className="text-[11px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.7 }}>{event.daysUntil === 0 ? "today" : event.daysUntil === 1 ? "tomorrow" : `in ${event.daysUntil} days`}</p>
+                    <p className="text-[9px] tracking-[0.2em] uppercase font-medium" style={{ color: "var(--foreground-on-card-muted)" }}>{horizonEyebrow(event.category, event.tradition)}</p>
+                    <p className="text-[16px] font-medium truncate" style={{ fontFamily: "var(--font-heading)", color: "var(--foreground-on-card)" }}>{event.name}</p>
+                    <p className="text-[12px] italic mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-on-card-muted)", opacity: 0.8 }}>{event.daysUntil === 0 ? "today" : event.daysUntil === 1 ? "tomorrow" : `in ${event.daysUntil} days`}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-25 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-on-card)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-30 transition-transform" style={{ transform: openFolder === cardId ? "rotate(90deg)" : "none" }}>
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </button>
