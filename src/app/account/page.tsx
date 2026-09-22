@@ -358,15 +358,28 @@ function BirthTimeSettingsSection() {
   const router = useRouter();
   const [precision, setPrecision] = useState<string>("unknown");
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [savedTime, setSavedTime] = useState<string>("");
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // Shared with every other section on this screen; see lib/profileCache.
-        const profile = await getProfile();
-        if (!profile) { setLoading(false); return; }
-        const user = { id: profile.id };
+  // The editor is inline. It used to be a button that pushed
+  // "/account#edit-birth-time" — from /account, to an anchor that exists
+  // nowhere in the app — so it navigated to the page you were already on and
+  // did nothing at all.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    try {
+      // Shared with every other section on this screen; see lib/profileCache.
+      const profile = await getProfile();
+      if (!profile) { setLoading(false); return; }
+      const user = { id: profile.id };
+      setUserId(user.id);
+      setSavedTime(typeof profile.birth_time === "string" ? profile.birth_time.slice(0, 5) : "");
+
+      {
         if (profile?.birth_time_precision) {
           setPrecision(profile.birth_time_precision);
         } else {
@@ -380,6 +393,7 @@ function BirthTimeSettingsSection() {
             .single();
 
           if (chart) {
+            if (chart.birth_time) setSavedTime(String(chart.birth_time).slice(0, 5));
             if (!chart.unknown_time && chart.birth_time) {
               setPrecision("exact");
             } else if (chart.unknown_time) {
@@ -389,10 +403,60 @@ function BirthTimeSettingsSection() {
             }
           }
         }
-      } catch { /* ignore */ }
-      setLoading(false);
-    })();
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  /**
+   * Save the time and rebuild the chart around it.
+   *
+   * applyBirthTime does the part that actually matters: the Rising sign, every
+   * house cusp and everything derived from them change with the minute of
+   * birth, so storing the time without recalculating would leave the chart the
+   * rest of the app reads still built on the old one.
+   */
+  async function handleSave() {
+    if (!userId) return;
+    const time = draft.trim();
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      setSaveError("Enter a time as HH:MM.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { applyBirthTime } = await import("@/lib/chartSystemSync");
+      const res = await applyBirthTime(userId, time);
+      if (res.charts === 0 && res.failed > 0) {
+        setSaveError("Couldn't rebuild your chart. Try again.");
+        setSaving(false);
+        return;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ birth_time: time, birth_time_precision: "exact" })
+        .eq("id", userId);
+      if (error) {
+        setSaveError("Couldn't save. Try again.");
+        setSaving(false);
+        return;
+      }
+      invalidateProfile();
+      setPrecision("exact");
+      setSavedTime(time);
+      setEditing(false);
+      await load();
+      // The chart changed underneath every screen that caches a copy, so send
+      // them back to a freshly read one rather than a stale render.
+      router.refresh();
+    } catch {
+      setSaveError("Something went wrong. Try again.");
+    }
+    setSaving(false);
+  }
 
   if (loading) return null;
 
@@ -422,11 +486,57 @@ function BirthTimeSettingsSection() {
         )}
       </div>
 
-      {precision !== "exact" && (
+      {editing ? (
+        <div className="flex flex-col gap-2 mt-2">
+          <label htmlFor="birth-time-input" className="text-[11px] text-muted">
+            Your birth time, in the local time of where you were born.
+          </label>
+          <input
+            id="birth-time-input"
+            type="time"
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setSaveError(null); }}
+            className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm focus:outline-none focus:border-terracotta/40"
+            style={{ minHeight: 44 }}
+            disabled={saving}
+          />
+          {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving || !draft}
+              className="flex-1 py-2.5 rounded-xl bg-terracotta text-cream text-xs font-semibold disabled:opacity-40 active:scale-[0.98] transition-all"
+              style={{ minHeight: 44 }}
+            >
+              {saving ? "Rebuilding your chart…" : "Save birth time"}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setSaveError(null); }}
+              disabled={saving}
+              className="px-4 py-2.5 rounded-xl border border-foreground/18 text-muted text-xs font-medium disabled:opacity-40"
+              style={{ minHeight: 44 }}
+            >
+              Cancel
+            </button>
+          </div>
+          <p className="text-[10px] text-muted leading-relaxed">
+            Saving recalculates your Rising sign, houses and everything built on them.
+          </p>
+        </div>
+      ) : precision === "exact" ? (
+        <button
+          onClick={() => { setDraft(savedTime); setEditing(true); }}
+          className="w-full py-2.5 rounded-xl border border-foreground/15 text-muted text-xs font-medium hover:border-foreground/25 transition-colors"
+          style={{ minHeight: 44 }}
+        >
+          Change birth time
+        </button>
+      ) : (
         <div className="flex flex-col gap-2 mt-2">
           <button
-            onClick={() => router.push("/account#edit-birth-time")}
+            onClick={() => { setDraft(savedTime); setEditing(true); }}
             className="w-full py-2.5 rounded-xl bg-terracotta/10 border border-terracotta/20 text-terracotta text-xs font-medium hover:bg-terracotta/15 transition-colors"
+            style={{ minHeight: 44 }}
           >
             Update with exact time
           </button>

@@ -111,6 +111,13 @@ export default function RectificationPage() {
       const adjM = ((totalMin % 1440) + 1440) % 1440 % 60;
       const finalTime = `${String(adjH).padStart(2, "0")}:${String(adjM).padStart(2, "0")}`;
 
+      // Rebuild the chart around the new time before recording it. Storing a
+      // rectified time without recalculating — which is all this did — left the
+      // chart every other screen reads still built on the old one, so the whole
+      // rectification produced a number in settings and changed nothing else.
+      const { applyBirthTime } = await import("@/lib/chartSystemSync");
+      await applyBirthTime(user.id, finalTime);
+
       await supabase.from("profiles").update({
         birth_time: finalTime,
         birth_time_precision: "rectified",

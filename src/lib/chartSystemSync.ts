@@ -19,7 +19,7 @@
 
 import { supabase } from "./supabase";
 import { calculateChart } from "./astro/calculateChart";
-import { chartCalcParams, type ChartSystem } from "./astro/vedic/system";
+import { chartCalcParams, chartSystemFromRow, type ChartSystem } from "./astro/vedic/system";
 
 interface PgError { code?: string; message?: string }
 
@@ -186,6 +186,73 @@ export async function applyChartSystem(userId: string, sys: ChartSystem): Promis
       { ...required, ...optional, ascendant: c.ascendant || null },
     );
     if (err) result.failed++; else result.connections++;
+  }
+
+  clearCachedChartCopies(userId);
+  return result;
+}
+
+/**
+ * Change the user's recorded birth time and rebuild their chart around it.
+ *
+ * The birth time is not a label either. Rising sign, every house cusp, the
+ * angles and everything derived from them (astrocartography, profections,
+ * the Lots) come out of the minute of birth — so writing a new time to
+ * `profiles` without recalculating, which is all the rectification flow used
+ * to do, leaves the chart the app actually reads still built on the old one.
+ *
+ * Passing null records that the time is unknown, which is a real answer rather
+ * than an error: calculateChart falls back to noon and flags the chart so the
+ * places that need an exact minute can say so.
+ *
+ * Connections are not recalculated — their own birth data has not changed —
+ * but their stored synastry was computed against the user's OLD chart, so it
+ * is marked stale the same way a zodiac switch marks it, and the Maps page
+ * recomputes it on open.
+ */
+export async function applyBirthTime(userId: string, birthTime: string | null): Promise<SyncResult> {
+  const result: SyncResult = { charts: 0, connections: 0, failed: 0 };
+
+  const sys = chartSystemFromRow(await loadChartSystemPreference(userId));
+  const { required, optional } = systemColumns(sys);
+
+  const { data: charts } = await supabase
+    .from("charts")
+    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name")
+    .eq("user_id", userId);
+
+  // charts.birth_time is NOT NULL, and the rows written by onboarding record an
+  // unknown time as "12:00" with unknown_time = true rather than as a null. So
+  // "unknown" is stored the same way here: writing null would be rejected by
+  // the column outright, and storing it differently from every existing row
+  // would make unknown_time the only reliable signal in some rows and the
+  // timestamp the signal in others.
+  const storedTime = birthTime ?? "12:00";
+  const unknown = !birthTime;
+
+  for (const row of (charts || []) as BirthRow[]) {
+    const c = recalc({ ...row, birth_time: storedTime, unknown_time: unknown }, sys);
+    if (!c) { result.failed++; continue; }
+    const err = await writeWithOptionalColumns(
+      (payload) => supabase.from("charts").update(payload).eq("id", row.id),
+      { ...chartColumns(c), birth_time: storedTime, unknown_time: unknown, ...required },
+      { ...optional, ascendant: c.ascendant || null },
+    );
+    if (err) result.failed++; else result.charts++;
+  }
+
+  const { data: conns } = await supabase
+    .from("connections")
+    .select("id, synastry")
+    .eq("user_id", userId)
+    .not("synastry", "is", null);
+  for (const row of (conns || []) as { id: string; synastry: Record<string, unknown> | null }[]) {
+    if (!row.synastry) continue;
+    const { error } = await supabase
+      .from("connections")
+      .update({ synastry: { ...row.synastry, version: 0 } })
+      .eq("id", row.id);
+    if (error) result.failed++; else result.connections++;
   }
 
   clearCachedChartCopies(userId);
