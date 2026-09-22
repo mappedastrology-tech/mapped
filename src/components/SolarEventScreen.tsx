@@ -24,31 +24,36 @@ const THEME: Record<SolarEventKind, { bg: string; accent: string; glow: string; 
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function SunVisual({ size, accent, glow }: { size: number; accent: string; glow: string }) {
-  const rays = Array.from({ length: 12 });
+/**
+ * The sun is the app's own art, not a drawn one.
+ *
+ * This used to be an SVG: a radial-gradient disc with twelve line rays. It
+ * read as a generic icon next to the painted moons the lunar takeover uses,
+ * and on the one screen a year where the sun is the entire subject. The
+ * gold-leaf sun in the library art has twelve rays too, so it drops straight
+ * into the same composition.
+ *
+ * The seasonal colour still comes from the halo behind it, which is themed per
+ * event — a gold sun over a green glow at the spring equinox, over violet at
+ * the winter solstice. The art itself is left untinted; filtering real
+ * painting to match a palette looks worse than letting the sun be the sun.
+ */
+const SUN_IMAGE = "/images/learn/almanac-sunday-sun.webp";
+
+function SunVisual({ size, glow }: { size: number; glow: string }) {
   return (
     <div className="relative w-[180px] h-[180px] mx-auto flex items-center justify-center">
       <div className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle, ${glow} 0%, transparent 68%)` }} />
-      <svg width={180} height={180} viewBox="0 0 180 180" className="relative z-10" aria-hidden="true">
-        {rays.map((_, i) => {
-          const angle = (i * 30 * Math.PI) / 180;
-          const inner = size / 2 + 8;
-          const outer = size / 2 + 26;
-          const x1 = 90 + Math.cos(angle) * inner;
-          const y1 = 90 + Math.sin(angle) * inner;
-          const x2 = 90 + Math.cos(angle) * outer;
-          const y2 = 90 + Math.sin(angle) * outer;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={accent} strokeWidth={2.5} strokeLinecap="round" opacity={0.7} />;
-        })}
-        <defs>
-          <radialGradient id="sunfill" cx="50%" cy="42%" r="60%">
-            <stop offset="0%" stopColor="#fff8e6" />
-            <stop offset="55%" stopColor={accent} />
-            <stop offset="100%" stopColor={accent} stopOpacity={0.85} />
-          </radialGradient>
-        </defs>
-        <circle cx={90} cy={90} r={size / 2} fill="url(#sunfill)" />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={SUN_IMAGE}
+        alt=""
+        aria-hidden="true"
+        width={size}
+        height={size}
+        className="relative z-10"
+        style={{ width: size, height: size, objectFit: "contain", filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.35))" }}
+      />
     </div>
   );
 }
@@ -122,7 +127,7 @@ export default function SolarEventScreen({ event, onClose }: { event: TodaysSola
         </button>
 
         <div className="pt-4 pb-2">
-          <SunVisual size={theme.sun} accent={theme.accent} glow={theme.glow} />
+          <SunVisual size={theme.sun} glow={theme.glow} />
         </div>
 
         <div className="text-center pb-2">

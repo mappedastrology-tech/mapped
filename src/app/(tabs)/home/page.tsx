@@ -908,7 +908,18 @@ export default function HomeTab() {
               </button>
 
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-[28px]">{"☀︎"}</span>
+                {/* The same painted sun the takeover screen opens with, rather
+                    than the ☀︎ glyph, so the banner and the screen it leads to
+                    are visibly the same event. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/learn/almanac-sunday-sun.webp"
+                  alt=""
+                  aria-hidden="true"
+                  width={34}
+                  height={34}
+                  style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }}
+                />
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] mb-0.5"
                      style={{ color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ui)" }}>
