@@ -17,6 +17,22 @@
 -- It reverts silently instead of raising. Raising would turn any client that
 -- merely echoes tier back inside a profile save into a hard failure; pinning
 -- the value keeps honest writes working and makes the dishonest one a no-op.
+--
+-- Two details this landed on rather than the obvious alternatives:
+--
+--   * The check reads current_user, not the 'role' claim inside
+--     request.jwt.claims. Reading the claim needs a fallback for requests that
+--     carry no claims at all, and "no claims" is the easiest state for a caller
+--     to arrive in, so that fallback has to be deny -- at which point it is
+--     simpler to ask Postgres who the caller actually is. PostgREST issues
+--     SET LOCAL ROLE from the verified JWT, so current_user is always set and
+--     is not something a client can talk its way out of.
+--
+--   * It fires on INSERT as well as UPDATE. Profile rows are normally created
+--     by the SECURITY DEFINER handle_new_user trigger on auth.users, which runs
+--     as the owner and passes straight through -- but "Users can insert own
+--     profile" is a live policy, so an INSERT is a second door into the same
+--     columns and is worth closing while we are here.
 
 create or replace function public.profiles_lock_billing_columns()
 returns trigger

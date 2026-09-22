@@ -18,9 +18,9 @@ export default function NotFound() {
       </div>
 
       <div className="max-w-sm">
-        <p className="text-lg mb-2" style={{ fontFamily: "Georgia, serif" }}>
+        <h1 className="text-lg mb-2" style={{ fontFamily: "Georgia, serif" }}>
           This page doesn&apos;t exist
-        </p>
+        </h1>
         <p className="text-sm opacity-60 mb-8 leading-relaxed">
           Maybe the stars rearranged themselves. Let&apos;s get you back on track.
         </p>
