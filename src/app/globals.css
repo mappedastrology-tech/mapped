@@ -1252,3 +1252,28 @@ input, select, textarea {
 .acct-scope .bg-terracotta { background-color: var(--acct-fill); }
 .acct-scope .hover\:bg-terracotta-light:hover { background-color: var(--acct-fill-hi); }
 .acct-scope input, .acct-scope button, .acct-scope select, .acct-scope textarea { font-family: inherit; }
+
+/* ─── Inverted buttons in dark mode ──────────────────────────────────────────
+ *
+ * `bg-ink text-cream` is the app's primary-button pairing, and it means "draw
+ * this the opposite way round from the page". In the light theme that works
+ * out: --ink is near-black (#1a1815) and --cream near-white (#f5f0e1).
+ *
+ * In the dark theme --ink is redefined to the foreground colour (#e8dfc4) so
+ * that `text-ink` stays readable as body text. That quietly broke the button
+ * pairing: --cream is #f0e6d2, so the button became near-white text on a
+ * near-white fill — a contrast ratio of about 1.05, which is invisible. It hit
+ * Upgrade, Apply, Subscribe and the onboarding primaries.
+ *
+ * Rather than re-colour seventeen call sites, the pairing itself is given the
+ * meaning it already implies: an inverted button's label is the page's own
+ * background colour. That resolves correctly in both themes and keeps working
+ * if either token is retuned later.
+ *
+ * Unlayered on purpose — Tailwind's utilities live in a cascade layer, and
+ * unlayered rules win over layered ones regardless of specificity.
+ */
+.bg-ink.text-cream,
+.bg-ink .text-cream {
+  color: var(--background);
+}

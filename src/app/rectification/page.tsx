@@ -19,8 +19,19 @@ import {
   NOTABLE_FEATURE_OPTIONS,
   type RectificationEvent,
 } from "@/lib/birth-time";
+import type { RectificationResult } from "@/lib/birthTimeRectification";
 
 const TOTAL_STEPS = 7;
+
+/** "3:12 – 4:48 AM" style label for a span that may run past midnight. */
+function spanLabel(r: RectificationResult): string {
+  const fmt = (h: number) => {
+    const hh = ((Math.floor(h) % 24) + 24) % 24;
+    const mm = Math.round((h - Math.floor(h)) * 60) % 60;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+  return `${fmt(r.startHour)} – ${fmt(r.endHour)}`;
+}
 
 export default function RectificationPage() {
   const router = useRouter();
@@ -45,11 +56,9 @@ export default function RectificationPage() {
   ]);
 
   // Step 6: result
-  const [result, setResult] = useState<{
-    estimatedTime: string;
-    risingSign: string;
-    confidence: number;
-  } | null>(null);
+  const [result, setResult] = useState<RectificationResult | null>(null);
+  const [method, setMethod] = useState<string>("");
+  const [noBirthData, setNoBirthData] = useState(false);
 
   // Step 7: adjustment
   const [adjustedMinutes, setAdjustedMinutes] = useState(0);
@@ -66,37 +75,50 @@ export default function RectificationPage() {
 
   const handleCalculate = useCallback(async () => {
     setIsCalculating(true);
+    setNoBirthData(false);
     try {
-      // Simulate rectification calculation
-      // In production, this would call a backend endpoint
-      await new Promise((r) => setTimeout(r, 2500));
+      // The birth date and place are what make this computable at all: the
+      // ascendant depends on both. Without them there is nothing to rectify,
+      // and saying so beats returning a confident-looking guess.
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: chart } = user
+        ? await supabase
+            .from("charts")
+            .select("birth_date, latitude, longitude, zodiac_system, ayanamsa")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
 
-      // Heuristic: use personality choice to suggest a rising sign
+      if (!chart?.birth_date || chart.latitude == null || chart.longitude == null) {
+        setNoBirthData(true);
+        return;
+      }
+
       const archetype = RISING_SIGN_ARCHETYPES.find((a) => a.label === personalityChoice);
-      const risingSign = archetype?.sign || "Libra";
+      const { rectifyBirthTime, describeMethod } = await import("@/lib/birthTimeRectification");
+      const r = rectifyBirthTime({
+        birthDate: chart.birth_date,
+        latitude: chart.latitude,
+        longitude: chart.longitude,
+        zodiacSystem: chart.zodiac_system ?? undefined,
+        ayanamsa: chart.ayanamsa ?? undefined,
+        window: selectedWindow,
+        candidateSigns: archetype?.sign ? [archetype.sign] : [],
+      });
 
-      // Use the selected window midpoint as base
-      const windowData = selectedWindow ? TIME_WINDOWS[selectedWindow] : null;
-      const baseHour = windowData?.midpointHour || 12;
-      const hours = Math.floor(baseHour);
-      const minutes = Math.round((baseHour - hours) * 60);
-      const estimatedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-
-      // Confidence based on how much data we have
-      const filledEvents = events.filter((e) => e.date && e.description);
-      const baseConfidence = 0.55;
-      const eventBonus = filledEvents.length * 0.08;
-      const physicalBonus = buildChoice && featureChoice ? 0.07 : 0;
-      const confidence = Math.min(0.92, baseConfidence + eventBonus + physicalBonus);
-
-      setResult({ estimatedTime, risingSign, confidence });
+      setResult(r);
+      setMethod(describeMethod(r));
       goNext();
     } catch {
-      // Handle error silently
+      setNoBirthData(true);
     } finally {
       setIsCalculating(false);
     }
-  }, [personalityChoice, selectedWindow, events, buildChoice, featureChoice]);
+    // goNext is stable enough for this flow; the deps below are the real inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personalityChoice, selectedWindow]);
 
   const handleSaveResult = useCallback(async () => {
     if (!result) return;
@@ -118,18 +140,23 @@ export default function RectificationPage() {
       const { applyBirthTime } = await import("@/lib/chartSystemSync");
       await applyBirthTime(user.id, finalTime);
 
+      // No birth_time here: profiles has no such column, and including it made
+      // PostgREST reject this entire statement — which is why no account has
+      // ever had birth_time_rectified_data saved. The time itself belongs to
+      // the chart, which applyBirthTime above has already written.
       await supabase.from("profiles").update({
-        birth_time: finalTime,
         birth_time_precision: "rectified",
         birth_time_window: selectedWindow,
         birth_time_rectified_data: {
           events: events.filter((e) => e.date && e.description),
           personalityAnswers: { impression: personalityChoice || "" },
           physicalAnswers: { build: buildChoice || "", feature: featureChoice || "" },
-          confidence: result.confidence,
           calculatedAt: new Date().toISOString(),
           estimatedTime: finalTime,
           estimatedRising: result.risingSign,
+          // The span IS the uncertainty; a percentage was never measured.
+          spanMinutes: result.spanMinutes,
+          outcome: result.outcome,
         },
       }).eq("id", user.id);
 
@@ -341,15 +368,19 @@ export default function RectificationPage() {
             {isCalculating ? (
               <>
                 <div className="w-12 h-12 rounded-full border-2 border-terracotta/30 border-t-terracotta animate-spin mb-4" role="status" aria-label="Loading" />
-                <p className="text-sm text-secondary">Analyzing your events against possible charts...</p>
-                <p className="text-xs text-muted mt-2">This takes a moment</p>
+                <p className="text-sm text-secondary">Working out which signs rose that day where you were born…</p>
               </>
             ) : (
               <>
                 <h2 className="text-xl font-bold text-foreground mb-3 text-center">Ready to calculate</h2>
                 <p className="text-sm text-secondary text-center mb-6 max-w-xs">
-                  We&apos;ll test each possible Ascendant within your time window and score them against your answers.
+                  We&apos;ll work out exactly which signs were rising over your birthplace that day, then narrow to the stretch that matches what you told us.
                 </p>
+                {noBirthData && (
+                  <p className="text-sm text-red-400 text-center mb-4 max-w-xs">
+                    We need your birth date and birthplace first — this is worked out from where the sky was over that spot. Add them in your chart, then come back.
+                  </p>
+                )}
                 <div className="flex gap-3">
                   <button onClick={handleCalculate} className={btnPrimary}>Calculate my time</button>
                   <button onClick={goBack} className={btnSecondary}>Back</button>
@@ -364,15 +395,17 @@ export default function RectificationPage() {
           <div className="animate-in fade-in duration-300">
             <h2 className="text-xl font-bold text-foreground mb-4 text-center">Best estimate</h2>
             <div className="rounded-2xl border border-terracotta/20 bg-terracotta/5 p-6 text-center mb-4">
-              <p className="text-3xl font-bold text-terracotta mb-1">{result.estimatedTime}</p>
+              <p className="text-3xl font-bold text-terracotta mb-1">{spanLabel(result)}</p>
               <p className="text-sm text-secondary">
-                Your Rising sign is most likely <span className="font-semibold text-foreground">{result.risingSign}</span>
+                {result.risingSign
+                  ? <>Rising sign across that span: <span className="font-semibold text-foreground">{result.risingSign}</span></>
+                  : <>More than one sign rises in that span.</>}
+              </p>
+              <p className="text-[11px] text-muted mt-2">
+                Narrowed to {result.spanMinutes} minutes · we&apos;ll store the midpoint, {result.estimatedTime}
               </p>
             </div>
-            <p className="text-xs text-muted text-center mb-6">
-              Calculated from the events you shared and your appearance answers.
-              We&apos;re {Math.round(result.confidence * 100)}% confident in this estimate.
-            </p>
+            <p className="text-xs text-muted text-center mb-6">{method}</p>
             <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4 mb-6">
               <p className="text-[11px] text-muted italic leading-relaxed">
                 This is a calculated estimate, not your actual birth time. If you find your real

@@ -377,31 +377,38 @@ function BirthTimeSettingsSection() {
       if (!profile) { setLoading(false); return; }
       const user = { id: profile.id };
       setUserId(user.id);
-      setSavedTime(typeof profile.birth_time === "string" ? profile.birth_time.slice(0, 5) : "");
+
+      // The time itself always comes from the chart. profiles carries only the
+      // precision — it has no birth_time column, so reading one off the profile
+      // silently yielded undefined and left the field blank.
+      const { data: chart } = await supabase
+        .from("charts")
+        .select("birth_time, unknown_time")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (chart?.birth_time) setSavedTime(String(chart.birth_time).slice(0, 5));
 
       {
-        if (profile?.birth_time_precision) {
-          setPrecision(profile.birth_time_precision);
-        } else {
-          // Fall back: check the charts table for a saved birth time
-          const { data: chart } = await supabase
-            .from("charts")
-            .select("birth_time, unknown_time")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-          if (chart) {
-            if (chart.birth_time) setSavedTime(String(chart.birth_time).slice(0, 5));
-            if (!chart.unknown_time && chart.birth_time) {
-              setPrecision("exact");
-            } else if (chart.unknown_time) {
-              setPrecision("unknown");
-            } else {
-              setPrecision("approximate");
-            }
-          }
+        // The chart decides WHETHER there is a time; the profile only says how
+        // good it is. These two disagree on live accounts — several have
+        // birth_time_precision 'unknown' while their chart holds a real time
+        // and unknown_time false — and trusting the profile alone told those
+        // people "No birth time entered" while the app was quite happily
+        // drawing their houses from the time it had.
+        const storedPrecision = profile?.birth_time_precision;
+        if (chart?.unknown_time) {
+          setPrecision("unknown");
+        } else if (chart?.birth_time) {
+          setPrecision(
+            storedPrecision === "approximate" || storedPrecision === "rectified"
+              ? storedPrecision
+              : "exact",
+          );
+        } else if (storedPrecision) {
+          setPrecision(storedPrecision);
         }
       }
     } catch { /* ignore */ }
@@ -435,9 +442,13 @@ function BirthTimeSettingsSection() {
         setSaving(false);
         return;
       }
+      // Only the precision. profiles has no birth_time column — the time
+      // itself lives on charts, which applyBirthTime has just written.
+      // Including it here made PostgREST reject the whole statement, which is
+      // what "couldn't save" was.
       const { error } = await supabase
         .from("profiles")
-        .update({ birth_time: time, birth_time_precision: "exact" })
+        .update({ birth_time_precision: "exact" })
         .eq("id", userId);
       if (error) {
         setSaveError("Couldn't save. Try again.");
