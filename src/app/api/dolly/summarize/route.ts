@@ -40,6 +40,13 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return new Response(JSON.stringify({ summary: "" }), { status: 200 });
 
+  // This is a background call that titles a chat the user already had, so an
+  // over-budget account gets an empty title rather than an error — the client
+  // falls back to a generic label, and nothing on screen looks broken.
+  const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const verdict = await checkAiBudget(ctx.userId);
+  if (!verdict.allowed) return new Response(JSON.stringify({ summary: "" }), { status: 200 });
+
   const prompt = `Summarize what this astrology chat is about in a short 3–6 word title (the person's topic or question). Natural capitalization, no surrounding quotes, no trailing punctuation.\n\n${text}\n\nReturn ONLY the short title.`;
 
   try {
@@ -49,6 +56,7 @@ export async function POST(request: NextRequest) {
       max_tokens: 24,
       messages: [{ role: "user", content: prompt }],
     });
+    await recordAiUsage({ userId: ctx.userId, route: "dolly-summarize", model: resp.model || FALLBACK_MODEL, usage: resp.usage });
     const summary = resp.content
       .filter((b) => b.type === "text")
       .map((b) => (b as { text: string }).text)

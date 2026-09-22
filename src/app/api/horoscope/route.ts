@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createMessageResilient } from "@/lib/aiModel";
+import { createMessageResilient, CLAUDE_MODEL } from "@/lib/aiModel";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
 import { AYANAMSA_LABELS, jdFromDate, toSidereal } from "@/lib/astro/vedic/ayanamsa";
 import { getSunLongitude } from "@/lib/astro/currentSky";
@@ -291,6 +291,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Rate limited. Horoscope should be cached — try refreshing." }, { status: 429 });
   }
 
+  // Tier gate + monthly spend ceiling.
+  const { guardAi, meterMessage } = await import("@/lib/ai/meter");
+  const denied = await guardAi(userId, "horoscope");
+  if (denied) return denied;
+
   try {
     const body: HoroscopeRequest = await request.json();
     const { chart, celestial, transits, userName, lordOfTheYear } = body;
@@ -377,6 +382,10 @@ export async function POST(request: NextRequest) {
         },
       ],
     });
+
+    // Bill before the parsing below can bail out — the tokens were spent
+    // whether or not the JSON turned out to be usable.
+    await meterMessage(userId, "horoscope", response, CLAUDE_MODEL);
 
     // Extract the text content
     const textBlock = response.content.find(b => b.type === "text");

@@ -42,10 +42,20 @@ export async function POST(request: Request) {
       .eq("id", user.id)
       .single();
 
+    // Which plan is being bought. Anything unrecognised is treated as the
+    // $11.11 tier rather than rejected, so an older client that posts no body
+    // still checks out at the price it was showing.
+    let plan: "mid" | "max" = "mid";
+    try {
+      const body = await request.json();
+      if (body?.plan === "max") plan = "max";
+    } catch { /* no body — keep the default */ }
+
     // Build checkout session params
     const origin = request.headers.get("origin") || "https://mapped.app";
-    const priceId = process.env.STRIPE_PRICE_ID;
+    const priceId = plan === "max" ? process.env.STRIPE_PRICE_ID_MAX : process.env.STRIPE_PRICE_ID;
     if (!priceId) {
+      console.error(`[stripe] no price configured for plan "${plan}"`);
       return NextResponse.json({ error: "Stripe price not configured" }, { status: 500 });
     }
 
@@ -59,10 +69,15 @@ export async function POST(request: Request) {
       subscription_data: {
         metadata: {
           supabase_user_id: user.id,
+          // The webhook reads this to decide which tier to grant. It rides on
+          // the subscription, not just the session, so renewals and plan
+          // changes still say which tier they are for.
+          mapped_tier: plan,
         },
       },
       metadata: {
         supabase_user_id: user.id,
+        mapped_tier: plan,
       },
     };
 

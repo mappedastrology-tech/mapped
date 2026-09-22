@@ -12,6 +12,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { apiUrl } from "@/lib/apiBase";
+import { STORE_DECKS } from "@/lib/deckStore";
 
 export interface DeckEntitlements {
   /** Deck ids the user owns, however they got them. */
@@ -30,10 +31,17 @@ export async function fetchDeckEntitlements(): Promise<DeckEntitlements> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return NO_ENTITLEMENTS;
 
-  const { data, error } = await supabase
-    .from("purchased_decks")
-    .select("deck_id, source")
-    .eq("user_id", session.user.id);
+  const [{ data, error }, { data: profile }] = await Promise.all([
+    supabase
+      .from("purchased_decks")
+      .select("deck_id, source")
+      .eq("user_id", session.user.id),
+    supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", session.user.id)
+      .maybeSingle(),
+  ]);
 
   // On a failed read, offer nothing rather than wrongly offering a free deck
   // to someone who already spent theirs — the claim would just be refused, and
@@ -41,8 +49,19 @@ export async function fetchDeckEntitlements(): Promise<DeckEntitlements> {
   // not being invited.
   if (error || !data) return NO_ENTITLEMENTS;
 
+  const owned = new Set(data.map((r) => r.deck_id as string));
+
+  // Mapped Complete includes every deck for as long as it is active. These are
+  // lent, not bought: nothing is written to purchased_decks, so the set shrinks
+  // back to what they actually own if the subscription lapses. The free pick is
+  // still tracked separately, so someone who subscribes before choosing it does
+  // not silently lose it on cancelling.
+  if (profile?.tier === "max") {
+    for (const deck of STORE_DECKS) owned.add(deck.id);
+  }
+
   return {
-    owned: new Set(data.map((r) => r.deck_id as string)),
+    owned,
     hasFreePick: !data.some((r) => r.source === "free_pick"),
   };
 }

@@ -75,8 +75,12 @@ export function TierProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* promo_redemptions table may not exist — skip */ }
 
-      if (profile?.tier && (profile.tier === "free" || profile.tier === "mid")) {
-        setTier(profile.tier as TierLevel);
+      // Whitelisted rather than trusted, so a stray value in the column can
+      // only ever read as free. Keep this list in step with TierLevel — a tier
+      // missing here does not fail loudly, it silently downgrades a paying
+      // subscriber to free everywhere in the UI.
+      if (profile?.tier === "free" || profile?.tier === "mid" || profile?.tier === "max") {
+        setTier(profile.tier);
       } else {
         setTier("free");
       }

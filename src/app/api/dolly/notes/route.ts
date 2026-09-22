@@ -96,6 +96,12 @@ export async function POST(request: NextRequest) {
       return new Response(JSON.stringify({ error: "Too many requests. Try again later." }), { status: 429, headers: { "Content-Type": "application/json" } });
     }
 
+    // Tier gate + monthly spend ceiling.
+    const { guardAi, streamBilling } = await import("@/lib/ai/meter");
+    const { recordAiUsage } = await import("@/lib/ai/budget");
+    const denied = await guardAi(uid, "dolly-notes");
+    if (denied) return denied;
+
     const { cardName, keywords, meaning, chart, transits } = await request.json();
 
     if (!cardName) {
@@ -145,9 +151,11 @@ ${chartContext}`
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
+        const billing = streamBilling();
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for await (const event of response as any) {
+            billing.observe(event);
             if (
               event.type === "content_block_delta" &&
               event.delta?.type === "text_delta" &&
@@ -160,7 +168,9 @@ ${chartContext}`
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
+          await recordAiUsage({ userId: uid, route: "dolly-notes", model: CLAUDE_MODEL, usage: billing.usage });
         } catch (err) {
+          await recordAiUsage({ userId: uid, route: "dolly-notes", model: CLAUDE_MODEL, usage: billing.usage });
           console.error("Notes stream error:", err);
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)

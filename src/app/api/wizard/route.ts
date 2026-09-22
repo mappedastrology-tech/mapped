@@ -236,6 +236,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Tier gate + monthly spend ceiling.
+  const { guardAi, streamBilling } = await import("@/lib/ai/meter");
+  const { recordAiUsage } = await import("@/lib/ai/budget");
+  const denied = await guardAi(uid, "wizard");
+  if (denied) return denied;
+
   try {
     const body: WizardRequest = await request.json();
     const { intention, bodyLevel, tools, minutes, timing, chart, transits, userName, moonPhase, dayOfWeek } = body;
@@ -327,9 +333,11 @@ Generate the ritual now. Follow the output format exactly.`;
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
+        const billing = streamBilling();
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for await (const event of response as any) {
+            billing.observe(event);
             if (
               event.type === "content_block_delta" &&
               event.delta?.type === "text_delta" &&
@@ -342,7 +350,9 @@ Generate the ritual now. Follow the output format exactly.`;
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
+          await recordAiUsage({ userId: uid, route: "wizard", model: CLAUDE_MODEL, usage: billing.usage });
         } catch (err) {
+          await recordAiUsage({ userId: uid, route: "wizard", model: CLAUDE_MODEL, usage: billing.usage });
           console.error("Wizard stream error:", err);
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)

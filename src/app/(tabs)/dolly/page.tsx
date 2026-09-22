@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
-import { getDollyUsageToday, incrementDollyUsage } from "@/lib/tier";
+import { incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
@@ -348,9 +348,12 @@ export default function DollyTab() {
     const msg = (text || input).trim();
     if (!msg || isStreaming) return;
 
-    // Tier gate: free tier limited to 5 messages/day
-    if (tier === "free" && getDollyUsageToday() >= 5) {
-      if (gate("unlimited_dolly")) return;
+    // Tier gate. Dolly is the paid boundary, so the free tier gets the paywall
+    // on the first message rather than after a handful — the server refuses
+    // these calls outright, and letting someone type a question only to be told
+    // no is a worse way to learn that than being told up front.
+    if (tier === "free") {
+      if (gate("ai_features")) return;
     }
 
     setInput("");

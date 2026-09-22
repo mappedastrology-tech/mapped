@@ -57,6 +57,12 @@ ${transcript}
 
 Return ONLY the updated memory (bullets), no preamble.`;
 
+  // Another background call — this one updates what Dolly remembers. Over
+  // budget it simply doesn't run; the memory keeps its previous contents.
+  const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const verdict = await checkAiBudget(userId);
+  if (!verdict.allowed) return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 });
+
   try {
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
@@ -64,6 +70,7 @@ Return ONLY the updated memory (bullets), no preamble.`;
       max_tokens: 500,
       messages: [{ role: "user", content: prompt }],
     });
+    await recordAiUsage({ userId, route: "dolly-memory", model: msg.model || FALLBACK_MODEL, usage: msg.usage });
     const summary = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

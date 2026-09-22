@@ -302,6 +302,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Tier gate + monthly spend ceiling. The message deliberately says nothing
+  // about limits or money; see src/lib/ai/budget.ts.
+  const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const { streamBilling } = await import("@/lib/ai/meter");
+  const budget = await checkAiBudget(uid);
+  if (!budget.allowed) {
+    return new Response(
+      JSON.stringify({ error: budget.message }),
+      { status: budget.status ?? 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const body: DollyRequest = await request.json();
     const { message, history, chart, transits, connections, userName, journalContext, tarotContext } = body;
@@ -426,9 +438,12 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
+        const billing = streamBilling();
+
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for await (const event of response as any) {
+            billing.observe(event);
             if (
               event.type === "content_block_delta" &&
               event.delta?.type === "text_delta" &&
@@ -441,7 +456,11 @@ export async function POST(request: NextRequest) {
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
+          await recordAiUsage({ userId: uid, route: "dolly", model: CLAUDE_MODEL, usage: billing.usage });
         } catch (err) {
+          // Bill what was generated before the stream broke — those tokens
+          // were produced and charged to us whether or not they arrived.
+          await recordAiUsage({ userId: uid, route: "dolly", model: CLAUDE_MODEL, usage: billing.usage });
           console.error("Stream iteration error:", err);
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)

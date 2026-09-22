@@ -1,17 +1,26 @@
 /**
  * Tier System — Feature gating, paywall logic, and tier definitions.
  *
- * Two tiers:
- *   - free ($0): generous daily content, 1 deck, 5 Dolly msgs/day, 1 synastry partner
- *   - mid ($11.11/mo "Mapped+"): everything — wizard, unlimited Dolly, multiple partners,
- *     astrocartography, custom rituals, ZR timeline, fixed stars, composites, and more
+ * Three tiers:
+ *   - free ($0): the whole astrology app — chart, transits, almanac, journal,
+ *     learn, the one oracle deck every account picks at signup. No AI.
+ *   - mid ($11.11/mo "Mapped+"): the above plus every AI feature — Dolly, the
+ *     ritual wizard, horoscopes, chart interpretation, palmistry.
+ *   - max ($22.22/mo "Mapped Complete"): the above plus every oracle deck,
+ *     included for as long as the subscription is active.
  *
- * Pricing uses numerology: 11:11 (manifestation), 5:55 (change/freedom).
+ * Pricing uses numerology: 11:11 (manifestation), 22:22 (master builder),
+ * 5:55 (change/freedom) for one-off deck purchases.
+ *
+ * Note what is NOT here: the monthly spend ceilings that back the AI tiers.
+ * Those live in src/lib/ai/budget.ts, which never reaches the browser — this
+ * file is imported by client components, so anything in it ships in the JS
+ * bundle and can be read by anyone who opens devtools.
  */
 
 /* ─── Tier definitions ─── */
 
-export type TierLevel = "free" | "mid";
+export type TierLevel = "free" | "mid" | "max";
 
 export interface TierInfo {
   level: TierLevel;
@@ -23,6 +32,7 @@ export interface TierInfo {
 export const TIERS: Record<TierLevel, TierInfo> = {
   free: { level: "free", name: "Free", price: 0, annualPrice: 0 },
   mid: { level: "mid", name: "Mapped+", price: 11.11, annualPrice: 89 },
+  max: { level: "max", name: "Mapped Complete", price: 22.22, annualPrice: 178 },
 };
 
 export const DECK_PRICE = 5.55;
@@ -58,7 +68,9 @@ export type FeatureKey =
   | "multi_day_rituals"
   | "practice_patterns"
   | "multiple_moon_practices"
-  | "birth_time_rectification";
+  | "birth_time_rectification"
+  | "ai_features"
+  | "all_decks";
 
 interface FeatureDef {
   key: FeatureKey;
@@ -67,9 +79,12 @@ interface FeatureDef {
   description: string; // plain language, no jargon
 }
 
-const TIER_ORDER: Record<TierLevel, number> = { free: 0, mid: 1 };
+const TIER_ORDER: Record<TierLevel, number> = { free: 0, mid: 1, max: 2 };
 
 export const FEATURES: FeatureDef[] = [
+  // The two tier-defining gates.
+  { key: "ai_features", minTier: "mid", label: "Everything with Dolly", description: "Dolly, the ritual wizard, daily horoscopes, chart readings and palm readings." },
+  { key: "all_decks", minTier: "max", label: "Every Oracle Deck", description: "All oracle decks, yours to read with while your subscription is active." },
   // Mapped+ features
   { key: "wizard", minTier: "mid", label: "Ritual Wizard", description: "Create personalized rituals guided by your chart and the current sky." },
   { key: "custom_rituals", minTier: "mid", label: "Custom Rituals", description: "Build and save your own rituals to your daily rotation." },
@@ -133,7 +148,9 @@ export function getFeatureInfo(feature: FeatureKey): FeatureDef | null {
 
 export const USAGE_LIMITS = {
   free: {
-    dollyMessagesPerDay: 5,
+    // Zero, not five: AI is what separates free from paid, so the free tier
+    // gets none of it rather than a trial trickle.
+    dollyMessagesPerDay: 0,
     pullsPerDay: 1,
     synastryPartners: 1,
     familyMembers: 10,
@@ -141,6 +158,14 @@ export const USAGE_LIMITS = {
     transitsShown: 3,
   },
   mid: {
+    dollyMessagesPerDay: Infinity,
+    pullsPerDay: Infinity,
+    synastryPartners: Infinity,
+    familyMembers: Infinity,
+    wizardPerMonth: Infinity,
+    transitsShown: Infinity,
+  },
+  max: {
     dollyMessagesPerDay: Infinity,
     pullsPerDay: Infinity,
     synastryPartners: Infinity,

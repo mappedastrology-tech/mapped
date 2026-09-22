@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Tier gate + monthly spend ceiling.
+    const { guardAi, meterMessage } = await import("@/lib/ai/meter");
+    const denied = await guardAi(uid, "palmistry");
+    if (denied) return denied;
+
     const body: PalmistryRequest = await req.json();
     const hand: Hand = body.hand === "left" ? "left" : "right";
 
@@ -134,6 +139,11 @@ export async function POST(req: NextRequest) {
     } catch {
       message = await anthropic.messages.create({ ...params, model: CLAUDE_MODEL });
     }
+
+    // Which of the two models actually answered is only known from the
+    // response, and they differ threefold in price — meterMessage reads it
+    // off the message rather than trusting the model we asked for.
+    await meterMessage(uid, "palmistry", message, FALLBACK_MODEL);
 
     const text = message.content[0]?.type === "text" ? message.content[0].text : "";
     const result = extractJson(text) as

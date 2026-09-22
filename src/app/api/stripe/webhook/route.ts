@@ -24,6 +24,18 @@ function getCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustom
   return typeof customer === "string" ? customer : customer.id;
 }
 
+/**
+ * Which tier a subscription grants.
+ *
+ * /api/stripe/checkout stamps `mapped_tier` onto both the session and the
+ * subscription. Defaulting to "mid" rather than "free" matters: subscriptions
+ * sold before this metadata existed carry none, and reading them as free would
+ * cancel paying customers the first time Stripe sent an update about them.
+ */
+function tierFromMetadata(metadata: Stripe.Metadata | null | undefined): "mid" | "max" {
+  return metadata?.mapped_tier === "max" ? "max" : "mid";
+}
+
 export async function POST(request: Request) {
   try {
     // Read raw body for signature verification
@@ -103,7 +115,7 @@ export async function POST(request: Request) {
               await supabaseAdmin
                 .from("profiles")
                 .update({
-                  tier: "mid",
+                  tier: tierFromMetadata(subscription.metadata),
                   stripe_customer_id: session.customer
                     ? getCustomerId(session.customer as string | Stripe.Customer | Stripe.DeletedCustomer)
                     : null,
@@ -125,7 +137,7 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: "mid",
+            tier: tierFromMetadata(session.metadata),
             stripe_customer_id: session.customer
               ? getCustomerId(session.customer as string | Stripe.Customer | Stripe.DeletedCustomer)
               : null,
@@ -155,7 +167,7 @@ export async function POST(request: Request) {
             await supabaseAdmin
               .from("profiles")
               .update({
-                tier: isActive ? "mid" : "free",
+                tier: isActive ? tierFromMetadata(subscription.metadata) : "free",
                 subscription_status: subscription.status,
               })
               .eq("id", profile.id);
@@ -167,7 +179,7 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: isActive ? "mid" : "free",
+            tier: isActive ? tierFromMetadata(subscription.metadata) : "free",
             subscription_status: subscription.status,
           })
           .eq("id", userId);

@@ -34,6 +34,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
+  // This is the one AI route that deliberately serves signed-out people: it
+  // renders the Big 3 reading during onboarding, before there is an account to
+  // charge. So it is NOT tier-gated — gating it would blank the screen that
+  // sells the app. Anonymous callers are held by the per-IP limit above.
+  //
+  // When a caller IS signed in, attribute the spend to them, so the only
+  // unattributed AI traffic is genuine pre-signup traffic.
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const billTo = await getAuthedUserId(request).catch(() => null);
+
   try {
     const { name, bigThree } = await request.json();
 
@@ -84,6 +94,11 @@ Each interpretation should be 3-4 sentences. Remember: real life, not just trait
         },
       ],
     });
+
+    if (billTo) {
+      const { recordAiUsage } = await import("@/lib/ai/budget");
+      await recordAiUsage({ userId: billTo, route: "chart-interpret", model: message.model || CLAUDE_MODEL, usage: message.usage });
+    }
 
     // Extract the text content from Claude's response
     const textBlock = message.content.find((block) => block.type === "text");
