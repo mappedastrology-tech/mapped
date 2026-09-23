@@ -1,124 +1,272 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { buildReviewQuiz, gradeReview, type ReviewQuiz } from "@/lib/learn/review";
-import { getDueReviews, recordReview } from "@/lib/learn/reviewStore";
+import { useRouter } from "next/navigation";
+import { buildReviewCards, nextIntervalForGrade, type ReviewCard, type ReviewGrade } from "@/lib/learn/review";
+import { getDueReviews, recordReviewGrade } from "@/lib/learn/reviewStore";
 import { awardXp } from "@/lib/learn/activityStore";
 import { loadEngagement } from "@/lib/learn/engagement";
 import { XP_REVIEW } from "@/lib/learn/stats";
-import type { QuizScore } from "@/lib/learn/quiz";
-import LibraryHeader from "./LibraryHeader";
-import Quiz from "./Quiz";
+import { DOMAINS } from "@/lib/learn/registry";
+import { LessonProgressHeader, PrimaryPill } from "./LessonChrome";
 
-type Phase = "loading" | "empty" | "intro" | "taking" | "done";
+type Phase = "loading" | "empty" | "taking" | "done";
 
+/**
+ * Daily review (design frame U).
+ *
+ * This is a reveal-and-rate flashcard deck, not the multiple-choice quiz it
+ * used to be. The change is the design's, but the machinery for it was already
+ * in the repo and simply unused: review.ts has built flashcards
+ * (buildReviewCards) and graded them (nextIntervalForGrade) since spaced
+ * repetition landed, and reviewStore has persisted a self-rating
+ * (recordReviewGrade). Only the screen was missing.
+ *
+ * Rating honestly matters more than answering correctly here, which is the
+ * argument for the change: recognising an answer among three options is a much
+ * weaker test of recall than producing it from memory and then admitting
+ * whether you had it.
+ */
 export default function ReviewSession() {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
-  const [rq, setRq] = useState<ReviewQuiz | null>(null);
-  const [lessonCount, setLessonCount] = useState(0);
+  const [cards, setCards] = useState<ReviewCard[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [revealed, setRevealed] = useState(false);
   const [streak, setStreak] = useState(0);
-  const [advanced, setAdvanced] = useState(0);
-  const [scorePct, setScorePct] = useState(0);
+  const [tally, setTally] = useState<Record<ReviewGrade, number>>({ again: 0, good: 0, easy: 0 });
 
   useEffect(() => {
     let active = true;
     Promise.all([getDueReviews(), loadEngagement()]).then(([due, eng]) => {
       if (!active) return;
       setStreak(eng.stats.streak);
-      if (due.length === 0) { setPhase("empty"); return; }
-      const quiz = buildReviewQuiz(due);
-      setRq(quiz);
-      setLessonCount(new Set(Object.values(quiz.lessonOf).map((d) => `${d.courseId}::${d.lessonId}`)).size);
-      setPhase("intro");
+      const built = buildReviewCards(due);
+      if (built.length === 0) { setPhase("empty"); return; }
+      setCards(built);
+      setPhase("taking");
     });
     return () => { active = false; };
   }, []);
 
-  async function handleComplete(score: QuizScore, answers: Record<string, string>) {
-    if (!rq) return;
-    const graded = gradeReview(rq, answers);
-    setAdvanced(graded.filter((g) => g.passed).length);
-    setScorePct(Math.round(score.fraction * 100));
-    setPhase("done");
-    await Promise.all(graded.map((g) => recordReview(g.review.courseId, g.review.lessonId, g.passed)));
-    if (graded.length > 0) await awardXp(graded.length * XP_REVIEW, graded.length);
+  const card = cards[idx];
+  const total = cards.length;
+  const lessonCount = useMemo(
+    () => new Set(cards.map((c) => `${c.review.courseId}::${c.review.lessonId}`)).size,
+    [cards],
+  );
+
+  /**
+   * How long each rating pushes this card out, asked of the scheduler rather
+   * than written down here. The design's frame says "< 1 min / 1 day / 4 days";
+   * those are that mock's numbers, and hard-coding them would quietly lie to
+   * the reader the first time the schedule is tuned.
+   */
+  const intervalLabels = useMemo(() => {
+    const label = (grade: ReviewGrade) => {
+      if (grade === "again") return "< 1 min";
+      const days = nextIntervalForGrade(1, grade);
+      return days === 1 ? "1 day" : `${days} days`;
+    };
+    return { again: label("again"), good: label("good"), easy: label("easy") };
+  }, []);
+
+  async function rate(grade: ReviewGrade) {
+    if (!card) return;
+    setTally((t) => ({ ...t, [grade]: t[grade] + 1 }));
+    void recordReviewGrade(card.review.courseId, card.review.lessonId, grade);
+
+    if (idx + 1 >= total) {
+      setPhase("done");
+      if (lessonCount > 0) void awardXp(lessonCount * XP_REVIEW, lessonCount);
+    } else {
+      setIdx(idx + 1);
+      setRevealed(false);
+    }
   }
+
+  const domainMeta = card ? DOMAINS.find((d) => d.id === card.domain) : undefined;
 
   return (
     <main className="min-h-screen lib-felt">
-      <style>{`@keyframes rev-floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
-      <LibraryHeader title="Daily Review" fallback="/library" />
-      <div className="max-w-lg mx-auto px-5 py-6 pb-28">
+      <div className="max-w-lg mx-auto pb-28">
         {phase === "loading" && (
-          <p className="text-center text-sm py-10" style={{ color: "var(--foreground-muted)" }}>Loading your review…</p>
+          <p className="text-center text-sm py-10" style={{ color: "var(--lib-muted)" }}>Loading your review…</p>
         )}
 
+        {/* Edge state 5 — nothing due. */}
         {phase === "empty" && (
-          <div className="rounded-2xl p-6 text-center" style={{ background: "linear-gradient(140deg, rgba(45,64,41,0.18), var(--background-card) 70%)", border: "1px solid var(--sage)", boxShadow: "var(--card-shadow)" }}>
-            <div className="mx-auto mb-3 w-16 h-16 rounded-full flex items-center justify-center text-[26px]" style={{ backgroundColor: "var(--sage)", color: "#fff" }} aria-hidden="true">✓</div>
-            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>All caught up</h2>
-            <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-              Nothing is due for review right now. Finish a lesson and it&rsquo;ll come back here on a spaced schedule so it sticks.
+          <div style={{ padding: "48px 24px 0" }} className="text-center">
+            <div className="lib-floaty" style={{ fontSize: 44 }} aria-hidden="true">🌙</div>
+            <h2
+              className="uppercase"
+              style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, letterSpacing: "0.07em", color: "var(--lib-ink)", marginTop: 14 }}
+            >
+              All caught up
+            </h2>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.6, color: "var(--lib-body)", marginTop: 10 }}>
+              No cards due — the next batch surfaces tomorrow.
             </p>
-            <Link href="/library" className="inline-block mt-4 px-5 py-2.5 rounded-xl text-[13px] font-medium" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-              Back to Learn
-            </Link>
-          </div>
-        )}
-
-        {phase === "intro" && (
-          <div className="rounded-2xl p-6 text-center" style={{ background: "linear-gradient(140deg, rgba(201,169,97,0.16), var(--background-card) 70%)", border: "1px solid rgba(201,169,97,0.4)", boxShadow: "var(--card-shadow)" }}>
-            <div className="mx-auto mb-3 w-20 h-20 rounded-full flex flex-col items-center justify-center" style={{ background: "linear-gradient(135deg, var(--plum), var(--plum-deep))", border: "3px solid var(--brass)" }}>
-              <span className="text-[28px] font-bold leading-none" style={{ color: "var(--lib-on-plum)", fontFamily: "var(--font-serif-lib)" }}>{lessonCount}</span>
-              <span className="text-[8px] uppercase tracking-wider" style={{ color: "var(--brass-light)" }}>lessons</span>
+            {streak > 0 && (
+              <span
+                className="inline-flex items-center gap-1.5 mt-5 px-4 py-2"
+                style={{ borderRadius: 999, background: "rgba(201,169,97,0.12)" }}
+              >
+                <span className="lib-flame" style={{ fontSize: 14 }} aria-hidden="true">🔥</span>
+                <span style={{ fontFamily: "var(--font-serif-lib)", fontWeight: 700, fontSize: 15, color: "var(--lib-ink)" }}>{streak}</span>
+                <span className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.1em", color: "var(--lib-muted)" }}>streak held</span>
+              </span>
+            )}
+            <div className="mt-6 flex justify-center">
+              <PrimaryPill onClick={() => router.push("/library")}>Back to Learn</PrimaryPill>
             </div>
-            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>Daily review</h2>
-            <p className="text-[13px] leading-relaxed mb-1" style={{ color: "var(--foreground-secondary)" }}>
-              A short test on {lessonCount === 1 ? "a lesson you've" : `${lessonCount} lessons you've`} already finished. Answer the questions to lock the material in.
-            </p>
-            <p className="text-[11px] mb-5" style={{ color: "var(--foreground-muted)" }}>
-              Get a lesson&rsquo;s questions right and it won&rsquo;t come back for longer.
-            </p>
-            <button onClick={() => setPhase("taking")} className="w-full py-3 rounded-xl text-[14px] font-medium active:scale-[0.99] transition-transform" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-              Start review
-            </button>
           </div>
         )}
 
-        {phase === "taking" && rq && (
+        {phase === "taking" && card && (
           <>
-            <div className="text-center mb-4">
-              <p className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Daily review</p>
+            <LessonProgressHeader
+              progress={(idx + (revealed ? 1 : 0)) / total}
+              label={`${idx + 1} / ${total}`}
+              onClose={() => router.push("/library")}
+              closeLabel="Leave review"
+            />
+
+            <div className="text-center" style={{ paddingTop: 18 }}>
+              <p className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", color: "var(--brass)" }}>
+                Daily review
+              </p>
               {streak > 0 && (
-                <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(201,169,97,0.12)" }}>
-                  <span className="text-[14px]" aria-hidden="true">🔥</span>
-                  <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{streak}</span>
-                  <span className="text-[9px] uppercase" style={{ letterSpacing: "0.1em", color: "var(--foreground-muted)" }}>day streak</span>
+                <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5" style={{ borderRadius: 999, background: "rgba(201,169,97,0.12)" }}>
+                  <span className="lib-flame" style={{ fontSize: 14 }} aria-hidden="true">🔥</span>
+                  <span style={{ fontFamily: "var(--font-serif-lib)", fontWeight: 700, fontSize: 16, color: "var(--lib-ink)" }}>{streak}</span>
+                  <span className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.1em", color: "var(--lib-muted)" }}>day streak</span>
                 </span>
               )}
             </div>
-            <Quiz questions={rq.questions} onComplete={handleComplete} title="Review" />
+
+            {/* The card. Tapping it reveals, as well as the pill below. */}
+            <button
+              onClick={() => setRevealed(true)}
+              disabled={revealed}
+              className={revealed ? "w-full text-left" : "lib-press w-full text-left"}
+              style={{
+                display: "block", margin: "18px 24px 0", width: "calc(100% - 48px)",
+                padding: "20px 20px 22px", borderRadius: 20,
+                background: "var(--lib-card)",
+                border: "0.5px solid color-mix(in srgb, var(--brass) 16%, transparent)",
+                boxShadow: "var(--lib-card-shadow)",
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: domainMeta?.accent ?? "var(--brass)" }} aria-hidden="true" />
+                <span className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: domainMeta?.accent ?? "var(--brass)" }}>
+                  {domainMeta?.title ?? card.domain}
+                </span>
+              </span>
+
+              <span
+                className="block uppercase"
+                style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, letterSpacing: "0.05em", lineHeight: 1.2, color: "var(--lib-ink)", marginTop: 12 }}
+              >
+                {card.front}
+              </span>
+
+              {revealed ? (
+                <>
+                  <span className="block" style={{ height: 1, background: "var(--lib-rule)", margin: "16px 0 14px" }} />
+                  <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.65, color: "var(--lib-ink)" }}>
+                    {card.back}
+                  </span>
+                  {card.detail && (
+                    <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 12.5, lineHeight: 1.6, color: "var(--lib-body)", marginTop: 8 }}>
+                      {card.detail}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 11.5, color: "var(--lib-muted)", marginTop: 14 }}>
+                  Tap the card to reveal the answer
+                </span>
+              )}
+            </button>
+
+            <div style={{ padding: "0 24px" }}>
+              {!revealed ? (
+                <div style={{ marginTop: 18 }}>
+                  <PrimaryPill full arrow={false} onClick={() => setRevealed(true)}>Reveal answer</PrimaryPill>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3" style={{ gap: 9, marginTop: 18 }}>
+                  {([
+                    ["again", "Again", "rgba(122,48,40,0.16)", "#e0a99a"],
+                    ["good", "Good", "rgba(201,169,97,0.14)", "#d4b878"],
+                    ["easy", "Easy", "rgba(90,122,58,0.16)", "var(--sage-bright)"],
+                  ] as const).map(([grade, label, bg, fg]) => (
+                    <button
+                      key={grade}
+                      onClick={() => rate(grade)}
+                      className="lib-press flex flex-col items-center justify-center"
+                      style={{ padding: "11px 4px", borderRadius: 13, minHeight: 44, background: bg, border: `0.5px solid ${fg}`, color: fg }}
+                    >
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: 12.5, fontWeight: 700 }}>{label}</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: 9.5, opacity: 0.8, marginTop: 2 }}>{intervalLabels[grade]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-center" style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--lib-muted)", marginTop: 14, lineHeight: 1.5 }}>
+                {revealed
+                  ? "Rate honestly — it tunes when each card returns."
+                  : `${total} ${total === 1 ? "card" : "cards"} due in today's review.`}
+              </p>
+            </div>
           </>
         )}
 
         {phase === "done" && (
-          <div className="rounded-2xl p-7 text-center" style={{ background: "linear-gradient(140deg, rgba(201,169,97,0.14), var(--background-card) 75%)", border: "1px solid rgba(201,169,97,0.4)", boxShadow: "var(--card-shadow)" }}>
-            <div className="relative w-24 h-24 mx-auto">
-              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "radial-gradient(circle at 42% 36%, rgba(201,169,97,0.4), rgba(11,7,18,0) 82%)" }} />
-              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, animation: "rev-floaty 3.4s ease-in-out infinite" }} aria-hidden="true">🌙</span>
-            </div>
-            <h2 className="text-[24px] font-medium mt-4" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>Review complete</h2>
-            <p className="text-[34px] font-bold leading-none mt-3" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--brass-light)" }}>{scorePct}%</p>
-            <p className="text-[13px] mt-3" style={{ color: "var(--foreground-secondary)" }}>
-              {advanced} of {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"} pushed further out. The rest will come back sooner so you can lock them in.
+          <div className="text-center" style={{ padding: "48px 24px 0" }}>
+            <div className="lib-floaty" style={{ fontSize: 44 }} aria-hidden="true">🌙</div>
+            <h2
+              className="uppercase"
+              style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, letterSpacing: "0.07em", color: "var(--lib-ink)", marginTop: 14 }}
+            >
+              Review complete
+            </h2>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--lib-body)", marginTop: 10 }}>
+              {total} {total === 1 ? "card" : "cards"} reviewed
+              {streak > 0 && ` · streak ${streak} → ${streak + 1}`}
             </p>
-            <div className="inline-flex items-center gap-1.5 mt-5 px-4 py-2 rounded-full" style={{ background: "rgba(201,169,97,0.14)" }}>
-              <span className="text-[15px] font-bold" style={{ fontFamily: "var(--font-ui)", color: "var(--brass-light)" }}>+{lessonCount * XP_REVIEW} XP</span>
+
+            <div className="flex justify-center flex-wrap gap-2 mt-5">
+              {(["again", "good", "easy"] as const).map((g) => (
+                <span
+                  key={g}
+                  className="px-3 py-1.5"
+                  style={{ borderRadius: 999, background: "var(--lib-track)", fontFamily: "var(--font-body)", fontSize: 11, color: "var(--lib-body)" }}
+                >
+                  <span className="capitalize">{g}</span> · {tally[g]}
+                </span>
+              ))}
             </div>
-            <p className="text-[11px] mt-4" style={{ color: "var(--foreground-muted)" }}>Come back tomorrow to keep the streak alive ✦</p>
-            <Link href="/library" className="block mt-5 px-5 py-2.5 rounded-xl text-[13px] font-medium" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-              Done
+
+            <div className="inline-flex items-center gap-1.5 mt-5 px-4 py-2" style={{ borderRadius: 999, background: "rgba(201,169,97,0.14)" }}>
+              <span style={{ fontFamily: "var(--font-serif-lib)", fontWeight: 700, fontSize: 15, color: "var(--brass-light)" }}>
+                +{lessonCount * XP_REVIEW} XP
+              </span>
+            </div>
+
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--lib-muted)", marginTop: 16 }}>
+              Next review unlocks tomorrow ✦
+            </p>
+
+            <div className="mt-6 flex justify-center">
+              <PrimaryPill onClick={() => router.push("/library")}>Done</PrimaryPill>
+            </div>
+            <Link href="/library" className="block text-center mt-3" style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--lib-muted)" }}>
+              Back to Learn
             </Link>
           </div>
         )}

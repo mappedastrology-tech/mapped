@@ -83,6 +83,10 @@
   animation: lflicker 1.9s ease-in-out infinite;
   transform-origin: 50% 85%;
 }
+/* Search field focus ring on the reference screen. */
+.lib-felt .lib-search:focus-within {
+  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.08);
+}
 .lib-press {
   cursor: pointer;
   transition: transform 0.12s ease, filter 0.12s ease;
