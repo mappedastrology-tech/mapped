@@ -16,17 +16,17 @@ import { outlineCourses } from "./content/outlines";
 
 /** Display metadata + ordering for each domain shown on the library home. */
 export const DOMAINS: DomainMeta[] = [
-  { id: "astrology", title: "Astrology", icon: "☉", blurb: "Read a birth chart as a language for self-reflection.", evidenceTag: "Symbolic system", accent: "#c9a961", cover: "/images/learn/zodiac-wheel-fragment-1.webp" },
-  { id: "tarot", title: "Tarot", icon: "🔮", blurb: "78 cards as a tool for reflection and storytelling.", evidenceTag: "Reflective tool", accent: "#a274d6", cover: "/images/learn/cosmic-eye.webp" },
-  { id: "numerology", title: "Numerology", icon: "9", blurb: "Meaning in numbers — your life path and core numbers.", evidenceTag: "Symbolic system", accent: "#4a90c2", cover: "/images/learn/parchment-stars-pair.webp" },
+  { id: "astrology", title: "Astrology", icon: "☉", blurb: "Read a birth chart as a language for self-reflection.", evidenceTag: "Symbolic system", accent: "#c9a961", cover: "/images/learn/almanac-sunday-sun.webp" },
+  { id: "tarot", title: "Tarot", icon: "🔮", blurb: "78 cards as a tool for reflection and storytelling.", evidenceTag: "Reflective tool", accent: "#a274d6", cover: "/images/tarot/backside.webp" },
+  { id: "numerology", title: "Numerology", icon: "9", blurb: "Meaning in numbers — your life path and core numbers.", evidenceTag: "Symbolic system", accent: "#4a90c2", cover: "/images/learn/num-8.webp" },
   { id: "crystals", title: "Crystals", icon: "💎", blurb: "Real geology, the lore, and how to stay safe.", evidenceTag: "Tradition + geology", accent: "#8e7cc3", cover: "/images/learn/crystal-ball.webp" },
-  { id: "chakras", title: "Chakras", icon: "🌀", blurb: "The subtle body, from tantric roots to today.", evidenceTag: "Contemplative tradition", accent: "#4caf93", cover: "/images/learn/halftone-eye.webp" },
+  { id: "chakras", title: "Chakras", icon: "🌀", blurb: "The subtle body, from tantric roots to today.", evidenceTag: "Contemplative tradition", accent: "#4caf93", cover: "/images/learn/chakra-crown.webp" },
   { id: "herbalism", title: "Herbalism", icon: "🌿", blurb: "Herbs, evidence, and — above all — safety.", evidenceTag: "Evidence + safety", accent: "#6a9a4a", cover: "/images/learn/watercolor-botanical-arrangement.webp" },
   { id: "essential-oils", title: "Essential Oils", icon: "🪔", blurb: "Aromatherapy done safely, for people and pets.", evidenceTag: "Evidence + safety", accent: "#d39a3e", cover: "/images/learn/dried-flower-branch-mauve.webp" },
-  { id: "almanac", title: "Almanac & Moon", icon: "🌙", blurb: "Real sky science plus lunar & seasonal living.", evidenceTag: "Astronomy + tradition", accent: "#5b6bb5", cover: "/images/learn/paper-sun.webp" },
-  { id: "meditation", title: "Meditation", icon: "🧘", blurb: "The most evidence-backed practice in the library.", evidenceTag: "Strong evidence", accent: "#3fa3a3", cover: "/images/learn/cloud-sunset-pink.webp" },
-  { id: "dreams", title: "Dreams", icon: "💤", blurb: "Sleep science and the symbolism of dreams.", evidenceTag: "Science + symbolism", accent: "#7b86d6", cover: "/images/learn/cloud-strip-blue.webp" },
-  { id: "runes", title: "Runes", icon: "ᚠ", blurb: "The 24 runes of the Elder Futhark.", evidenceTag: "Reflective tool", accent: "#b5654a", cover: "/images/learn/sparkle-stars-sketch.webp" },
+  { id: "almanac", title: "Almanac & Moon", icon: "🌙", blurb: "Real sky science plus lunar & seasonal living.", evidenceTag: "Astronomy + tradition", accent: "#5b6bb5", cover: "/images/learn/almanac-monday-moon.webp" },
+  { id: "meditation", title: "Meditation", icon: "🧘", blurb: "The most evidence-backed practice in the library.", evidenceTag: "Strong evidence", accent: "#3fa3a3", cover: "/images/candle.webp" },
+  { id: "dreams", title: "Dreams", icon: "💤", blurb: "Sleep science and the symbolism of dreams.", evidenceTag: "Science + symbolism", accent: "#7b86d6", cover: "/images/learn/cloud-sunset-pink.webp" },
+  { id: "runes", title: "Runes", icon: "ᚠ", blurb: "The 24 runes of the Elder Futhark.", evidenceTag: "Reflective tool", accent: "#b5654a", cover: "/images/learn/rune-fehu.webp" },
 ];
 
 /** Accent color for a domain (fallback to brass). */
