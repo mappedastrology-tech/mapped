@@ -14,6 +14,8 @@ import WebShell, { useWebTheme } from "./WebShell";
 import { parseDollyReply } from "@/lib/dollyReply";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
+import { STARTER_PROMPTS } from "@/lib/dollyStarters";
+import DollyAvatar from "@/components/DollyAvatar";
 import CrisisCard from "@/components/CrisisCard";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
@@ -27,7 +29,6 @@ const SIGN_GLYPH: Record<string, string> = {
   Libra: "♎︎", Scorpio: "♏︎", Sagittarius: "♐︎", Capricorn: "♑︎", Aquarius: "♒︎", Pisces: "♓︎",
 };
 
-const AVATAR = "/images/crystal-ball.webp";
 /**
  * `notice` marks a rule rather than a reply — see the non-OK branch in
  * sendMsg. Desktop had no paid boundary at all: a free user's 402 was thrown
@@ -36,18 +37,16 @@ const AVATAR = "/images/crystal-ball.webp";
  * temporary glitch and invited to keep trying something that would never work.
  */
 type Msg = { from: "dolly" | "you"; text: string; notice?: boolean; crisis?: boolean };
-const QA: { q: string; a: string }[] = [
-  { q: "What does my Cancer sun mean?", a: "Your Cancer Sun is the tender, protective core of you — you lead with feeling and you look after people almost by instinct. It means home, memory, and belonging matter deeply. Your gift is emotional intelligence; your work is learning that softness is strength, not a leak." },
-  { q: "What's my Saturn return about?", a: "Saturn returns to where it sat at your birth around age 29 — for you, in the 5th house. It’s a rite of passage: the universe asks which joys, creative risks, and self-expressions are truly yours to keep. It can feel heavy, but it’s building the adult foundation you’ll stand on for decades." },
-  { q: "Why do I feel so restless lately?", a: "Right now transiting Mars is lighting your 10th house of direction and ambition, while the Scorpio Moon stirs everything underneath. That combination reads exactly as restlessness — energy with nowhere obvious to go. It usually means a decision is forming. Give it a week; don’t force it under the void Moon." },
-  { q: "Are my partner and I compatible?", a: "Compatibility isn’t a yes-or-no — it’s a texture. Your Moons in water and their Venus in earth is a genuinely nourishing mix: you feel deeply, they make it feel safe. The friction to watch is your Cancer need for reassurance meeting their steadier pace. Name it kindly and it becomes easy." },
-];
+/**
+ * The suggested questions come from lib/dollyStarters now.
+ *
+ * This file used to hardcode its own — "What does my Cancer sun mean?",
+ * "What's my Saturn return about?" — each with a pre-written `a:` answer
+ * attached that nothing ever read, left over from the design prototype. The
+ * Cancer question is wrong for roughly eleven readers in twelve.
+ */
 const GREET: Msg = { from: "dolly", text: "Hi — I’m Dolly, your astrological guide. I read your birth chart and the live sky to answer in plain, kind language. Ask me anything, or tap a question below to begin." };
-const ABILITIES = [
-  { glyph: "☉", title: "Read your chart", desc: "Ask what any placement means and get a plain-language answer rooted in your actual birth chart." },
-  { glyph: "☄", title: "Time your moves", desc: "When to launch, rest, or wait. Dolly watches your transits and tells you what the timing favors." },
-  { glyph: "♡", title: "Understand people", desc: "Bring in a partner, friend, or colleague and explore the real texture of your connection." },
-];
+
 
 export default function WebDolly() {
   const { theme, toggle } = useWebTheme();
@@ -57,6 +56,24 @@ export default function WebDolly() {
   const [typing, setTyping] = useState(false);
   /** What a screen reader hears when a reply lands. See the region below. */
   const [announcement, setAnnouncement] = useState("");
+  /**
+   * NOTE ON WHAT USED TO BE HERE.
+   *
+   * This screen opened with a 110px portrait, a script line, a 52px display
+   * heading and a paragraph of marketing — about 490px of pitch before the
+   * chat panel, so the composer started below the fold on a 900px laptop.
+   * Below the panel sat "What Dolly can do": three cards explaining the
+   * feature the reader was looking at.
+   *
+   * All of it was written for a visitor deciding whether to sign up. No
+   * visitor ever saw it: (tabs)/layout.tsx redirects anyone without a session
+   * away from /dolly, and this component is mounted nowhere else. The only
+   * people who ever read the pitch were subscribers who had already bought
+   * it, and they had to scroll past it to type.
+   *
+   * So it is gone rather than conditional — a branch on a question with one
+   * answer is just a slower way to be wrong.
+   */
   const inputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Cross-feature context loaded for signed-in users so web Dolly knows the
@@ -285,20 +302,14 @@ export default function WebDolly() {
   return (
     <WebShell current="dolly" theme={theme} onToggleTheme={toggle} footerTagline="A guide who knows your chart.">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "52px 32px 20px" }}>
-        <div style={{ textAlign: "center", maxWidth: 660, margin: "0 auto 34px" }}>
-          <div style={{ position: "relative", width: 110, height: 110, margin: "0 auto 18px" }}>
-            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--brass) 32%, transparent), transparent 66%)" }} />
-            <img src={AVATAR} alt="Dolly" style={{ position: "relative", width: 110, height: 110, objectFit: "contain", animation: "mp-glow 5s ease-in-out infinite" }} />
-          </div>
-          <p style={{ fontFamily: "var(--script)", fontSize: 34, color: "var(--brass)", margin: "0 0 2px" }}>meet your guide</p>
-          <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 52, lineHeight: 1.05, margin: "0 0 14px", color: "var(--fg)" }}>Ask Dolly</h1>
-          <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--fg2)", margin: 0 }}>A warm astrological guide who knows your whole chart. Ask anything — placements, timing, relationships — and get an answer in plain, kind language. Try a question below.</p>
+        <div style={{ maxWidth: 760, margin: "0 auto 18px" }}>
+          <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 34, lineHeight: 1.1, margin: 0, color: "var(--fg)" }}>Ask Dolly</h1>
         </div>
 
         {/* CHAT */}
         <div style={{ maxWidth: 760, margin: "0 auto", borderRadius: 24, border: "1px solid var(--hair)", background: "var(--card)", boxShadow: "0 16px 50px var(--shadow)", overflow: "hidden" }}>
           <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 12, background: "var(--card2)" }}>
-            <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: "50%", background: `url('${AVATAR}') center/cover`, flex: "0 0 auto" }} />
+            <span aria-hidden="true" style={{ flex: "0 0 auto", display: "flex" }}><DollyAvatar size={34} /></span>
             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
               <p style={{ fontSize: 14.5, fontWeight: 700, color: "var(--fg)", margin: 0 }}>Dolly</p>
               {/*
@@ -398,7 +409,7 @@ export default function WebDolly() {
 
               return (
                 <div key={i} role="article" style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>
-                  {dolly && <span aria-hidden="true" style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover`, alignSelf: "flex-end" }} />}
+                  {dolly && <span aria-hidden="true" style={{ flex: "0 0 auto", alignSelf: "flex-end", display: "flex" }}><DollyAvatar size={30} /></span>}
                   <div style={dolly
                     ? { maxWidth: "78%", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", background: "var(--card2)", border: "1px solid var(--hair)", fontSize: 14.5, lineHeight: 1.6, color: "var(--fg2)", textWrap: "pretty" }
                     : { maxWidth: "76%", padding: "13px 18px", borderRadius: "16px 16px 4px 16px", background: "var(--bubble-you)", border: "1px solid var(--hair)", fontSize: 14.5, lineHeight: 1.55, color: "var(--fg)" }}>
@@ -428,7 +439,7 @@ export default function WebDolly() {
             })}
             {typing && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <span aria-hidden="true" style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover` }} />
+                <span aria-hidden="true" style={{ flex: "0 0 auto", display: "flex" }}><DollyAvatar size={30} /></span>
                 <div style={{ padding: "14px 18px", borderRadius: "16px 16px 16px 4px", background: "var(--card2)", border: "1px solid var(--hair)", color: "var(--muted)", fontSize: 14 }}>Dolly is looking at your chart…</div>
               </div>
             )}
@@ -443,8 +454,8 @@ export default function WebDolly() {
 
           {/* suggestions */}
           <div style={{ padding: "4px 20px 14px", display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {QA.map((x) => (
-              <button key={x.q} onClick={() => sendMsg(x.q)} className="mp-chip2" style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 500, padding: "8px 14px", borderRadius: 999, cursor: "pointer", background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)" }}>{x.q}</button>
+            {STARTER_PROMPTS.map((x) => (
+              <button key={x.text} onClick={() => sendMsg(x.text)} className="mp-chip2" style={{ fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 500, padding: "8px 14px", borderRadius: 999, cursor: "pointer", background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)" }}>{x.text}</button>
             ))}
           </div>
 
@@ -477,22 +488,7 @@ export default function WebDolly() {
           Dolly is an AI, not a person. She reads your real birth chart when you&rsquo;re signed in &mdash; the more complete your chart, the more specific her answers.
         </p>
 
-        {/* WHAT DOLLY KNOWS */}
-        <div style={{ margin: "64px 0 20px" }}>
-          <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 40px" }}>
-            <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 40, margin: "0 0 12px", color: "var(--fg)" }}>What Dolly can do</h2>
-            <p style={{ fontSize: 16, color: "var(--fg2)", margin: 0 }}>Not horoscopes — real answers, grounded in your chart.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
-            {ABILITIES.map((a) => (
-              <div key={a.title} style={{ borderRadius: 18, padding: 24, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)" }}>
-                <span style={{ fontSize: 24, color: "var(--brass)" }}>{a.glyph}</span>
-                <h3 style={{ fontFamily: "var(--deco)", fontSize: 21, fontWeight: 500, margin: "12px 0 6px", color: "var(--fg)" }}>{a.title}</h3>
-                <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{a.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </WebShell>
   );

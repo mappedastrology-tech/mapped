@@ -15,6 +15,7 @@ import { useTier } from "@/components/TierProvider";
 import { incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
+import { STARTER_PROMPTS } from "@/lib/dollyStarters";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
@@ -94,21 +95,7 @@ interface ConnectionContext {
    Suggested prompts
    ═══════════════════════════════════════════ */
 
-/**
- * Four, not six.
- *
- * Six did not fit: at 390px roughly four and a half cleared the composer, so
- * the last two sat below the fold with nothing to suggest they existed —
- * which is a worse offer than four that can all be seen. These four also
- * cover all three sources, so the colour key opposite them means something on
- * first sight.
- */
-const STARTER_PROMPTS: { text: string; kind: DollyTagKind }[] = [
-  { text: "What should I know about myself right now?", kind: "chart" },
-  { text: "What's the sky doing to me today?", kind: "sky" },
-  { text: "What patterns do I keep repeating?", kind: "card" },
-  { text: "What's my biggest blind spot?", kind: "chart" },
-];
+
 
 /** Long enough that a divider means "you came back", not "you paused". */
 const GAP_MS = 60 * 60 * 1000;
