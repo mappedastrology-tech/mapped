@@ -30,6 +30,20 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  /**
+   * A rule, not a reply.
+   *
+   * Hitting the daily limit, running out of this month's AI time, or not
+   * being on a paid plan are all deliberate business rules — but they used to
+   * arrive as `Something went wrong: <the server's message>` inside Dolly's
+   * own plum speech bubble. So "Dolly comes with Mapped+" was delivered as a
+   * malfunction spoken by the character, and a subscriber who hit their limit
+   * was told the app was broken rather than that they had reached a limit.
+   * That generates refund requests, not upgrades.
+   *
+   * Notices render as a plain system line instead, and never get a prefix.
+   */
+  notice?: boolean;
 }
 
 interface ChartContext {
@@ -149,6 +163,9 @@ export default function DollyTab() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** True when the 90s safety net fired, so a timeout can be told apart from
+   *  the user starting a new chat — one deserves an explanation, one doesn't. */
+  const timedOutRef = useRef(false);
   // The active conversation's canonical id, kept in a ref so saves within a
   // session always reuse the same id (state updates are async).
   const conversationIdRef = useRef<string | null>(null);
@@ -388,7 +405,7 @@ export default function DollyTab() {
       const controller = new AbortController();
       abortRef.current = controller;
       // Safety net: abort a hung stream after 90s so it can never spin forever.
-      streamTimeout = setTimeout(() => controller.abort(), 90000);
+      streamTimeout = setTimeout(() => { timedOutRef.current = true; controller.abort(); }, 90000);
 
       const { journalContext, tarotContext } = gatherCrossFeatureContext(currentUserId);
       const res = await authedFetch("/api/dolly", {
@@ -411,7 +428,21 @@ export default function DollyTab() {
       });
 
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+        const errBody = await res.json().catch(() => ({ error: "" }));
+        // 402 and 429 are policy: the plan, the daily limit, the monthly AI
+        // ceiling. 503 is us being unreachable, which the server words
+        // honestly too. All three are answered in the server's own words, as
+        // a notice — not thrown, because a thrown rule becomes "Something
+        // went wrong" in Dolly's own voice.
+        if (res.status === 402 || res.status === 429 || res.status === 503) {
+          const text = typeof errBody.error === "string" && errBody.error.trim()
+            ? errBody.error
+            : "Dolly isn't available on your plan right now.";
+          setMessages(prev =>
+            prev.map(m => (m.id === assistantId ? { ...m, content: text, notice: true } : m)),
+          );
+          return;
+        }
         throw new Error(errBody.error || `API error: ${res.status}`);
       }
 
@@ -471,17 +502,29 @@ export default function DollyTab() {
         } catch { /* ignore */ }
       }
     } catch (err) {
-      if ((err as Error).name === "AbortError") return;
+      const aborted = (err as Error).name === "AbortError";
+      // A timeout is an abort too, and it used to return here silently —
+      // leaving an empty bubble on screen after ninety seconds of waiting.
+      // Only the user's own "new chat" abort should vanish without a word.
+      if (aborted && !timedOutRef.current) return;
+
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       console.error("Dolly stream error:", errMsg);
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: `Something went wrong: ${errMsg}` }
+            ? {
+                ...m,
+                // The exception text is our diagnostic, not the reader's.
+                content: aborted
+                  ? "That one took too long and I lost the thread. Ask me again?"
+                  : "Dolly couldn't finish that answer. Try asking again?",
+              }
             : m
         )
       );
     } finally {
+      timedOutRef.current = false;
       if (streamTimeout) clearTimeout(streamTimeout);
       setIsStreaming(false);
       abortRef.current = null;
@@ -1147,6 +1190,33 @@ export default function DollyTab() {
               return (
                 <div key={msg.id} className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: "var(--journal-on-accent, #161022)" }}>{msg.content}</p>
+                </div>
+              );
+            }
+
+            /**
+             * A rule, not a reply.
+             *
+             * Rendered as a plain centred line rather than a plum bubble with
+             * Dolly's avatar: a limit or a plan boundary is the product
+             * speaking, not the character. Putting it in her voice made a
+             * deliberate rule read as the app breaking.
+             */
+            if (msg.notice) {
+              return (
+                <div key={msg.id} className="self-center w-full" style={{ padding: "4px 8px" }}>
+                  <p
+                    role="status"
+                    className="text-center"
+                    style={{
+                      fontFamily: "var(--font-body)", fontSize: 12.5, lineHeight: 1.6,
+                      color: "var(--foreground-secondary)",
+                      background: "var(--lib-track)",
+                      borderRadius: 14, padding: "12px 16px",
+                    }}
+                  >
+                    {msg.content}
+                  </p>
                 </div>
               );
             }

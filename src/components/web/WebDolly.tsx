@@ -24,7 +24,14 @@ const SIGN_GLYPH: Record<string, string> = {
 };
 
 const AVATAR = "/images/crystal-ball.webp";
-type Msg = { from: "dolly" | "you"; text: string };
+/**
+ * `notice` marks a rule rather than a reply — see the non-OK branch in
+ * sendMsg. Desktop had no paid boundary at all: a free user's 402 was thrown
+ * away and replaced with "I couldn't reach my full reading just now", in
+ * Dolly's own first person, so they were told a permanent plan boundary was a
+ * temporary glitch and invited to keep trying something that would never work.
+ */
+type Msg = { from: "dolly" | "you"; text: string; notice?: boolean };
 const QA: { q: string; a: string }[] = [
   { q: "What does my Cancer sun mean?", a: "Your Cancer Sun is the tender, protective core of you — you lead with feeling and you look after people almost by instinct. It means home, memory, and belonging matter deeply. Your gift is emotional intelligence; your work is learning that softness is strength, not a leak." },
   { q: "What's my Saturn return about?", a: "Saturn returns to where it sat at your birth around age 29 — for you, in the 5th house. It’s a rite of passage: the universe asks which joys, creative risks, and self-expressions are truly yours to keep. It can feel heavy, but it’s building the adult foundation you’ll stand on for decades." },
@@ -176,7 +183,21 @@ export default function WebDolly() {
         body: JSON.stringify({ message: userText, history: history.slice(-20), chart, transits, connections: connectionsRef.current, userName: userNameRef.current, journalContext, tarotContext }),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        // Policy and outage come with words worth showing; anything else is
+        // ours to explain generically.
+        const body = await res.json().catch(() => ({ error: "" }));
+        if (res.status === 402 || res.status === 429 || res.status === 503) {
+          const text = typeof body.error === "string" && body.error.trim()
+            ? body.error
+            : "Dolly isn't available on your plan right now.";
+          setTyping(false);
+          setMessages((m) => [...m, { from: "dolly" as const, text, notice: true }]);
+          return;
+        }
+        throw new Error(`status ${res.status}`);
+      }
+      if (!res.body) throw new Error("no stream");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "", started = false;
@@ -197,9 +218,9 @@ export default function WebDolly() {
           } catch { /* skip malformed chunk */ }
         }
       }
-      if (!started) fail("I couldn’t reach my full reading just now — try again in a moment.");
+      if (!started) fail("I couldn’t finish that answer just now — try again in a moment.");
     } catch (err) {
-      if ((err as Error).name !== "AbortError") fail("I couldn’t reach my full reading just now — try again in a moment.");
+      if ((err as Error).name !== "AbortError") fail("I couldn’t finish that answer just now — try again in a moment.");
     } finally {
       setTyping(false);
     }
@@ -232,6 +253,33 @@ export default function WebDolly() {
 
           <div ref={scrollRef} style={{ padding: "26px 24px", display: "flex", flexDirection: "column", gap: 16, minHeight: 280, maxHeight: 460, overflowY: "auto" }}>
             {messages.map((m, i) => {
+              // A rule, not a reply: no avatar, no bubble, no first person —
+              // and a way to act on it when it is about the plan.
+              if (m.notice) {
+                return (
+                  <div key={i} style={{ alignSelf: "center", width: "100%" }}>
+                    <p
+                      role="status"
+                      style={{
+                        textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 13,
+                        lineHeight: 1.6, color: "var(--fg2)", background: "var(--card2)",
+                        border: "1px solid var(--hair)", borderRadius: 14, padding: "12px 16px", margin: 0,
+                      }}
+                    >
+                      {m.text}
+                      {/* The upsell needs somewhere to go. Desktop had no
+                          route to plans from this screen at all. */}
+                      {/Mapped\+|plan/i.test(m.text) && (
+                        <>
+                          {" "}
+                          <a href="/account" style={{ color: "var(--go)", textDecoration: "underline" }}>See plans</a>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                );
+              }
+
               const dolly = m.from === "dolly";
               return (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>

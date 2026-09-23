@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { PROMPT_LIMITS, clampText, boundHistory } from "@/lib/ai/promptLimits";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
 import { HOUSE_SYSTEM_LABELS } from "@/lib/astro/vedic/houses";
 
@@ -327,7 +328,9 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key not configured." }), {
+      // Not "API key not configured" — that is a deployment fact, and the
+      // person reading it cannot configure anything.
+      return new Response(JSON.stringify({ error: "Dolly is unavailable right now — this one is on us, not you." }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
@@ -353,7 +356,9 @@ export async function POST(request: NextRequest) {
       } catch { /* non-fatal */ }
     }
     if (transits) contextParts.push(buildTransitSummary(transits));
-    if (connections?.length) contextParts.push(buildConnectionsSummary(connections));
+    // Bounded: a chart per person is not small, and nothing stopped a client
+    // sending a hundred of them.
+    if (connections?.length) contextParts.push(buildConnectionsSummary(connections.slice(0, PROMPT_LIMITS.connections)));
 
     // Cross-session memory — what Dolly remembers about this person's life.
     try {
@@ -366,10 +371,10 @@ export async function POST(request: NextRequest) {
 
     // Cross-feature context from the rest of the app (sent by the client).
     if (journalContext?.trim()) {
-      contextParts.push(`\n## Their recent journaling\n${journalContext}\nYou may reference these moods/themes when relevant — naturally and kindly, never surveillance-like.`);
+      contextParts.push(`\n## Their recent journaling\n${clampText(journalContext, PROMPT_LIMITS.context)}\nYou may reference these moods/themes when relevant — naturally and kindly, never surveillance-like.`);
     }
     if (tarotContext?.trim()) {
-      contextParts.push(`\n## Their latest tarot/oracle pull\n${tarotContext}\nIf they bring up their reading, interpret it and tie it to their chart and life.`);
+      contextParts.push(`\n## Their latest tarot/oracle pull\n${clampText(tarotContext, PROMPT_LIMITS.context)}\nIf they bring up their reading, interpret it and tie it to their chart and life.`);
     }
 
     // Live sky: which planets are currently retrograde (computed from ephemeris).
@@ -406,14 +411,8 @@ export async function POST(request: NextRequest) {
     // Anthropic API requires alternating user/assistant roles, starting with user
     const messages: { role: "user" | "assistant"; content: string }[] = [];
 
-    if (history?.length) {
-      const recent = history.slice(-20);
-      for (const msg of recent) {
-        // Skip if same role as previous (defensive)
-        if (messages.length > 0 && messages[messages.length - 1].role === msg.role) continue;
-        messages.push({ role: msg.role, content: msg.content });
-      }
-    }
+    // Bounded, trimmed and role-alternating; see lib/ai/promptLimits.
+    messages.push(...boundHistory(history));
 
     // Ensure the last history message isn't a user message (since we're adding one)
     while (messages.length > 0 && messages[messages.length - 1].role === "user") {
@@ -421,7 +420,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add current message
-    messages.push({ role: "user", content: message });
+    messages.push({ role: "user", content: clampText(message, PROMPT_LIMITS.message) });
 
     const client = new Anthropic({ apiKey });
 
@@ -461,9 +460,11 @@ export async function POST(request: NextRequest) {
           // Bill what was generated before the stream broke — those tokens
           // were produced and charged to us whether or not they arrived.
           await recordAiUsage({ userId: uid, route: "dolly", model: CLAUDE_MODEL, usage: billing.usage });
+          // The raw exception used to go straight down the wire to the
+          // browser. It is our diagnostic, not the reader's.
           console.error("Stream iteration error:", err);
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ error: "Dolly lost her thread there. Ask again?" })}\n\n`)
           );
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
@@ -483,14 +484,24 @@ export async function POST(request: NextRequest) {
     const errName = error instanceof Error ? error.constructor.name : "Unknown";
     console.error("Dolly error:", errName, errMsg, error);
 
-    // Friendly error messages
+    /**
+     * What the reader is told.
+     *
+     * Two of these used to be operator notes shown to customers: one asked
+     * them to "Add credits at console.anthropic.com", which is our billing
+     * account, not theirs, and the other told them to "Check your
+     * ANTHROPIC_API_KEY in .env.local" — a file on a server they will never
+     * see. Both name our vendor and our stack, neither is actionable by the
+     * person reading it, and both read as an app that is broken and knows it.
+     *
+     * Our problems are ours: the reader gets one honest line saying it is us,
+     * not them, and the detail goes to the log where someone can act on it.
+     */
     let friendly = "Dolly is having a moment. Try again in a sec.";
-    if (errMsg.includes("credit balance is too low")) {
-      friendly = "Dolly's API credits have run out. Add credits at console.anthropic.com to keep chatting.";
-    } else if (errMsg.includes("authentication") || errMsg.includes("api_key")) {
-      friendly = "Dolly's API key isn't working. Check your ANTHROPIC_API_KEY in .env.local.";
+    if (errMsg.includes("credit balance is too low") || errMsg.includes("authentication") || errMsg.includes("api_key")) {
+      friendly = "Dolly is unavailable right now — this one is on us, not you. Please try again shortly.";
     } else if (errMsg.includes("rate_limit")) {
-      friendly = "Dolly is getting too many requests. Wait a moment and try again.";
+      friendly = "Dolly is getting a lot of questions at once. Wait a moment and try again.";
     }
 
     return new Response(

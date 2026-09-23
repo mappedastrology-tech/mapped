@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key not configured." }), {
+      return new Response(JSON.stringify({ error: "This is unavailable right now — this one is on us, not you. Please try again shortly." }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
