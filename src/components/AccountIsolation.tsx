@@ -33,7 +33,7 @@ import {
   storedUserId,
   lastUserId,
 } from "@/lib/accountIsolation";
-import { installScopedStorage, migrateLegacyKeys } from "@/lib/scopedStorage";
+import { installScopedStorage, migrateLegacyKeys, refreshScopedUser } from "@/lib/scopedStorage";
 import { invalidateProfile } from "@/lib/profileCache";
 
 /**
@@ -67,6 +67,7 @@ if (typeof window !== "undefined") {
 
     const uid = storedUserId();
     if (uid) migrateLegacyKeys(uid, previous);
+    refreshScopedUser();
 
     if (isolateFromStoredSession()) void revokeDevicePush();
   } catch {
@@ -84,6 +85,9 @@ export default function AccountIsolation() {
       // profile row is the one that matters — entitlements resolve through it.
       // Dropped on every auth event, including signing out.
       invalidateProfile();
+      // The storage view memoises who is signed in. Drop that immediately, or
+      // the first writes of the new session land in the old one's namespace.
+      refreshScopedUser();
 
       const id = session?.user?.id;
       if (!id) return;

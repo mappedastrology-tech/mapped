@@ -19,7 +19,7 @@
  * before the new session renders anything.
  */
 
-import { rawStorage } from "./scopedStorage";
+import { rawStorage, rawSessionStorage } from "./scopedStorage";
 
 /**
  * Keys that describe the DEVICE rather than the person, and survive a switch.
@@ -73,8 +73,9 @@ export function clearPersonalData(): void {
   }
   try {
     // sessionStorage holds the working chart and other in-flight state, none of
-    // which should outlive the account it belongs to.
-    window.sessionStorage.clear();
+    // which should outlive the account it belongs to. The raw store again, so
+    // this reaches every namespace rather than only the current account's.
+    (rawSessionStorage() ?? window.sessionStorage).clear();
   } catch {
     // ignore
   }
