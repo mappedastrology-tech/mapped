@@ -357,6 +357,14 @@
      change between themes. */
   --lib-gold-cta: #c9a961;
 
+  /* Error text.
+     There is no single red that works on both canvases: Tailwind's red-400
+     measures 5.94:1 on the dark card but 2.43:1 on the cream one, and the
+     brand's --oxblood-light is the exact mirror (7.74:1 light, 1.86:1 dark).
+     So this is defined per theme. Measured on the card surface: 6.05:1 here,
+     7.74:1 in light. Matches the "not quite" feedback colour in Learn. */
+  --danger-text: #c98a7a;
+
   /* The bright green a correct answer uses. --sage-light (#6a8a4a) is too
      muted against dark plum to read as success, so this sits beside it. */
   --sage-bright: #9cc46a;
@@ -501,6 +509,7 @@
   --lib-wordmark-rule: rgba(168, 132, 44, 0.5);
   /* Pinned: the gold CTA does not change between themes. */
   --lib-gold-cta: #c9a961;
+  --danger-text: #7a3028;
 
   /* Chart Insights cards (light accent-card format) */
   --insight-card: #fbf7ec;

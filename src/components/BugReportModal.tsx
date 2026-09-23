@@ -13,7 +13,7 @@
  * so the experience is identical everywhere.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -37,6 +37,7 @@ export default function BugReportModal({
   onClose: () => void;
   defaultCategory?: Category;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("capturing");
   const [category, setCategory] = useState<Category>(defaultCategory);
@@ -134,7 +135,67 @@ export default function BugReportModal({
     }
   }, [description, category, includeShot, screenshot, pathname, onClose]);
 
+  /**
+   * Make this an actual dialog.
+   *
+   * It wasn't one. There was no role, no aria-modal, Escape did nothing, and
+   * Tab walked straight out of the panel into the page underneath — which on
+   * the Account screen meant the next stops after "Cancel" were "Sign out" and
+   * then "Delete account", both sitting behind the overlay where you could not
+   * see what you were about to press. A keyboard user could delete their
+   * account from inside a bug report.
+   *
+   * Focus is also returned to whatever opened this, so closing the sheet does
+   * not dump you back at the top of a very long settings page.
+   */
+  useEffect(() => {
+    // Above the early return below: a hook that only runs when the sheet is
+    // open changes the hook count between renders, which is what React means
+    // by "rendered more hooks than during the previous render".
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const opener = document.activeElement as HTMLElement | null;
+    const selector =
+      'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+    // Queried per keystroke, not once: this sheet swaps its whole contents
+    // between the form, the submitting state and the thank-you, so a list
+    // captured at mount would point at buttons that no longer exist.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (phase !== "submitting") onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Built by hand rather than Array.from(...).filter(...): the NodeList
+      // generic doesn't survive that chain here and everything lands as
+      // unknown.
+      const items: HTMLElement[] = [];
+      dialog.querySelectorAll(selector).forEach((node: Element) => {
+        const el = node as HTMLElement;
+        // offsetParent is null for anything hidden, which the sheet's three
+        // phases rely on.
+        if (el.offsetParent !== null) items.push(el);
+      });
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!dialog.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+  }, [open, onClose, phase]);
+
   if (!open) return null;
+
 
   return (
     <div
@@ -143,6 +204,10 @@ export default function BugReportModal({
       onClick={phase === "submitting" ? undefined : onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Report a bug"
         className="w-full sm:max-w-md bg-background rounded-t-2xl sm:rounded-2xl border border-foreground/15 shadow-xl p-5 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >

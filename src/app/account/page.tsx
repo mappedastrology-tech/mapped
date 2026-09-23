@@ -233,7 +233,7 @@ function EditableField({
                        focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
             onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") { setEditing(false); setDraft(value); } }}
           />
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{error}</p>}
           {helpText && <p className="text-muted text-[10px]">{helpText}</p>}
           <div className="flex gap-2">
             <button
@@ -512,7 +512,7 @@ function BirthTimeSettingsSection() {
             style={{ minHeight: 44 }}
             disabled={saving}
           />
-          {saveError && <p className="text-[11px] text-red-400">{saveError}</p>}
+          {saveError && <p className="text-[11px]" style={{ color: "var(--danger-text)" }}>{saveError}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleSave}
@@ -625,7 +625,7 @@ function LocationSection({ userId }: { userId: string }) {
         <div className="flex flex-col gap-2 mt-2">
           <CitySearch value={search} onChange={setSearch} onSelect={handleSelect} />
           {saving && <p className="text-muted text-xs">Saving...</p>}
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{error}</p>}
           <button
             onClick={() => { setEditing(false); setSearch(""); setError(null); }}
             disabled={saving}
@@ -717,12 +717,26 @@ function AlmanacPrefsSection() {
 
 /* ─── Toggle Switch component ─── */
 
-function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+function ToggleSwitch({ checked, onChange, disabled, label }: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+  /**
+   * What this switch controls, for screen readers.
+   *
+   * The visible text sits in a sibling element with no association, so without
+   * this the twenty switches in this section all announced as an unnamed
+   * "switch, on" — you could hear the state of every alert and never which
+   * alert it was.
+   */
+  label: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={onChange}
       className={`relative inline-flex h-[26px] w-[46px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50 disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -960,6 +974,7 @@ function NotificationSettingsSection() {
         </div>
         {blocker !== "unsupported" && blocker !== "ios-needs-install" && (
           <ToggleSwitch
+            label="Notifications"
             checked={isEnabled}
             onChange={handleToggleNotifications}
             disabled={requesting || permissionState === "denied"}
@@ -975,7 +990,7 @@ function NotificationSettingsSection() {
           arrived. The admin-only detail (body.fix, the test sender) stays
           where it is. */}
       {(saveError || testState.kind === "error") && (
-        <p role="alert" className="px-5 pb-3 text-[12px]" style={{ color: "var(--oxblood-light)" }}>
+        <p role="alert" className="px-5 pb-3 text-[12px]" style={{ color: "var(--danger-text)" }}>
           {saveError ?? testState.msg}
         </p>
       )}
@@ -1025,6 +1040,7 @@ function NotificationSettingsSection() {
                 <p className="text-muted text-[12px] mt-0.5">{g.desc}</p>
               </div>
               <ToggleSwitch
+                label={g.label}
                 checked={groupEnabled(typed, g.key)}
                 onChange={() => applyGroup(g.key, !groupEnabled(typed, g.key))}
               />
@@ -1037,6 +1053,7 @@ function NotificationSettingsSection() {
               <p className="text-muted text-[12px] mt-0.5">One short reading from your own chart each day, so you have a reason to check in without having to remember.</p>
             </div>
             <ToggleSwitch
+              label="A reading every day"
               checked={!!prefs.daily_content}
               onChange={() => setValue("daily_content", !prefs.daily_content)}
             />
@@ -1067,6 +1084,7 @@ function NotificationSettingsSection() {
               <p className="text-muted text-[12px] mt-0.5">Nothing between 10 PM and 7 AM</p>
             </div>
             <ToggleSwitch
+              label="Quiet hours"
               checked={prefs.quiet_hours !== false}
               onChange={() => setValue("quiet_hours", prefs.quiet_hours === false)}
             />
@@ -1127,6 +1145,7 @@ function NotificationSettingsSection() {
                     <p className="text-muted text-[11px] mt-0.5">{cat.desc}</p>
                   </div>
                   <ToggleSwitch
+                    label={cat.label}
                     checked={prefs[cat.key] === true}
                     onChange={() => setValue(cat.key, prefs[cat.key] !== true)}
                   />
@@ -1325,7 +1344,7 @@ function SubscriptionSection() {
         )}
 
         {billingError && (
-          <p role="alert" className="text-center text-[11px] mt-2" style={{ color: "var(--oxblood-light)" }}>
+          <p role="alert" className="text-center text-[11px] mt-2" style={{ color: "var(--danger-text)" }}>
             {billingError}
           </p>
         )}
@@ -1453,7 +1472,11 @@ function PromoCodeSection() {
         </button>
       </div>
       {message && (
-        <p className={`text-xs mt-2 ${status === "success" ? "text-sage" : "text-red-400"}`}>
+        <p
+          role={status === "success" ? "status" : "alert"}
+          className="text-xs mt-2"
+          style={{ color: status === "success" ? "var(--sage-bright)" : "var(--danger-text)" }}
+        >
           {message}
         </p>
       )}
@@ -2210,7 +2233,7 @@ function AccountPage() {
                              focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
                   onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
                 />
-                {passwordError && <p className="text-red-400 text-xs">{passwordError}</p>}
+                {passwordError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{passwordError}</p>}
                 {passwordSuccess && (
                   <p className="text-sage text-xs animate-in fade-in duration-200">
                     Password updated!
@@ -2347,8 +2370,16 @@ function AccountPage() {
           {/* ─── Delete account ─── */}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="py-3 rounded-full text-red-400/60 text-sm
-                       hover:text-red-400 transition-all"
+            className="py-3 rounded-full text-sm font-semibold transition-all"
+            style={{
+              color: "var(--danger-text)",
+              // A real border, so the most consequential control on the screen
+              // is not the faintest thing on it. It measured 1.79:1 as a 60%
+              // tinted label — unreadable in daylight, and indistinguishable
+              // from the routine "Sign out" row sitting 8px above it.
+              border: "1px solid color-mix(in srgb, var(--danger-text) 45%, transparent)",
+              minHeight: 44,
+            }}
           >
             Delete account
           </button>
@@ -2367,7 +2398,7 @@ function AccountPage() {
 
           {/* Error display */}
           {error && (
-            <p className="text-red-400 text-xs text-center">{error}</p>
+            <p className="text-xs text-center" style={{ color: "var(--danger-text)" }}>{error}</p>
           )}
 
           {/* Delete confirmation modal */}
@@ -2434,7 +2465,7 @@ function AccountPage() {
                     autoFocus
                     className={inputClass}
                   />
-                  {resetError && <p className="text-red-400 text-xs">{resetError}</p>}
+                  {resetError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{resetError}</p>}
                   <button
                     type="submit"
                     disabled={resetSending}
@@ -2478,11 +2509,13 @@ function AccountPage() {
               </p>
 
               {successMessage && (
-                <p className={`text-sm mb-4 p-3 rounded-xl border ${
-                  authError
-                    ? "text-red-400 bg-red-400/10 border-red-400/20"
-                    : "text-sage bg-sage/10 border-sage/20"
-                }`}>
+                <p
+                  role={authError ? "alert" : "status"}
+                  className="text-sm mb-4 p-3 rounded-xl border"
+                  style={authError
+                    ? { color: "var(--danger-text)", background: "color-mix(in srgb, var(--danger-text) 10%, transparent)", borderColor: "color-mix(in srgb, var(--danger-text) 20%, transparent)" }
+                    : { color: "var(--sage-bright)", background: "color-mix(in srgb, var(--sage-bright) 10%, transparent)", borderColor: "color-mix(in srgb, var(--sage-bright) 20%, transparent)" }}
+                >
                   {successMessage}
                 </p>
               )}
