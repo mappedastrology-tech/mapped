@@ -103,6 +103,9 @@ function ConfirmDialog({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    // Remembered so closing returns you where you were, rather than dumping
+    // you at the top of a very long settings page.
+    const opener = document.activeElement as HTMLElement | null;
     const focusable = dialog.querySelectorAll<HTMLElement>("button:not([disabled])");
     (focusable[0] ?? dialog).focus();
     const onKey = (e: KeyboardEvent) => {
@@ -114,7 +117,10 @@ function ConfirmDialog({
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
   }, [onCancel]);
 
   return (
@@ -172,6 +178,7 @@ function EditableField({
   value,
   onSave,
   type = "text",
+  autoComplete,
   placeholder,
   helpText,
 }: {
@@ -179,6 +186,8 @@ function EditableField({
   value: string;
   onSave: (newValue: string) => Promise<string | null>; // returns error or null
   type?: string;
+  /** Passed to the input so platform autofill works — see the call sites. */
+  autoComplete?: string;
   placeholder?: string;
   helpText?: string;
 }) {
@@ -208,7 +217,7 @@ function EditableField({
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs uppercase tracking-widest text-muted">{label}</p>
+        <h2 className="text-xs uppercase tracking-widest text-muted">{label}</h2>
         {!editing && (
           <button
             onClick={() => { setEditing(true); setError(null); setSuccess(false); }}
@@ -223,6 +232,7 @@ function EditableField({
         <div className="flex flex-col gap-2 mt-2">
           <input
             type={type}
+            autoComplete={autoComplete}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={placeholder}
@@ -239,6 +249,7 @@ function EditableField({
             <button
               onClick={() => { setEditing(false); setDraft(value); setError(null); }}
               disabled={saving}
+              style={{ minHeight: 44 }}
               className="flex-1 py-2 rounded-xl border border-foreground/15 text-muted text-xs
                          hover:border-foreground/20 transition-all disabled:opacity-50"
             >
@@ -247,6 +258,7 @@ function EditableField({
             <button
               onClick={handleSave}
               disabled={saving || !draft.trim()}
+              style={{ minHeight: 44 }}
               className="flex-1 py-2 rounded-xl bg-terracotta text-cream text-xs font-medium
                          hover:bg-terracotta-light transition-all disabled:opacity-50"
             >
@@ -258,7 +270,7 @@ function EditableField({
         <div className="flex items-center gap-2">
           <p className="text-foreground text-sm">{value || "—"}</p>
           {success && (
-            <span className="text-sage text-xs animate-in fade-in duration-200">Saved</span>
+            <span className="text-xs animate-in fade-in duration-200" style={{ color: "var(--sage-bright)" }}>Saved</span>
           )}
         </div>
       )}
@@ -285,6 +297,7 @@ const TOOL_OPTIONS = [
 
 function RitualToolsSection() {
   const [myTools, setMyTools] = useState<Record<string, boolean>>({});
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
 
   useEffect(() => {
     try {
@@ -293,10 +306,24 @@ function RitualToolsSection() {
     } catch {}
   }, []);
 
+  /**
+   * Saved, and said so.
+   *
+   * This wrote to localStorage and gave no signal at all, which left two
+   * questions unanswered: whether the tap registered, and — because the write
+   * can throw on a full or locked store — whether it was kept. The failure
+   * path was an empty catch.
+   */
   const toggleTool = (id: string) => {
     setMyTools((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      try { localStorage.setItem("mapped:my-tools", JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem("mapped:my-tools", JSON.stringify(next));
+        setSaveState("saved");
+        window.setTimeout(() => setSaveState("idle"), 1800);
+      } catch {
+        setSaveState("failed");
+      }
       return next;
     });
   };
@@ -305,38 +332,71 @@ function RitualToolsSection() {
 
   return (
     <div id="ritual-tools" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-1">Ritual Tools</p>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-xs uppercase tracking-widest text-muted">Ritual Tools</h2>
+        {saveState !== "idle" && (
+          <span
+            role="status"
+            className="text-xs"
+            style={{ color: saveState === "saved" ? "var(--sage-bright)" : "var(--danger-text)" }}
+          >
+            {saveState === "saved" ? "Saved" : "Couldn't save"}
+          </span>
+        )}
+      </div>
       <p className="text-[11px] text-muted mb-4">
         {enabledCount > 0
           ? `${enabledCount} selected — rituals are filtered to match`
           : "Tell us what you have at home so we can suggest rituals that work for you"}
+        {" "}
+        {/* Every neighbouring card syncs to the account. These two do not, and
+            nothing on screen said so — you would find out after reinstalling. */}
+        <span className="opacity-80">Kept on this device.</span>
       </p>
       <div className="grid grid-cols-2 gap-2">
         {TOOL_OPTIONS.map((tool) => (
+          /* aria-pressed, and a state you can actually see.
+             These were plain buttons whose only "on" cue was a 28x16 pill
+             that measured 1.02:1 selected vs unselected in light mode and
+             1.35:1 for the track itself — so in daylight the twelve tiles
+             looked identical whatever you had chosen, and a screen reader
+             announced nothing at all. The pill keeps its shape but the tile
+             now carries a real border and a check. */
           <button
             key={tool.id}
             onClick={() => toggleTool(tool.id)}
+            aria-pressed={!!myTools[tool.id]}
             className="flex items-center gap-2.5 p-3 rounded-xl text-left transition-all"
             style={{
+              minHeight: 44,
               backgroundColor: myTools[tool.id] ? "var(--tag-green-bg, rgba(74,124,89,0.12))" : "var(--background, #faf5ef)",
-              border: myTools[tool.id] ? "1px solid var(--sage, #4a7c59)" : "1px solid var(--border, rgba(0,0,0,0.08))",
+              border: myTools[tool.id]
+                ? "1.5px solid var(--sage-strong, #4a7c59)"
+                : "1px solid var(--border, rgba(0,0,0,0.08))",
             }}
           >
-            <span className="text-[16px] shrink-0">{tool.icon}</span>
+            <span className="text-[16px] shrink-0" aria-hidden="true">{tool.icon}</span>
             <div className="min-w-0">
               <p className={`text-[12px] font-medium ${myTools[tool.id] ? "text-foreground" : "text-muted"}`}>
                 {tool.label}
               </p>
             </div>
-            <div
+            <span
+              aria-hidden="true"
               className="ml-auto w-7 h-4 rounded-full flex items-center px-0.5 shrink-0 transition-all"
               style={{
-                backgroundColor: myTools[tool.id] ? "var(--sage, #4a7c59)" : "var(--border, rgba(0,0,0,0.15))",
+                backgroundColor: myTools[tool.id] ? "var(--sage-strong, #4a7c59)" : "transparent",
+                // An outline on the off state, so the track is visible at all
+                // on the cream canvas rather than being a blank rectangle.
+                border: myTools[tool.id] ? "1px solid transparent" : "1px solid var(--foreground-muted)",
                 justifyContent: myTools[tool.id] ? "flex-end" : "flex-start",
               }}
             >
-              <div className="w-3 h-3 rounded-full bg-white" />
-            </div>
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{ background: myTools[tool.id] ? "#fff" : "var(--foreground-muted)" }}
+              />
+            </span>
           </button>
         ))}
       </div>
@@ -470,7 +530,8 @@ function BirthTimeSettingsSection() {
     setSaving(false);
   }
 
-  if (loading) return null;
+  // A skeleton rather than nothing: see CardPlaceholder.
+  if (loading) return <CardPlaceholder title="Birth Time" />;
 
   const precisionLabels: Record<string, string> = {
     exact: "Exact time recorded",
@@ -479,18 +540,19 @@ function BirthTimeSettingsSection() {
     unknown: "No birth time entered",
   };
 
+  // Token, not a class: --sage as text measured 3.50:1 on the dark card.
   const badgeColors: Record<string, string> = {
-    exact: "text-sage",
-    approximate: "text-amber",
-    rectified: "text-amber",
-    unknown: "text-muted",
+    exact: "var(--sage-bright)",
+    approximate: "var(--amber, #c9881f)",
+    rectified: "var(--amber, #c9881f)",
+    unknown: "var(--foreground-muted)",
   };
 
   return (
     <div id="birth-time" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-3">Birth Time</p>
+      <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Birth Time</h2>
       <div className="flex items-center justify-between mb-3">
-        <span className={`text-sm font-medium ${badgeColors[precision]}`}>
+        <span className="text-sm font-medium" style={{ color: badgeColors[precision] ?? "var(--foreground-muted)" }}>
           {precisionLabels[precision] || "Unknown"}
         </span>
         {precision === "rectified" && (
@@ -610,7 +672,7 @@ function LocationSection({ userId }: { userId: string }) {
   return (
     <div id="location" className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs uppercase tracking-widest text-muted">Location</p>
+        <h2 className="text-xs uppercase tracking-widest text-muted">Location</h2>
         {!editing && (
           <button
             onClick={() => { setEditing(true); setError(null); setSuccess(false); setSearch(""); }}
@@ -642,7 +704,7 @@ function LocationSection({ userId }: { userId: string }) {
             <span className="text-muted text-xs italic">(from your birth chart — tap Edit to change)</span>
           )}
           {success && (
-            <span className="text-sage text-xs animate-in fade-in duration-200">Saved</span>
+            <span className="text-xs animate-in fade-in duration-200" style={{ color: "var(--sage-bright)" }}>Saved</span>
           )}
         </div>
       )}
@@ -654,6 +716,7 @@ function LocationSection({ userId }: { userId: string }) {
 
 function AlmanacPrefsSection() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({});
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
 
   useEffect(() => {
     try {
@@ -668,7 +731,14 @@ function AlmanacPrefsSection() {
   const toggle = (id: string) => {
     setPrefs((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      try { localStorage.setItem(ALMANAC_PREF_KEY, JSON.stringify(next)); } catch {}
+      // Confirmed, and the failure is not swallowed — see RitualToolsSection.
+      try {
+        localStorage.setItem(ALMANAC_PREF_KEY, JSON.stringify(next));
+        setSaveState("saved");
+        window.setTimeout(() => setSaveState("idle"), 1800);
+      } catch {
+        setSaveState("failed");
+      }
       return next;
     });
   };
@@ -677,40 +747,99 @@ function AlmanacPrefsSection() {
 
   return (
     <div id="almanac-prefs" className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-1">Almanac</p>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-xs uppercase tracking-widest text-muted">Almanac</h2>
+        {saveState !== "idle" && (
+          <span
+            role="status"
+            className="text-xs"
+            style={{ color: saveState === "saved" ? "var(--sage-bright)" : "var(--danger-text)" }}
+          >
+            {saveState === "saved" ? "Saved" : "Couldn't save"}
+          </span>
+        )}
+      </div>
       <p className="text-[11px] text-muted mb-4">
-        Choose what extra sections appear in your daily almanac
+        Choose what extra sections appear in your daily almanac.{" "}
+        <span className="opacity-80">Kept on this device.</span>
       </p>
       <div className="flex flex-col gap-2">
         {ALMANAC_CONTENT_OPTIONS.map((opt) => (
+          /* Same treatment as the ritual tiles above — see the note there. */
           <button
             key={opt.id}
             onClick={() => toggle(opt.id)}
+            aria-pressed={!!prefs[opt.id]}
             className="flex items-center gap-3 p-3.5 rounded-xl text-left transition-all"
             style={{
+              minHeight: 44,
               backgroundColor: prefs[opt.id] ? "var(--tag-green-bg, rgba(74,124,89,0.12))" : "var(--background, #faf5ef)",
-              border: prefs[opt.id] ? "1px solid var(--sage, #4a7c59)" : "1px solid var(--border, rgba(0,0,0,0.08))",
+              border: prefs[opt.id]
+                ? "1.5px solid var(--sage-strong, #4a7c59)"
+                : "1px solid var(--border, rgba(0,0,0,0.08))",
             }}
           >
-            <span className="text-[18px] shrink-0">{opt.icon}</span>
+            <span className="text-[18px] shrink-0" aria-hidden="true">{opt.icon}</span>
             <div className="flex-1 min-w-0">
               <p className={`text-[13px] font-medium ${prefs[opt.id] ? "text-foreground" : "text-muted"}`}>
                 {opt.label}
               </p>
               <p className="text-[10px] text-muted">{opt.desc}</p>
             </div>
-            <div
+            <span
+              aria-hidden="true"
               className="w-7 h-4 rounded-full flex items-center px-0.5 shrink-0 transition-all"
               style={{
-                backgroundColor: prefs[opt.id] ? "var(--sage, #4a7c59)" : "var(--border, rgba(0,0,0,0.15))",
+                backgroundColor: prefs[opt.id] ? "var(--sage-strong, #4a7c59)" : "transparent",
+                border: prefs[opt.id] ? "1px solid transparent" : "1px solid var(--foreground-muted)",
                 justifyContent: prefs[opt.id] ? "flex-end" : "flex-start",
               }}
             >
-              <div className="w-3 h-3 rounded-full bg-white" />
-            </div>
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{ background: prefs[opt.id] ? "#fff" : "var(--foreground-muted)" }}
+              />
+            </span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A settings card that is still loading, or couldn't load.
+ *
+ * Both of the sections below used to `return null` in these states, so on a
+ * flaky connection the entire Notifications or Birth Time card simply was not
+ * there — no skeleton, no error, just a shorter page and no reason to suspect
+ * anything was missing. The app is a static bundle talking to a remote API
+ * over HTTPS, which makes an unreachable server the ordinary case rather than
+ * the edge case.
+ */
+function CardPlaceholder({ title, failed, onRetry }: { title: string; failed?: boolean; onRetry?: () => void }) {
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <h2 className="text-xs uppercase tracking-widest text-muted mb-3">{title}</h2>
+      {failed ? (
+        <div role="status">
+          <p className="text-[13px] text-secondary">Couldn&rsquo;t load this. Check your connection.</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="mt-3 px-4 rounded-full border border-foreground/18 text-secondary text-xs font-semibold"
+              style={{ minHeight: 44 }}
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2" aria-hidden="true">
+          <div className="h-4 rounded" style={{ background: "var(--lib-track)", width: "60%" }} />
+          <div className="h-4 rounded" style={{ background: "var(--lib-track)", width: "85%" }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -760,6 +889,9 @@ function NotificationSettingsSection() {
   const [saving, setSaving] = useState(false);
   /** Shown when a preference write fails — see save() below. */
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** The profile read failed, as opposed to still being in flight. */
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [permissionState, setPermissionState] = useState<string>("default");
   const [requesting, setRequesting] = useState(false);
   // Why push can't be switched on, if it can't — iOS in a Safari tab is the
@@ -780,8 +912,11 @@ function NotificationSettingsSection() {
     import("@/lib/notifications").then(({ pushBlocker }) => setBlocker(pushBlocker()));
 
     async function load() {
-      const profile = await getProfile();
-      if (!profile) return;
+      // A failed read has to be distinguishable from a slow one, or the card
+      // sits on a skeleton for ever and the user has nothing to act on.
+      const profile = await getProfile().catch(() => null);
+      if (!profile) { setLoadFailed(true); return; }
+      setLoadFailed(false);
       setAdminUser(isAdmin(profile.id));
       // Merged over the defaults so a preference added since this profile was
       // last saved arrives with its intended default rather than undefined.
@@ -803,7 +938,7 @@ function NotificationSettingsSection() {
         }
       });
     }
-  }, []);
+  }, [reloadKey]);
 
   async function handleToggleNotifications() {
     if (permissionState === "granted") {
@@ -909,7 +1044,15 @@ function NotificationSettingsSection() {
     save(updated);
   }
 
-  if (!loaded) return null;
+  if (!loaded) {
+    return (
+      <CardPlaceholder
+        title="Notifications"
+        failed={loadFailed}
+        onRetry={() => { setLoadFailed(false); invalidateProfile(); setReloadKey((k) => k + 1); }}
+      />
+    );
+  }
 
   const isEnabled = permissionState === "granted";
 
@@ -1169,12 +1312,38 @@ function SubscriptionSection() {
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
 
+  /**
+   * Whether this person is actually subscribed, as opposed to merely having
+   * the access a subscription would give them.
+   *
+   * These came apart badly. `isPaid` is tier !== "free", and both the 5-day
+   * trial and a promo grant raise the tier — so someone who had never entered
+   * a card was shown "Mapped+ · $11.11/mo", a "Manage Subscription" button
+   * and a note about cancelling. Tapping it hit the portal, which 400s with
+   * "No subscription found" because there is no Stripe customer, and said
+   * nothing. A bill and a cancel route, neither of them real.
+   */
+  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getProfile()
+      .then((p) => { if (alive) setHasSubscription(!!p?.stripe_subscription_id); })
+      .catch(() => { if (alive) setHasSubscription(false); });
+    return () => { alive = false; };
+  }, [tier]);
+
   // Any paid tier, not just Mapped+. Testing for "mid" alone showed a Mapped
   // Complete subscriber the Free card and an upgrade button.
   const isPaid = tier !== "free";
   const onTrial = trialDaysLeft > 0 && tier === "mid";
   const planName = TIERS[tier].name;
-  const planPrice = tier === "free" ? "Free" : `$${TIERS[tier].price.toFixed(2)}/mo`;
+  // Only bill someone who is being billed. Access without a subscription says
+  // how it was granted instead of quoting a price nobody is paying.
+  const planPrice =
+    tier === "free" ? "Free"
+    : hasSubscription ? `$${TIERS[tier].price.toFixed(2)}/month`
+    : onTrial ? "Free trial"
+    : "Included — no charge";
 
   // What this plan actually includes now. The old free list promised a daily
   // horoscope and five Dolly messages, neither of which free has any more.
@@ -1263,7 +1432,7 @@ function SubscriptionSection() {
   return (
     <>
       <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-        <p className="text-xs uppercase tracking-widest text-muted mb-3">Your Plan</p>
+        <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Your plan</h2>
 
         {/* Current tier badge */}
         <div className="flex items-center justify-between mb-3">
@@ -1296,14 +1465,15 @@ function SubscriptionSection() {
         <div className="space-y-1.5 mb-4">
           {highlights[tier].map((h, i) => (
             <div key={i} className="flex items-center gap-2 text-secondary text-xs">
-              <span className="text-sage">&#10003;</span>
+              <span className="" style={{ color: "var(--sage-bright)" }}>&#10003;</span>
               <span>{h}</span>
             </div>
           ))}
         </div>
 
-        {/* Upgrade or Manage */}
-        {isPaid ? (
+        {/* Upgrade, Manage, or — for access that was granted rather than
+            bought — neither. */}
+        {isPaid && hasSubscription ? (
           <button
             onClick={handleManageSubscription}
             disabled={loadingPortal}
@@ -1349,10 +1519,17 @@ function SubscriptionSection() {
           </p>
         )}
 
-        {/* Manage billing note */}
-        {isPaid && (
+        {/* Manage billing note — only where there is billing to manage. */}
+        {isPaid && hasSubscription && (
           <p className="text-center text-muted text-[10px] mt-2">
-            Cancel or change plan anytime through the billing portal.
+            Cancel or change your plan any time through the billing portal.
+          </p>
+        )}
+        {isPaid && hasSubscription === false && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            {onTrial
+              ? `No card, no charge. Your trial has ${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} left — subscribe any time to keep Dolly after it ends.`
+              : "This access was added to your account, so there's nothing to pay and nothing to cancel."}
           </p>
         )}
 
@@ -1451,10 +1628,11 @@ function PromoCodeSection() {
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-3">Promo Code</p>
+      <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Promo Code</h2>
       <div className="flex gap-2">
         <input
           type="text"
+          autoComplete="off"
           value={code}
           onChange={(e) => { setCode(e.target.value.toUpperCase()); setStatus("idle"); setMessage(""); }}
           placeholder="Enter code"
@@ -1505,7 +1683,7 @@ function ThemeSection() {
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-3">Appearance</p>
+      <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Appearance</h2>
       <div className="flex gap-2">
         {([
           { value: "light" as const, label: "Day", desc: "Cream canvas", icon: "☀️" },
@@ -1564,7 +1742,7 @@ function OracleDeckSection() {
 
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-      <p className="text-xs uppercase tracking-widest text-muted mb-1">Oracle Deck</p>
+      <h2 className="text-xs uppercase tracking-widest text-muted mb-1">Oracle Deck</h2>
       <p className="text-muted text-[11px] mb-3">
         The oracle deck used for your daily pull on the home screen.
       </p>
@@ -1657,13 +1835,16 @@ function SourcesSection() {
   return (
     <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
       <button
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between"
+        style={{ minHeight: 44 }}
       >
-        <p className="text-xs uppercase tracking-widest text-muted">About Our Sources</p>
+        <h2 className="text-xs uppercase tracking-widest text-muted">About Our Sources</h2>
         <svg
           width="14" height="14" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          aria-hidden="true"
           className={`text-muted transition-transform ${expanded ? "rotate-180" : ""}`}
         >
           <polyline points="6 9 12 15 18 9" />
@@ -1730,6 +1911,7 @@ function SystemChoice<T extends string>({ label, value, options, onPick, disable
               aria-checked={active}
               disabled={disabled}
               onClick={() => { if (!active) onPick(opt.value); }}
+              style={{ minHeight: 44 }}
               className={`flex-1 ${small ? "py-2 rounded-lg text-xs" : "py-2.5 rounded-xl text-sm"} font-medium transition-all border disabled:opacity-60
                 ${active
                   ? "bg-terracotta/15 border-terracotta/40 text-terracotta"
@@ -2138,8 +2320,9 @@ function AccountPage() {
       <button
         onClick={() => goBack("/home", (href) => router.push(href))}
         className="text-muted text-sm mb-8 self-start hover:text-foreground transition-colors"
+        style={{ minHeight: 44, display: "inline-flex", alignItems: "center" }}
       >
-        &larr; back
+        &larr; Back
       </button>
 
       <h1
@@ -2174,9 +2357,6 @@ function AccountPage() {
           {/* ─── Subscription Plan ─── */}
           <SubscriptionSection />
 
-          {/* ─── Promo Code ─── */}
-          <PromoCodeSection />
-
           {/* ─── Editable name ─── */}
           <EditableField
             label="Name"
@@ -2191,6 +2371,7 @@ function AccountPage() {
             value={email}
             onSave={handleUpdateEmail}
             type="email"
+            autoComplete="email"
             placeholder="your@email.com"
             helpText="We'll send a confirmation link to your new email address."
           />
@@ -2198,7 +2379,7 @@ function AccountPage() {
           {/* ─── Change password ─── */}
           <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs uppercase tracking-widest text-muted">Password</p>
+              <h2 className="text-xs uppercase tracking-widest text-muted">Password</h2>
               {!showChangePassword && (
                 <button
                   onClick={() => setShowChangePassword(true)}
@@ -2213,6 +2394,7 @@ function AccountPage() {
               <div className="flex flex-col gap-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password (6+ characters)"
@@ -2224,6 +2406,7 @@ function AccountPage() {
                 />
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
@@ -2235,7 +2418,7 @@ function AccountPage() {
                 />
                 {passwordError && <p className="text-xs" style={{ color: "var(--danger-text)" }}>{passwordError}</p>}
                 {passwordSuccess && (
-                  <p className="text-sage text-xs animate-in fade-in duration-200">
+                  <p className="text-xs animate-in fade-in duration-200" style={{ color: "var(--sage-bright)" }}>
                     Password updated!
                   </p>
                 )}
@@ -2265,9 +2448,10 @@ function AccountPage() {
 
           {/* ─── Zodiac System Preference ─── */}
           <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
-            <p className="text-xs uppercase tracking-widest text-muted mb-3">Zodiac System</p>
+            <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Zodiac System</h2>
             <div className="flex flex-col gap-4">
               <SystemChoice
+                label="Zodiac system"
                 value={chartSystem.zodiacSystem}
                 disabled={savingPrefs}
                 options={[
@@ -2355,6 +2539,9 @@ function AccountPage() {
           {/* ─── About Our Sources ─── */}
           <SourcesSection />
 
+          {/* ─── Promo Code ─── */}
+          <PromoCodeSection />
+
           {/* ─── Report a Bug ─── */}
           <ReportBugSection />
 
@@ -2367,7 +2554,18 @@ function AccountPage() {
             Sign out
           </button>
 
-          {/* ─── Delete account ─── */}
+          {/* ─── Your data ─── */}
+          <div className="pt-2">
+            <DataExportButton />
+          </div>
+
+          {/* ─── Delete account ─────────────────────────────────────────────
+              Deliberately last, behind a rule and its own spacing, so it reads
+              as the end of the page rather than another settings row. */}
+          <div
+            className="mt-6 pt-6"
+            style={{ borderTop: "1px solid var(--border-card)" }}
+          />
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="py-3 rounded-full text-sm font-semibold transition-all"
@@ -2384,16 +2582,23 @@ function AccountPage() {
             Delete account
           </button>
 
-          {/* ─── Your data ─── */}
-          <div className="pt-2">
-            <DataExportButton />
-          </div>
-
           {/* ─── Legal ─── */}
           <div className="flex items-center justify-center gap-4 pt-2">
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Privacy Policy</a>
-            <span className="text-muted/40 text-[11px]">&middot;</span>
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-muted/70 hover:text-foreground text-[11px] transition-colors">Terms of Service</a>
+            <a
+              href="/privacy" target="_blank" rel="noopener noreferrer"
+              className="text-muted hover:text-foreground text-[11px] transition-colors"
+              style={{ minHeight: 44, display: "inline-flex", alignItems: "center" }}
+            >
+              Privacy Policy
+            </a>
+            <span className="text-muted/40 text-[11px]" aria-hidden="true">&middot;</span>
+            <a
+              href="/terms" target="_blank" rel="noopener noreferrer"
+              className="text-muted hover:text-foreground text-[11px] transition-colors"
+              style={{ minHeight: 44, display: "inline-flex", alignItems: "center" }}
+            >
+              Terms of Service
+            </a>
           </div>
 
           {/* Error display */}
@@ -2457,6 +2662,7 @@ function AccountPage() {
                 <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
                   <input
                     type="email"
+                    autoComplete="email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="Email address"
@@ -2521,12 +2727,30 @@ function AccountPage() {
               )}
 
               {/* ─── Social login buttons ─── */}
+              {/* Apple sits beside Google because App Store guideline 4.8
+                  requires Sign in with Apple wherever a third-party login is
+                  offered, and this ships to iOS through Capacitor. The handler
+                  already accepted "apple"; only the button was missing, so the
+                  app would have failed review over markup that was three lines
+                  short. Apple goes first, which is the platform convention on
+                  iOS. */}
               <div className="flex flex-col gap-2.5 mb-5">
+                <button
+                  onClick={() => handleSocialLogin("apple")}
+                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl
+                             bg-card border border-foreground/15 text-foreground text-sm font-medium
+                             hover:bg-elevated active:scale-[0.98] transition-all duration-200"
+                  style={{ minHeight: 44 }}
+                >
+                  <AppleIcon />
+                  Continue with Apple
+                </button>
                 <button
                   onClick={() => handleSocialLogin("google")}
                   className="w-full flex items-center justify-center gap-3 py-3 rounded-xl
                              bg-card border border-foreground/15 text-foreground text-sm font-medium
                              hover:bg-elevated active:scale-[0.98] transition-all duration-200"
+                  style={{ minHeight: 44 }}
                 >
                   <GoogleIcon />
                   Continue with Google
@@ -2545,6 +2769,7 @@ function AccountPage() {
                 {mode === "signup" && (
                   <input
                     type="text"
+                    autoComplete="name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="Your name"
@@ -2555,6 +2780,7 @@ function AccountPage() {
 
                 <input
                   type="email"
+                  autoComplete="email"
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="Email"
@@ -2565,6 +2791,7 @@ function AccountPage() {
 
                 <input
                   type="password"
+                  autoComplete="current-password"
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
                   placeholder="Password (6+ characters)"

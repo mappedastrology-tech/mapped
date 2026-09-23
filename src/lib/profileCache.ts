@@ -41,6 +41,14 @@ export interface CachedProfile {
   house_system?: string | null;
   node_type?: string | null;
   onboarding_completed?: boolean | null;
+  /**
+   * Billing. Present only for someone who has actually paid — a trial or a
+   * promo grant raises the tier without ever touching Stripe, so `tier` alone
+   * cannot tell you whether there is a subscription to manage.
+   */
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
   [key: string]: unknown;
 }
 

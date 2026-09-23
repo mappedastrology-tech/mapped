@@ -226,13 +226,13 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
       <ul className="space-y-1.5 mb-4">
         {lead && (
           <li className="flex items-start gap-2 text-secondary text-xs">
-            <span className="text-sage mt-0.5">&#10003;</span>
+            <span className="mt-0.5" style={{ color: "var(--sage-bright)" }}>&#10003;</span>
             <span className="font-medium">{lead}</span>
           </li>
         )}
         {items.map((f, i) => (
           <li key={i} className="flex items-start gap-2 text-secondary text-xs">
-            <span className="text-sage mt-0.5">&#10003;</span>
+            <span className="mt-0.5" style={{ color: "var(--sage-bright)" }}>&#10003;</span>
             <span>{f}</span>
           </li>
         ))}
@@ -265,7 +265,7 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
         {children}
 
         {isCurrent && (
-          <div className="text-center text-sage text-xs font-semibold py-2">
+          <div className="text-center  text-xs font-semibold py-2" style={{ color: "var(--sage-bright)" }}>
             Current plan
           </div>
         )}
@@ -315,9 +315,34 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
           <Bullets items={COMPLETE_FEATURES} lead="Everything in Mapped+, plus:" />
         </PlanCard>
 
-        <p className="text-center text-muted text-xs pt-2">
-          Cancel anytime. All prices in USD.
-        </p>
+        {/* Renewal terms, at the point of sale.
+            This previously read only "Cancel anytime. All prices in USD."
+            directly beneath two live Subscribe buttons — it never said the
+            subscription renews, how often, at what price, or until when.
+            "Cancel anytime" without "renews until you cancel" is the shape of
+            claim that reads as misleading, and it is the first thing an app
+            store reviewer looks for on a subscription screen. The fair-use
+            qualifier travels with the claim now too, rather than living only
+            on the Account card where nobody buying anything will see it. */}
+        <div className="pt-2 flex flex-col gap-2">
+          <p className="text-center text-muted text-xs leading-relaxed">
+            Subscriptions renew every month at the price shown until you cancel.
+            Cancel any time from Account → Your plan; you keep access until the
+            end of the month you have paid for. Prices in USD.
+          </p>
+          <p className="text-center text-muted text-xs">
+            Dolly and the other AI features are subject to fair use.
+          </p>
+          <p className="text-center text-xs">
+            <a href="/terms" className="underline underline-offset-2" style={{ color: "var(--foreground-secondary)", minHeight: 44, display: "inline-block", paddingTop: 12, paddingBottom: 12 }}>
+              Terms of Service
+            </a>
+            <span className="text-muted" aria-hidden="true"> · </span>
+            <a href="/privacy" className="underline underline-offset-2" style={{ color: "var(--foreground-secondary)", minHeight: 44, display: "inline-block", paddingTop: 12, paddingBottom: 12 }}>
+              Privacy Policy
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

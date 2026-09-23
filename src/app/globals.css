@@ -365,9 +365,17 @@
      7.74:1 in light. Matches the "not quite" feedback colour in Learn. */
   --danger-text: #c98a7a;
 
+  /* Success/positive text, and the solid sage used for selected states.
+     --sage itself is #5a7a3a, which measures 3.50:1 on the dark card — fine
+     as a fill, short of 4.5:1 as text. These are the text-safe pair, defined
+     per theme for the same reason --danger-text is: the value that works on
+     plum does not work on cream. Measured 5.95:1 dark / 5.14:1 light. */
+  --sage-strong: #7fa356;
+
   /* The bright green a correct answer uses. --sage-light (#6a8a4a) is too
      muted against dark plum to read as success, so this sits beside it. */
-  --sage-bright: #9cc46a;
+  /* Retuned for cream: the dark value measured 1.68:1 here. */
+  --sage-bright: #4c6b26;
 
   /* Hold-off accent — warm red "hold off" marker (almanac) */
   --hold: #b5654a;
@@ -510,6 +518,7 @@
   /* Pinned: the gold CTA does not change between themes. */
   --lib-gold-cta: #c9a961;
   --danger-text: #7a3028;
+  --sage-strong: #4c6b26;
 
   /* Chart Insights cards (light accent-card format) */
   --insight-card: #fbf7ec;
