@@ -270,10 +270,45 @@ export default function Quiz({
             })}
           </div>
 
-          {retry && !revealed && wrongPicks.size > 0 && (
-            <p className="mt-3 text-[13px] font-medium px-1" style={{ color: "var(--terracotta)" }}>
+          {retry && !revealed && wrongPicks.size > 0 && wrongPicks.size < 2 && (
+            <p className="mt-3 text-[13px] font-medium px-1" style={{ color: "#c98a7a" }}>
               Not quite — give it another try.
             </p>
+          )}
+
+          {/* Edge state 3 — two misses on the same question. Rather than let
+              someone keep guessing, the correct option's own explanation is
+              offered as a memory aid, and the way back to the teaching is
+              made explicit. The explanation is real content; no mnemonic is
+              invented here. */}
+          {retry && !revealed && wrongPicks.size >= 2 && (
+            <div
+              style={{
+                marginTop: 14, padding: "14px 16px", borderRadius: 14,
+                background: "var(--lib-plum-island)",
+                boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.4)",
+              }}
+            >
+              <p className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", color: "var(--brass)" }}>
+                A way to remember
+              </p>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.55, color: "var(--lib-on-plum)", marginTop: 7 }}>
+                {correctOpt?.explanation ?? "Look again at the wording — one of these is doing something the others are not."}
+              </p>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="lib-press"
+                style={{
+                  marginTop: 12, padding: "9px 16px", borderRadius: 999, minHeight: 44,
+                  background: "transparent", border: "1px solid color-mix(in srgb, var(--brass) 45%, transparent)",
+                  color: "var(--brass-light)", fontFamily: "var(--font-body)", fontSize: 11,
+                  fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+                }}
+              >
+                Show me the lesson →
+              </button>
+            </div>
           )}
 
           {revealed && (missed ? correctOpt?.explanation : chosenOpt?.explanation) && (

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getCourse, passThresholdFor, domainAccent } from "@/lib/learn/registry";
+import { courseLessons, getCourse, passThresholdFor, domainAccent } from "@/lib/learn/registry";
 import { sampleQuestions, type QuizScore } from "@/lib/learn/quiz";
 import { recordFinalResult } from "@/lib/learn/progress";
 import { detectNewAchievements } from "@/lib/learn/achievementsNotify";
 import { useToast } from "@/components/Toast";
 import type { CertificateRecord, QuizQuestion } from "@/lib/learn/types";
 import LibraryHeader from "./LibraryHeader";
+import { PrimaryPill } from "./LessonChrome";
 import Quiz from "./Quiz";
 import Certificate from "./Certificate";
 import Confetti from "./Confetti";
@@ -20,6 +21,8 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [finished, setFinished] = useState(false);
   const [passed, setPassed] = useState(false);
+  /** Kept so a near miss can show how near it was. */
+  const [pct, setPct] = useState(0);
   const [cert, setCert] = useState<CertificateRecord | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
   const [confetti, setConfetti] = useState(false);
@@ -45,6 +48,7 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
   }
 
   async function handleComplete(score: QuizScore) {
+    setPct(Math.round(score.fraction * 100));
     const didPass = score.fraction >= threshold;
     setPassed(didPass);
     setFinished(true);
@@ -96,17 +100,68 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
                     </Link>
                   </>
                 ) : (
+                  /* Edge state 4 — short of the pass mark. The score ring
+                     shows how close it was against the mark, because "almost"
+                     reads very differently at 74% than at 30%. */
                   <>
-                    <div className="rounded-xl px-4 py-3" style={{ backgroundColor: "var(--tag-bg)" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
-                        Almost there. Revisit the lessons, then take a fresh set of questions.
+                    <div className="text-center">
+                      <div
+                        className="mx-auto"
+                        style={{
+                          width: 104, height: 104, borderRadius: "50%",
+                          // Conic fill to the score, with the pass mark cut in
+                          // as a brass tick so the gap is visible, not implied.
+                          background: `conic-gradient(var(--brass-light) 0 ${pct}%, var(--lib-track) ${pct}% 100%)`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          position: "relative",
+                        }}
+                        aria-hidden="true"
+                      >
+                        <span
+                          style={{
+                            position: "absolute", inset: 8, borderRadius: "50%",
+                            background: "var(--lib-page)", display: "flex",
+                            alignItems: "center", justifyContent: "center",
+                          }}
+                        >
+                          <span style={{ fontFamily: "var(--font-display)", fontSize: 28, letterSpacing: "0.02em", color: "var(--lib-ink)" }}>{pct}%</span>
+                        </span>
+                      </div>
+                      <p
+                        className="uppercase"
+                        style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, letterSpacing: "0.07em", color: "var(--lib-ink)", marginTop: 16 }}
+                      >
+                        Almost — {Math.round(threshold * 100)}% to pass
                       </p>
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.6, color: "var(--lib-body)", marginTop: 8 }}>
+                        Revisit the lessons, then take a fresh set of questions.
+                      </p>
+
+                      {/* The lessons to go back to, as chips. */}
+                      <div className="flex flex-wrap justify-center gap-1.5 mt-4">
+                        {courseLessons(course).slice(0, 5).map((l) => (
+                          <Link
+                            key={l.id}
+                            href={`/library/${courseId}/${l.id}`}
+                            className="lib-press"
+                            style={{
+                              padding: "7px 13px", borderRadius: 999,
+                              fontFamily: "var(--font-serif-lib)", fontSize: 12.5,
+                              background: "var(--lib-card)", color: "var(--lib-ink)",
+                              border: "0.5px solid color-mix(in srgb, var(--brass) 25%, transparent)",
+                            }}
+                          >
+                            {l.title}
+                          </Link>
+                        ))}
+                      </div>
+
+                      <div className="mt-6">
+                        <PrimaryPill full arrow={false} onClick={start}>Review &amp; retake</PrimaryPill>
+                      </div>
                     </div>
-                    <button onClick={start} className="block text-center w-full py-3 rounded-xl text-[14px] font-medium active:scale-[0.99] transition-transform" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-                      Retake test
-                    </button>
-                    <Link href={`/library/${courseId}`} className="block text-center w-full py-2.5 text-[12px]" style={{ color: "var(--foreground-muted)" }}>
-                      Review the lessons
+                    <Link href={`/library/${courseId}`} className="block text-center w-full py-2.5 text-[12px]" style={{ color: "var(--lib-muted)" }}>
+                      Back to course
                     </Link>
                   </>
                 )}

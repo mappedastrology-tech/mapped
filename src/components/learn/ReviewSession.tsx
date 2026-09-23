@@ -10,6 +10,7 @@ import { loadEngagement } from "@/lib/learn/engagement";
 import { XP_REVIEW } from "@/lib/learn/stats";
 import { DOMAINS } from "@/lib/learn/registry";
 import { LessonProgressHeader, PrimaryPill } from "./LessonChrome";
+import OfflineNotice from "./OfflineNotice";
 
 type Phase = "loading" | "empty" | "taking" | "done";
 
@@ -91,6 +92,7 @@ export default function ReviewSession() {
   return (
     <main className="min-h-screen lib-felt">
       <div className="max-w-lg mx-auto pb-28">
+        <OfflineNotice />
         {phase === "loading" && (
           <p className="text-center text-sm py-10" style={{ color: "var(--lib-muted)" }}>Loading your review…</p>
         )}

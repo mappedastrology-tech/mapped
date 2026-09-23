@@ -11,6 +11,8 @@ import { getWeakTopics } from "@/lib/learn/weakTopics";
 import type { Course, CourseProgress } from "@/lib/learn/types";
 import TopBar from "@/components/TopBar";
 import { useTheme } from "@/components/ThemeProvider";
+import OfflineNotice from "./OfflineNotice";
+import { PrimaryPill } from "./LessonChrome";
 
 /**
  * Decorative starfield for the top of the screen, dark mode only.
@@ -247,6 +249,15 @@ export default function LibraryHome() {
   );
 
   const s = eng.stats;
+  /**
+   * Edge state 1 — a learner with no history at all.
+   *
+   * A streak of zero and two blocks reading "0" is a discouraging thing to
+   * open an app on, and it tells a newcomer nothing about what those numbers
+   * will mean. One card explaining what is about to start reads better and
+   * takes the same room.
+   */
+  const brandNew = eng.ctx.lessonsCompleted === 0 && inProgress.length === 0 && dueCount === 0;
 
   return (
     <main className="min-h-screen lib-felt">
@@ -259,6 +270,7 @@ export default function LibraryHome() {
 
       <TopBar />
       <h1 className="sr-only">Learn</h1>
+      <OfflineNotice />
 
       <div className="max-w-lg mx-auto relative" style={{ paddingLeft: 22, paddingRight: 22, paddingBottom: 96 }}>
         {/* Starfield — decorative, dark only. In light mode it would read as
@@ -311,7 +323,7 @@ export default function LibraryHome() {
               nextLevel={s.level + 1}
             />
 
-            {pathTarget ? (
+            {pathTarget && !brandNew ? (
               <>
                 <Link
                   href={pathTarget.href}
@@ -339,6 +351,11 @@ export default function LibraryHome() {
                     : `Lesson ${pathTarget.lessonNumber} of ${pathTarget.total}`}
                 </p>
               </>
+            ) : brandNew ? (
+              /* A newcomer gets ONE starting action, in the card below. The
+                 design puts a CTA in both, but they point at the same lesson,
+                 and two gold pills stacked read as two different offers. */
+              null
             ) : (
               /* Edge state: every published course is finished. */
               <p
@@ -353,65 +370,91 @@ export default function LibraryHome() {
             )}
           </section>
 
+          {brandNew ? (
+            /* Edge state 1 — new learner. */
+            <section
+              style={{
+                marginTop: 12, padding: "20px 20px 22px", borderRadius: 20,
+                background: "var(--lib-plum-island)",
+                boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.4)",
+              }}
+            >
+              <p className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", color: "var(--brass)" }}>
+                Your path starts here
+              </p>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: 1.6, color: "var(--lib-on-plum)", marginTop: 10 }}>
+                Finish your first lesson and this fills in — a streak, cards to review, and the topics you want more practice on.
+              </p>
+              {pathTarget && (
+                <div style={{ marginTop: 16 }}>
+                  <PrimaryPill full onClick={() => router.push(pathTarget.href)}>Begin</PrimaryPill>
+                </div>
+              )}
+            </section>
+          ) : (
+            <>
           {/* 4 — Streak strip */}
-          <div
-            className="flex items-center"
-            style={{
-              marginTop: 12, padding: "13px 16px", borderRadius: 18, gap: 9,
-              background: "var(--lib-card)", border: "1px solid var(--lib-card-border)",
-              boxShadow: "var(--lib-card-shadow)",
-            }}
-          >
-            <span className="lib-flame" style={{ fontSize: 19 }} aria-hidden="true">🔥</span>
-            <span
+            <div
+              className="flex items-center"
               style={{
-                fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1,
-                letterSpacing: "0.02em", color: "var(--lib-ink)",
+                marginTop: 12, padding: "13px 16px", borderRadius: 18, gap: 9,
+                background: "var(--lib-card)", border: "1px solid var(--lib-card-border)",
+                boxShadow: "var(--lib-card-shadow)",
               }}
             >
-              {s.streak}
-            </span>
-            <span
-              className="uppercase"
-              style={{
-                fontFamily: "var(--font-body)", fontSize: 9.5, fontWeight: 700,
-                letterSpacing: "0.16em", color: "var(--lib-body)",
-              }}
-            >
-              Day streak
-            </span>
-            <span style={{ flex: 1 }} />
-            <span
-              style={{
-                fontFamily: "var(--font-body)", fontSize: 11.5, fontWeight: 600,
-                color: "var(--lib-body)", whiteSpace: "nowrap",
-              }}
-            >
-              {eng.ctx.lessonsCompleted} lessons done
-            </span>
-          </div>
+              <span className="lib-flame" style={{ fontSize: 19 }} aria-hidden="true">🔥</span>
+              <span
+                style={{
+                  fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1,
+                  letterSpacing: "0.02em", color: "var(--lib-ink)",
+                }}
+              >
+                {s.streak}
+              </span>
+              <span
+                className="uppercase"
+                style={{
+                  fontFamily: "var(--font-body)", fontSize: 9.5, fontWeight: 700,
+                  letterSpacing: "0.16em", color: "var(--lib-body)",
+                }}
+              >
+                Day streak
+              </span>
+              <span style={{ flex: 1 }} />
+              <span
+                style={{
+                  fontFamily: "var(--font-body)", fontSize: 11.5, fontWeight: 600,
+                  color: "var(--lib-body)", whiteSpace: "nowrap",
+                }}
+              >
+                {eng.ctx.lessonsCompleted} lessons done
+              </span>
+            </div>
 
-          {/* 5 — Review due / Weak spots */}
-          <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
-            <StatBlock
-              href="/library/review"
-              eyebrow="Review due"
-              eyebrowColor="#c9a961"
-              count={dueCount}
-              caption="cards ready now"
-              background="var(--forest)"
-              border="1px solid rgba(123,160,85,0.42)"
-            />
-            <StatBlock
-              href="/library/review?scope=weak"
-              eyebrow="Weak spots"
-              eyebrowColor="#d4b878"
-              count={weakCount}
-              caption="topics to shore up"
-              background="var(--oxblood-deep)"
-              border="1px solid rgba(181,101,74,0.42)"
-            />
-          </div>
+            {/* 5 — Review due / Weak spots */}
+            <div className="grid grid-cols-2" style={{ gap: 12, marginTop: 12 }}>
+              <StatBlock
+                href="/library/review"
+                eyebrow="Review due"
+                eyebrowColor="#c9a961"
+                count={dueCount}
+                caption="cards ready now"
+                background="var(--forest)"
+                border="1px solid rgba(123,160,85,0.42)"
+              />
+              <StatBlock
+                href="/library/review?scope=weak"
+                eyebrow="Weak spots"
+                eyebrowColor="#d4b878"
+                count={weakCount}
+                caption="topics to shore up"
+                background="var(--oxblood-deep)"
+                border="1px solid rgba(181,101,74,0.42)"
+              />
+            </div>
+
+            </>
+          )}
 
           {/* 6/7 — Topic grid */}
           <SectionLabel style={{ marginTop: 26, marginBottom: 14 }}>Browse all topics</SectionLabel>
