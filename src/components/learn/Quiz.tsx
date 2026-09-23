@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { QuizQuestion, LessonBlock } from "@/lib/learn/types";
 import { scoreQuiz, shuffle, isRecallCorrect, answeredCorrectly, type QuizScore } from "@/lib/learn/quiz";
 import LessonBlocks from "./LessonBlocks";
+import { PrimaryPill, FeedbackPanel, OptionRow, type OptionState } from "./LessonChrome";
 
 /**
  * Shared quiz runner. Presents multiple-choice questions one at a time, then any
@@ -195,13 +196,9 @@ export default function Quiz({
       {current.kind === "activity" ? (
         <>
           <LessonBlocks blocks={[current.block]} />
-          <button
-            onClick={advance}
-            className="mt-4 w-full py-3 rounded-xl text-[14px] font-medium transition-transform active:scale-[0.99]"
-            style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-          >
-            {isLast ? "See result" : "Next question"}
-          </button>
+          <div className="mt-4">
+            <PrimaryPill full onClick={advance}>{isLast ? "See result" : "Next question"}</PrimaryPill>
+          </div>
         </>
       ) : q && isRecall ? (
         <>
@@ -232,27 +229,18 @@ export default function Quiz({
           )}
 
           {!revealed ? (
-            <button
-              onClick={submitRecall}
-              disabled={!typed.trim()}
-              className="mt-4 w-full py-3 rounded-xl text-[14px] font-medium transition-transform active:scale-[0.99] disabled:opacity-40"
-              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-            >
-              Check
-            </button>
+            <div className="mt-4">
+              <PrimaryPill full arrow={false} disabled={!typed.trim()} onClick={submitRecall}>Check</PrimaryPill>
+            </div>
           ) : (
-            <button
-              onClick={advance}
-              className="mt-4 w-full py-3 rounded-xl text-[14px] font-medium transition-transform active:scale-[0.99]"
-              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-            >
-              {isLast ? "See result" : "Next question"}
-            </button>
+            <div className="mt-4">
+              <PrimaryPill full onClick={advance}>{isLast ? "See result" : "Next question"}</PrimaryPill>
+            </div>
           )}
         </>
       ) : q ? (
         <>
-          <p className="text-[18px] mb-4 leading-snug" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{q.prompt}</p>
+          <p className="uppercase mb-4" style={{ color: "var(--lib-ink)", fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, letterSpacing: "0.07em", lineHeight: 1.18 }}>{q.prompt}</p>
 
           <div className="flex flex-col gap-2">
             {q.options.map((o) => {
@@ -261,22 +249,23 @@ export default function Quiz({
               const showCorrect = revealed && o.correct;
               const showWrong = (revealed && isChosen && !o.correct) || triedWrong;
               const disabled = revealed || triedWrong;
-              const border = showCorrect ? "var(--sage)" : showWrong ? "var(--oxblood-light)" : isChosen ? "var(--brass)" : "var(--border-card)";
-              const bg = showCorrect ? "var(--tag-green-bg)" : showWrong ? "rgba(122,48,40,0.15)" : "var(--background-elevated)";
+              // After answering, the options that were neither picked nor
+              // correct recede rather than disappear.
+              const state: OptionState =
+                showCorrect ? "correct"
+                : showWrong ? "wrong"
+                : revealed ? "dimmed"
+                : "idle";
               return (
-                <button
+                <OptionRow
                   key={o.id}
-                  onClick={() => choose(o.id)}
+                  state={state}
+                  selected={isChosen}
                   disabled={disabled}
-                  className="text-left px-4 py-3 rounded-xl text-sm transition-colors disabled:cursor-default"
-                  style={{ backgroundColor: bg, border: `1.5px solid ${border}`, color: "var(--foreground)", opacity: triedWrong && !revealed ? 0.55 : 1 }}
+                  onClick={() => choose(o.id)}
                 >
-                  <span className="flex items-center gap-2">
-                    {revealed && o.correct && <span style={{ color: "var(--sage-light)" }} aria-hidden="true">✓</span>}
-                    {showWrong && <span style={{ color: "var(--oxblood-light)" }} aria-hidden="true">✗</span>}
-                    <span>{o.text}</span>
-                  </span>
-                </button>
+                  {o.text}
+                </OptionRow>
               );
             })}
           </div>
@@ -288,10 +277,9 @@ export default function Quiz({
           )}
 
           {revealed && (missed ? correctOpt?.explanation : chosenOpt?.explanation) && (
-            <p className="mt-3 text-[13px] leading-relaxed px-1" style={{ color: "var(--foreground-secondary)" }}>
-              {missed && <span style={{ color: "var(--brass)", fontWeight: 600 }}>Remember: </span>}
+            <FeedbackPanel correct={!missed}>
               {missed ? correctOpt?.explanation : chosenOpt?.explanation}
-            </p>
+            </FeedbackPanel>
           )}
 
           {missed && (
@@ -301,13 +289,9 @@ export default function Quiz({
           )}
 
           {revealed && (
-            <button
-              onClick={advance}
-              className="mt-4 w-full py-3 rounded-xl text-[14px] font-medium transition-transform active:scale-[0.99]"
-              style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
-            >
-              {isLast ? "See result" : "Next question"}
-            </button>
+            <div className="mt-4">
+              <PrimaryPill full onClick={advance}>{isLast ? "See result" : "Next question"}</PrimaryPill>
+            </div>
           )}
         </>
       ) : null}

@@ -15,6 +15,7 @@ import type { Achievement } from "@/lib/learn/achievements";
 import type { LearningStats } from "@/lib/learn/stats";
 import LessonComplete from "./LessonComplete";
 import LibraryHeader from "./LibraryHeader";
+import { LessonProgressHeader, LessonTitle, PrimaryPill, InfoPanel } from "./LessonChrome";
 import LessonBlocks from "./LessonBlocks";
 import Quiz from "./Quiz";
 
@@ -93,32 +94,30 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
 
   return (
     <main className="min-h-screen lib-felt">
-      <LibraryHeader
-        title={course.title}
-        fallback={`/library/${courseId}`}
-        crumbs={[{ label: "Library", href: "/library" }]}
-        accent={accent}
+      {/* Shared lesson chrome: close, progress, step. The lesson is a focused
+          flow, so it closes back to the course rather than carrying the
+          library's sticky header. */}
+      <LessonProgressHeader
+        progress={ctx.total > 0 ? (ctx.index + 1) / ctx.total : 0}
+        label={`${ctx.index + 1} / ${ctx.total}`}
+        onClose={() => router.push(`/library/${courseId}`)}
       />
-      {/* Course progress bar */}
-      <div className="h-1" style={{ backgroundColor: "var(--lib-track)" }}>
-        <div className="h-full" style={{ width: `${ctx.total > 0 ? ((ctx.index + 1) / ctx.total) * 100 : 0}%`, backgroundColor: accent }} />
-      </div>
-      <div key={lessonId} className="max-w-lg mx-auto px-5 py-6 pb-28 animate-in fade-in slide-in-from-right-4 duration-300">
-        <p className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: accent }}>
-          <span aria-hidden="true" className="text-[13px]">{course.icon}</span> Lesson {ctx.index + 1} of {ctx.total}
-        </p>
-        <h2 className="text-[23px] font-medium leading-tight mb-3" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{lesson.title}</h2>
-        <div className="rounded-xl px-4 py-3 mb-5" style={{ backgroundColor: "var(--background-card)", borderLeft: `3px solid ${accent}`, boxShadow: "var(--card-shadow)" }}>
-          <p className="text-[10px] uppercase tracking-widest mb-1 font-semibold" style={{ color: accent }}>Objective</p>
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{lesson.objective}</p>
-        </div>
+
+      <div key={lessonId} className="max-w-lg mx-auto pb-28 animate-in fade-in slide-in-from-right-4 duration-300" style={{ paddingLeft: 22, paddingRight: 22 }}>
+        <LessonTitle eyebrow={course.title} title={lesson.title} />
+
+        <InfoPanel eyebrow="Objective" accent={accent} style={{ marginTop: 20 }}>
+          {lesson.objective}
+        </InfoPanel>
+
+        <div style={{ height: 20 }} />
 
         {/* Lesson body (teaching only) */}
         <LessonBlocks blocks={bodyBlocks} />
 
         {/* Quiz — multiple-choice questions, then the interactive activity as the last question(s) */}
         <div className="mt-8">
-          <p className="text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--brass)" }}>Check your understanding</p>
+          <p className="uppercase mb-3" style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "var(--lib-muted)" }}>Check your understanding</p>
           <Quiz questions={lesson.quiz} activities={activities} onComplete={handleQuizComplete} retry />
         </div>
 
@@ -133,15 +132,11 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
               </div>
             )}
             {ctx.next ? (
-              <Link href={`/library/${courseId}/${ctx.next.id}`} className="block text-center w-full py-3 rounded-xl text-[14px] font-medium active:scale-[0.99] transition-transform" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-                Next lesson →
-              </Link>
+              <PrimaryPill full onClick={() => router.push(`/library/${courseId}/${ctx.next!.id}`)}>Next lesson</PrimaryPill>
             ) : (
-              <button onClick={() => router.push(`/library/${courseId}`)} className="block text-center w-full py-3 rounded-xl text-[14px] font-medium active:scale-[0.99] transition-transform" style={{ backgroundColor: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}>
-                Finish — back to course
-              </button>
+              <PrimaryPill full onClick={() => router.push(`/library/${courseId}`)}>Finish</PrimaryPill>
             )}
-            <Link href={`/library/${courseId}`} className="block text-center w-full py-2.5 text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+            <Link href={`/library/${courseId}`} className="block text-center w-full py-2.5 text-[12px]" style={{ color: "var(--lib-muted)" }}>
               Back to course overview
             </Link>
           </div>
