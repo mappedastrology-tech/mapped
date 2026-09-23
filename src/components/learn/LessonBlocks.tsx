@@ -113,7 +113,7 @@ export default function LessonBlocks({ blocks }: { blocks: LessonBlock[] }) {
           case "sort":
             return <SortBlock key={i} prompt={b.prompt} instructions={b.instructions} groups={b.groups} />;
           case "flip":
-            return <FlipBlock key={i} prompt={b.prompt} instructions={b.instructions} cards={b.cards} />;
+            return <FlipBlock key={i} prompt={b.prompt} instructions={b.instructions} cards={b.cards} back={b.back} />;
           case "match":
             return <MatchBlock key={i} prompt={b.prompt} instructions={b.instructions} pairs={b.pairs} />;
           case "explore":

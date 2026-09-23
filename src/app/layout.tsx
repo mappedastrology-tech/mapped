@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import AccountIsolation from "@/components/AccountIsolation";
+import OfflineNotice from "@/components/OfflineNotice";
 import ToastProvider from "@/components/Toast";
 import ErrorMonitorInit from "@/components/ErrorMonitorInit";
 import ApiBaseInit from "@/components/ApiBaseInit";
@@ -92,6 +93,8 @@ export default function RootLayout({
         <AccountIsolation />
         <ThemeProvider>
           <ToastProvider>
+            {/* Renders nothing while online. */}
+            <OfflineNotice />
             {children}
           </ToastProvider>
         </ThemeProvider>

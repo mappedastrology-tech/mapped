@@ -196,6 +196,14 @@ export const tarotFoundations: Course = {
               "**The middle (8–14):** inner lessons — Strength, the Hermit, the Wheel, Justice, the Hanged Man, Death, Temperance.",
               "**The climb (15–21):** big forces and resolution — the Devil, the Tower, the Star, the Moon, the Sun, Judgement, the World.",
             ] },
+            { kind: "flip", prompt: "Turn six of the Majors", instructions: "Tap a card to turn it", back: "/images/tarot/backside.webp", cards: [
+              { img: "/images/tarot/major-0.webp", name: "The Fool · 0", caption: "New beginnings · a leap of faith" },
+              { img: "/images/tarot/major-1.webp", name: "The Magician · I", caption: "Will · focus · manifestation" },
+              { img: "/images/tarot/major-2.webp", name: "The High Priestess · II", caption: "Intuition · the inner voice" },
+              { img: "/images/tarot/major-6.webp", name: "The Lovers · VI", caption: "Union · choice · alignment" },
+              { img: "/images/tarot/major-13.webp", name: "Death · XIII", caption: "Endings that clear the way" },
+              { img: "/images/tarot/major-17.webp", name: "The Star · XVII", caption: "Hope · renewal · guidance" },
+            ] },
             { kind: "match", prompt: "Match each card to its meaning", instructions: "Tap a card, then tap its meaning", pairs: [
               { cue: "The Fool", img: "/images/tarot/major-0.webp", match: "New beginnings, a leap of faith, innocence" },
               { cue: "The Magician", img: "/images/tarot/major-1.webp", match: "Will, skill, manifestation" },

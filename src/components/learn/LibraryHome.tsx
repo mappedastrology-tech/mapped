@@ -11,7 +11,6 @@ import { getWeakTopics } from "@/lib/learn/weakTopics";
 import type { Course, CourseProgress } from "@/lib/learn/types";
 import TopBar from "@/components/TopBar";
 import { useTheme } from "@/components/ThemeProvider";
-import OfflineNotice from "./OfflineNotice";
 import { PrimaryPill } from "./LessonChrome";
 
 /**
@@ -270,7 +269,6 @@ export default function LibraryHome() {
 
       <TopBar />
       <h1 className="sr-only">Learn</h1>
-      <OfflineNotice />
 
       <div className="max-w-lg mx-auto relative" style={{ paddingLeft: 22, paddingRight: 22, paddingBottom: 96 }}>
         {/* Starfield — decorative, dark only. In light mode it would read as

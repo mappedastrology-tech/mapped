@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildReviewCards, nextIntervalForGrade, type ReviewCard, type ReviewGrade } from "@/lib/learn/review";
@@ -10,7 +10,6 @@ import { loadEngagement } from "@/lib/learn/engagement";
 import { XP_REVIEW } from "@/lib/learn/stats";
 import { DOMAINS } from "@/lib/learn/registry";
 import { LessonProgressHeader, PrimaryPill } from "./LessonChrome";
-import OfflineNotice from "./OfflineNotice";
 
 type Phase = "loading" | "empty" | "taking" | "done";
 
@@ -37,6 +36,22 @@ export default function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [streak, setStreak] = useState(0);
   const [tally, setTally] = useState<Record<ReviewGrade, number>>({ again: 0, good: 0, easy: 0 });
+
+  /**
+   * The worst grade given to each lesson so far.
+   *
+   * Cards are rated one at a time, but the SCHEDULE is per lesson, and
+   * buildReviewCards draws two cards from each. Writing every rating straight
+   * through means the last card wins: rate one card "Again" and the next
+   * "Easy" and the lesson gets pushed a week out even though you just missed
+   * half of it — and rating them the other way round gives the opposite
+   * answer. Keeping the worst makes the result independent of the order the
+   * cards happened to come up, and errs toward showing you the lesson again.
+   *
+   * A ref rather than state: it is written and read within the same handler,
+   * and nothing renders from it.
+   */
+  const worstByLesson = useRef(new Map<string, ReviewGrade>());
 
   useEffect(() => {
     let active = true;
@@ -76,7 +91,16 @@ export default function ReviewSession() {
   async function rate(grade: ReviewGrade) {
     if (!card) return;
     setTally((t) => ({ ...t, [grade]: t[grade] + 1 }));
-    void recordReviewGrade(card.review.courseId, card.review.lessonId, grade);
+
+    // Lower is worse; the schedule follows the worst answer for the lesson.
+    const RANK: Record<ReviewGrade, number> = { again: 0, good: 1, easy: 2 };
+    const key = `${card.review.courseId}::${card.review.lessonId}`;
+    const prev = worstByLesson.current.get(key);
+    const worst = prev !== undefined && RANK[prev] < RANK[grade] ? prev : grade;
+    if (prev !== worst) {
+      worstByLesson.current.set(key, worst);
+      void recordReviewGrade(card.review.courseId, card.review.lessonId, worst);
+    }
 
     if (idx + 1 >= total) {
       setPhase("done");
@@ -92,7 +116,6 @@ export default function ReviewSession() {
   return (
     <main className="min-h-screen lib-felt">
       <div className="max-w-lg mx-auto pb-28">
-        <OfflineNotice />
         {phase === "loading" && (
           <p className="text-center text-sm py-10" style={{ color: "var(--lib-muted)" }}>Loading your review…</p>
         )}

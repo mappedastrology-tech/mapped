@@ -59,6 +59,8 @@ export type LessonBlock =
       kind: "flip";
       prompt: string;
       instructions?: string;
+      /** Face-down artwork. Omit for the generic ornate back. */
+      back?: string;
       cards: { img: string; name: string; caption?: string }[];
     }
   /** Tap a cue (image or glyph), then tap its meaning. Self-checking recall. */
