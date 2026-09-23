@@ -36,7 +36,10 @@ export default function CourseView({ courseId }: { courseId: string }) {
   const certified = !!progress?.completedAt;
 
   const accent = domainAccent(course.domain);
-  const domainTitle = DOMAINS.find((d) => d.id === course.domain)?.title ?? course.domain;
+  const domainMeta = DOMAINS.find((d) => d.id === course.domain);
+  const domainTitle = domainMeta?.title ?? course.domain;
+  // Courses carry no art of their own; the domain's cover stands in.
+  const domainCover = domainMeta?.cover;
   const total = lessons.length;
   const pct = total > 0 ? Math.round((Math.min(doneCount, total) / total) * 100) : 0;
   // First not-yet-done lesson = the "current" node on the path (unless certified).
@@ -47,28 +50,58 @@ export default function CourseView({ courseId }: { courseId: string }) {
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <filter id="cvgrain"><feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={2} stitchTiles="stitch" /></filter>
       </svg>
-      <LibraryHeader title={course.title} fallback="/library" accent={accent} />
+      <LibraryHeader title="Course" fallback="/library" accent={accent} />
       <div className="max-w-lg mx-auto px-5 py-5 pb-24">
-        {/* Course hero (centered) */}
-        <div className="text-center px-6 pt-2 pb-1">
+        {/* Course hero. The handoff calls this the only OTHER plum hero —
+            lesson screens stay on bare felt so their content is the hero. */}
+        <section
+          className="text-center"
+          style={{
+            margin: "14px 0 6px", padding: "20px 22px 22px", borderRadius: 26,
+            background: "var(--plum)", border: "1px solid rgba(201,169,97,0.4)",
+            boxShadow: "0 10px 26px -10px rgba(40,15,35,0.55)",
+          }}
+        >
           <div className="relative mx-auto mb-3" style={{ width: 74, height: 74 }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle at 40% 34%, ${accent}59, ${accent}26 60%, rgba(11,7,18,0) 82%)` }} />
-            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }} aria-hidden="true">{course.icon}</span>
+            {domainCover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={domainCover} alt="" aria-hidden="true" style={{ position: "absolute", left: 16, top: 16, width: 42, height: 42, objectFit: "contain" }} />
+            ) : (
+              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }} aria-hidden="true">{course.icon}</span>
+            )}
           </div>
-          <p className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.2em", color: accent }}>{domainTitle}{!isOutline ? ` · ${course.level}` : ""}</p>
-          <h2 className="mt-2 text-[26px] font-medium leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{course.title}</h2>
-          <p className="mt-2 text-[11px]" style={{ color: "var(--foreground-muted)" }}>
+
+          <p className="uppercase" style={{ fontFamily: "var(--font-body)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", color: "var(--brass)" }}>
+            {domainTitle}{!isOutline ? ` · ${course.level}` : ""}
+          </p>
+
+          {/* JS Chanok is caps-only, so this is uppercased deliberately. */}
+          <h2
+            className="uppercase"
+            style={{
+              fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 500,
+              letterSpacing: "0.07em", lineHeight: 1.18, color: "#f5efe0", marginTop: 8,
+            }}
+          >
+            {course.title}
+          </h2>
+
+          <p style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "rgba(245,239,224,0.72)", marginTop: 8 }}>
             {isOutline ? "Curriculum preview" : `${total} ${total === 1 ? "lesson" : "lessons"} · ${course.estMinutes} min · ${course.level}`}
           </p>
+
           {!isOutline && total > 0 && (
             <>
-              <div className="h-[5px] rounded-full overflow-hidden mt-4 mx-7" style={{ background: "var(--lib-track)" }}>
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg,#a88a40,#d4b878)" }} />
+              <div className="overflow-hidden" style={{ height: 8, borderRadius: 999, marginTop: 16, marginLeft: 30, marginRight: 30, background: "rgba(255,255,255,0.16)" }}>
+                <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: "linear-gradient(90deg,#a88a40,#e2c785)", transition: "width .45s cubic-bezier(.34,1.56,.64,1)" }} />
               </div>
-              <p className="mt-2 text-[10px]" style={{ color: "var(--brass-light)", letterSpacing: "0.06em" }}>{doneCount} of {total} complete</p>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 600, color: "#e2c785", marginTop: 8 }}>
+                {doneCount} of {total} complete
+              </p>
             </>
           )}
-        </div>
+        </section>
 
         <div className="mt-5" />
 
@@ -134,18 +167,22 @@ export default function CourseView({ courseId }: { courseId: string }) {
                       aria-label={`Lesson ${i + 1}: ${lesson.title}${done ? " (completed)" : current ? " (in progress)" : ""}`}
                     >
                       {current && (
-                        <span className="mb-2 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: accent, color: "var(--btn-primary-text)", letterSpacing: "0.1em", boxShadow: `0 6px 16px -4px ${accent}99` }}>START</span>
+                        <span className="mb-2 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: "var(--lib-gold-cta)", color: "#1a1420", letterSpacing: "0.1em", boxShadow: "0 6px 16px -4px rgba(201,169,97,0.6)" }}>START</span>
                       )}
                       {done ? (
-                        <span className="flex items-center justify-center text-[19px]" style={{ width: 50, height: 50, borderRadius: "50%", color: "var(--btn-primary-text)", background: "radial-gradient(circle at 38% 32%,#f4e4b8,#d4b878 42%,#a88a40 100%)", boxShadow: "0 6px 18px -4px rgba(212,184,120,0.5), 0 0 0 4px rgba(201,169,97,0.1)" }} aria-hidden="true">✓</span>
+                        <span className="flex items-center justify-center text-[19px]" style={{ width: 50, height: 50, borderRadius: "50%", color: "#1a1420", background: "var(--lib-gold-cta)", boxShadow: "0 6px 18px -4px rgba(212,184,120,0.5), 0 0 0 4px rgba(201,169,97,0.1)" }} aria-hidden="true">✓</span>
                       ) : current ? (
-                        <span className="flex items-center justify-center text-[25px]" style={{ width: 60, height: 60, borderRadius: "50%", color: accent, background: "var(--lib-surface)", boxShadow: `0 0 0 3px ${accent}, 0 0 24px -2px ${accent}99` }} aria-hidden="true">{course.icon}</span>
+                        <span className="flex items-center justify-center text-[25px]" style={{ width: 60, height: 60, borderRadius: "50%", color: "var(--brass-light)", background: "var(--lib-card)", boxShadow: "0 0 0 3px var(--brass-light), 0 0 24px -2px rgba(201,169,97,0.6)" }} aria-hidden="true">{course.icon}</span>
                       ) : (
-                        <span className="flex items-center justify-center text-[14px] font-semibold" style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--lib-soft)", border: "0.5px solid rgba(201,169,97,0.16)", color: "var(--foreground-faint)" }} aria-hidden="true">{i + 1}</span>
+                        <span className="flex items-center justify-center" style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--lib-track)", border: "0.5px solid rgba(201,169,97,0.16)", color: "var(--lib-muted)" }} aria-hidden="true">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                            <rect x="4" y="11" width="16" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                          </svg>
+                        </span>
                       )}
-                      <span className="text-center mt-2.5 leading-tight" style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: done ? "var(--foreground-secondary)" : current ? "var(--foreground)" : "var(--foreground-faint)" }}>
+                      <span className="text-center mt-2.5 leading-tight" style={{ fontFamily: "var(--font-serif-lib)", fontSize: 13, color: done ? "var(--lib-body)" : current ? "var(--lib-ink)" : "var(--lib-muted)" }}>
                         {lesson.title}
-                        {current && <span className="block text-[9px] mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--foreground-muted)" }}>In progress</span>}
+                        {current && <span className="block text-[9px] mt-0.5" style={{ fontFamily: "var(--font-body)", color: "var(--lib-muted)" }}>In progress</span>}
                       </span>
                     </Link>
                   </div>
@@ -156,23 +193,23 @@ export default function CourseView({ courseId }: { courseId: string }) {
               <div className="relative text-center pt-1.5 pb-2.5">
                 {certified || allDone ? (
                   <Link href={`/library/${course.id}/test`} className="inline-flex flex-col items-center active:scale-[0.97] transition-transform" aria-label="Final test">
-                    <span className="inline-flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: 15, transform: "rotate(45deg)", background: certified ? "var(--sage)" : `${accent}26`, border: `1.5px dashed ${certified ? "var(--sage-light)" : "rgba(201,169,97,0.6)"}`, boxShadow: "0 0 0 6px var(--background)" }}>
+                    <span className="inline-flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: 15, transform: "rotate(45deg)", background: certified ? "var(--sage)" : `linear-gradient(0deg, ${accent}26, ${accent}26), var(--lib-page)`, border: `1.5px dashed ${certified ? "var(--sage-light)" : "rgba(201,169,97,0.6)"}`, boxShadow: "0 0 0 6px var(--lib-page)" }}>
                       <span style={{ transform: "rotate(-45deg)", fontSize: 19, color: certified ? "#fff" : "var(--brass-light)" }} aria-hidden="true">✦</span>
                     </span>
-                    <span className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: accent }}>Checkpoint</span>
+                    <span className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Checkpoint</span>
                     <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{certified ? "Certified" : "Final test"}</span>
                     <span className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>{certified ? `${Math.round((progress?.bestScore ?? 0) * 100)}% · view / retake` : `Pass ${Math.round(passThresholdFor(course) * 100)}% to pass · retakes welcome`}</span>
                   </Link>
                 ) : (
                   <div className="inline-flex flex-col items-center">
-                    <span className="inline-flex items-center justify-center opacity-70" style={{ width: 56, height: 56, borderRadius: 15, transform: "rotate(45deg)", background: "var(--lib-soft)", border: "1.5px dashed rgba(201,169,97,0.3)", boxShadow: "0 0 0 6px var(--background)" }}>
+                    <span className="inline-flex items-center justify-center opacity-70" style={{ width: 56, height: 56, borderRadius: 15, transform: "rotate(45deg)", background: "linear-gradient(0deg, var(--lib-soft), var(--lib-soft)), var(--lib-page)", border: "1.5px dashed rgba(201,169,97,0.3)", boxShadow: "0 0 0 6px var(--lib-page)" }}>
                       <span style={{ transform: "rotate(-45deg)", fontSize: 17, color: "var(--foreground-faint)" }} aria-hidden="true">✦</span>
                     </span>
                     <span className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)" }}>Checkpoint</span>
                     <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground-secondary)" }}>Final test</span>
                     <span className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>Finish all {total} lessons to unlock</span>
                     {/* Test-out: already know the material? Skip ahead and prove it. */}
-                    <Link href={`/library/${course.id}/test`} className="mt-2.5 text-[11px] font-semibold active:opacity-70" style={{ color: accent }}>
+                    <Link href={`/library/${course.id}/test`} className="mt-2.5 text-[11px] font-semibold active:opacity-70" style={{ color: "var(--brass)" }}>
                       Already know this? Test out →
                     </Link>
                   </div>
@@ -181,8 +218,8 @@ export default function CourseView({ courseId }: { courseId: string }) {
 
               {/* Reward — certificate */}
               <div className="relative text-center pt-4 pb-1.5">
-                <span className="inline-flex items-center justify-center text-[28px]" style={{ width: 74, height: 74, borderRadius: "50%", background: `radial-gradient(circle at 40% 34%, ${accent}40, rgba(11,7,18,0.92))`, border: `1.5px solid ${certified ? "var(--sage-light)" : "rgba(201,169,97,0.4)"}`, boxShadow: "0 0 0 6px var(--background), 0 0 26px -4px rgba(201,169,97,0.4)" }} aria-hidden="true">🎓</span>
-                <div className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: accent }}>Reward</div>
+                <span className="inline-flex items-center justify-center text-[28px]" style={{ width: 74, height: 74, borderRadius: "50%", background: `radial-gradient(circle at 40% 34%, ${accent}40, ${accent}14), var(--lib-page)`, border: `1.5px solid ${certified ? "var(--sage-light)" : "rgba(201,169,97,0.4)"}`, boxShadow: "0 0 0 6px var(--lib-page), 0 0 26px -4px rgba(201,169,97,0.4)" }} aria-hidden="true">🎓</span>
+                <div className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Reward</div>
                 <div className="mt-0.5 text-[17px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>Course certificate</div>
                 <div className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>{certified ? "Earned ✓" : "Pass the final test to earn"}</div>
               </div>
