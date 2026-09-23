@@ -228,7 +228,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { checkRateLimitDurable } = await import("@/lib/rateLimit");
-  const { allowed } = await checkRateLimitDurable(`wizard:${uid}`, 15, 24 * 60 * 60 * 1000);
+  const { DAILY_AI_LIMITS } = await import("@/lib/ai/dailyLimits");
+  const { allowed } = await checkRateLimitDurable(`wizard:${uid}`, DAILY_AI_LIMITS.wizard, 24 * 60 * 60 * 1000);
   if (!allowed) {
     return new Response(
       JSON.stringify({ error: "You've reached the daily wizard limit. Try again tomorrow." }),

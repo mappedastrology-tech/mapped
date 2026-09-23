@@ -615,20 +615,24 @@ export const JOURNAL_PRIVACY_COPY = {
 
 // ─── Crisis Detection ────────────────────────────────────────────────────────
 
-const CRISIS_PHRASES = [
-  "kill myself", "want to die", "self-harm", "end my life",
-  "suicide", "don't want to be here", "better off dead",
-  "harm myself", "cut myself",
-];
-
-export function detectCrisisContent(text: string): boolean {
-  const lower = text.toLowerCase();
-  return CRISIS_PHRASES.some((phrase) => lower.includes(phrase));
-}
+/**
+ * Kept as a name the journal already imports; the logic lives in lib/crisis.ts.
+ *
+ * This used to be its own nine-phrase list with no guard against figures of
+ * speech and a straight apostrophe in "don't want to be here" — which a phone
+ * keyboard does not produce, so the most likely spelling of one of its own
+ * phrases never matched on the platform this ships to. Two detectors also
+ * meant two standards for the same question. One list, one set of tests.
+ */
+export { detectCrisis as detectCrisisContent } from "@/lib/crisis";
 
 export const CRISIS_RESPONSE = {
-  text: `What you wrote sounds heavy. You don't have to be alone with it. The 988 Suicide & Crisis Lifeline is free and confidential — you can call or text 988 anytime.`,
-  options: ["Talk to Dolly", "Just rest", "I'm okay"] as const,
+  // The wording and the resources now come from lib/crisis.ts (CrisisCard
+  // renders them), so this only carries what the journal adds: what to do
+  // next. "Talk to Dolly" is deliberately gone — it could lead straight to a
+  // paywall or a daily limit, which is the failure the crisis work exists to
+  // remove.
+  options: ["Just rest", "I'm okay"] as const,
 };
 
 // ─── Legacy compat ───────────────────────────────────────────────────────────

@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { parseDollyReply } from "@/lib/dollyReply";
 import { useStickToBottom } from "@/lib/useStickToBottom";
+import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
+import CrisisCard from "@/components/CrisisCard";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 import { supabase } from "@/lib/supabase";
@@ -33,7 +35,7 @@ const AVATAR = "/images/crystal-ball.webp";
  * Dolly's own first person, so they were told a permanent plan boundary was a
  * temporary glitch and invited to keep trying something that would never work.
  */
-type Msg = { from: "dolly" | "you"; text: string; notice?: boolean };
+type Msg = { from: "dolly" | "you"; text: string; notice?: boolean; crisis?: boolean };
 const QA: { q: string; a: string }[] = [
   { q: "What does my Cancer sun mean?", a: "Your Cancer Sun is the tender, protective core of you — you lead with feeling and you look after people almost by instinct. It means home, memory, and belonging matter deeply. Your gift is emotional intelligence; your work is learning that softness is strength, not a leak." },
   { q: "What's my Saturn return about?", a: "Saturn returns to where it sat at your birth around age 29 — for you, in the 5th house. It’s a rite of passage: the universe asks which joys, creative risks, and self-expressions are truly yours to keep. It can feel heavy, but it’s building the adult foundation you’ll stand on for decades." },
@@ -162,9 +164,30 @@ export default function WebDolly() {
 
   const sendMsg = async (userText: string) => {
     if (typing) return;
-    // History is the conversation so far (before this turn).
-    const history = messages.map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.text }));
-    setMessages((m) => [...m, { from: "you", text: userText }]);
+
+    /**
+     * Ahead of every gate, exactly as on mobile — see lib/crisis.ts. The
+     * paywall, the daily cap, the monthly ceiling and a dead network can all
+     * answer before the model is reached, and none of them is an acceptable
+     * reply to this.
+     */
+    const crisis = detectCrisis(userText);
+    if (crisis) {
+      setMessages((m) => [...m, { from: "you", text: userText }, { from: "dolly", text: "", crisis: true }]);
+      setInput("");
+      setAnnouncement(crisisAnnouncement());
+      // Still sent, so a paid reader also gets Dolly's own careful answer
+      // under the card; if a gate refuses it the server answers with the
+      // crisis branch rather than a limit.
+    }
+
+    // History is the conversation so far (before this turn). Notices and
+    // support cards are the app talking, not the conversation — and a crisis
+    // card has no text at all, which the API rejects as an empty turn.
+    const history = messages
+      .filter((m) => !m.notice && !m.crisis && m.text.trim())
+      .map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.text }));
+    if (!crisis) setMessages((m) => [...m, { from: "you", text: userText }]);
     setInput("");
     setTyping(true);
 
@@ -196,14 +219,28 @@ export default function WebDolly() {
         // ours to explain generically.
         const body = await res.json().catch(() => ({ error: "" }));
         if (res.status === 402 || res.status === 429 || res.status === 503) {
+          setTyping(false);
+          // A card is already on screen for this turn; a plan limit stacked
+          // under it would undo the whole point.
+          if (crisis) return;
           const text = typeof body.error === "string" && body.error.trim()
             ? body.error
             : "Dolly isn't available on your plan right now.";
-          setTyping(false);
           setMessages((m) => [...m, { from: "dolly" as const, text, notice: true }]);
           return;
         }
         throw new Error(`status ${res.status}`);
+      }
+      // The server refused a gate but saw crisis language, so it answered 200
+      // with this rather than a limit.
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const ok = await res.json().catch(() => null);
+        if (ok?.crisis) {
+          setTyping(false);
+          setMessages((m) => (m.some((x) => x.crisis) ? m : [...m, { from: "dolly" as const, text: "", crisis: true }]));
+          setAnnouncement(crisisAnnouncement());
+          return;
+        }
       }
       if (!res.body) throw new Error("no stream");
       const reader = res.body.getReader();
@@ -226,11 +263,16 @@ export default function WebDolly() {
           } catch { /* skip malformed chunk */ }
         }
       }
-      if (!started) fail("I couldn’t finish that answer just now — try again in a moment.");
+      if (!started && !crisis) fail("I couldn’t finish that answer just now — try again in a moment.");
       // The prose only — the meta line is not something to read aloud.
       else setAnnouncement(parseDollyReply(full).body || full);
     } catch (err) {
-      if ((err as Error).name !== "AbortError") fail("I couldn’t finish that answer just now — try again in a moment.");
+      if ((err as Error).name !== "AbortError" && !crisis) {
+        // Offline with a crisis message: the card is already up from the local
+        // check, which is exactly what it is for. A network error under it
+        // would be noise.
+        fail("I couldn’t finish that answer just now — try again in a moment.");
+      }
     } finally {
       setTyping(false);
       // Focus was left on the send button (or nowhere at all) after every
@@ -305,6 +347,15 @@ export default function WebDolly() {
                         </>
                       )}
                     </p>
+                  </div>
+                );
+              }
+
+              // Before anything that reads m.text — a crisis card has none.
+              if (m.crisis) {
+                return (
+                  <div key={i} style={{ alignSelf: "stretch", width: "100%" }}>
+                    <CrisisCard />
                   </div>
                 );
               }

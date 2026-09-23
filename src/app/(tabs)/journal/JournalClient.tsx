@@ -50,6 +50,7 @@ import {
 } from "@/lib/celestialCalendar";
 import { shareReadingAsImage } from "@/lib/shareCard";
 import { MOOD_PALETTE } from "@/lib/feedback";
+import CrisisCard from "@/components/CrisisCard";
 
 type View = "home" | "compose" | "entry" | "patterns" | "all";
 
@@ -895,17 +896,24 @@ function JournalPage() {
           )}
         </div>
 
-        {/* Crisis modal */}
+        {/* Crisis modal. The wording and the numbers come from CrisisCard, so
+            the journal, Dolly and the ritual wizard all say the same thing —
+            this one used to carry its own copy and a US-only 988 line. */}
         {showCrisisModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6">
-            <div className="bg-background rounded-2xl p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
-              <p className="text-sm text-secondary leading-relaxed mb-5">{CRISIS_RESPONSE.text}</p>
-              <div className="flex flex-col gap-2">
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Support resources"
+          >
+            <div className="bg-background rounded-2xl p-5 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+              <CrisisCard />
+              <div className="flex flex-col gap-2 mt-4">
                 {CRISIS_RESPONSE.options.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => setShowCrisisModal(false)}
-                    className="py-2.5 rounded-xl border border-foreground/15 text-secondary text-sm hover:border-foreground/30 transition-colors"
+                    className="min-h-[44px] rounded-xl border border-foreground/15 text-secondary text-sm hover:border-foreground/30 transition-colors"
                   >
                     {opt}
                   </button>

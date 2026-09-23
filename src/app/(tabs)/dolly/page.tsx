@@ -18,6 +18,8 @@ import DollyAvatar from "@/components/DollyAvatar";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
+import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
+import CrisisCard from "@/components/CrisisCard";
 import { useDialogKeys } from "@/lib/useDialogKeys";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
@@ -46,6 +48,8 @@ interface Message {
    * Notices render as a plain system line instead, and never get a prefix.
    */
   notice?: boolean;
+  /** Renders the local support card instead of any text. See lib/crisis.ts. */
+  crisis?: boolean;
 }
 
 interface ChartContext {
@@ -388,11 +392,26 @@ export default function DollyTab() {
     const msg = (text || input).trim();
     if (!msg || isStreaming) return;
 
+    /**
+     * Before any gate, without exception.
+     *
+     * Everything below this — the paywall, the cooldown, the daily cap, the
+     * monthly ceiling, the network itself — can refuse a message without it
+     * ever reaching Dolly. So a free user writing "I don't want to be here
+     * any more" was answered with an upgrade prompt, and a heavy user with
+     * "You've reached the daily limit. Try again tomorrow." This runs first,
+     * locally, and needs no quota, no account and no connection.
+     */
+    const crisis = detectCrisis(msg);
+
     // Tier gate. Dolly is the paid boundary, so the free tier gets the paywall
     // on the first message rather than after a handful — the server refuses
     // these calls outright, and letting someone type a question only to be told
     // no is a worse way to learn that than being told up front.
-    if (tier === "free") {
+    // `!crisis`: the gate is skipped entirely rather than handled afterwards,
+    // because gateWithReason SHOWS the paywall modal. Popping a subscription
+    // offer over a message like this is the exact failure being fixed.
+    if (tier === "free" && !crisis) {
       const reason = gateWithReason("ai_features");
       // Dismissing the paywall silences it for 24 hours. That used to silence
       // this whole screen with it: the composer, the send button and all six
@@ -414,8 +433,10 @@ export default function DollyTab() {
     }
 
     setInput("");
-    lastAskRef.current = msg;
-    incrementDollyUsage();
+    // Nothing to retry for a crisis turn — "Try again" under a support card
+    // would be a strange thing to offer.
+    lastAskRef.current = crisis ? null : msg;
+    if (!crisis) incrementDollyUsage();
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
@@ -424,10 +445,26 @@ export default function DollyTab() {
       timestamp: Date.now(),
     };
 
-    const updatedMessages = [...messages, userMsg];
+    const crisisCard: Message | null = crisis
+      ? { id: `crisis-${Date.now()}`, role: "assistant", content: "", timestamp: Date.now(), crisis: true }
+      : null;
+
+    const updatedMessages = crisisCard
+      ? [...messages, userMsg, crisisCard]
+      : [...messages, userMsg];
     setMessages(updatedMessages);
+    if (crisisCard) setAnnouncement(crisisAnnouncement());
     // Sending is an explicit "take me to the bottom", even if they'd scrolled up.
     scrollToBottom("auto");
+
+    // A paid account still gets Dolly's own reply under the card: her prompt
+    // handles this carefully, and a human-sounding response matters here. A
+    // free account stops at the card, having been shown the help without ever
+    // being asked to pay for it.
+    if (crisis && tier === "free") {
+      saveConversation(updatedMessages);
+      return;
+    }
 
     // Create placeholder for streaming response
     const assistantId = `a-${Date.now()}`;
@@ -454,10 +491,17 @@ export default function DollyTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: msg,
-          history: messages.slice(-20).map(m => ({
-            role: m.role,
-            content: m.role === "assistant" ? dollyBody(m.content) : m.content,
-          })),
+          // Notices and support cards are the app talking, not the
+          // conversation. A crisis card carries no text at all, so sending it
+          // would put an empty assistant turn in the history — which the API
+          // rejects outright.
+          history: messages
+            .filter(m => !m.notice && !m.crisis && m.content.trim())
+            .slice(-20)
+            .map(m => ({
+              role: m.role,
+              content: m.role === "assistant" ? dollyBody(m.content) : m.content,
+            })),
           chart,
           transits,
           connections,
@@ -476,6 +520,14 @@ export default function DollyTab() {
         // a notice — not thrown, because a thrown rule becomes "Something
         // went wrong" in Dolly's own voice.
         if (res.status === 402 || res.status === 429 || res.status === 503) {
+          // The support card is already on screen for this turn. A server
+          // that refused without taking the crisis branch — an older build,
+          // or an edge the route does not cover — must not be allowed to
+          // stack "you've reached the daily limit" underneath it.
+          if (crisis) {
+            setMessages(prev => prev.filter(m => m.id !== assistantId));
+            return;
+          }
           const text = typeof errBody.error === "string" && errBody.error.trim()
             ? errBody.error
             : "Dolly isn't available on your plan right now.";
@@ -485,6 +537,27 @@ export default function DollyTab() {
           return;
         }
         throw new Error(errBody.error || `API error: ${res.status}`);
+      }
+
+      // The server refused a gate but the message looked like crisis, so it
+      // answered 200 with this instead of a limit. Not an error, and not a
+      // stream: the support card is rendered locally.
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const ok = await res.json().catch(() => null);
+        if (ok?.crisis) {
+          setMessages(prev => {
+            // The local check almost always fired first, so a card is already
+            // on screen; drop the empty streaming bubble and leave it alone
+            // rather than showing the same card twice.
+            const withoutPlaceholder = prev.filter(m => m.id !== assistantId);
+            if (withoutPlaceholder.some(m => m.crisis)) return withoutPlaceholder;
+            return [...withoutPlaceholder, {
+              id: `crisis-${Date.now()}`, role: "assistant", content: "", timestamp: Date.now(), crisis: true,
+            }];
+          });
+          setAnnouncement(crisisAnnouncement());
+          return;
+        }
       }
 
       const reader = res.body?.getReader();
@@ -557,6 +630,13 @@ export default function DollyTab() {
       console.error("Dolly stream error:", errMsg);
       // navigator.onLine is only reliable in the negative — false really does
       // mean no connection — which is exactly the direction needed here.
+      // Same reasoning as the refusal branch above: the card said the useful
+      // thing already, and "Dolly couldn't finish that answer" under it is
+      // both noise and slightly cruel.
+      if (crisis) {
+        setMessages(prev => prev.filter(m => m.id !== assistantId));
+        return;
+      }
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       const failure = offline
         ? "You're offline, so Dolly can't answer right now. She'll pick this up when you're back."
@@ -1397,6 +1477,16 @@ export default function DollyTab() {
              * speaking, not the character. Putting it in her voice made a
              * deliberate rule read as the app breaking.
              */
+            // Before the notice branch: a crisis card has no text, so any
+            // branch that renders msg.content would render nothing.
+            if (msg.crisis) {
+              return (
+                <div key={msg.id} className="self-stretch w-full" style={{ padding: "4px 0" }}>
+                  <CrisisCard />
+                </div>
+              );
+            }
+
             if (msg.notice) {
               // A plan boundary needs somewhere to go, and a failure needs a
               // way to try again. This was a grey slab with neither: the

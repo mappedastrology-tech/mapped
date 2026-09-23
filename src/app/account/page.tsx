@@ -42,6 +42,7 @@ import { isAdmin } from "@/lib/admin";
 import { applyChartSystem, loadChartSystemPreference, saveChartSystemPreference } from "@/lib/chartSystemSync";
 import { chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
 import { defaultHouseSystem } from "@/lib/astro/vedic/houses";
+import { DAILY_AI_LIMITS } from "@/lib/ai/dailyLimits";
 
 export default function AccountPageWrapper() {
   return (
@@ -1349,7 +1350,7 @@ function SubscriptionSection() {
   // horoscope and five Dolly messages, neither of which free has any more.
   const highlights: Record<TierLevel, string[]> = {
     free: ["Your full birth chart", "Almanac and transits", "One oracle deck", "A card pull each day"],
-    mid: ["Dolly, whenever you want her", "Daily horoscopes for your chart", "Unlimited card pulls", "Astrocartography"],
+    mid: [`Dolly, up to ${DAILY_AI_LIMITS.dolly} messages a day`, "Daily horoscopes for your chart", "Unlimited card pulls", "Astrocartography"],
     max: ["Everything in Mapped+", "Every oracle deck included", "New decks as they arrive"],
   };
 
@@ -1533,10 +1534,11 @@ function SubscriptionSection() {
           </p>
         )}
 
-        {/* Fair use. No number, but it says a ceiling exists, which is what
-            app stores and consumer rules expect a subscription to disclose. */}
+        {/* The actual daily caps. "Subject to fair use" disclosed that a
+            ceiling existed without saying where it was, so the first time
+            anyone learned the number was when they hit it. */}
         <p className="text-center text-muted text-[10px] mt-2">
-          Dolly and the other AI features are subject to fair use.
+          Dolly answers up to {DAILY_AI_LIMITS.dolly} messages a day, and the ritual wizard up to {DAILY_AI_LIMITS.wizard}.
         </p>
       </div>
 

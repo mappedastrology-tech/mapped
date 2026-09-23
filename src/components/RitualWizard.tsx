@@ -22,6 +22,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import { getWizardUsageThisMonth, incrementWizardUsage } from "@/lib/tier";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
+import CrisisCard from "@/components/CrisisCard";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -686,18 +687,16 @@ export default function RitualWizard({ onClose, onSave }: RitualWizardProps) {
         </button>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <div className="rounded-2xl bg-card/60 border border-foreground/12 p-6 max-w-[340px]">
-            <p className="text-secondary text-[14px] leading-relaxed">
-              {streamedText || "What you're describing sounds heavy. A ritual isn't going to be enough for this — and you deserve more than enough."}
-            </p>
-            <div className="mt-4 pt-4 border-t border-foreground/8">
-              <p className="text-muted text-[13px] font-medium">
-                988 Suicide & Crisis Lifeline
-              </p>
-              <p className="text-muted text-[12px] mt-1">
-                Available 24/7. Call or text 988.
-              </p>
-            </div>
+          <div className="max-w-[360px] w-full">
+            {/* The model's own words first, when it sent any. */}
+            {streamedText && (
+              <p className="text-secondary text-[14px] leading-relaxed mb-4">{streamedText}</p>
+            )}
+            {/* The shared card, rather than the 988 line that used to be
+                hardcoded here: it was US-only with nothing for anyone else,
+                and it said something slightly different from every other
+                place in the app that has to handle this. One source. */}
+            <CrisisCard />
           </div>
 
           <button

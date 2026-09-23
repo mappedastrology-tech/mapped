@@ -92,6 +92,8 @@ export function effectiveTier(
 
 /* ─── Feature definitions ─── */
 
+import { DAILY_AI_LIMITS } from "@/lib/ai/dailyLimits";
+
 export type FeatureKey =
   | "wizard"
   | "custom_rituals"
@@ -144,7 +146,13 @@ export const FEATURES: FeatureDef[] = [
   { key: "full_transits", minTier: "mid", label: "Full Transits", description: "See all current transits ranked by how strongly they hit your chart." },
   { key: "multiple_synastry", minTier: "mid", label: "Multiple Partners", description: "Compare your chart with more than one person." },
   { key: "astrocartography", minTier: "mid", label: "Astrocartography", description: "See where your planetary lines cross the globe and what they mean for you there." },
-  { key: "unlimited_dolly", minTier: "mid", label: "Unlimited Dolly", description: "Ask Dolly as much as you like, subject to fair use. She remembers your past conversations." },
+  // Was "Unlimited Dolly — ask Dolly as much as you like, subject to fair
+  // use". There is a hard cap of DAILY_AI_LIMITS.dolly messages a day, so
+  // that was not fair use, it was a limit being described as its opposite.
+  // The number is generous and worth saying plainly: someone deciding whether
+  // to pay can see exactly what they get, and someone who reaches it has been
+  // told about it beforehand instead of discovering it as a failure.
+  { key: "unlimited_dolly", minTier: "mid", label: "Dolly, every day", description: `Up to ${DAILY_AI_LIMITS.dolly} messages a day — far more than most people use in a week. She remembers your past conversations.` },
   { key: "unlimited_pulls", minTier: "mid", label: "Unlimited Pulls", description: "Pull cards as many times as you want each day." },
   { key: "skeptic_mode", minTier: "mid", label: "Skeptic Mode", description: "See the reasoning and tradition behind every interpretation." },
   { key: "antiscia", minTier: "mid", label: "Antiscia Contacts", description: "Hidden connections between your chart and another person's." },
@@ -163,7 +171,9 @@ export const FEATURES: FeatureDef[] = [
   { key: "pdf_export", minTier: "mid", label: "PDF Chart Export", description: "Download your full chart as a formatted PDF." },
   { key: "composite_charts", minTier: "mid", label: "Composite Charts", description: "The merged chart of a relationship — what you create together." },
   { key: "unlimited_family", minTier: "mid", label: "Unlimited Family Map", description: "Add as many family members as you want to your relational map." },
-  { key: "unlimited_wizard", minTier: "mid", label: "Unlimited Wizard", description: "Create rituals whenever you need one, subject to fair use." },
+  // Same overclaim, same fix: the wizard is capped at DAILY_AI_LIMITS.wizard
+  // rituals a day.
+  { key: "unlimited_wizard", minTier: "mid", label: "Rituals on demand", description: `Create up to ${DAILY_AI_LIMITS.wizard} rituals a day, whenever you need one.` },
   { key: "voice_memo_wizard", minTier: "mid", label: "Voice Memo Input", description: "Speak your intention to the wizard instead of typing." },
   { key: "multi_day_rituals", minTier: "mid", label: "Multi-Day Sequences", description: "Rituals that span multiple days as a connected practice." },
   { key: "practice_patterns", minTier: "mid", label: "Practice Patterns", description: "See trends and insights across your ritual practice over time." },
@@ -211,7 +221,9 @@ export const USAGE_LIMITS = {
     transitsShown: 3,
   },
   mid: {
-    dollyMessagesPerDay: Infinity,
+    // Not Infinity: the server enforces this, and a UI that believes otherwise
+    // cannot warn anyone they are close to it.
+    dollyMessagesPerDay: DAILY_AI_LIMITS.dolly,
     pullsPerDay: Infinity,
     synastryPartners: Infinity,
     familyMembers: Infinity,
@@ -219,7 +231,7 @@ export const USAGE_LIMITS = {
     transitsShown: Infinity,
   },
   max: {
-    dollyMessagesPerDay: Infinity,
+    dollyMessagesPerDay: DAILY_AI_LIMITS.dolly,
     pullsPerDay: Infinity,
     synastryPartners: Infinity,
     familyMembers: Infinity,

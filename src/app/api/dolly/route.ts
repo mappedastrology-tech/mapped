@@ -293,10 +293,46 @@ export async function POST(request: NextRequest) {
   }
   const { userId: uid, supabase } = authCtx;
 
-  // Rate limit: 30 Dolly messages per day per user (durable when Redis is set).
+  /**
+   * The body is read BEFORE the gates, so they can be told what they are
+   * about to refuse.
+   *
+   * The clients detect crisis language locally and never reach here when they
+   * are blocked (see lib/crisis.ts), which is the path that actually
+   * protects someone. This is the second line: a paid account that is
+   * rate-limited or over its monthly ceiling DOES still call, and without
+   * this it would be answered with "You've reached the daily limit. Try again
+   * tomorrow." It also covers any client that did not run the check.
+   */
+  let body: DollyRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not read that request." }), {
+      status: 400, headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { message, history, chart, transits, connections, userName, journalContext, tarotContext } = body;
+
+  const { detectCrisis } = await import("@/lib/crisis");
+  const isCrisis = detectCrisis(message);
+
+  /**
+   * 200, not an error, and no `error` string — the client renders its own
+   * local support card from this. A refusal status here would be shown as a
+   * failure, and the whole point is that this message is never refused.
+   */
+  const crisisResponse = () =>
+    new Response(JSON.stringify({ crisis: true }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    });
+
+  // Rate limit per day per user (durable when Redis is set).
   const { checkRateLimitDurable } = await import("@/lib/rateLimit");
-  const { allowed } = await checkRateLimitDurable(`dolly:${uid}`, 30, 24 * 60 * 60 * 1000);
+  const { DAILY_AI_LIMITS } = await import("@/lib/ai/dailyLimits");
+  const { allowed } = await checkRateLimitDurable(`dolly:${uid}`, DAILY_AI_LIMITS.dolly, 24 * 60 * 60 * 1000);
   if (!allowed) {
+    if (isCrisis) return crisisResponse();
     return new Response(
       JSON.stringify({ error: "You've reached the daily limit for Dolly conversations. Try again tomorrow." }),
       { status: 429, headers: { "Content-Type": "application/json" } }
@@ -309,6 +345,7 @@ export async function POST(request: NextRequest) {
   const { streamBilling } = await import("@/lib/ai/meter");
   const budget = await checkAiBudget(uid);
   if (!budget.allowed) {
+    if (isCrisis) return crisisResponse();
     return new Response(
       JSON.stringify({ error: budget.message }),
       { status: budget.status ?? 429, headers: { "Content-Type": "application/json" } }
@@ -316,9 +353,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body: DollyRequest = await request.json();
-    const { message, history, chart, transits, connections, userName, journalContext, tarotContext } = body;
-
     if (!message?.trim()) {
       return new Response(JSON.stringify({ error: "No message provided." }), {
         status: 400,
