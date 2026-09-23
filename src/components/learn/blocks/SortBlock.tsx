@@ -73,7 +73,7 @@ export default function SortBlock({ prompt, instructions, groups }: { prompt: st
     return (
       <div className="rounded-2xl px-6 py-8 text-center" style={{ background: "linear-gradient(150deg, rgba(201,169,97,0.14), var(--background-card) 80%)", border: "1px solid rgba(201,169,97,0.4)" }}>
         <div className="text-[40px] mb-2" style={{ animation: "lib-floaty 3.4s ease-in-out infinite" }} aria-hidden="true">✦</div>
-        <p className="text-[20px] font-medium" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>All {total} sorted</p>
+        <p className="text-[20px] font-medium" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>All {total} sorted</p>
         <p className="text-[13px] mt-2" style={{ color: "var(--foreground-secondary)" }}>{flawless ? "Flawless run — not a single misplacement." : "Nicely done — you’ve got the groupings."}</p>
         <button onClick={reset} className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.98] transition-transform" style={{ background: "var(--brass)", color: "var(--btn-primary-text)", letterSpacing: "0.16em" }}>
           Sort again <span aria-hidden="true">↺</span>
@@ -95,7 +95,7 @@ export default function SortBlock({ prompt, instructions, groups }: { prompt: st
       </div>
 
       <p className="text-[9px] uppercase font-semibold text-center" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Tap to sort</p>
-      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{prompt}</p>
+      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{prompt}</p>
       <p className="text-[12px] text-center mt-2 min-h-[18px]" style={{ color: msg ? (streak >= 3 ? "var(--sage-light)" : "var(--oxblood-light)") : "var(--foreground-muted)" }}>
         {msg ?? (sel ? "Now tap its group" : instructions ?? "Tap an item, then tap where it belongs")}
       </p>

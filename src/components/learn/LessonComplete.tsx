@@ -62,7 +62,7 @@ export default function LessonComplete({
           siblings: JS Chanok's advance widths let the "XP" tuck under the last
           digit when they share a line box. */}
       <p className="relative flex items-baseline justify-center gap-2 mt-2">
-        <span className="text-[40px] leading-none font-bold" style={{ color: accent, fontFamily: "var(--font-display)" }}>
+        <span className="text-[40px] leading-none font-bold" style={{ color: accent, fontFamily: "var(--font-serif-lib)" }}>
           +{summary.xpEarned}
         </span>
         <span className="text-[15px] font-semibold" style={{ color: accent, fontFamily: "var(--font-ui)" }}>XP</span>

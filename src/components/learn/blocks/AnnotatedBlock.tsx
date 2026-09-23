@@ -23,7 +23,7 @@ export default function AnnotatedBlock({ prompt, instructions, image, pins }: { 
   return (
     <div className="rounded-2xl p-4" style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "var(--card-shadow)" }}>
       <p className="text-[9px] uppercase font-semibold text-center" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>See it</p>
-      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{prompt}</p>
+      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{prompt}</p>
 
       {/* diagram */}
       <div className="relative mx-auto mt-3" style={{ width: 248, height: 248, maxWidth: "100%" }}>
@@ -41,7 +41,7 @@ export default function AnnotatedBlock({ prompt, instructions, image, pins }: { 
               className="absolute flex items-center justify-center font-bold"
               style={{
                 left: `${p.x}%`, top: `${p.y}%`, transform: "translate(-50%,-50%)",
-                width: 30, height: 30, borderRadius: "50%", fontSize: 13, fontFamily: "var(--font-display)",
+                width: 30, height: 30, borderRadius: "50%", fontSize: 13, fontFamily: "var(--font-serif-lib)",
                 background: on ? "var(--brass)" : "var(--lib-surface)",
                 color: on ? "var(--btn-primary-text)" : "var(--brass-light)",
                 border: on ? "none" : "1px solid rgba(201,169,97,0.5)",
@@ -59,7 +59,7 @@ export default function AnnotatedBlock({ prompt, instructions, image, pins }: { 
       <div className="mt-4 p-4 rounded-2xl" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.18)" }}>
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center text-[13px] font-bold" style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--brass)", color: "var(--btn-primary-text)", fontFamily: "var(--font-ui)" }} aria-hidden="true">{active + 1}</span>
-          <span className="text-[18px]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{cur.title}</span>
+          <span className="text-[18px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{cur.title}</span>
         </div>
         <p className="text-[13px] leading-relaxed mt-3" style={{ color: "var(--foreground-secondary)" }}>{cur.body}</p>
       </div>

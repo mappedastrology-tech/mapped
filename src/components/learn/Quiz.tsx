@@ -149,7 +149,7 @@ export default function Quiz({
         <p className="relative text-[11px] uppercase tracking-widest mb-2" style={{ color: "var(--foreground-muted)" }}>
           {passThreshold != null ? "Result" : "Quiz complete"}
         </p>
-        <p className="relative text-5xl font-bold mb-1 animate-in zoom-in duration-300" style={{ color: celebrate ? "var(--sage-light)" : "var(--foreground)", fontFamily: "var(--font-display)" }}>{pct}%</p>
+        <p className="relative text-5xl font-bold mb-1 animate-in zoom-in duration-300" style={{ color: celebrate ? "var(--sage-light)" : "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{pct}%</p>
         <p className="relative text-sm mb-3" style={{ color: "var(--foreground-secondary)" }}>
           {score.correct} of {score.total} correct
         </p>
@@ -205,7 +205,7 @@ export default function Quiz({
         </>
       ) : q && isRecall ? (
         <>
-          <p className="text-[18px] mb-2 leading-snug" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{q.prompt}</p>
+          <p className="text-[18px] mb-2 leading-snug" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{q.prompt}</p>
           <p className="text-[11px] mb-3" style={{ color: "var(--foreground-muted)" }}>Type your answer — spelling is forgiving.</p>
 
           <input
@@ -252,7 +252,7 @@ export default function Quiz({
         </>
       ) : q ? (
         <>
-          <p className="text-[18px] mb-4 leading-snug" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{q.prompt}</p>
+          <p className="text-[18px] mb-4 leading-snug" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{q.prompt}</p>
 
           <div className="flex flex-col gap-2">
             {q.options.map((o) => {

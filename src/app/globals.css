@@ -22,7 +22,6 @@
    Approximates the design's dark-felt.png; swap the data-URI for the real
    image if/when it's added to /public. */
 .lib-felt {
-  background-color: var(--background);
   /* Use the same dark-felt starfield the rest of the app's dark mode uses, so
      Learn/Library match the home screen exactly. Light mode falls back to the
      plain cream background (no image), mirroring the body. */
@@ -30,14 +29,47 @@
   background-size: 512px;
   background-repeat: repeat;
 
-  /* Match the Claude Design type system inside Learn/Library:
-     Bodoni Moda for display, DM Sans for everything else. */
-  --font-display: "Bodoni Moda", "Playfair Display", Georgia, serif;
+  /* Type inside Learn/Library.
+     --font-display is deliberately NOT overridden here any more, so Learn
+     inherits the app-wide JS Chanok. That font is caps-only, so anything set
+     in it must also be uppercase; mixed-case serif text (card titles, option
+     rows, path node labels, reference names) asks for --font-serif-lib
+     instead, which is what this surface used to give everything. */
+  --font-serif-lib: "Bodoni Moda", "Playfair Display", Georgia, serif;
   --font-body: "DM Sans", system-ui, -apple-system, sans-serif;
   font-family: var(--font-body);
+
+  /* The page colour for the redesigned Learn screens. */
+  background-color: var(--lib-page);
 }
 .lib-felt input, .lib-felt button, .lib-felt textarea, .lib-felt select { font-family: inherit; }
 [data-theme="light"] .lib-felt { background-image: none; }
+
+/* Tactile motion for the Learn screens.
+   .lib-press goes on every tappable card and row; .lib-flame is the streak
+   flame. The prefers-reduced-motion block below already neutralises both. */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.9; }
+}
+@keyframes lflicker {
+  0%, 100% { transform: scale(1) rotate(-1deg); opacity: 1; }
+  35%      { transform: scale(1.09) rotate(2deg); opacity: 0.9; }
+  65%      { transform: scale(0.96) rotate(-2deg); opacity: 0.97; }
+}
+.lib-flame {
+  display: inline-block;
+  animation: lflicker 1.9s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+.lib-press {
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.lib-press:active {
+  transform: scale(0.972);
+  filter: brightness(1.06);
+}
 
 /* Respect prefers-reduced-motion across the Learn/Library screens:
    neutralize card flips, twinkles, floats, pops, and slide/zoom enters. */
@@ -272,6 +304,38 @@
   --lib-orb-text: #281320;                /* number on the bright gold orb */
   --lib-on-plum: #f0e6d2;                 /* text on always-dark plum surfaces */
 
+  /* Learn redesign surfaces. --lib-page and --lib-card exist so the Library
+     can sit on a slightly different cream from the rest of the app in light
+     mode (cards need to read as separate objects) without moving the global
+     --background. In dark mode they simply track the app. */
+  --lib-page: #0e0a14;                    /* page behind the felt */
+  --lib-card: #1c1526;                    /* raised card surface */
+  --lib-card-border: rgba(201, 169, 97, 0.2);
+  --lib-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --lib-ink: #f0e6d2;                     /* primary text on cards */
+  --lib-body: #c4b8a0;                    /* secondary text */
+  --lib-muted: #988b78;                   /* tertiary / captions */
+  --lib-rule: rgba(201, 169, 97, 0.1);    /* hairline after section labels */
+  --lib-tile-tint: 0.18;                  /* domain wash over a topic tile */
+  --lib-tile-border: 0.5;                 /* domain alpha on its border */
+
+  /* The info panels stay dark plum in BOTH themes — unlike --lib-plum, which
+     becomes lavender in light mode. Separate token so neither has to bend. */
+  --lib-plum-island: #41213a;
+
+  /* Gauge fill gradient start, and the hairlines flanking the LEARN wordmark. */
+  --lib-gauge-from: #a88a40;
+  --lib-wordmark-rule: rgba(201, 169, 97, 0.45);
+  /* Brass as TEXT. The global --brass is #c9a961 in both themes, which is fine
+     as a fill but too pale to read on a cream page, so Learn darkens it in
+     light mode. Brass BACKGROUNDS (the gold CTA) keep --brass and do not
+     change between themes. */
+  --lib-gold-cta: #c9a961;
+
+  /* The bright green a correct answer uses. --sage-light (#6a8a4a) is too
+     muted against dark plum to read as success, so this sits beside it. */
+  --sage-bright: #9cc46a;
+
   /* Hold-off accent — warm red "hold off" marker (almanac) */
   --hold: #b5654a;
 
@@ -391,6 +455,27 @@
   --lib-track: rgba(0, 0, 0, 0.07);      /* progress tracks, subtle fills */
   --lib-soft: rgba(0, 0, 0, 0.045);      /* faint chips / dividers */
   --lib-orb-text: #3a1830;               /* number on the bright gold orb */
+
+  /* Learn redesign surfaces — a lighter cream page than the app's #f5f0e1,
+     with near-white cards so they separate from it. */
+  --lib-page: #f7f2e6;
+  --lib-card: #fffdf8;
+  --lib-card-border: rgba(120, 95, 40, 0.26);
+  --lib-card-shadow: 0 2px 12px rgba(120, 90, 40, 0.09);
+  --lib-ink: #1a1815;
+  --lib-body: #3a3528;
+  --lib-muted: #655e4e;
+  --lib-rule: rgba(168, 132, 44, 0.2);
+  --lib-tile-tint: 0.14;
+  --lib-tile-border: 0.55;
+
+  /* Pinned dark in light mode too — see the dark block above. */
+  --lib-plum-island: #41213a;
+  --sage-bright: #9cc46a;
+  --lib-gauge-from: #c9a961;
+  --lib-wordmark-rule: rgba(168, 132, 44, 0.5);
+  /* Pinned: the gold CTA does not change between themes. */
+  --lib-gold-cta: #c9a961;
 
   /* Chart Insights cards (light accent-card format) */
   --insight-card: #fbf7ec;

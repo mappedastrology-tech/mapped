@@ -72,7 +72,7 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
         {phase === "intro" && (
           <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
             <div className="text-3xl mb-3" aria-hidden="true">📝</div>
-            <h2 className="text-[18px] font-semibold mb-2" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>Final Test</h2>
+            <h2 className="text-[18px] font-semibold mb-2" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>Final Test</h2>
             <p className="text-[13px] leading-relaxed mb-5" style={{ color: "var(--foreground-secondary)" }}>
               {size} questions, drawn at random from a larger bank. You need <strong style={{ color: "var(--foreground)" }}>{Math.round(threshold * 100)}%</strong> to pass and earn your certificate. You can retake it as many times as you like.
             </p>

@@ -66,11 +66,11 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={entry.image} alt="" aria-hidden="true" loading="lazy" style={{ position: "absolute", inset: 18, width: 60, height: 60, objectFit: "contain", filter: "drop-shadow(0 4px 9px rgba(0,0,0,0.5))" }} />
               ) : (
-                <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, color: "var(--foreground)", fontFamily: "var(--font-display)" }} aria-hidden="true">{entry.name[0]}</span>
+                <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }} aria-hidden="true">{entry.name[0]}</span>
               )}
             </div>
             {entry.category && <p className="text-[9px] uppercase font-semibold mt-2.5" style={{ letterSpacing: "0.2em", color: accent }}>{entry.category}</p>}
-            <h2 className="mt-1 text-[30px] font-medium leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{entry.name}</h2>
+            <h2 className="mt-1 text-[30px] font-medium leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{entry.name}</h2>
           </div>
 
           {/* Stat cards (first 3 fields) */}
@@ -82,7 +82,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
                   {(() => {
                     const linked = onOpenEntry ? findEntryByName(f.value, entry.domain, entry.id) : undefined;
                     return linked ? (
-                      <button onClick={() => onOpenEntry!(linked)} className="mt-1 text-[13px] leading-tight active:opacity-70" style={{ fontFamily: "var(--font-display)", color: accent, textDecoration: "underline", textUnderlineOffset: 2 }}>{f.value}</button>
+                      <button onClick={() => onOpenEntry!(linked)} className="mt-1 text-[13px] leading-tight active:opacity-70" style={{ fontFamily: "var(--font-serif-lib)", color: accent, textDecoration: "underline", textUnderlineOffset: 2 }}>{f.value}</button>
                     ) : (
                       <div className="mt-1 text-[13px] leading-tight" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{f.value}</div>
                     );

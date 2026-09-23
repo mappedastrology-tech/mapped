@@ -56,7 +56,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
             <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }} aria-hidden="true">{course.icon}</span>
           </div>
           <p className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.2em", color: accent }}>{domainTitle}{!isOutline ? ` · ${course.level}` : ""}</p>
-          <h2 className="mt-2 text-[26px] font-medium leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{course.title}</h2>
+          <h2 className="mt-2 text-[26px] font-medium leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{course.title}</h2>
           <p className="mt-2 text-[11px]" style={{ color: "var(--foreground-muted)" }}>
             {isOutline ? "Curriculum preview" : `${total} ${total === 1 ? "lesson" : "lessons"} · ${course.estMinutes} min · ${course.level}`}
           </p>
@@ -160,7 +160,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
                       <span style={{ transform: "rotate(-45deg)", fontSize: 19, color: certified ? "#fff" : "var(--brass-light)" }} aria-hidden="true">✦</span>
                     </span>
                     <span className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: accent }}>Checkpoint</span>
-                    <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{certified ? "Certified" : "Final test"}</span>
+                    <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{certified ? "Certified" : "Final test"}</span>
                     <span className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>{certified ? `${Math.round((progress?.bestScore ?? 0) * 100)}% · view / retake` : `Pass ${Math.round(passThresholdFor(course) * 100)}% to pass · retakes welcome`}</span>
                   </Link>
                 ) : (
@@ -169,7 +169,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
                       <span style={{ transform: "rotate(-45deg)", fontSize: 17, color: "var(--foreground-faint)" }} aria-hidden="true">✦</span>
                     </span>
                     <span className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)" }}>Checkpoint</span>
-                    <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground-secondary)" }}>Final test</span>
+                    <span className="mt-0.5 text-[16px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground-secondary)" }}>Final test</span>
                     <span className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>Finish all {total} lessons to unlock</span>
                     {/* Test-out: already know the material? Skip ahead and prove it. */}
                     <Link href={`/library/${course.id}/test`} className="mt-2.5 text-[11px] font-semibold active:opacity-70" style={{ color: accent }}>
@@ -183,7 +183,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
               <div className="relative text-center pt-4 pb-1.5">
                 <span className="inline-flex items-center justify-center text-[28px]" style={{ width: 74, height: 74, borderRadius: "50%", background: `radial-gradient(circle at 40% 34%, ${accent}40, rgba(11,7,18,0.92))`, border: `1.5px solid ${certified ? "var(--sage-light)" : "rgba(201,169,97,0.4)"}`, boxShadow: "0 0 0 6px var(--background), 0 0 26px -4px rgba(201,169,97,0.4)" }} aria-hidden="true">🎓</span>
                 <div className="text-[9px] uppercase font-semibold mt-3" style={{ letterSpacing: "0.2em", color: accent }}>Reward</div>
-                <div className="mt-0.5 text-[17px]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Course certificate</div>
+                <div className="mt-0.5 text-[17px]" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>Course certificate</div>
                 <div className="mt-0.5 text-[10px]" style={{ color: "var(--foreground-muted)" }}>{certified ? "Earned ✓" : "Pass the final test to earn"}</div>
               </div>
             </div>

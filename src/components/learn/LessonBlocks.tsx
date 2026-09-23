@@ -37,7 +37,7 @@ export default function LessonBlocks({ blocks }: { blocks: LessonBlock[] }) {
         switch (b.kind) {
           case "heading":
             return (
-              <h3 key={i} className="text-[16px] font-semibold mt-2" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>
+              <h3 key={i} className="text-[16px] font-semibold mt-2" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>
                 {b.text}
               </h3>
             );

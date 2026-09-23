@@ -1347,7 +1347,7 @@ export default function RitualPageContent() {
             Ritual Calendar
           </p>
           <div className="flex items-baseline gap-1 mb-1.5">
-            <span className="text-[32px] font-bold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            <span className="text-[32px] font-bold leading-none" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>
               {today.getDate()}
             </span>
             <span className="text-[15px] font-medium" style={{ color: "var(--foreground-muted)" }}>

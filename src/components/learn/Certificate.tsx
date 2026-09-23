@@ -56,13 +56,13 @@ export default function Certificate({ cert }: { cert: CertificateRecord }) {
             })}
           </svg>
           <div className="text-center">
-            <p className="text-[22px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-display)" }}>{pct}%</p>
+            <p className="text-[22px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-serif-lib)" }}>{pct}%</p>
             <p className="text-[8px] uppercase tracking-widest" style={{ color: "var(--brass-light)" }}>Passed</p>
           </div>
         </div>
 
         <p className="text-[12px]" style={{ color: "rgba(240,230,210,0.7)" }}>This certifies the completion of</p>
-        <p className="text-[20px] font-semibold my-2 leading-tight" style={{ color: "#f0e6d2", fontFamily: "var(--font-display)" }}>{cert.courseTitle}</p>
+        <p className="text-[20px] font-semibold my-2 leading-tight" style={{ color: "#f0e6d2", fontFamily: "var(--font-serif-lib)" }}>{cert.courseTitle}</p>
         <div className="flex items-center justify-center gap-2 my-3" aria-hidden="true">
           <span className="h-px w-8" style={{ backgroundColor: "rgba(201,169,97,0.4)" }} />
           <span style={{ color: "var(--brass)" }}>✦</span>

@@ -60,11 +60,11 @@ export default function ProgressDashboard() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--brass-light)" }}>Level</p>
-              <p className="text-[32px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-display)" }}>{stats.level}</p>
+              <p className="text-[32px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-serif-lib)" }}>{stats.level}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] uppercase tracking-widest" style={{ color: "var(--brass-light)" }}>Total XP</p>
-              <p className="text-[22px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-display)" }}>{stats.totalXp}</p>
+              <p className="text-[22px] font-bold leading-none" style={{ color: "#f0e6d2", fontFamily: "var(--font-serif-lib)" }}>{stats.totalXp}</p>
             </div>
           </div>
           <div className="h-2 rounded-full overflow-hidden mt-3" style={{ backgroundColor: "rgba(0,0,0,0.3)" }}>
@@ -78,7 +78,7 @@ export default function ProgressDashboard() {
           <div className="rounded-2xl p-4 flex flex-col justify-center" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
             <div className="flex items-center gap-2">
               <span className="text-2xl" aria-hidden="true">{stats.streak > 0 ? "🔥" : "✨"}</span>
-              <span className="text-[28px] font-bold leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{stats.streak}</span>
+              <span className="text-[28px] font-bold leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{stats.streak}</span>
             </div>
             <p className="text-[11px] mt-1" style={{ color: "var(--foreground-secondary)" }}>day streak{stats.atRisk && stats.streak > 0 ? " · learn today to keep it" : ""}</p>
             {stats.longestStreak > stats.streak && <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>best: {stats.longestStreak}</p>}
@@ -133,7 +133,7 @@ export default function ProgressDashboard() {
             { label: "Active days", value: stats.totalActiveDays },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl p-4" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
-              <p className="text-[24px] font-bold leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{s.value}</p>
+              <p className="text-[24px] font-bold leading-none" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{s.value}</p>
               <p className="text-[11px] mt-1" style={{ color: "var(--foreground-secondary)" }}>{s.label}</p>
             </div>
           ))}

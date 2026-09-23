@@ -29,7 +29,7 @@ export default function ExploreBlock({ prompt, instructions, image, items }: { p
   return (
     <div className="rounded-2xl p-4" style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "var(--card-shadow)" }}>
       <p className="text-[9px] uppercase font-semibold text-center" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Tap to explore</p>
-      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{prompt}</p>
+      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{prompt}</p>
       <p className="text-[12px] text-center mt-2" style={{ color: "var(--foreground-muted)" }}>{instructions ?? "Tap any glyph to learn it"}</p>
 
       {/* wheel */}
@@ -78,7 +78,7 @@ export default function ExploreBlock({ prompt, instructions, image, items }: { p
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center text-[22px]" style={{ width: 44, height: 44, borderRadius: 12, background: `${accent}26`, color: accent }} aria-hidden="true">{cur.glyph}</span>
           <div className="min-w-0">
-            <div className="text-[19px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{cur.name}</div>
+            <div className="text-[19px] leading-tight" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{cur.name}</div>
             {cur.meta && <div className="text-[11px] mt-0.5" style={{ color: "var(--foreground-secondary)" }}>{cur.meta}</div>}
           </div>
         </div>

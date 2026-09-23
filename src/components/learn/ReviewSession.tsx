@@ -57,7 +57,7 @@ export default function ReviewSession() {
         {phase === "empty" && (
           <div className="rounded-2xl p-6 text-center" style={{ background: "linear-gradient(140deg, rgba(45,64,41,0.18), var(--background-card) 70%)", border: "1px solid var(--sage)", boxShadow: "var(--card-shadow)" }}>
             <div className="mx-auto mb-3 w-16 h-16 rounded-full flex items-center justify-center text-[26px]" style={{ backgroundColor: "var(--sage)", color: "#fff" }} aria-hidden="true">✓</div>
-            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>All caught up</h2>
+            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>All caught up</h2>
             <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
               Nothing is due for review right now. Finish a lesson and it&rsquo;ll come back here on a spaced schedule so it sticks.
             </p>
@@ -70,10 +70,10 @@ export default function ReviewSession() {
         {phase === "intro" && (
           <div className="rounded-2xl p-6 text-center" style={{ background: "linear-gradient(140deg, rgba(201,169,97,0.16), var(--background-card) 70%)", border: "1px solid rgba(201,169,97,0.4)", boxShadow: "var(--card-shadow)" }}>
             <div className="mx-auto mb-3 w-20 h-20 rounded-full flex flex-col items-center justify-center" style={{ background: "linear-gradient(135deg, var(--plum), var(--plum-deep))", border: "3px solid var(--brass)" }}>
-              <span className="text-[28px] font-bold leading-none" style={{ color: "var(--lib-on-plum)", fontFamily: "var(--font-display)" }}>{lessonCount}</span>
+              <span className="text-[28px] font-bold leading-none" style={{ color: "var(--lib-on-plum)", fontFamily: "var(--font-serif-lib)" }}>{lessonCount}</span>
               <span className="text-[8px] uppercase tracking-wider" style={{ color: "var(--brass-light)" }}>lessons</span>
             </div>
-            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>Daily review</h2>
+            <h2 className="text-[18px] font-semibold mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>Daily review</h2>
             <p className="text-[13px] leading-relaxed mb-1" style={{ color: "var(--foreground-secondary)" }}>
               A short test on {lessonCount === 1 ? "a lesson you've" : `${lessonCount} lessons you've`} already finished. Answer the questions to lock the material in.
             </p>
@@ -93,7 +93,7 @@ export default function ReviewSession() {
               {streak > 0 && (
                 <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(201,169,97,0.12)" }}>
                   <span className="text-[14px]" aria-hidden="true">🔥</span>
-                  <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{streak}</span>
+                  <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{streak}</span>
                   <span className="text-[9px] uppercase" style={{ letterSpacing: "0.1em", color: "var(--foreground-muted)" }}>day streak</span>
                 </span>
               )}
@@ -108,8 +108,8 @@ export default function ReviewSession() {
               <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "radial-gradient(circle at 42% 36%, rgba(201,169,97,0.4), rgba(11,7,18,0) 82%)" }} />
               <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, animation: "rev-floaty 3.4s ease-in-out infinite" }} aria-hidden="true">🌙</span>
             </div>
-            <h2 className="text-[24px] font-medium mt-4" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Review complete</h2>
-            <p className="text-[34px] font-bold leading-none mt-3" style={{ fontFamily: "var(--font-display)", color: "var(--brass-light)" }}>{scorePct}%</p>
+            <h2 className="text-[24px] font-medium mt-4" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>Review complete</h2>
+            <p className="text-[34px] font-bold leading-none mt-3" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--brass-light)" }}>{scorePct}%</p>
             <p className="text-[13px] mt-3" style={{ color: "var(--foreground-secondary)" }}>
               {advanced} of {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"} pushed further out. The rest will come back sooner so you can lock them in.
             </p>

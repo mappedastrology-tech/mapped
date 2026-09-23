@@ -107,7 +107,7 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
         <p className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: accent }}>
           <span aria-hidden="true" className="text-[13px]">{course.icon}</span> Lesson {ctx.index + 1} of {ctx.total}
         </p>
-        <h2 className="text-[23px] font-medium leading-tight mb-3" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{lesson.title}</h2>
+        <h2 className="text-[23px] font-medium leading-tight mb-3" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{lesson.title}</h2>
         <div className="rounded-xl px-4 py-3 mb-5" style={{ backgroundColor: "var(--background-card)", borderLeft: `3px solid ${accent}`, boxShadow: "var(--card-shadow)" }}>
           <p className="text-[10px] uppercase tracking-widest mb-1 font-semibold" style={{ color: accent }}>Objective</p>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>{lesson.objective}</p>

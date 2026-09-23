@@ -26,7 +26,7 @@ function IconTile({ entry, accent, size }: { entry: ReferenceEntry; accent: stri
         // eslint-disable-next-line @next/next/no-img-element
         <img src={entry.image} alt="" loading="lazy" style={{ width: size * 0.78, height: size * 0.78, objectFit: "contain" }} />
       ) : (
-        <span style={{ fontSize: size * 0.42, fontFamily: "var(--font-display)" }}>{entry.name[0]}</span>
+        <span style={{ fontSize: size * 0.42, fontFamily: "var(--font-serif-lib)" }}>{entry.name[0]}</span>
       )}
     </span>
   );
@@ -73,7 +73,7 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
             <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-muted)" }}>The Library</span>
             <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
           </div>
-          <h1 className="text-center font-medium" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)", fontSize: 34, lineHeight: 1.05 }}>Look it up</h1>
+          <h1 className="text-center font-medium" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)", fontSize: 34, lineHeight: 1.05 }}>Look it up</h1>
           <p className="text-[13px] leading-relaxed text-center mt-1.5 mb-5" style={{ color: "var(--foreground-muted)" }}>An index of every topic — tap a thread to follow it.</p>
 
           <div style={{ borderTop: "0.5px solid var(--border-card)" }}>
@@ -86,7 +86,7 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
               >
                 <span className="shrink-0 rounded-full" style={{ width: 11, height: 11, background: d.accent, boxShadow: `0 0 0 4px ${d.accent}22` }} />
                 <span className="flex-1 min-w-0">
-                  <span className="block leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, color: "var(--foreground)" }}>{d.title}</span>
+                  <span className="block leading-tight" style={{ fontFamily: "var(--font-serif-lib)", fontSize: 19, fontWeight: 500, color: "var(--foreground)" }}>{d.title}</span>
                   <span className="block text-[11px] mt-0.5" style={{ color: "var(--foreground-muted)" }}>{d.evidenceTag} · {counts[d.id]} entries</span>
                 </span>
                 <span className="text-[14px] shrink-0" style={{ color: "var(--foreground-faint)" }}>→</span>
@@ -120,7 +120,7 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-[9px] uppercase font-semibold" style={{ letterSpacing: "0.2em", color: accent }}>{meta.evidenceTag}</p>
-            <h1 className="leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 500, color: "var(--foreground)" }}>{meta.title}</h1>
+            <h1 className="leading-tight" style={{ fontFamily: "var(--font-serif-lib)", fontSize: 26, fontWeight: 500, color: "var(--foreground)" }}>{meta.title}</h1>
           </div>
         </div>
       )}
@@ -159,7 +159,7 @@ export default function ReferenceList({ domain, placeholder }: { domain?: LearnD
                 <IconTile entry={entry} accent={a} size={40} />
                 <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate" style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--foreground)" }}>{entry.name}</span>
+                    <span className="truncate" style={{ fontFamily: "var(--font-serif-lib)", fontSize: 16, color: "var(--foreground)" }}>{entry.name}</span>
                     {entry.safety && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#d39a3e" }} aria-hidden="true" />}
                   </span>
                   <span className="block text-[10.5px] mt-0.5 leading-snug truncate" style={{ color: "var(--foreground-muted)" }}>

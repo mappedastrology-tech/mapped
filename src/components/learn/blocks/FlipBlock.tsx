@@ -28,7 +28,7 @@ export default function FlipBlock({ prompt, instructions, cards }: { prompt: str
   return (
     <div className="rounded-2xl p-4" style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "var(--card-shadow)" }}>
       <p className="text-[9px] uppercase font-semibold text-center" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Tap to reveal</p>
-      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{prompt}</p>
+      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{prompt}</p>
       <p className="text-[12px] text-center mt-2" style={{ color: "var(--foreground-muted)" }}>
         {turned === cards.length ? "All turned — nicely done" : instructions ?? `${turned} of ${cards.length} turned`}
       </p>
@@ -58,7 +58,7 @@ export default function FlipBlock({ prompt, instructions, cards }: { prompt: str
       <div className="flex items-center gap-3 mt-4 px-4 py-3 rounded-2xl" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.18)", minHeight: 30 }}>
         {cap ? (
           <>
-            <span className="shrink-0 text-center text-[18px] font-bold" style={{ fontFamily: "var(--font-display)", color: "var(--brass-light)", minWidth: 22 }}>{(last ?? 0) + 1}</span>
+            <span className="shrink-0 text-center text-[18px] font-bold" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--brass-light)", minWidth: 22 }}>{(last ?? 0) + 1}</span>
             <div className="min-w-0">
               <div className="text-[15px] leading-tight" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground)" }}>{cap.name}</div>
               {cap.caption && <div className="text-[11.5px] mt-0.5" style={{ color: "var(--foreground-secondary)" }}>{cap.caption}</div>}

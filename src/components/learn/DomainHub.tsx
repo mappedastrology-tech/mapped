@@ -50,7 +50,7 @@ export default function DomainHub({ domain, initialTab }: { domain: string; init
           )}
           <div className="relative max-w-[72%]">
             <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-2" style={{ backgroundColor: `${accent}33`, border: `1px solid ${accent}77` }} aria-hidden="true">{meta.icon}</span>
-            <h2 className="text-[18px] font-semibold leading-tight mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-display)" }}>{meta.title}</h2>
+            <h2 className="text-[18px] font-semibold leading-tight mb-1" style={{ color: "var(--foreground)", fontFamily: "var(--font-serif-lib)" }}>{meta.title}</h2>
             <p className="text-[12px] leading-snug" style={{ color: "var(--foreground-secondary)" }}>{meta.blurb}</p>
           </div>
         </div>
