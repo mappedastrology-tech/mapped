@@ -17,6 +17,8 @@ import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
 import { useStickToBottom } from "@/lib/useStickToBottom";
+import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
+import { useDialogKeys } from "@/lib/useDialogKeys";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
@@ -138,7 +140,7 @@ function getDollySummaryKey(uid?: string | null): string {
 }
 
 export default function DollyTab() {
-  const { gate, PaywallModal } = usePaywall();
+  const { gateWithReason, PaywallModal, setShowPlans } = usePaywall();
   const { tier } = useTier();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -150,6 +152,10 @@ export default function DollyTab() {
   const [userName, setUserName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  /** What the live region says once a reply lands. See the region itself. */
+  const [announcement, setAnnouncement] = useState("");
+  /** Shown when the paywall is in its 24h cooldown — see handleSend. */
+  const [upgradeNotice, setUpgradeNotice] = useState(false);
 
   // History drawer state
   const [showHistory, setShowHistory] = useState(false);
@@ -160,7 +166,24 @@ export default function DollyTab() {
   const [pastConversations, setPastConversations] = useState<PastConversation[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingDay, setViewingDay] = useState<string | null>(null); // which day's chat is loaded
+  /**
+   * The delete about to happen, pending confirmation.
+   *
+   * Single delete used the browser's confirm(), which inside Capacitor renders
+   * the system alert titled "localhost says…" — the app's own name for itself
+   * leaking into the most alarming dialog it shows. Bulk delete had no
+   * confirmation at all: one tap destroyed every selected reading with no
+   * undo. Both now go through the sheet pattern this screen already uses.
+   */
+  const [pendingDelete, setPendingDelete] = useState<
+    { kind: "one"; convo: PastConversation } | { kind: "many"; count: number } | null
+  >(null);
 
+  /** The last question actually sent, so a failed turn can be retried
+   *  without the reader retyping it. */
+  const lastAskRef = useRef<string | null>(null);
+  const leaveRef = useRef<HTMLDivElement>(null);
+  const deleteRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   /** True when the 90s safety net fired, so a timeout can be told apart from
@@ -370,10 +393,28 @@ export default function DollyTab() {
     // these calls outright, and letting someone type a question only to be told
     // no is a worse way to learn that than being told up front.
     if (tier === "free") {
-      if (gate("ai_features")) return;
+      const reason = gateWithReason("ai_features");
+      // Dismissing the paywall silences it for 24 hours. That used to silence
+      // this whole screen with it: the composer, the send button and all six
+      // starter prompts did nothing, with no paywall and no message, for a
+      // full day. Say it inline instead, once, with somewhere to go — this is
+      // the moment the free tier is supposed to convert, not the moment the
+      // app looks broken.
+      if (reason === "cooldown") {
+        // Deliberately NOT a thread message. Pushing it into `messages` made
+        // messages.length non-zero, which tore down the greeting and all six
+        // starter prompts — so the one tap that was supposed to sell the plan
+        // emptied the screen instead. It would also have been carried into
+        // saved history the moment the reader subscribed and started talking.
+        setUpgradeNotice(true);
+        setAnnouncement(AI_UPGRADE_MESSAGE);
+        return;
+      }
+      if (reason !== "allowed") return;
     }
 
     setInput("");
+    lastAskRef.current = msg;
     incrementDollyUsage();
 
     const userMsg: Message = {
@@ -486,6 +527,10 @@ export default function DollyTab() {
       setMessages(finalMessages);
       saveConversation(finalMessages);
 
+      // Read the finished reply out. dollyBody, not the raw text, so the
+      // follow-up chips aren't read as part of the sentence.
+      setAnnouncement(fullText.trim() ? dollyBody(fullText) : "");
+
       // Fold the latest turns into Dolly's cross-session memory (fire-and-forget).
       if (fullText.trim()) {
         try {
@@ -510,33 +555,108 @@ export default function DollyTab() {
 
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       console.error("Dolly stream error:", errMsg);
+      // navigator.onLine is only reliable in the negative — false really does
+      // mean no connection — which is exactly the direction needed here.
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const failure = offline
+        ? "You're offline, so Dolly can't answer right now. She'll pick this up when you're back."
+        : aborted
+        ? "That one took too long and I lost the thread. Ask me again?"
+        : "Dolly couldn't finish that answer. Try asking again?";
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
             ? {
                 ...m,
                 // The exception text is our diagnostic, not the reader's.
-                content: aborted
-                  ? "That one took too long and I lost the thread. Ask me again?"
-                  : "Dolly couldn't finish that answer. Try asking again?",
+                content: failure,
+                // A failure is the app talking, not Dolly. Rendering it in her
+                // bubble reads as her saying it, and — the reason this matters
+                // more than tone — it skipped the announced path, so a screen
+                // reader user waited out a silence that never resolved.
+                notice: true,
               }
             : m
         )
       );
+      setAnnouncement(failure);
     } finally {
       timedOutRef.current = false;
       if (streamTimeout) clearTimeout(streamTimeout);
       setIsStreaming(false);
       abortRef.current = null;
+      // Back to where the person was typing. Focus used to land on <body>
+      // after every send and stay there.
+      inputRef.current?.focus();
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // isComposing: while an IME is open, Enter commits the candidate word.
+    // Without this check a Japanese, Chinese or Korean speaker cannot type a
+    // sentence — the first Enter sends the half-finished one.
+    if (e.key === "Enter" && !e.shiftKey && !(e.nativeEvent as KeyboardEvent).isComposing) {
       e.preventDefault();
       handleSend();
     }
   }
+
+  // Declared up here, not beside the sheet's markup: the early returns for the
+  // loading spinner and the history view sit between, and a hook after them
+  // changes the hook count between renders.
+  const closeLeave = useCallback(() => setShowLeavePrompt(false), []);
+  useDialogKeys(showLeavePrompt, leaveRef, closeLeave);
+  const closeDelete = useCallback(() => setPendingDelete(null), []);
+  useDialogKeys(pendingDelete !== null, deleteRef, closeDelete);
+
+  /**
+   * Confirmation for both deletes. Rendered inside the history view, which is
+   * the only place either can be started.
+   */
+  const deleteSheet = pendingDelete && (
+    <div
+      onClick={closeDelete}
+      style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+    >
+      <div
+        ref={deleteRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dl-del-title"
+        aria-describedby="dl-del-body"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
+      >
+        <p id="dl-del-title" style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>
+          {pendingDelete.kind === "one"
+            ? "Delete this reading?"
+            : `Delete ${pendingDelete.count} ${pendingDelete.count === 1 ? "reading" : "readings"}?`}
+        </p>
+        <p id="dl-del-body" style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>
+          This can&rsquo;t be undone.
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={closeDelete}
+            style={{ flex: 1, minHeight: 44, borderRadius: 12, background: "transparent", color: "var(--foreground-muted)", border: "1px solid var(--border-card)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          >
+            Keep
+          </button>
+          <button
+            onClick={() => {
+              const target = pendingDelete;
+              setPendingDelete(null);
+              if (target.kind === "one") deleteConversation(target.convo);
+              else void deleteSelected();
+            }}
+            style={{ flex: 1, minHeight: 44, borderRadius: 12, background: "var(--oxblood-light)", color: "#fff", border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   function handleNewChat() {
     if (isStreaming) {
@@ -795,7 +915,10 @@ export default function DollyTab() {
   }
 
   function getConvoMessageCount(convo: PastConversation): number {
-    return convo.messages.filter(m => m.role === "user").length;
+    // Both sides. Counting only the user's turns labelled a question-and-answer
+    // exchange "1 message", which reads as a bug in the list. System notices
+    // are not part of the conversation and don't count.
+    return convo.messages.filter(m => !m.notice).length;
   }
 
   // Get last Dolly response for a conversation (for chat list preview).
@@ -841,17 +964,32 @@ export default function DollyTab() {
       <main className="flex-1 flex flex-col max-w-lg lg:max-w-3xl mx-auto w-full">
         {/* History header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-foreground/15">
-          <h1
-            className="text-lg text-foreground"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            Chats
-          </h1>
+          <div className="flex items-center gap-1">
+            {/* The only ways out of this screen were opening a chat or
+                starting a new one — someone who came in to look had no way
+                back to the conversation they were in the middle of. */}
+            <button
+              onClick={() => setShowHistory(false)}
+              aria-label="Back to conversation"
+              className="-ml-2 w-11 h-11 rounded-full flex items-center justify-center text-secondary hover:text-foreground hover:bg-foreground/5 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <h1
+              className="text-lg text-foreground"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Chats
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             {pastConversations.length > 0 && (
               <button
                 onClick={() => { setSelectMode((s) => !s); setSelectedIds(new Set()); }}
-                className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                aria-pressed={selectMode}
+                className="text-xs px-3 py-1.5 rounded-lg transition-colors min-h-[44px]"
                 style={{ color: "var(--foreground-muted)", border: "1px solid var(--border-card)" }}
               >
                 {selectMode ? "Cancel" : "Select"}
@@ -859,8 +997,8 @@ export default function DollyTab() {
             )}
             {selectMode && selectedIds.size > 0 && (
               <button
-                onClick={deleteSelected}
-                className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                onClick={() => setPendingDelete({ kind: "many", count: selectedIds.size })}
+                className="text-xs px-3 py-1.5 rounded-lg font-medium min-h-[44px]"
                 style={{ background: "var(--oxblood-light)", color: "#fff", border: "none" }}
               >
                 Delete ({selectedIds.size})
@@ -872,7 +1010,7 @@ export default function DollyTab() {
                   handleNewChat();
                   setShowHistory(false);
                 }}
-                className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
+                className="w-11 h-11 rounded-full bg-terracotta/15 border border-terracotta/25 flex items-center justify-center text-terracotta hover:bg-terracotta/25 transition-colors active:scale-95"
                 aria-label="New conversation"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -919,9 +1057,12 @@ export default function DollyTab() {
                   <div key={convo.id}>
                     {showDateHeader && (
                       <div className="px-5 pt-4 pb-1.5">
-                        <span className="text-muted text-[10px] uppercase tracking-widest font-medium">
+                        {/* A heading, not a styled span: these are the only
+                            structure this list has, and heading navigation is
+                            how a screen reader user skips a month of chats. */}
+                        <h2 className="text-muted text-[10px] uppercase tracking-widest font-medium">
                           {formatConvoDate(convo.day)}
-                        </span>
+                        </h2>
                       </div>
                     )}
                     <div className={`flex items-center gap-0 transition-colors ${
@@ -929,6 +1070,13 @@ export default function DollyTab() {
                     }`}>
                       <button
                         onClick={() => { if (selectMode) toggleSelect(convo.id); else loadConversation(convo); }}
+                        {...(selectMode
+                          // In select mode this button IS a checkbox — the tick
+                          // is drawn with a coloured span, which says nothing
+                          // aloud, so selected and unselected rows were
+                          // indistinguishable.
+                          ? { role: "checkbox" as const, "aria-checked": selectedIds.has(convo.id) }
+                          : {})}
                         className="flex-1 text-left px-5 py-3.5 flex gap-3 items-start active:bg-foreground/5 min-w-0"
                       >
                         {selectMode && (
@@ -980,12 +1128,17 @@ export default function DollyTab() {
                       {!selectMode && (
                         <button
                           onClick={() => {
-                            if (confirm("Delete this conversation?")) {
-                              deleteConversation(convo);
-                            }
+                            setPendingDelete({ kind: "one", convo });
                           }}
-                          className="px-4 py-3.5 flex-shrink-0 text-foreground/20 active:text-red-400/70 transition-colors self-stretch flex items-center"
-                          aria-label="Delete conversation"
+                          // text-foreground/20 was a 20%-opacity icon: around
+                          // 1.3:1 against the background, invisible to anyone
+                          // who isn't looking for it.
+                          className="px-4 py-3.5 flex-shrink-0 text-muted hover:text-foreground active:text-red-400/70 transition-colors self-stretch flex items-center"
+                          // Named by its row. Every one of these said "Delete
+                          // conversation", so a screen reader user heard the
+                          // same button forty times with no way to tell which
+                          // reading they were about to destroy.
+                          aria-label={`Delete conversation: ${summaries[convo.id] || preview}`}
                         >
                           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                             <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
@@ -1005,6 +1158,7 @@ export default function DollyTab() {
             </div>
           )}
         </div>
+        {deleteSheet}
       </main>
     );
   }
@@ -1092,30 +1246,47 @@ export default function DollyTab() {
         )}
       </div>
 
-      {/* Leave prompt — offer to keep or discard the current reading. */}
+      {/* Leave prompt — offer to keep or discard the current reading.
+          A real dialog: it was a bare div, so it had no role, Escape did
+          nothing, and Tab left the panel for the thread and composer behind
+          the scrim. See useDialogKeys. */}
       {showLeavePrompt && (
         <div
           onClick={() => setShowLeavePrompt(false)}
           style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
         >
           <div
+            ref={leaveRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dl-leave-title"
+            aria-describedby="dl-leave-body"
             onClick={(e) => e.stopPropagation()}
             style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
           >
-            <p style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
-            <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>
+            <p id="dl-leave-title" style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
+            <p id="dl-leave-body" style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>
               It&rsquo;s kept in your history so you can reopen it anytime. Save it, or discard it before starting fresh.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
+              {/* Brass with its paired ink, like every other primary action.
+                  This was a hardcoded #1a1020 on var(--lavender) — fine in
+                  dark (7.9:1) but --lavender flips to #6a4a90 in light, making
+                  it dark ink on dark purple at 2.63:1. The same trap as the
+                  send button: a token that changes lightness between themes,
+                  paired with a colour that doesn't. Now 8.01:1 / 4.88:1. */}
               <button
                 onClick={() => { setShowLeavePrompt(false); handleNewChat(); }}
-                style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "var(--lavender)", color: "#1a1020", border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+                style={{ flex: 1, minHeight: 44, borderRadius: 12, background: "var(--brass)", color: "var(--btn-primary-text)", border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
               >
                 Save &amp; start new
               </button>
+              {/* Discard throws the reading away, so it is coloured as the
+                  destructive choice rather than as a twin of the safe one —
+                  the two were indistinguishable outlined pills. */}
               <button
                 onClick={discardCurrentAndNew}
-                style={{ flex: 1, padding: "11px 0", borderRadius: 12, background: "transparent", color: "var(--foreground-muted)", border: "1px solid var(--border-card)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+                style={{ flex: 1, minHeight: 44, borderRadius: 12, background: "transparent", color: "var(--danger-text)", border: "1px solid var(--border-card)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
               >
                 Discard
               </button>
@@ -1127,7 +1298,27 @@ export default function DollyTab() {
       {/* ── Thread ──────────────────────────────────────────────────────────
           The ONLY scroll region on this page. It follows new content while
           you're at the bottom and holds still the moment you scroll up. */}
-      <div ref={threadRef} className="dl-thread relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+      {/*
+        tabIndex={0} because this is a scroll region: without it a keyboard-only
+        user could not scroll back through the conversation at all — there is
+        nothing focusable inside a reply, so Tab skipped the whole thread.
+
+        role="log" for the semantics (a running list of messages) but
+        aria-live="off" deliberately: a live log announces every DOM change,
+        which during streaming is every few tokens, and the announcements
+        interrupt each other so the reader hears fragments and never a
+        sentence. The sr-only region below does the announcing instead, once,
+        when the reply is finished.
+      */}
+      <div
+        ref={threadRef}
+        tabIndex={0}
+        role="log"
+        aria-live="off"
+        aria-label="Conversation with Dolly"
+        className="dl-thread relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+        style={{ ["--tw-ring-color" as string]: "var(--lavender)" }}
+      >
         <div className="flex flex-col gap-[18px]">
           <div className="text-center" style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", opacity: 0.7 }}>
             {skyLine}
@@ -1188,7 +1379,11 @@ export default function DollyTab() {
           {messages.map((msg) => {
             if (msg.role === "user") {
               return (
-                <div key={msg.id} className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}>
+                <div key={msg.id} role="article" className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}>
+                  {/* Who is speaking. On screen the side of the thread and the
+                      colour say it; read aloud, every turn ran together into
+                      one voice and the conversation was unfollowable. */}
+                  <span className="sr-only">You said: </span>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: "var(--journal-on-accent, #161022)" }}>{msg.content}</p>
                 </div>
               );
@@ -1203,25 +1398,60 @@ export default function DollyTab() {
              * deliberate rule read as the app breaking.
              */
             if (msg.notice) {
+              // A plan boundary needs somewhere to go, and a failure needs a
+              // way to try again. This was a grey slab with neither: the
+              // upgrade line — the most commercially important moment on the
+              // screen — had no route to plans on mobile at all (desktop got
+              // one), and a failed answer meant retyping the question.
+              const isUpgrade = /Mapped\+|plan/i.test(msg.content);
+              const isFailure = msg.id.startsWith("a-");
               return (
-                <div key={msg.id} className="self-center w-full" style={{ padding: "4px 8px" }}>
+                <div key={msg.id} className="self-center w-full flex flex-col items-center gap-2.5" style={{ padding: "4px 8px" }}>
                   <p
-                    role="status"
                     className="text-center"
                     style={{
                       fontFamily: "var(--font-body)", fontSize: 12.5, lineHeight: 1.6,
                       color: "var(--foreground-secondary)",
                       background: "var(--lib-track)",
-                      borderRadius: 14, padding: "12px 16px",
+                      borderRadius: 14, padding: "12px 16px", margin: 0,
                     }}
                   >
                     {msg.content}
                   </p>
+                  {isUpgrade && (
+                    <button
+                      onClick={() => setShowPlans(true)}
+                      className="px-4 min-h-[44px] rounded-full font-semibold transition-transform active:scale-[0.98]"
+                      style={{ background: "var(--brass)", color: "var(--btn-primary-text)", fontFamily: "var(--font-ui)", fontSize: 13 }}
+                    >
+                      See plans
+                    </button>
+                  )}
+                  {isFailure && lastAskRef.current && (
+                    <button
+                      onClick={() => {
+                        const again = lastAskRef.current;
+                        if (!again) return;
+                        // Drop the failed turn so the thread doesn't keep a
+                        // dead end in it, then ask the same thing again.
+                        setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+                        handleSend(again);
+                      }}
+                      disabled={isStreaming}
+                      className="px-4 min-h-[44px] rounded-full font-semibold transition-transform active:scale-[0.98] disabled:opacity-45"
+                      style={{ background: "transparent", color: "var(--foreground)", border: "0.5px solid var(--border-card)", fontFamily: "var(--font-ui)", fontSize: 13 }}
+                    >
+                      Try again
+                    </button>
+                  )}
                 </div>
               );
             }
 
             const live = isStreaming && msg === lastMessage;
+            // The newest reply, and finished: the only turn whose next-step
+            // chips are still worth offering.
+            const isLatest = !live && msg === lastMessage;
             const { meta, body, metaPending } = parseDollyReply(msg.content);
 
             // Nothing to show yet (empty placeholder, or the meta line still
@@ -1242,11 +1472,12 @@ export default function DollyTab() {
             }
 
             return (
-              <div key={msg.id} className="flex flex-col gap-[18px]">
+              <div key={msg.id} role="article" className="flex flex-col gap-[18px]">
                 <div
                   className={`dl-bubble self-start max-w-[88%] px-[19px] py-[17px] ${live ? "dl-live" : ""}`}
                   style={{ background: "linear-gradient(165deg, var(--plum), var(--plum-deep, #161022))", border: "0.5px solid rgba(201,206,232,0.16)", borderRadius: "6px 20px 20px 20px" }}
                 >
+                  <span className="sr-only">Dolly said: </span>
                   {!!meta?.tags.length && (
                     <div className="flex flex-wrap gap-[7px] mb-[13px]">
                       {meta.tags.map((tag) => (
@@ -1275,8 +1506,12 @@ export default function DollyTab() {
                 </div>
 
                 {/* The action chip and follow-ups only once the reply has
-                    landed — offering a next step mid-sentence reads as a bug. */}
-                {!live && meta?.action && (
+                    landed — offering a next step mid-sentence reads as a bug —
+                    and only on the LATEST reply. They used to render on every
+                    assistant turn, so three exchanges left three stale "See
+                    today's almanac" chips and six out-of-date follow-up
+                    questions still sitting in the thread, all still tappable. */}
+                {isLatest && meta?.action && (
                   <a
                     href={meta.action.href}
                     className="self-start inline-flex items-center gap-2"
@@ -1288,7 +1523,7 @@ export default function DollyTab() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{meta.action.label}</span>
                   </a>
                 )}
-                {!live && !!meta?.follow.length && (
+                {isLatest && !!meta?.follow.length && (
                   <div className="flex flex-wrap gap-[9px] self-start max-w-[92%]">
                     {meta.follow.map((f) => (
                       <button
@@ -1324,6 +1559,52 @@ export default function DollyTab() {
         </button>
       )}
 
+      {/*
+        What a screen reader hears.
+        There was no live region anywhere on this screen: a blind user sent a
+        message and heard silence, with no signal that a reply had started,
+        finished, or what it said. The whole point of the screen was
+        unreachable.
+
+        Deliberately NOT streamed into. Announcing every token produces a
+        torrent that interrupts itself; this says she has started, then reads
+        the finished answer once. The region is always mounted and empty, and
+        written into, because a live region that appears with its text already
+        inside is unreliable on iOS VoiceOver — which is a Capacitor target.
+      */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {isStreaming ? "Dolly is writing…" : announcement}
+      </div>
+
+      {/*
+        The paid boundary, said out loud.
+        This is the 24h window after someone dismisses the paywall. It used to
+        be complete silence — composer, send button and every starter prompt
+        inert, with nothing on screen to explain it. Sits above the composer
+        rather than in the thread so the greeting and the starters stay put.
+      */}
+      {upgradeNotice && (
+        <div className="relative z-10 px-5 pb-1 flex flex-col items-center gap-2.5">
+          <p
+            className="text-center"
+            style={{
+              fontFamily: "var(--font-body)", fontSize: 12.5, lineHeight: 1.6,
+              color: "var(--foreground-secondary)", background: "var(--lib-track)",
+              borderRadius: 14, padding: "12px 16px", margin: 0,
+            }}
+          >
+            {AI_UPGRADE_MESSAGE}
+          </p>
+          <button
+            onClick={() => setShowPlans(true)}
+            className="px-4 min-h-[44px] rounded-full font-semibold transition-transform active:scale-[0.98]"
+            style={{ background: "var(--brass)", color: "var(--btn-primary-text)", fontFamily: "var(--font-ui)", fontSize: 13 }}
+          >
+            See plans
+          </button>
+        </div>
+      )}
+
       {/* Input area */}
       <div className="relative z-10 shrink-0 px-4 pb-4 pt-2">
         <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" style={{ background: "var(--soft, rgba(255,255,255,0.05))", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
@@ -1332,9 +1613,21 @@ export default function DollyTab() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isStreaming ? "Reading the stars..." : "Ask Dolly anything…"}
+            placeholder={isStreaming ? "Dolly is reading your chart…" : "Ask Dolly anything…"}
             aria-label="Chat message"
-            disabled={isStreaming}
+            /*
+             * NOT disabled while streaming.
+             *
+             * Disabling the focused textarea makes the browser drop focus to
+             * the document, so after every single send the caret vanished and
+             * a keyboard user had to Tab in from the top of the page again.
+             * For a screen-reader user it also threw the reading cursor to the
+             * top of the document mid-conversation. handleSend already refuses
+             * to run while streaming, so the guard was never needed here —
+             * and leaving it live means you can write your next question while
+             * Dolly answers.
+             */
+            aria-busy={isStreaming}
             rows={1}
             className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted resize-none outline-none max-h-[120px] py-1.5"
             style={{ minHeight: "24px" }}
@@ -1344,16 +1637,36 @@ export default function DollyTab() {
               target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
             }}
           />
+          {/* Send, or Stop while she is writing. There was no way to stop a
+              reply at all: the only route to the abort controller was "New
+              chat", which is behind a prompt and destroys the conversation. */}
           <button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isStreaming}
-            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
-            aria-label="Send message"
-            style={{ backgroundColor: "var(--journal-accent)" }}
+            onClick={() => {
+              if (isStreaming) { abortRef.current?.abort(); return; }
+              handleSend();
+            }}
+            disabled={!isStreaming && !input.trim()}
+            // disabled:opacity-30 was invisible; 45% still reads as "off"
+            // without vanishing into the page.
+            className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-45"
+            aria-label={isStreaming ? "Stop generating" : "Send message"}
+            /* Brass, like every other primary action in the app. This was
+               --journal-accent, borrowed from the Journal tab, which is
+               lavender in dark but SLATE BLUE (#5b6180) in light — a colour
+               from no palette in Mapped, reading as a greyed-out disc that
+               looked disabled even when it wasn't. Measured: 8.01:1 dark,
+               4.88:1 light against --btn-primary-text. */
+            style={{ backgroundColor: "var(--brass)" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--journal-on-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M7 12h11M13 6l6 6-6 6" />
-            </svg>
+            {isStreaming ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--btn-primary-text)" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--btn-primary-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 12h11M13 6l6 6-6 6" />
+              </svg>
+            )}
           </button>
         </div>
         <p className="text-muted text-[9px] text-center mt-2">

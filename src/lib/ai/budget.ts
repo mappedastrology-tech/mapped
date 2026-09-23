@@ -38,32 +38,11 @@ const MONTHLY_BUDGET_MICROS: Record<TierLevel, number> = {
 };
 
 /**
- * What the reader is told when they reach the ceiling.
- *
- * Still no number — the dollar figure stays private. But the previous wording,
- * "Dolly's resting right now — she'll be back with you soon", had three
- * problems. It attributed a deliberate rule to Dolly's mood, so a subscriber
- * could not tell a limit from an outage and had nothing to act on. "Soon" is
- * an affirmative claim that is usually false: the ceiling is a calendar month,
- * so hitting it on the 3rd means four weeks, not soon. And it was ALSO served
- * when the database read failed, which told people they had used up an
- * allowance they had barely touched.
- *
- * Naming the reset without naming the amount keeps the figure private and
- * still lets someone plan.
+ * The user-facing wording lives in ./messages, which is safe for the browser
+ * to import; re-exported here so server callers keep one import.
  */
-export const AI_RESTING_MESSAGE =
-  "You've used up this month's time with Dolly. It comes back when the new month starts — everything else in Mapped keeps working.";
-
-/**
- * What the reader is told when WE cannot answer — a failed read, not a limit.
- * Kept separate so an outage is never reported as a usage cap.
- */
-export const AI_UNAVAILABLE_MESSAGE =
-  "Dolly can't be reached right now. This one is on us, not you — please try again shortly.";
-
-/** What a free-tier account is told when it reaches for an AI feature. */
-export const AI_UPGRADE_MESSAGE = "Dolly comes with Mapped+.";
+export { AI_RESTING_MESSAGE, AI_UNAVAILABLE_MESSAGE, AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
+import { AI_RESTING_MESSAGE, AI_UNAVAILABLE_MESSAGE, AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
 
 let cached: SupabaseClient | null = null;
 

@@ -121,6 +121,21 @@
   --background-elevated: #1a1420;
   --background-hero: linear-gradient(135deg, #1a1420, #0e0a14);
 
+  /* --card / --soft: aliases, and a rescue.
+     Both names belong to the marketing/web shell, where they are defined on
+     .mp-web[data-theme=…]. Six places in the APP referenced them anyway —
+     Dolly's leave dialog and its "Latest" pill, the composer, TopBar, SideNav
+     and RitualWizard — and outside .mp-web they resolved to nothing. A
+     background of an undefined custom property is transparent, so the "Save
+     this reading?" dialog rendered as a ghost with the thread and the tab bar
+     showing through its text, in both themes. The composer's
+     var(--soft, rgba(255,255,255,0.05)) always fell back to white-on-5%, which
+     on the cream light theme is no field at all.
+     Defined here they cost nothing and cannot fail again; .mp-web still wins
+     inside the web shell by specificity. */
+  --card: var(--background-elevated);
+  --soft: rgba(255, 255, 255, 0.05);
+
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
   --foreground-muted: #988b78;
@@ -244,6 +259,8 @@
   --background-card-hover: #352845;
   --background-elevated: #1a1420;
   --background-hero: linear-gradient(135deg, #1a1420, #0e0a14);
+  --card: var(--background-elevated);
+  --soft: rgba(255, 255, 255, 0.05);
 
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
@@ -402,6 +419,8 @@
   --background-card-hover: #f0ebe0;
   --background-elevated: #ffffff;
   --background-hero: linear-gradient(135deg, #f5f0e1, #ece5d4);
+  --card: var(--background-elevated);
+  --soft: rgba(74, 37, 64, 0.045);
 
   --foreground: #1a1815;
   --foreground-secondary: #3a3528;
@@ -1218,7 +1237,11 @@ input, select, textarea {
 }
 .mp-web[data-theme="night"] {
   --bg:#0b0712; --bg2:#120c1b; --topbar:rgba(15,10,22,0.82); --card:#15101c; --card2:#1a1426;
-  --fg:#e8dfc4; --fg2:#c4b8a0; --muted:#988b78; --faint:#7a6f5c;
+  --fg:#e8dfc4; --fg2:#c4b8a0; --muted:#988b78;
+  /* --faint was #7a6f5c: 4.04:1 on --bg and 3.79:1 on --card, below AA for
+     the small text it is used for (footer links, the uppercase eyebrow
+     labels, the disclaimer under Dolly's composer). Now 5.07 / 4.75. */
+  --faint:#8b7f69;
   --brass:#c9a961; --brass-hi:#e2c785; --terra:#b5654a; --go:#7ba055;
   --hair:rgba(201,169,97,0.14); --line:rgba(255,255,255,0.06); --soft:rgba(255,255,255,0.035);
   --felt:url('/backgrounds/dark-felt.webp'); --felt-op:1; --hero-plum:#3a2233;
@@ -1226,8 +1249,13 @@ input, select, textarea {
 }
 .mp-web[data-theme="day"] {
   --bg:#f1e6d0; --bg2:#ece0c7; --topbar:rgba(245,236,214,0.85); --card:#fdf8ec; --card2:#f7efdc;
-  --fg:#2c2216; --fg2:#4a3e29; --muted:#5f5138; --faint:#7d6c4c;
-  --brass:#9a7322; --brass-hi:#7d5c16; --terra:#a4502f; --go:#5d7d3c;
+  --fg:#2c2216; --fg2:#4a3e29; --muted:#5f5138;
+  /* Same failure in light: #7d6c4c was 4.12:1 on --bg2. Now 5.27 / 4.99. */
+  --faint:#6a5c40;
+  /* --go was #5d7d3c: 4.11:1 on --card2 and 3.95:1 on --bg2 — it carries the
+     "See plans" link and the status line, both small text. Now 5.47 / 4.79.
+     The dark --go (#7ba055) already passes at 5.97:1. */
+  --brass:#9a7322; --brass-hi:#7d5c16; --terra:#a4502f; --go:#4e6832;
   --hair:rgba(150,115,55,0.24); --line:rgba(80,60,30,0.10); --soft:rgba(80,60,30,0.035);
   --felt:url('/backgrounds/parchment-bg.webp'); --felt-op:0.55; --hero-plum:#3a2036;
   --btn-ink:#f7efdc; --shadow:rgba(120,90,40,0.14); --bubble-you:#efe1c4;

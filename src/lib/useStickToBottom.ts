@@ -21,6 +21,16 @@
  *
  * `pinned` lives in a ref (read during layout, never stale) and is mirrored
  * into state only so the "jump to latest" button can render.
+ *
+ * The returned `ref` is a CALLBACK ref, not a plain object ref, and that is
+ * load-bearing. Dolly's thread is not mounted on the first render — the page
+ * shows a spinner while it loads, and it swaps the whole thread out again
+ * whenever the history list opens. With an object ref the effects below run
+ * once, against a `ref.current` that is still null, and nothing ever
+ * re-attaches: the scroll listener and the ResizeObserver were both dead for
+ * the entire life of the screen, so `pinned` never went false, "jump to
+ * latest" could never appear, and a reply that reflowed stopped being
+ * followed. A callback ref re-runs them against each real node.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -29,7 +39,15 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 const THRESHOLD = 80;
 
 export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
+  // The live node, as state so the effects below re-run when it changes, and
+  // mirrored into a ref so the layout effect and the observer can read it
+  // without being re-created.
+  const [node, setNode] = useState<T | null>(null);
   const ref = useRef<T | null>(null);
+  const setRef = useCallback((el: T | null) => {
+    ref.current = el;
+    setNode(el);
+  }, []);
   const pinnedRef = useRef(true);
   const [pinned, setPinned] = useState(true);
   // The scrollTop we last set ourselves. Anything else moved it — see below.
@@ -55,15 +73,24 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
 
   // Watch the user's own scrolling. Passive: we never preventDefault here.
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    if (!node) return;
+    // A fresh node starts empty and scrolled to the top, which is also "at the
+    // bottom" — re-pin, or a thread reopened from the history list comes back
+    // already unpinned and refuses to follow the next reply. The ref is what
+    // decides, so it is set now; the state only draws "jump to latest" and is
+    // deferred, as elsewhere in this file, to keep setState out of the effect
+    // body and off the render cascade.
+    pinnedRef.current = true;
+    lastTopRef.current = null;
+    queueMicrotask(() => setPinned(true));
+
     const onScroll = () => {
-      lastTopRef.current = el.scrollTop;
-      setPin(el.scrollHeight - el.scrollTop - el.clientHeight <= THRESHOLD);
+      lastTopRef.current = node.scrollTop;
+      setPin(node.scrollHeight - node.scrollTop - node.clientHeight <= THRESHOLD);
     };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [setPin]);
+    node.addEventListener("scroll", onScroll, { passive: true });
+    return () => node.removeEventListener("scroll", onScroll);
+  }, [node, setPin]);
 
   // Follow new content only while pinned. Layout effect so the scroll lands in
   // the same frame the content paints — otherwise each streamed token shows a
@@ -98,7 +125,7 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
   // A reply can also grow without `dep` changing (an image loading, a font
   // swapping, the bubble reflowing). Keep following those too, while pinned.
   useEffect(() => {
-    const el = ref.current;
+    const el = node;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       const node = ref.current;
@@ -110,7 +137,7 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
     // scroller itself only reports viewport changes.
     if (el.firstElementChild) ro.observe(el.firstElementChild);
     return () => ro.disconnect();
-  }, []);
+  }, [node]);
 
-  return { ref, pinned, scrollToBottom };
+  return { ref: setRef, pinned, scrollToBottom };
 }

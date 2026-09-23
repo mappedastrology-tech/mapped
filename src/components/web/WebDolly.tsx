@@ -11,6 +11,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { parseDollyReply } from "@/lib/dollyReply";
+import { useStickToBottom } from "@/lib/useStickToBottom";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 import { supabase } from "@/lib/supabase";
@@ -51,7 +53,9 @@ export default function WebDolly() {
   const [messages, setMessages] = useState<Msg[]>([GREET]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  /** What a screen reader hears when a reply lands. See the region below. */
+  const [announcement, setAnnouncement] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Cross-feature context loaded for signed-in users so web Dolly knows the
   // same things the mobile Dolly does — chart, people, and live transits.
@@ -62,7 +66,11 @@ export default function WebDolly() {
   const transitsRef = useRef<unknown>(null);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, typing]);
+  // Was an unconditional `scrollTop = scrollHeight` on every message change,
+  // which dragged the reader back down every few tokens if they had scrolled
+  // up to re-read something. Same hook the mobile thread uses: follow only
+  // while already at the bottom.
+  const { ref: scrollRef } = useStickToBottom<HTMLDivElement>(messages);
 
   // Connect Dolly to everything the app knows about the signed-in user —
   // their saved chart, the people in their life, and today's live transits —
@@ -219,10 +227,15 @@ export default function WebDolly() {
         }
       }
       if (!started) fail("I couldn’t finish that answer just now — try again in a moment.");
+      // The prose only — the meta line is not something to read aloud.
+      else setAnnouncement(parseDollyReply(full).body || full);
     } catch (err) {
       if ((err as Error).name !== "AbortError") fail("I couldn’t finish that answer just now — try again in a moment.");
     } finally {
       setTyping(false);
+      // Focus was left on the send button (or nowhere at all) after every
+      // send, so the next question meant hunting for the field again.
+      inputRef.current?.focus();
     }
   };
   const send = () => { const t = input.trim(); if (t) sendMsg(t); };
@@ -251,7 +264,23 @@ export default function WebDolly() {
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--faint)" }}>{knows}</span>
           </div>
 
-          <div ref={scrollRef} style={{ padding: "26px 24px", display: "flex", flexDirection: "column", gap: 16, minHeight: 280, maxHeight: 460, overflowY: "auto" }}>
+          {/*
+            tabIndex={0}: nothing inside a reply is focusable, so without it
+            Tab skipped the whole conversation and a keyboard-only user could
+            not scroll back through it at all.
+            role="log" with aria-live="off" for the semantics without the
+            noise — the sr-only region below announces the finished reply once,
+            instead of every streamed token interrupting the last.
+          */}
+          <div
+            ref={scrollRef}
+            tabIndex={0}
+            role="log"
+            aria-live="off"
+            aria-label="Conversation with Dolly"
+            style={{ minHeight: 280, maxHeight: 460, overflowY: "auto" }}
+          >
+          <div style={{ padding: "26px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
             {messages.map((m, i) => {
               // A rule, not a reply: no avatar, no bubble, no first person —
               // and a way to act on it when it is about the plan.
@@ -281,23 +310,68 @@ export default function WebDolly() {
               }
 
               const dolly = m.from === "dolly";
+
+              /**
+                 Dolly opens every reply with one line of compact JSON carrying
+                 her chips, headline and follow-ups. This bubble printed
+                 `m.text` straight out, so desktop showed
+                 `{"lead":"…","tags":[…]}` at the top of every single answer —
+                 and with no `pre-wrap`, the prose below it collapsed into one
+                 unbroken paragraph with numbered lists running inline.
+                 parseDollyReply is the same parser the mobile thread uses, and
+                 it degrades to plain prose if the line is malformed, so raw
+                 JSON cannot reach the screen either way. */
+              const { meta, body, metaPending } = dolly
+                ? parseDollyReply(m.text)
+                : { meta: null, body: m.text, metaPending: false };
+
+              // The meta line is still arriving: there is nothing to show yet,
+              // and the typing row below is already saying so.
+              if (dolly && metaPending && !body) return null;
+
               return (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>
-                  {dolly && <span style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover`, alignSelf: "flex-end" }} />}
+                <div key={i} role="article" style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>
+                  {dolly && <span aria-hidden="true" style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover`, alignSelf: "flex-end" }} />}
                   <div style={dolly
                     ? { maxWidth: "78%", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", background: "var(--card2)", border: "1px solid var(--hair)", fontSize: 14.5, lineHeight: 1.6, color: "var(--fg2)", textWrap: "pretty" }
                     : { maxWidth: "76%", padding: "13px 18px", borderRadius: "16px 16px 4px 16px", background: "var(--bubble-you)", border: "1px solid var(--hair)", fontSize: 14.5, lineHeight: 1.55, color: "var(--fg)" }}>
-                    {m.text}
+                    {/* Who is speaking. Read aloud, every turn ran together
+                        into one voice. */}
+                    <span className="sr-only">{dolly ? "Dolly said: " : "You said: "}</span>
+                    {!!meta?.tags.length && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 11 }}>
+                        {meta.tags.map((tag) => (
+                          <span key={tag.label} style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500, background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)" }}>
+                            {tag.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {meta?.lead && (
+                      <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 16, lineHeight: 1.45, color: "var(--fg)", margin: "0 0 9px" }}>
+                        {meta.lead}
+                      </p>
+                    )}
+                    {/* pre-wrap, or Dolly's paragraphs and numbered lists all
+                        run together into one block. */}
+                    <span style={{ whiteSpace: "pre-wrap" }}>{body}</span>
                   </div>
                 </div>
               );
             })}
             {typing && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                <span style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover` }} />
+                <span aria-hidden="true" style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", background: `url('${AVATAR}') center/cover` }} />
                 <div style={{ padding: "14px 18px", borderRadius: "16px 16px 16px 4px", background: "var(--card2)", border: "1px solid var(--hair)", color: "var(--muted)", fontSize: 14 }}>Dolly is looking at your chart…</div>
               </div>
             )}
+          </div>
+          </div>
+
+          {/* Announced once, when the reply is finished — see the log region
+              above for why not on every token. */}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {typing ? "Dolly is writing…" : announcement}
           </div>
 
           {/* suggestions */}
@@ -309,14 +383,25 @@ export default function WebDolly() {
 
           {/* input */}
           <div style={{ padding: "14px 20px 20px", borderTop: "1px solid var(--line)", display: "flex", gap: 12 }}>
+            {/* A placeholder is not a label: it disappears on the first
+                keystroke, and a screen reader announced this only as "edit
+                text". */}
+            <label htmlFor="web-dolly-input" className="sr-only">Ask Dolly a question about your chart</label>
             <input
+              id="web-dolly-input"
+              ref={inputRef}
               value={input}
+              // isComposing: without this, Enter while an IME candidate window
+              // is open sends the half-built word instead of accepting it, so
+              // Japanese, Chinese and Korean input was unusable here.
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !(e.nativeEvent as unknown as KeyboardEvent).isComposing) send();
+              }}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
               placeholder="Ask Dolly anything about your chart…"
               style={{ flex: 1, background: "var(--soft)", border: "1px solid var(--hair)", borderRadius: 999, padding: "13px 20px", color: "var(--fg)", fontFamily: "var(--wbody)", fontSize: 14.5, outline: "none" }}
             />
-            <button onClick={send} aria-label="Send" style={{ width: 48, height: 48, flex: "0 0 auto", borderRadius: "50%", border: "none", cursor: "pointer", background: "var(--brass)", color: "var(--btn-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={send} aria-label="Send message" style={{ width: 48, height: 48, flex: "0 0 auto", borderRadius: "50%", border: "none", cursor: "pointer", background: "var(--brass)", color: "var(--btn-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
             </button>
           </div>
