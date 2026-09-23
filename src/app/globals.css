@@ -48,6 +48,22 @@
 /* Tactile motion for the Learn screens.
    .lib-press goes on every tappable card and row; .lib-flame is the streak
    flame. The prefers-reduced-motion block below already neutralises both. */
+@keyframes dsshake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes dspop {
+  0%   { transform: scale(.55); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
 @keyframes twinkle {
   0%, 100% { opacity: 0.25; }
   50%      { opacity: 0.9; }
@@ -56,6 +72,11 @@
   0%, 100% { transform: scale(1) rotate(-1deg); opacity: 1; }
   35%      { transform: scale(1.09) rotate(2deg); opacity: 0.9; }
   65%      { transform: scale(0.96) rotate(-2deg); opacity: 0.97; }
+}
+/* Completion glyphs drift; paired with the floaty keyframe above. */
+.lib-floaty {
+  display: inline-block;
+  animation: floaty 3.4s ease-in-out infinite;
 }
 .lib-flame {
   display: inline-block;

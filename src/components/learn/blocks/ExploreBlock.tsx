@@ -27,10 +27,10 @@ export default function ExploreBlock({ prompt, instructions, image, items }: { p
   }
 
   return (
-    <div className="rounded-2xl p-4" style={{ background: "var(--background-card)", border: "1px solid var(--border-card)", boxShadow: "var(--card-shadow)" }}>
+    <div style={{ borderRadius: 18, padding: 16, background: "var(--lib-card)", border: "1px solid var(--lib-card-border)", boxShadow: "var(--lib-card-shadow)" }}>
       <p className="text-[9px] uppercase font-semibold text-center" style={{ letterSpacing: "0.2em", color: "var(--brass)" }}>Tap to explore</p>
-      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{prompt}</p>
-      <p className="text-[12px] text-center mt-2" style={{ color: "var(--foreground-muted)" }}>{instructions ?? "Tap any glyph to learn it"}</p>
+      <p className="text-[17px] text-center mt-1.5" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--lib-ink)" }}>{prompt}</p>
+      <p className="text-[12px] text-center mt-2" style={{ color: "var(--lib-muted)" }}>{instructions ?? "Tap any glyph to learn it"}</p>
 
       {/* wheel */}
       <div className="relative mx-auto mt-3" style={{ width: SIZE, height: SIZE }}>
@@ -58,12 +58,17 @@ export default function ExploreBlock({ prompt, instructions, image, items }: { p
               aria-label={it.name}
               aria-pressed={active}
               style={{
-                position: "absolute", left: x, top: y, width: NODE, height: NODE, transform: "translate(-50%,-50%)",
+                position: "absolute", left: x, top: y, width: NODE, height: NODE,
                 borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19,
-                color: active ? "var(--btn-primary-text)" : explored ? "var(--foreground)" : "var(--foreground-secondary)",
-                background: active ? a : explored ? `${a}26` : "var(--lib-soft)",
-                border: `1px solid ${active ? a : explored ? `${a}66` : "var(--border-card)"}`,
+                color: active ? a : explored ? "var(--lib-ink)" : "var(--lib-muted)",
+                background: active ? "var(--lib-plum-island)" : explored ? `color-mix(in srgb, ${a} 12%, transparent)` : "var(--lib-track)",
+                border: active
+                  ? `2px solid ${a}`
+                  : explored
+                    ? "1px solid color-mix(in srgb, var(--brass-light) 40%, transparent)"
+                    : "1px solid var(--lib-card-border)",
                 boxShadow: active ? `0 0 18px -3px ${a}` : "none",
+                transform: active ? "translate(-50%,-50%) scale(1.16)" : "translate(-50%,-50%)",
                 transition: "all 0.18s ease",
               }}
             >
@@ -74,19 +79,19 @@ export default function ExploreBlock({ prompt, instructions, image, items }: { p
       </div>
 
       {/* detail */}
-      <div className="mt-4 p-4 rounded-2xl" style={{ background: "var(--lib-plum)", boxShadow: "inset 0 0 0 0.5px rgba(201,169,97,0.18)" }}>
+      <div className="mt-4 p-4" style={{ borderRadius: 16, background: "var(--lib-plum-island)", boxShadow: `inset 0 0 0 0.5px color-mix(in srgb, ${accent} 40%, transparent)` }}>
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center text-[22px]" style={{ width: 44, height: 44, borderRadius: 12, background: `${accent}26`, color: accent }} aria-hidden="true">{cur.glyph}</span>
           <div className="min-w-0">
-            <div className="text-[19px] leading-tight" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--foreground)" }}>{cur.name}</div>
-            {cur.meta && <div className="text-[11px] mt-0.5" style={{ color: "var(--foreground-secondary)" }}>{cur.meta}</div>}
+            <div className="text-[20px] leading-tight" style={{ fontFamily: "var(--font-serif-lib)", color: "var(--lib-on-plum)" }}>{cur.name}</div>
+            {cur.meta && <div className="text-[11px] mt-0.5" style={{ color: "rgba(240,230,210,0.72)" }}>{cur.meta}</div>}
           </div>
         </div>
-        <p className="text-[12.5px] leading-relaxed mt-3" style={{ color: "var(--foreground-secondary)" }}>{cur.blurb}</p>
+        <p className="text-[12.5px] leading-relaxed mt-3" style={{ color: "rgba(240,230,210,0.86)" }}>{cur.blurb}</p>
       </div>
 
-      <p className="text-[11px] text-center mt-3" style={{ color: "var(--foreground-muted)" }}>
-        {seen.size} of {items.length} explored
+      <p className="text-[11px] text-center mt-3" style={{ color: seen.size === items.length ? "var(--sage-bright)" : "var(--lib-muted)", transition: "color .2s ease" }}>
+        {seen.size === items.length ? "All explored ✦" : `${seen.size} of ${items.length} explored`}
       </p>
     </div>
   );
