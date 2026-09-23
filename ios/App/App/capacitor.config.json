@@ -6,6 +6,12 @@
 		"androidScheme": "https",
 		"iosScheme": "https"
 	},
+	"plugins": {
+		"Keyboard": {
+			"resize": "native",
+			"resizeOnFullScreen": true
+		}
+	},
 	"ios": {
 		"backgroundColor": "#0e0a14",
 		"contentInset": "always"
@@ -13,5 +19,7 @@
 	"android": {
 		"backgroundColor": "#0e0a14"
 	},
-	"packageClassList": []
+	"packageClassList": [
+		"KeyboardPlugin"
+	]
 }

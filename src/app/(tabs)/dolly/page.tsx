@@ -21,6 +21,7 @@ import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
 import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import CrisisCard from "@/components/CrisisCard";
 import { useDialogKeys } from "@/lib/useDialogKeys";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
@@ -93,14 +94,37 @@ interface ConnectionContext {
    Suggested prompts
    ═══════════════════════════════════════════ */
 
+/**
+ * Four, not six.
+ *
+ * Six did not fit: at 390px roughly four and a half cleared the composer, so
+ * the last two sat below the fold with nothing to suggest they existed —
+ * which is a worse offer than four that can all be seen. These four also
+ * cover all three sources, so the colour key opposite them means something on
+ * first sight.
+ */
 const STARTER_PROMPTS: { text: string; kind: DollyTagKind }[] = [
   { text: "What should I know about myself right now?", kind: "chart" },
   { text: "What's the sky doing to me today?", kind: "sky" },
-  { text: "Tell me about my love life based on my chart", kind: "chart" },
-  { text: "What career path fits my chart?", kind: "chart" },
   { text: "What patterns do I keep repeating?", kind: "card" },
-  { text: "What's my biggest blind spot?", kind: "sky" },
+  { text: "What's my biggest blind spot?", kind: "chart" },
 ];
+
+/** Long enough that a divider means "you came back", not "you paused". */
+const GAP_MS = 60 * 60 * 1000;
+
+/** "Today, 9:14 PM" / "Tue 14 Oct, 9:14 PM". */
+function formatThreadStamp(ts: number): string {
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  if (sameDay) return `Today, ${time}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}, ${time}`;
+}
 
 /**
  * Where a line of a reading came from — her chart, the live sky, or a card
@@ -169,6 +193,9 @@ function getDollySummaryKey(uid?: string | null): string {
 
 export default function DollyTab() {
   const { gateWithReason, PaywallModal, setShowPlans } = usePaywall();
+  // iOS Safari resizes neither the layout viewport nor the WebView, so the
+  // composer would sit under the keyboard. See useKeyboardInset.
+  const keyboardInset = useKeyboardInset();
   const { tier } = useTier();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -731,7 +758,7 @@ export default function DollyTab() {
         onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
       >
-        <p id="dl-del-title" style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>
+        <p id="dl-del-title" style={{ fontFamily: "var(--font-serif)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>
           {pendingDelete.kind === "one"
             ? "Delete this reading?"
             : `Delete ${pendingDelete.count} ${pendingDelete.count === 1 ? "reading" : "readings"}?`}
@@ -1195,8 +1222,12 @@ export default function DollyTab() {
                             )}
                           </span>
                         )}
-                        {/* Dolly avatar */}
-                        <DollyAvatar size={40} className="mt-0.5" />
+                        {/* The avatar used to sit here on every row — the
+                            same 40px portrait, forty times down the list,
+                            carrying no information and costing the summary
+                            and preview the width they needed to be readable.
+                            Every row in this list is a conversation with
+                            Dolly; saying so once per row says nothing. */}
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
@@ -1252,7 +1283,7 @@ export default function DollyTab() {
                     </div>
 
                     {/* Divider */}
-                    <div className="ml-[4.5rem] border-b border-foreground/15" />
+                    <div className="ml-5 border-b border-foreground/15" />
                   </div>
                 );
               })}
@@ -1391,7 +1422,7 @@ export default function DollyTab() {
             onClick={(e) => e.stopPropagation()}
             style={{ width: "100%", maxWidth: 440, margin: 12, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border-card)", padding: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
           >
-            <p id="dl-leave-title" style={{ fontFamily: "var(--font-heading)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
+            <p id="dl-leave-title" style={{ fontFamily: "var(--font-serif)", fontSize: 17, color: "var(--foreground)", margin: "0 0 6px" }}>Save this reading?</p>
             <p id="dl-leave-body" style={{ fontSize: 13, lineHeight: 1.5, color: "var(--foreground-muted)", margin: "0 0 16px" }}>
               It&rsquo;s kept in your history so you can reopen it anytime. Save it, or discard it before starting fresh.
             </p>
@@ -1473,6 +1504,32 @@ export default function DollyTab() {
                 </p>
               </div>
 
+              {/*
+                Free accounts are told the price before they spend a question
+                on it.
+                The screen offers a warm greeting by name, six tempting
+                starters and a working composer, and said nothing about Dolly
+                being paid until after the reader had typed something real —
+                at which point a paywall appeared over their own words. Saying
+                it here costs one quiet line and turns the surprise into a
+                choice.
+              */}
+              {tier === "free" && (
+                <div
+                  className="self-start flex flex-wrap items-center gap-x-2 gap-y-1"
+                  style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--foreground-muted)" }}
+                >
+                  <span>Talking with Dolly is part of Mapped+.</span>
+                  <button
+                    onClick={() => setShowPlans(true)}
+                    className="min-h-[44px] flex items-center font-semibold"
+                    style={{ color: "var(--foreground)", textDecoration: "underline", textUnderlineOffset: 3 }}
+                  >
+                    See what&rsquo;s included
+                  </button>
+                </div>
+              )}
+
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--foreground-muted)", opacity: 0.75 }}>
                 Try asking
               </div>
@@ -1506,9 +1563,33 @@ export default function DollyTab() {
           )}
 
           {/* Message list */}
-          {messages.map((msg) => {
+          {messages.map((msg, i) => {
+            /**
+             * A time divider when the conversation picks up after a gap.
+             *
+             * Every message carried a `timestamp` that nothing ever rendered,
+             * so a thread resumed the next morning read as one unbroken
+             * exchange — "what you said earlier" meaning something quite
+             * different to the reader than to Dolly. Only on a real gap: a
+             * time against every line would be noise.
+             */
+            const prev = i > 0 ? messages[i - 1] : null;
+            const gap = prev && msg.timestamp - prev.timestamp > GAP_MS;
+            const divider = (i === 0 || gap) && msg.timestamp ? (
+              <div
+                key={`t-${msg.id}`}
+                className="text-center"
+                style={{ fontFamily: "var(--font-ui)", fontSize: 10.5, letterSpacing: "0.08em", color: "var(--foreground-muted)", opacity: 0.8 }}
+              >
+                {formatThreadStamp(msg.timestamp)}
+              </div>
+            ) : null;
+
+            const withDivider = (node: React.ReactNode) =>
+              divider ? <div key={`g-${msg.id}`} className="contents">{divider}{node}</div> : node;
+
             if (msg.role === "user") {
-              return (
+              return withDivider(
                 <div key={msg.id} role="article" className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--dl-you-bg)", border: "1px solid var(--dl-you-border)", borderRadius: "20px 6px 20px 20px" }}>
                   {/* Who is speaking. On screen the side of the thread and the
                       colour say it; read aloud, every turn ran together into
@@ -1530,7 +1611,7 @@ export default function DollyTab() {
             // Before the notice branch: a crisis card has no text, so any
             // branch that renders msg.content would render nothing.
             if (msg.crisis) {
-              return (
+              return withDivider(
                 <div key={msg.id} className="self-stretch w-full" style={{ padding: "4px 0" }}>
                   <CrisisCard />
                 </div>
@@ -1545,7 +1626,7 @@ export default function DollyTab() {
               // one), and a failed answer meant retyping the question.
               const isUpgrade = /Mapped\+|plan/i.test(msg.content);
               const isFailure = msg.id.startsWith("a-");
-              return (
+              return withDivider(
                 <div key={msg.id} className="self-center w-full flex flex-col items-center gap-2.5" style={{ padding: "4px 8px" }}>
                   <p
                     className="text-center"
@@ -1597,7 +1678,7 @@ export default function DollyTab() {
             // Nothing to show yet (empty placeholder, or the meta line still
             // arriving) — the dots stand in for the whole bubble.
             if (!body && !meta && (metaPending || live)) {
-              return (
+              return withDivider(
                 <div
                   key={msg.id}
                   className="dl-bubble self-start flex items-center gap-1.5"
@@ -1611,7 +1692,7 @@ export default function DollyTab() {
               );
             }
 
-            return (
+            return withDivider(
               <div key={msg.id} role="article" className="flex flex-col gap-[18px]">
                 <div
                   className={`dl-bubble self-start max-w-[88%] px-[19px] py-[17px] ${live ? "dl-live" : ""}`}
@@ -1747,7 +1828,16 @@ export default function DollyTab() {
 
       {/* Input area. dl-scrim: in light mode the parchment illustration runs
           straight under the composer — see globals.css. */}
-      <div className="dl-scrim relative z-10 shrink-0 px-4 pb-4 pt-2">
+      <div
+        className="dl-scrim relative z-10 shrink-0 px-4 pt-2"
+        style={{
+          // max(), so the gesture bar on a notched phone is cleared when no
+          // keyboard is up, and the keyboard wins when one is. This screen
+          // had neither: no safe-area padding anywhere, so the composer sat
+          // in the home-indicator strip on an iPhone.
+          paddingBottom: `max(1rem, env(safe-area-inset-bottom), ${keyboardInset}px)`,
+        }}
+      >
         <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" /* No inline fallback: --soft is a real token now, and the fallback
                that used to cover for it (white at 5%) was itself the bug — on
                the cream page it meant the composer had no surface at all. */
@@ -1773,8 +1863,13 @@ export default function DollyTab() {
              */
             aria-busy={isStreaming}
             rows={1}
-            className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted resize-none outline-none max-h-[120px] py-1.5"
-            style={{ minHeight: "24px" }}
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted resize-none outline-none max-h-[120px] py-1.5"
+            /* 16px exactly. Below that, iOS zooms the page in when the field
+               takes focus and leaves it zoomed — the usual "fix" for which is
+               maximum-scale=1, which takes pinch-zoom away from everyone (see
+               the viewport in layout.tsx). Sizing the input correctly solves
+               it without costing anyone their magnification. */
+            style={{ minHeight: "24px", fontSize: 16 }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = "24px";

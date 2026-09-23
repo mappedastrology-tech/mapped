@@ -44,8 +44,34 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  /**
+   * No maximumScale.
+   *
+   * It was 1, which tells the browser to refuse pinch-zoom. That is a
+   * straightforward WCAG 1.4.4 failure: anyone who needs to magnify a chart
+   * glyph, a transit table or a line of body copy simply cannot, and this app
+   * is full of small type over decorative backgrounds. iOS has ignored the
+   * restriction since iOS 10; Android still honours it, so on Android it was
+   * real.
+   *
+   * It is usually set to stop iOS auto-zooming when a small input takes
+   * focus. The fix for that is the input's font-size (>= 16px), not taking
+   * zoom away from everyone.
+   */
   themeColor: "#0e0a14",
+  /**
+   * The keyboard must push the layout up, not sit on top of it.
+   *
+   * The default on Android WebView is `resizes-visual`, which shrinks only
+   * the visual viewport — the layout stays full height, so a composer pinned
+   * to the bottom of a 100dvh column ends up underneath the keyboard. On a
+   * chat screen that is the one thing that cannot happen: you tap the box to
+   * type and the box disappears.
+   *
+   * `resizes-content` shrinks the layout viewport too, so `dvh` and a bottom
+   * flex row both land above the keyboard.
+   */
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

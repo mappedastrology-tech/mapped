@@ -771,7 +771,11 @@
 
   Tokens:
   --font-display:  JS Chanok — big block-caps titles ("RITUAL", "YOUR MAP")
-  --font-heading:  Le Jour Serif — card titles, body text, the workhorse serif
+  --font-heading:  Le Jour Serif — ALL CAPS. The glyphs are capitals whatever
+                   case you type, so this is for titles and labels only, never
+                   for a sentence. ("Save this reading?" in a dialog came out
+                   as SAVE THIS READING?.) There is no text-transform involved
+                   and none to remove — use --font-serif for mixed case.
   --font-serif:    Bodoni Moda — mixed-case elegant titles
   --font-script:   Le Jour Script — name accents, italic emphasis flourishes
   --font-editorial: Le Jour Serif — eyebrow caps, transit headlines

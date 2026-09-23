@@ -20,6 +20,25 @@ const config: CapacitorConfig = {
     iosScheme: "https",
   },
 
+  /**
+   * Keyboard handling, which `interactiveWidget` in the viewport does not
+   * cover on iOS.
+   *
+   * WKWebView with `contentInset: "always"` scrolls the page under the
+   * keyboard instead of resizing it, so the composer goes out of view. The
+   * Keyboard plugin's native resize mode shrinks the WebView itself, which is
+   * what the layout already expects.
+   *
+   * resizeOnFullScreen is the Android counterpart for fullscreen activities,
+   * where the WebView otherwise keeps its full height behind the keyboard.
+   */
+  plugins: {
+    Keyboard: {
+      resize: "native",
+      resizeOnFullScreen: true,
+    },
+  },
+
   ios: {
     // The felt-black canvas, so the status bar area never flashes white.
     backgroundColor: "#0e0a14",
