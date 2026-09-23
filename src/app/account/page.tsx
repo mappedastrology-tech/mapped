@@ -744,6 +744,8 @@ function NotificationSettingsSection() {
   const [prefs, setPrefs] = useState<Record<string, boolean | number | string | null>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Shown when a preference write fails — see save() below. */
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [permissionState, setPermissionState] = useState<string>("default");
   const [requesting, setRequesting] = useState(false);
   // Why push can't be switched on, if it can't — iOS in a Safari tab is the
@@ -854,13 +856,29 @@ function NotificationSettingsSection() {
 
   async function save(updated: Record<string, boolean | number | string | null>) {
     setSaving(true);
+    setSaveError(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       // Write the whole object as it now stands. The old version REBUILT it
       // from four switches every time, which meant saving any toggle silently
       // reset the delivery hour to 19 and cleared any pause.
-      await supabase.from("profiles").update({ notification_preferences: updated }).eq("id", session.user.id);
-      invalidateProfile();
+      //
+      // The error is CHECKED. It used to be discarded, and because the toggle
+      // is optimistic the screen would show a setting as changed when nothing
+      // had been written — you'd turn notifications off, believe it, and keep
+      // getting them. A settings screen that lies about saving is worse than
+      // one that fails loudly.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ notification_preferences: updated })
+        .eq("id", session.user.id);
+      if (error) {
+        setSaveError("Couldn't save that. Check your connection and try again.");
+      } else {
+        invalidateProfile();
+      }
+    } else {
+      setSaveError("Sign in again to change your notification settings.");
     }
     setSaving(false);
   }
@@ -948,6 +966,19 @@ function NotificationSettingsSection() {
           />
         )}
       </div>
+
+      {/* Failures everyone can see.
+          These messages already existed and were carefully written, but the
+          only place they rendered was inside the admin-only diagnostics block
+          below — so for every ordinary user a failed registration or a failed
+          save was completely silent: the toggle moved and nothing ever
+          arrived. The admin-only detail (body.fix, the test sender) stays
+          where it is. */}
+      {(saveError || testState.kind === "error") && (
+        <p role="alert" className="px-5 pb-3 text-[12px]" style={{ color: "var(--oxblood-light)" }}>
+          {saveError ?? testState.msg}
+        </p>
+      )}
 
       {/* Diagnostics, not a feature. A push that never arrives looks identical
           to one that was never sent, and this is the only way to tell the two
@@ -1117,6 +1148,7 @@ function SubscriptionSection() {
   const [showPlans, setShowPlans] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   // Any paid tier, not just Mapped+. Testing for "mid" alone showed a Mapped
   // Complete subscriber the Free card and an upgrade button.
@@ -1133,11 +1165,25 @@ function SubscriptionSection() {
     max: ["Everything in Mapped+", "Every oracle deck included", "New decks as they arrive"],
   };
 
+  /**
+   * Billing portal and checkout.
+   *
+   * Both of these used to `return` early when there was no session, which
+   * skipped the setLoading(false) after the try — the button span forever. And
+   * both swallowed every failure into console.error with no `else` on the
+   * `if (data.url)`, so a Stripe outage, an unconfigured price or a 400 all
+   * looked identical from the outside: you tapped Upgrade and nothing
+   * happened. On the money path that is the worst possible behaviour.
+   */
   async function handleManageSubscription() {
     setLoadingPortal(true);
+    setBillingError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) {
+        setBillingError("Please sign in again, then try once more.");
+        return;
+      }
 
       const res = await fetch("/api/stripe/portal", {
         method: "POST",
@@ -1147,21 +1193,29 @@ function SubscriptionSection() {
         },
       });
 
-      const data = await res.json();
-      if (data.url) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
         window.location.href = data.url;
+        return; // navigating away; leave the button busy
       }
+      setBillingError("We couldn't open the billing portal. Please try again in a moment.");
     } catch (err) {
       console.error("Portal error:", err);
+      setBillingError("We couldn't reach the billing portal. Check your connection and try again.");
+    } finally {
+      setLoadingPortal(false);
     }
-    setLoadingPortal(false);
   }
 
   async function handleUpgrade() {
     setLoadingCheckout(true);
+    setBillingError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) {
+        setBillingError("Please sign in again, then try once more.");
+        return;
+      }
 
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -1171,14 +1225,20 @@ function SubscriptionSection() {
         },
       });
 
-      const data = await res.json();
-      if (data.url) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
         window.location.href = data.url;
+        return;
       }
+      // Explicitly says nothing was charged: the common worry when a payment
+      // button fails is that it half-worked.
+      setBillingError("We couldn't open checkout. Nothing has been charged — please try again.");
     } catch (err) {
       console.error("Checkout error:", err);
+      setBillingError("We couldn't reach checkout. Nothing has been charged — check your connection and try again.");
+    } finally {
+      setLoadingCheckout(false);
     }
-    setLoadingCheckout(false);
   }
 
   return (
@@ -1262,6 +1322,12 @@ function SubscriptionSection() {
               Compare plans
             </button>
           </div>
+        )}
+
+        {billingError && (
+          <p role="alert" className="text-center text-[11px] mt-2" style={{ color: "var(--oxblood-light)" }}>
+            {billingError}
+          </p>
         )}
 
         {/* Manage billing note */}
@@ -1963,8 +2029,16 @@ function AccountPage() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to delete account");
 
-      // Sign out locally and redirect
+      // Sign out locally and redirect.
+      //
+      // clearOnSignOut() as well as signOut(): deleting an account has to take
+      // the device's copy with it. Sign-out already did this; deletion did
+      // not, so someone who deleted their account left their journal, chart
+      // and profile photo cached in this browser — the one outcome "delete
+      // everything" most clearly promises against.
       await supabase.auth.signOut();
+      clearOnSignOut();
+      invalidateProfile();
       sessionStorage.clear();
       router.replace("/welcome");
     } catch (err) {

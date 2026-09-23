@@ -63,10 +63,30 @@ export async function POST(request: Request) {
         .eq("id", user.id)
         .single();
 
-      // Check if already redeemed by looking at tier + a metadata column
-      // Simple approach: just check if they already have the tier
-      if (profile?.tier === "mid") {
-        return NextResponse.json({ success: false, error: "You already have Mapped+ access." }, { status: 400 });
+      /**
+       * A promo may only ever RAISE someone's tier.
+       *
+       * This used to bail out only when the tier was already "mid", then write
+       * the granted tier unconditionally — so a Mapped Complete subscriber who
+       * tried a Mapped+ code was silently downgraded to Mapped+ while their
+       * $22.22 subscription carried on billing. They lost the oracle decks
+       * they were paying for and nothing told them why.
+       */
+      const RANK: Record<string, number> = { free: 0, mid: 1, max: 2 };
+      const current = RANK[profile?.tier ?? "free"] ?? 0;
+      const granted = RANK[hardcoded.tier_granted ?? "free"] ?? 0;
+
+      if (current >= granted) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              current > granted
+                ? "Your plan already includes everything this code unlocks."
+                : "You already have that access.",
+          },
+          { status: 400 },
+        );
       }
 
       // Update user's profile tier directly
