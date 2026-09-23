@@ -298,10 +298,26 @@ export default function WebDolly() {
         {/* CHAT */}
         <div style={{ maxWidth: 760, margin: "0 auto", borderRadius: 24, border: "1px solid var(--hair)", background: "var(--card)", boxShadow: "0 16px 50px var(--shadow)", overflow: "hidden" }}>
           <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 12, background: "var(--card2)" }}>
-            <span style={{ width: 34, height: 34, borderRadius: "50%", background: `url('${AVATAR}') center/cover`, flex: "0 0 auto" }} />
-            <div style={{ flex: 1 }}>
+            <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: "50%", background: `url('${AVATAR}') center/cover`, flex: "0 0 auto" }} />
+            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
               <p style={{ fontSize: 14.5, fontWeight: 700, color: "var(--fg)", margin: 0 }}>Dolly</p>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--go)", margin: 0, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--go)" }} />reading your sky</p>
+              {/*
+                This was a green dot and the words "reading your sky",
+                permanently — the presence indicator every messaging app uses
+                to mean a person is at the other end, shown next to a portrait,
+                next to a name, whether or not anything was happening. Nobody
+                is at the other end. Replaced with the thing worth saying.
+              */}
+              <span
+                aria-label="Dolly is an AI assistant"
+                style={{
+                  fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700,
+                  letterSpacing: "0.12em", padding: "2px 6px", borderRadius: 4,
+                  background: "var(--soft)", color: "var(--fg2)", border: "1px solid var(--hair)",
+                }}
+              >
+                AI
+              </span>
             </div>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--faint)" }}>{knows}</span>
           </div>
@@ -457,7 +473,9 @@ export default function WebDolly() {
             </button>
           </div>
         </div>
-        <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>Dolly reads your real birth chart when you&rsquo;re signed in — the more complete your chart, the more specific her answers.</p>
+        <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, lineHeight: 1.6, color: "var(--faint)", margin: "16px auto 0", maxWidth: 540 }}>
+          Dolly is an AI, not a person. She reads your real birth chart when you&rsquo;re signed in &mdash; the more complete your chart, the more specific her answers.
+        </p>
 
         {/* WHAT DOLLY KNOWS */}
         <div style={{ margin: "64px 0 20px" }}>

@@ -135,6 +135,24 @@
      inside the web shell by specificity. */
   --card: var(--background-elevated);
   --soft: rgba(255, 255, 255, 0.05);
+  /* Dolly's own two bubbles.
+     Her bubble is dark plum in BOTH themes by design, so the cream text on it
+     is correct everywhere. The reader's bubble was var(--lavender), which is
+     pale in dark but #6a4a90 in light — a dark purple, sitting on cream
+     opposite a dark plum. Two dark bubbles, and the only thing telling you
+     who said what was which side of the screen it was on. Light gets a pale
+     bubble instead, so the pair reads at a glance in both themes. */
+  --dl-you-bg: var(--lavender);
+  --dl-you-ink: #161022;
+  --dl-you-border: transparent;
+  /* Where a line of a reading came from: the chart, the live sky, or a card
+     they pulled. Three genuinely different hues — chart was --journal-accent
+     (#b8a4e0) and sky was --lavender (#B8A0D2), which are the same colour to
+     the eye, and card pointed at --rose, a token that is not defined
+     anywhere and so always fell through to a hardcoded pink. */
+  --dl-src-chart: #c9a961;
+  --dl-src-sky: #B8A0D2;
+  --dl-src-card: #d99b7a;
 
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
@@ -261,6 +279,24 @@
   --background-hero: linear-gradient(135deg, #1a1420, #0e0a14);
   --card: var(--background-elevated);
   --soft: rgba(255, 255, 255, 0.05);
+  /* Dolly's own two bubbles.
+     Her bubble is dark plum in BOTH themes by design, so the cream text on it
+     is correct everywhere. The reader's bubble was var(--lavender), which is
+     pale in dark but #6a4a90 in light — a dark purple, sitting on cream
+     opposite a dark plum. Two dark bubbles, and the only thing telling you
+     who said what was which side of the screen it was on. Light gets a pale
+     bubble instead, so the pair reads at a glance in both themes. */
+  --dl-you-bg: var(--lavender);
+  --dl-you-ink: #161022;
+  --dl-you-border: transparent;
+  /* Where a line of a reading came from: the chart, the live sky, or a card
+     they pulled. Three genuinely different hues — chart was --journal-accent
+     (#b8a4e0) and sky was --lavender (#B8A0D2), which are the same colour to
+     the eye, and card pointed at --rose, a token that is not defined
+     anywhere and so always fell through to a hardcoded pink. */
+  --dl-src-chart: #c9a961;
+  --dl-src-sky: #B8A0D2;
+  --dl-src-card: #d99b7a;
 
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
@@ -421,6 +457,14 @@
   --background-hero: linear-gradient(135deg, #f5f0e1, #ece5d4);
   --card: var(--background-elevated);
   --soft: rgba(74, 37, 64, 0.045);
+  --dl-you-bg: #ffffff;
+  --dl-you-ink: #2c2216;
+  --dl-you-border: var(--border-card);
+  /* Darkened for cream. The on-plum chips keep the bright set above, because
+     Dolly's bubble is dark plum in BOTH themes. */
+  --dl-src-chart: #8a6a1f;
+  --dl-src-sky: #6a4a90;
+  --dl-src-card: #a04b3a;
 
   --foreground: #1a1815;
   --foreground-secondary: #3a3528;
@@ -570,6 +614,22 @@
   background-position: center top;
   background-repeat: no-repeat;
   background-attachment: fixed;
+}
+
+/* Day mode: a scrim under the Dolly thread.
+   The parchment background is a real illustration — a gold starburst, a
+   planet — and at full strength it runs behind body copy, through the starter
+   cards and under the composer, so text competes with artwork for the same
+   pixels. Dark's starfield is subtle enough to leave alone; this is not. The
+   thread gets a wash of the page colour so the words sit on something. */
+[data-theme="light"] .dl-thread::before,
+[data-theme="light"] .dl-scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--background) 82%, transparent);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Day mode placement cards — plum identity on cream */

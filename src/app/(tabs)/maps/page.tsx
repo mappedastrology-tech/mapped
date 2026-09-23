@@ -4192,13 +4192,13 @@ export default function MapsTab() {
                     </div>
 
                     {/* Return date */}
-                    <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
+                    <div className="rounded-xl border border-brass/15 bg-brass/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="12" cy="12" r="5" />
                           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                         </svg>
-                        <span className="text-gold/80 text-xs font-medium">Your Sun returns on</span>
+                        <span className="text-brass/80 text-xs font-medium">Your Sun returns on</span>
                       </div>
                       <p className="text-foreground text-sm">
                         {(() => {
@@ -5738,13 +5738,13 @@ export default function MapsTab() {
                 return (
                   <>
                     {/* Header */}
-                    <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
+                    <div className="rounded-xl border border-brass/15 bg-brass/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="9" cy="9" r="7" />
                           <circle cx="15" cy="15" r="7" />
                         </svg>
-                        <span className="text-gold/80 text-xs font-medium">{relSummary.title}</span>
+                        <span className="text-brass/80 text-xs font-medium">{relSummary.title}</span>
                       </div>
                       <p className="text-muted text-xs leading-relaxed">
                         The composite chart is the midpoint of both your charts — it represents the relationship itself as its own entity.
@@ -5942,13 +5942,13 @@ export default function MapsTab() {
                     </div>
 
                     {/* Return date */}
-                    <div className="rounded-xl border border-gold/15 bg-gold/5 px-4 py-3 mb-5">
+                    <div className="rounded-xl border border-brass/15 bg-brass/5 px-4 py-3 mb-5">
                       <div className="flex items-center gap-2 mb-1">
-                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                           <circle cx="12" cy="12" r="5" />
                           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                         </svg>
-                        <span className="text-gold/80 text-xs font-medium">{firstName}&rsquo;s Sun returns on</span>
+                        <span className="text-brass/80 text-xs font-medium">{firstName}&rsquo;s Sun returns on</span>
                       </div>
                       <p className="text-foreground text-sm">
                         {(() => {

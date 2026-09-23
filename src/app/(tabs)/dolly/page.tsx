@@ -102,11 +102,35 @@ const STARTER_PROMPTS: { text: string; kind: DollyTagKind }[] = [
   { text: "What's my biggest blind spot?", kind: "sky" },
 ];
 
-/** Chip / dot colour per source, matching the design's three accents. */
+/**
+ * Where a line of a reading came from — her chart, the live sky, or a card
+ * she pulled. Two sets, because the same three kinds are drawn on two very
+ * different surfaces.
+ *
+ * The old single map did not work as either. `chart` was --journal-accent
+ * (#b8a4e0) and `sky` was --lavender (#B8A0D2): the same colour to the eye,
+ * so "Saturn square Moon" and "Moon in Scorpio" carried indistinguishable
+ * dots. `card` pointed at --rose, which is defined nowhere in the codebase
+ * and so always fell through to its hardcoded pink — a colour from no
+ * palette in Mapped.
+ */
+
+/** On the page: starter-card dots, on cream or on near-black. Theme-aware. */
 const TYPE_COLOR: Record<DollyTagKind, string> = {
-  chart: "var(--journal-accent)",
-  sky: "var(--lavender)",
-  card: "var(--rose, #d99bb0)",
+  chart: "var(--dl-src-chart)",
+  sky: "var(--dl-src-sky)",
+  card: "var(--dl-src-card)",
+};
+
+/**
+ * Inside Dolly's bubble. Fixed, not theme-aware, because her bubble is dark
+ * plum in BOTH themes — the light-theme values would be dark-on-dark there.
+ * Measured against the gradient's midpoint: 6.8, 6.5 and 6.5 to 1.
+ */
+const TYPE_COLOR_ON_PLUM: Record<DollyTagKind, string> = {
+  chart: "#c9a961",
+  sky: "#B8A0D2",
+  card: "#d99b7a",
 };
 
 /* ═══════════════════════════════════════════
@@ -201,7 +225,7 @@ export default function DollyTab() {
   // bottom. Scroll up mid-reply and the position holds while Dolly keeps
   // generating underneath — see useStickToBottom for why scrollIntoView, which
   // this replaces, could never do that.
-  const { ref: threadRef, pinned, scrollToBottom } = useStickToBottom<HTMLDivElement>(messages);
+  const { ref: threadRef, pinned, scrollToBottom } = useStickToBottom<HTMLDivElement>(messages, messages.length > 0);
 
   // Load chart data, transits, connections, and saved conversation
   useEffect(() => {
@@ -1294,7 +1318,8 @@ export default function DollyTab() {
           onClick={openHistory}
           aria-label="Conversations"
           className="shrink-0 rounded-full flex items-center justify-center transition-transform active:scale-95"
-          style={{ width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
+          /* Was rgba(255,255,255,0.05) — invisible on the cream page. */
+          style={{ width: 42, height: 42, background: "var(--surface-mid)", border: "0.5px solid var(--border-card)", color: "var(--foreground-muted)" }}
         >
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
@@ -1308,16 +1333,38 @@ export default function DollyTab() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>DOLLY</h1>
-            <span className="rounded-full" style={{ width: 6, height: 6, background: "var(--sage)", boxShadow: "0 0 7px var(--sage)" }} />
+            {/*
+              This was a glowing green dot. A green dot beside a name, next to
+              a portrait, means one thing to everyone who has used a messaging
+              app: a person is online. Dolly is not a person and there is
+              nobody to be online — it was decoration that happened to make a
+              claim, and the claim was false in the direction that matters.
+              An AI mark in its place, which is the thing actually worth
+              saying about her.
+            */}
+            <span
+              aria-label="Dolly is an AI assistant"
+              style={{
+                fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700,
+                letterSpacing: "0.12em", padding: "2px 6px", borderRadius: 4,
+                background: "var(--surface-mid)", color: "var(--foreground-secondary)",
+                border: "0.5px solid var(--border-card)",
+              }}
+            >
+              AI
+            </span>
           </div>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, lineHeight: 1, color: "var(--lavender)", marginTop: 1 }}>your cosmic guide</p>
+          {/* 11px uppercase, like every other subordinate line on this screen
+              (the sky line, "TRY ASKING"). At 18px it was nearly the size of
+              the wordmark above it and outweighed it. */}
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, lineHeight: 1.3, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", marginTop: 3 }}>your cosmic guide</p>
         </div>
         {messages.length > 0 && (
           <button
             onClick={() => setShowLeavePrompt(true)}
             aria-label="New chat"
             className="shrink-0 rounded-full flex items-center justify-center transition-transform active:scale-95"
-            style={{ width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "0.5px solid var(--border-card)" }}
+            style={{ width: 42, height: 42, background: "var(--surface-mid)", border: "0.5px solid var(--border-card)" }}
           >
             <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
@@ -1435,11 +1482,14 @@ export default function DollyTab() {
                     key={prompt.text}
                     onClick={() => handleSend(prompt.text)}
                     className="flex items-center gap-3 w-full text-left transition-transform active:scale-[0.99]"
-                    style={{ padding: "14px 15px", borderRadius: 16, background: "color-mix(in srgb, var(--lavender) 8%, transparent)", border: "0.5px solid rgba(201,206,232,0.16)" }}
+                    /* The card sits on the PAGE, not on a plum bubble, so its edge has to
+                       be a theme token — the old rgba(201,206,232,0.16) was a pale blue
+                       at 16% and left the light-mode cards with no edge at all. */
+                    style={{ padding: "14px 15px", borderRadius: 16, background: "color-mix(in srgb, var(--lavender) 10%, var(--background-elevated))", border: "0.5px solid var(--border-card)" }}
                   >
                     <span
                       className="shrink-0 flex items-center justify-center"
-                      style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(255,255,255,0.05)" }}
+                      style={{ width: 34, height: 34, borderRadius: 11, background: "var(--surface-mid)" }}
                     >
                       <span className="rounded-full" style={{ width: 7, height: 7, background: TYPE_COLOR[prompt.kind], boxShadow: `0 0 7px ${TYPE_COLOR[prompt.kind]}` }} />
                     </span>
@@ -1459,12 +1509,12 @@ export default function DollyTab() {
           {messages.map((msg) => {
             if (msg.role === "user") {
               return (
-                <div key={msg.id} role="article" className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--lavender)", borderRadius: "20px 6px 20px 20px" }}>
+                <div key={msg.id} role="article" className="dl-bubble self-end max-w-[82%] px-4 py-3" style={{ background: "var(--dl-you-bg)", border: "1px solid var(--dl-you-border)", borderRadius: "20px 6px 20px 20px" }}>
                   {/* Who is speaking. On screen the side of the thread and the
                       colour say it; read aloud, every turn ran together into
                       one voice and the conversation was unfollowable. */}
                   <span className="sr-only">You said: </span>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: "var(--journal-on-accent, #161022)" }}>{msg.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: "var(--dl-you-ink)" }}>{msg.content}</p>
                 </div>
               );
             }
@@ -1574,9 +1624,9 @@ export default function DollyTab() {
                         <span
                           key={tag.label}
                           className="inline-flex items-center gap-1.5"
-                          style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.05)", border: `0.5px solid color-mix(in srgb, ${TYPE_COLOR[tag.kind]} 34%, transparent)`, color: "rgba(240,230,210,0.9)" }}
+                          style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.05)", border: `0.5px solid color-mix(in srgb, ${TYPE_COLOR_ON_PLUM[tag.kind]} 34%, transparent)`, color: "rgba(240,230,210,0.9)" }}
                         >
-                          <span className="rounded-full" style={{ width: 5, height: 5, background: TYPE_COLOR[tag.kind] }} />
+                          <span className="rounded-full" style={{ width: 5, height: 5, background: TYPE_COLOR_ON_PLUM[tag.kind] }} />
                           {tag.label}
                         </span>
                       ))}
@@ -1695,9 +1745,13 @@ export default function DollyTab() {
         </div>
       )}
 
-      {/* Input area */}
-      <div className="relative z-10 shrink-0 px-4 pb-4 pt-2">
-        <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" style={{ background: "var(--soft, rgba(255,255,255,0.05))", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
+      {/* Input area. dl-scrim: in light mode the parchment illustration runs
+          straight under the composer — see globals.css. */}
+      <div className="dl-scrim relative z-10 shrink-0 px-4 pb-4 pt-2">
+        <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" /* No inline fallback: --soft is a real token now, and the fallback
+               that used to cover for it (white at 5%) was itself the bug — on
+               the cream page it meant the composer had no surface at all. */
+            style={{ background: "var(--soft)", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
           <textarea
             ref={inputRef}
             value={input}
@@ -1759,8 +1813,11 @@ export default function DollyTab() {
             )}
           </button>
         </div>
-        <p className="text-muted text-[9px] text-center mt-2">
-          Dolly uses astrology as a lens, not a prediction. You always have agency.
+        {/* Said plainly and once, where someone about to type a real thing
+            about their life will see it. 10px, not 9: this is the line that
+            tells them who they are talking to. */}
+        <p className="text-muted text-[10px] text-center mt-2 leading-relaxed">
+          Dolly is an AI, not a person. She uses astrology as a lens, not a prediction &mdash; you always have agency.
         </p>
       </div>
       {PaywallModal}

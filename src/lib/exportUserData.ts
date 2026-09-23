@@ -17,6 +17,10 @@ const USER_TABLES: Record<string, string> = {
   tarot_readings: "user_id",
   custom_rituals: "user_id",
   dolly_conversations: "user_id",
+  // The summary Dolly keeps about someone's life, written by the AI from
+  // their own messages. It was the one thing about them they could neither
+  // read nor take with them.
+  dolly_memory: "user_id",
   bug_reports: "user_id",
   promo_redemptions: "user_id",
 };

@@ -18,6 +18,7 @@ import { PlansPage } from "@/components/Paywall";
 import CitySearch from "@/components/CitySearch";
 import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
+import DollyMemorySection from "@/components/DollyMemorySection";
 import Link from "next/link";
 import { ORACLE_DECKS } from "@/lib/oracleDecks";
 import {
@@ -2558,7 +2559,12 @@ function AccountPage() {
 
           {/* ─── Your data ─── */}
           <div className="pt-2">
-            <DataExportButton />
+            {/* Above the export, because it answers the question the export
+                raises: what does this thing actually know about me? */}
+            <DollyMemorySection />
+            <div className="mt-5">
+              <DataExportButton />
+            </div>
           </div>
 
           {/* ─── Delete account ─────────────────────────────────────────────

@@ -38,7 +38,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 /** How close to the bottom still counts as "at the bottom", in px. */
 const THRESHOLD = 80;
 
-export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
+export function useStickToBottom<T extends HTMLElement>(dep: unknown, active = true) {
   // The live node, as state so the effects below re-run when it changes, and
   // mirrored into a ref so the layout effect and the observer can read it
   // without being re-created.
@@ -116,11 +116,15 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
       pinnedRef.current = false;
       queueMicrotask(() => setPinned(false));
     }
-    if (!pinnedRef.current) return;
+    if (!pinnedRef.current || !active) return;
 
     el.scrollTop = el.scrollHeight;
     lastTopRef.current = el.scrollTop;
-  }, [dep]);
+    // `active` exists for the empty state. Dolly's greeting and her six
+    // starter prompts are taller than the viewport, so following to the
+    // bottom on mount scrolled the greeting — the first thing anyone is meant
+    // to read — off the top of the screen before they had seen it.
+  }, [dep, active]);
 
   // A reply can also grow without `dep` changing (an image loading, a font
   // swapping, the bubble reflowing). Keep following those too, while pinned.
@@ -129,7 +133,7 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       const node = ref.current;
-      if (!pinnedRef.current || !node) return;
+      if (!pinnedRef.current || !active || !node) return;
       node.scrollTop = node.scrollHeight;
       lastTopRef.current = node.scrollTop;
     });
@@ -137,7 +141,7 @@ export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
     // scroller itself only reports viewport changes.
     if (el.firstElementChild) ro.observe(el.firstElementChild);
     return () => ro.disconnect();
-  }, [node]);
+  }, [node, active]);
 
   return { ref: setRef, pinned, scrollToBottom };
 }

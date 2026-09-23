@@ -66,12 +66,42 @@ export default function PrivacyPage() {
 
       <LegalH2>AI-assisted readings</LegalH2>
       <p>
-        Several features (your daily horoscope, Dolly, journal prompts and reflections, and chart interpretations)
-        are generated with the help of a third-party AI provider, Anthropic. To produce a reading, we send the
-        relevant chart and celestial data and, where applicable, your first name to that provider. We send only
-        what is needed to generate the reading. We do not send your email, password, or payment details to the AI
-        provider. Please review the AI provider&rsquo;s own privacy terms for how they handle data processed
-        through their API.
+        Several features &mdash; your daily horoscope, Dolly, journal prompts and reflections, palm readings, the
+        ritual wizard and chart interpretations &mdash; are generated with the help of a third-party AI provider,
+        Anthropic. Producing a reading means sending it the information that reading is based on. What that
+        includes depends on the feature:
+      </p>
+      <p>
+        &bull; <strong>Your chart and the current sky</strong> &mdash; birth date, time and place, the resulting
+        placements, and live transits.<br />
+        &bull; <strong>Your first name</strong>, so a reading can address you.<br />
+        &bull; <strong>What you write to Dolly</strong>, and the recent conversation, so she can follow a thread.<br />
+        &bull; <strong>Recent journal entries.</strong> Dolly is sent short excerpts from your latest entries and
+        the moods attached to them, so she can refer to what is going on with you. A journal <em>reflection</em>
+        sends the full text of the entries in the period being reflected on.<br />
+        &bull; <strong>Your latest tarot or oracle pull</strong>, including any note you wrote about it.<br />
+        &bull; <strong>People you have saved as connections.</strong> When you ask about a relationship, that
+        person&rsquo;s name, their relationship to you and their birth chart are sent as part of the question.
+        They are not Mapped users and have not agreed to this, so please only save people whose birth details you
+        are comfortable using this way.<br />
+        &bull; <strong>A summary Dolly keeps about you.</strong> So she can remember across conversations, Mapped
+        stores a short, evolving note about what is going on in your life, written by the AI from your own
+        messages. It is sent with each new conversation. You can see and delete it from Account settings, and
+        deleting your account deletes it.<br />
+        &bull; <strong>A photo of your palm</strong>, if you use palm reading. It is sent for the reading and is
+        not stored on our servers afterwards.
+      </p>
+      <p>
+        We do not send your email address, password or payment details to the AI provider, and we do not use your
+        content to train any model of our own. Please review the AI provider&rsquo;s own privacy terms for how
+        they handle data processed through their API.
+      </p>
+      <p>
+        Dolly is software, not a person, and not a counsellor, therapist or medical service. Readings are for
+        reflection and entertainment. If you are struggling, please contact a real support service &mdash; in the
+        US, the 988 Suicide &amp; Crisis Lifeline is available by call or text at any hour; elsewhere,{" "}
+        <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">findahelpline.com</a>{" "}
+        lists free services by country.
       </p>
 
       <LegalH2>Service providers we share data with</LegalH2>
