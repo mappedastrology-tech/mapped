@@ -1351,7 +1351,7 @@ function SubscriptionSection() {
   const highlights: Record<TierLevel, string[]> = {
     free: ["Your full birth chart", "Almanac and transits", "One oracle deck", "A card pull each day"],
     mid: ["Dolly, every day", "Daily horoscopes for your chart", "Unlimited card pulls", "Astrocartography"],
-    max: ["Everything in Mapped+", "Every oracle deck included", "New decks as they arrive"],
+    max: ["Three times the time with Dolly", "Everyone on your map, not just one", "Every oracle deck included"],
   };
 
   /**

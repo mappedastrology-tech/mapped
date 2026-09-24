@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { FEATURES, USAGE_LIMITS, getFeatureInfo, TIERS, TRIAL_DAYS } from "../src/lib/tier";
+import { FEATURES, USAGE_LIMITS, getFeatureInfo, getMinTier, TIERS, TRIAL_DAYS } from "../src/lib/tier";
 import { DAILY_AI_LIMITS, AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD, dailyLimit } from "../src/lib/ai/dailyLimits";
 
 /**
@@ -222,4 +222,38 @@ test("the trial is long enough to cover a week", () => {
   // Five days never covered a weekend, on a product whose value compounds
   // daily.
   assert.ok(TRIAL_DAYS >= 7, `trial is ${TRIAL_DAYS} days`);
+});
+
+/* ─── The map: one person on Mapped+, everyone on Complete ─── */
+
+test("adding people to the map is a Complete feature", () => {
+  assert.equal(getMinTier("multiple_synastry"), "max");
+  assert.equal(getMinTier("unlimited_family"), "max");
+});
+
+test("Mapped+ is capped at one person on the map", () => {
+  // The map gate used to read `tier === "free"`, which handed every paid plan
+  // an unlimited map — so the thing Complete is now sold on was already
+  // included in Mapped+.
+  assert.equal(USAGE_LIMITS.mid.synastryPartners, 1);
+  assert.equal(USAGE_LIMITS.max.synastryPartners, Infinity);
+});
+
+test("the map gate reads the limit, not a tier name", () => {
+  // A hardcoded tier comparison is how it drifted the first time: the limits
+  // table said one thing and the gate did another, and nothing connected them.
+  const src = readFileSync(join(process.cwd(), "src/app/(tabs)/maps/page.tsx"), "utf8");
+  assert.match(src, /connections\.length >= limits\.synastryPartners/);
+  assert.doesNotMatch(
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""),
+    /tier === "free" && connections\.length/,
+    "the old hardcoded gate is still there",
+  );
+});
+
+test("Mapped+ no longer claims every connection", () => {
+  const paywall = readFileSync(join(process.cwd(), "src/components/Paywall.tsx"), "utf8");
+  const start = paywall.indexOf("const PLUS_FEATURES");
+  const list = paywall.slice(start, paywall.indexOf("];", start)).replace(/^\s*\/\/.*$/gm, "");
+  assert.doesNotMatch(list, /every connection/i, "Mapped+ still promises the whole map");
 });

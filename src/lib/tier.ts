@@ -155,7 +155,9 @@ export const FEATURES: FeatureDef[] = [
   { key: "wizard", minTier: "mid", label: "Ritual Wizard", description: "Create personalized rituals guided by your chart and the current sky." },
   { key: "custom_rituals", minTier: "mid", label: "Custom Rituals", description: "Build and save your own rituals to your daily rotation." },
   { key: "full_transits", minTier: "mid", label: "Full Transits", description: "See all current transits ranked by how strongly they hit your chart." },
-  { key: "multiple_synastry", minTier: "mid", label: "Multiple Partners", description: "Compare your chart with more than one person." },
+  // Moved to Complete. Mapped+ gets one person — your partner — with every
+  // depth tool pointed at them; Complete is what opens the whole map.
+  { key: "multiple_synastry", minTier: "max", label: "Everyone on your map", description: "Add as many people as you like — family, friends, colleagues — not just one." },
   { key: "astrocartography", minTier: "mid", label: "Astrocartography", description: "See where your planetary lines cross the globe and what they mean for you there." },
   // Not "Unlimited Dolly — ask as much as you like", which was false, and not
   // a message count either, which is not a thing a subscription advertises
@@ -179,7 +181,7 @@ export const FEATURES: FeatureDef[] = [
   { key: "planetary_hour_precision", minTier: "mid", label: "Planetary Hour Precision", description: "Wizard outputs timed to the exact planetary hour." },
   { key: "pdf_export", minTier: "mid", label: "PDF Chart Export", description: "Download your full chart as a formatted PDF." },
   { key: "composite_charts", minTier: "mid", label: "Composite Charts", description: "The merged chart of a relationship — what you create together." },
-  { key: "unlimited_family", minTier: "mid", label: "Unlimited Family Map", description: "Add as many family members as you want to your relational map." },
+  { key: "unlimited_family", minTier: "max", label: "The full family map", description: "Everyone who matters, mapped together, with the patterns that run between them." },
   { key: "unlimited_wizard", minTier: "mid", label: "Rituals on demand", description: "Create a ritual whenever you need one, shaped to your chart and the current sky. Usage limits apply." },
   { key: "voice_memo_wizard", minTier: "mid", label: "Voice Memo Input", description: "Speak your intention to the wizard instead of typing." },
   { key: "multi_day_rituals", minTier: "mid", label: "Multi-Day Sequences", description: "Rituals that span multiple days as a connected practice." },
@@ -232,8 +234,16 @@ export const USAGE_LIMITS = {
     // cannot warn anyone they are close to it.
     dollyMessagesPerDay: dailyLimit("dolly", "mid"),
     pullsPerDay: Infinity,
-    synastryPartners: Infinity,
-    familyMembers: Infinity,
+    /**
+     * One person on the map — your partner.
+     *
+     * Free gets one too, so Mapped+ does not differ here by COUNT; it differs
+     * by what you can do with them. Free sees basic compatibility, Mapped+
+     * points every depth tool at that one chart: composite, antiscia, deep
+     * aspects. Complete is what opens the map to everyone else.
+     */
+    synastryPartners: 1,
+    familyMembers: 1,
     wizardPerMonth: Infinity,
     transitsShown: Infinity,
   },

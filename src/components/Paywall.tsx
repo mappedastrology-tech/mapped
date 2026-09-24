@@ -136,7 +136,7 @@ const FREE_FEATURES = [
   "One oracle deck, chosen by you",
   "A card pull each day",
   "Journal and Learn",
-  "One connection on the map",
+  "One person on the map, with basic compatibility",
 ];
 
 // Dolly and the daily horoscope live here rather than on Free: everything
@@ -151,7 +151,9 @@ const PLUS_FEATURES = [
   "Palm readings and chart readings",
   "Unlimited card pulls",
   "Astrocartography and full transits",
-  "Every connection on the map",
+  // Not "every connection" any more — that is what Complete is for. Mapped+
+  // gets one person with every depth tool pointed at them.
+  "Your partner on the map, read in full depth",
 ];
 
 // Dolly leads. This card used to list only the decks, so someone paying
@@ -161,6 +163,7 @@ const PLUS_FEATURES = [
 // and the monthly ceilings, so the promise cannot drift from the delivery.
 const COMPLETE_FEATURES = [
   `${AI_MULTIPLIER_WORD[AI_TIER_MULTIPLIER.max] ?? `${AI_TIER_MULTIPLIER.max}x`} the time with Dolly, for long conversations and heavy weeks`,
+  "Everyone on your map — family, friends, colleagues, not just one",
   "Every oracle deck, included",
   "New decks the day they arrive",
 ];

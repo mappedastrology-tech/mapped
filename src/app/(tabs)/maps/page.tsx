@@ -2361,7 +2361,7 @@ function getElement(sign: string): string {
 
 export default function MapsTab() {
   const { gate, PaywallModal } = usePaywall();
-  const { tier } = useTier();
+  const { tier, limits } = useTier();
   const { precision: birthTimePrecision, shouldRender: shouldRenderTimeFeature } = useBirthTime();
   // ─── State ───
   const [userChart, setUserChart] = useState<UserChart | null>(null);
@@ -2784,8 +2784,17 @@ export default function MapsTab() {
       setFormError("Please select a birth city.");
       return;
     }
-    // Gate: free tier can only have 1 synastry partner
-    if (tier === "free" && connections.length >= 1) {
+    /**
+     * How many people this plan may have on the map.
+     *
+     * Was `tier === "free" && connections.length >= 1`, which gave every paid
+     * plan an unlimited map. Mapped+ is now one person — your partner, with
+     * every depth tool pointed at them — and the whole map is what Mapped
+     * Complete opens. Read from limits rather than compared against a tier
+     * name so the number lives in one place; the paywall names the right plan
+     * because it reads it off the feature, not off a hardcoded string.
+     */
+    if (connections.length >= limits.synastryPartners) {
       if (gate("multiple_synastry")) return;
     }
 
