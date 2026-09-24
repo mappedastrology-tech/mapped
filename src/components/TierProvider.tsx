@@ -20,6 +20,7 @@ import {
 } from "@/lib/tier";
 import { getActivePromoTier } from "@/lib/promoCodes";
 import { getProfile, invalidateProfile } from "@/lib/profileCache";
+import { API_BASE } from "@/lib/apiBase";
 
 type Limits = { dollyMessagesPerDay: number; pullsPerDay: number; synastryPartners: number; familyMembers: number; wizardPerMonth: number; transitsShown: number };
 
@@ -102,6 +103,49 @@ export function TierProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchTier();
   }, [fetchTier]);
+
+  /**
+   * Reconcile with Stripe when the app comes back to the foreground.
+   *
+   * Checkout finishes OUTSIDE the app now — Apple's 3.1.1 means the native
+   * build hands the URL to the system browser, so the sequence is: tap
+   * Subscribe, pay in Safari, switch back. The app was never unmounted, so
+   * nothing re-read anything, and it still believed the person was on the
+   * free tier. They had paid and the app acted as though they had not.
+   *
+   * The sync route asks Stripe directly rather than waiting for a webhook,
+   * which also recovers the cases where a webhook was missed entirely.
+   *
+   * Guarded so it runs at most once a minute: coming back to the app is a
+   * frequent event, and this costs a Stripe API call.
+   */
+  useEffect(() => {
+    let last = 0;
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - last < 60_000) return;
+      last = Date.now();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch(`${API_BASE}/api/stripe/sync`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) return;
+        const body = await res.json().catch(() => null);
+        // Only re-read when Stripe disagreed with what we are showing;
+        // otherwise this would invalidate the shared profile cache on every
+        // app switch.
+        if (body && body.tier !== tier) await fetchTier({ fresh: true });
+      } catch {
+        /* Best-effort. A failure here must never break the app. */
+      }
+    };
+    void onVisible();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchTier, tier]);
 
   const value: TierContextValue = {
     tier,

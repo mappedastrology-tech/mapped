@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { returnBaseUrl } from "@/lib/siteUrl";
 
 export async function POST(request: Request) {
   try {
@@ -51,7 +52,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const origin = request.headers.get("origin") || "https://mapped.app";
+    // Not the raw Origin header: inside the app that is https://localhost,
+    // and checkout now opens in the system browser, which cannot reach it.
+    const origin = returnBaseUrl(request.headers.get("origin"));
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,

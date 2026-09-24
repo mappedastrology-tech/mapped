@@ -14,6 +14,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { type FeatureKey, type TierLevel, getFeatureInfo, getMinTier, TIERS, recordPaywallDismissed } from "@/lib/tier";
 import { AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD } from "@/lib/ai/dailyLimits";
+import { openCheckout } from "@/lib/openCheckout";
 
 interface PaywallProps {
   feature: FeatureKey;
@@ -229,7 +230,7 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
 
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        openCheckout(data.url);
       } else {
         console.error("No checkout URL returned:", data);
         setLoadingPlan(null);

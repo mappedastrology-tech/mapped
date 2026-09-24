@@ -59,10 +59,27 @@ export function getSectLight(
   // Determine house number from the house string
   const sunHouseNum = parseHouse(sun.house);
 
+  /**
+   * No house for the Sun means no sect. Say so, rather than guessing.
+   *
+   * Sect is entirely a question of whether the Sun was above the horizon,
+   * which cannot be known without a birth hour — and calculateChart
+   * deliberately sets every planet.house to null when the time is unknown,
+   * precisely so that nothing downstream invents one.
+   *
+   * This function then undid that. `sunHouseNum >= 7` is false for null, so
+   * an unknown time fell through to "night", and every person who answered
+   * "I don't know my birth time" was told, as bare fact, that they were born
+   * at night and their Moon was in charge. It was the first thing they saw
+   * after handing over their details. Half of them were simply told something
+   * untrue, and the library had gone out of its way not to say it.
+   */
+  if (sunHouseNum === null) return null;
+
   // Day chart if Sun is in houses 7-12 (above the horizon)
   // This is a simplification; technically it's based on the descendant,
   // but whole-sign houses make this straightforward.
-  const isDayChart = sunHouseNum !== null && sunHouseNum >= 7;
+  const isDayChart = sunHouseNum >= 7;
 
   const sect: "day" | "night" = isDayChart ? "day" : "night";
   const sectLight = isDayChart ? "Sun" : "Moon";

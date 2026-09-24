@@ -28,6 +28,7 @@ import { getOracleDeck, type OracleCard } from "@/lib/oracleDecks";
 import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
 import DeckStack from "@/components/tarot/DeckStack";
 import { fetchDeckEntitlements, claimFreeDeck, NO_ENTITLEMENTS, type DeckEntitlements } from "@/lib/freeDeck";
+import { openCheckout } from "@/lib/openCheckout";
 
 interface Props {
   /** Deck id from ?deck_purchased= — shows the success banner. */
@@ -91,7 +92,7 @@ export default function DeckStore({ justPurchased }: Props) {
       });
       const data = await res.json();
       if (res.ok && data.url) {
-        window.location.href = data.url as string;
+        openCheckout(data.url as string);
         return;
       }
       setError(data.error || "Could not start checkout. Please try again.");

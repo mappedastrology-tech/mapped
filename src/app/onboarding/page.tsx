@@ -24,11 +24,13 @@ import { supabase } from "@/lib/supabase";
 import { saveChart } from "@/lib/saveChart";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getSectLight, getLordOfTheYear } from "@/lib/rulers";
+import { TRIAL_DAYS } from "@/lib/tier";
 import { getChartRuler } from "@/lib/chartRuler";
 import Logo from "@/components/Logo";
 import { STORE_DECKS, formatPrice } from "@/lib/deckStore";
 import { claimFreeDeck } from "@/lib/freeDeck";
 import DeckStack from "@/components/tarot/DeckStack";
+import { friendlyAuthError } from "@/lib/authErrors";
 
 const TOTAL_STEPS = 10;
 const LS_KEY = "mapped:onboarding-step";
@@ -95,6 +97,14 @@ export default function OnboardingPage() {
   const [existingUserName, setExistingUserName] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /**
+   * Set to the address we just sent a confirmation link to. While this holds
+   * a value the flow stops and shows the "check your inbox" screen rather
+   * than advancing into a signed-out dead end.
+   */
+  const [awaitingConfirm, setAwaitingConfirm] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+
   const [error, setError] = useState("");
   const [birthDataDone, setBirthDataDone] = useState(false);
 
@@ -270,6 +280,24 @@ export default function OnboardingPage() {
   );
   const accountValid = existingUserId ? true : (email.trim() && password.length >= 6);
 
+  /**
+   * Send another confirmation link.
+   *
+   * There was no way to do this anywhere in the app, so anyone whose email was
+   * delayed, filtered or lost was stuck for good: signing in told them to
+   * confirm first, and nothing could issue a new link.
+   */
+  async function resendConfirmation() {
+    if (!awaitingConfirm) return;
+    setResendState("sending");
+    try {
+      const { error: err } = await supabase.auth.resend({ type: "signup", email: awaitingConfirm });
+      setResendState(err ? "failed" : "sent");
+    } catch {
+      setResendState("failed");
+    }
+  }
+
   async function handleBirthSubmit() {
     if (!birthValid || !accountValid) return;
     setIsSubmitting(true);
@@ -331,7 +359,8 @@ export default function OnboardingPage() {
                   "Looks like you already have an account! Check the \"I already have an account\" box and enter your password to sign in.",
                 );
               }
-              throw new Error(signInErr.message);
+              // Raw Supabase text used to reach the screen from here.
+            throw new Error(signInErr.message);
             }
             userId = signInData.user?.id || null;
             isReturningUser = true;
@@ -341,10 +370,25 @@ export default function OnboardingPage() {
         } else if (data.user && data.session) {
           userId = data.user.id;
         } else if (data.user && !data.session) {
+          /**
+           * Supabase made the account but wants the email confirmed first, so
+           * there is no session yet.
+           *
+           * This used to call goNext() and say nothing. The person then walked
+           * the next six screens signed out, and every write on the way
+           * silently did nothing — demographics, notification preferences,
+           * moon practice and the free deck are all wrapped in a session
+           * check. At the end, onboarding_completed was never set, so the tab
+           * layout bounced them back to /welcome. Ten screens of work, thrown
+           * away, with no explanation at any point.
+           *
+           * Stop here instead and tell them. The chart is already calculated
+           * and kept, so confirming the link resumes rather than restarts.
+           */
           sessionStorage.setItem("chartResult", JSON.stringify(result));
           sessionStorage.setItem("pendingSave", "true");
-          setBirthDataDone(true);
-          goNext();
+          setAwaitingConfirm(email.trim());
+          setIsSubmitting(false);
           return;
         }
       }
@@ -377,7 +421,7 @@ export default function OnboardingPage() {
       setBirthDataDone(true);
       goNext();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(friendlyAuthError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -603,7 +647,7 @@ export default function OnboardingPage() {
         <div className={`flex-1 min-h-0 flex flex-col transition-all duration-280 ease-out ${slideClass}`}>
 
           {/* ══════════ Screen 0: Welcome ══════════ */}
-          {step === 0 && (
+          {!awaitingConfirm && step === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-10">
                 <h2 className="text-[52px] leading-none tracking-tight" aria-label="Mapped">
@@ -626,8 +670,54 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/*
+            ══════════ Check your inbox ══════════
+            Takes over the whole flow. Supabase made the account but there is
+            no session until the link is clicked, and advancing past this is
+            what used to throw away everything the person did next.
+          */}
+          {awaitingConfirm && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+              <h1 className="text-[28px] text-foreground mb-3 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+                Check your inbox
+              </h1>
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-2">
+                We sent a confirmation link to <strong>{awaitingConfirm}</strong>.
+              </p>
+              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-8">
+                Open it on this device and we&rsquo;ll pick up where you left off &mdash; your chart is
+                already built and waiting.
+              </p>
+
+              <button
+                onClick={resendConfirmation}
+                disabled={resendState === "sending" || resendState === "sent"}
+                className="px-8 min-h-[44px] rounded-full bg-terracotta text-cream font-bold text-sm tracking-wide active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{ ...ctaShadow, ...ctaTextColor }}
+              >
+                {resendState === "sending" ? "Sending…" : resendState === "sent" ? "Link sent" : "Resend the link"}
+              </button>
+
+              {/* Announced, not just drawn. */}
+              <p role="status" aria-live="polite" className="text-muted text-xs mt-3 min-h-[1rem]">
+                {resendState === "sent"
+                  ? "On its way. It can take a minute — check spam too."
+                  : resendState === "failed"
+                  ? "That didn't send. Give it a moment and try again."
+                  : ""}
+              </p>
+
+              <button
+                onClick={() => { setAwaitingConfirm(null); setResendState("idle"); }}
+                className="mt-6 text-muted text-xs underline underline-offset-2 min-h-[44px]"
+              >
+                Use a different email
+              </button>
+            </div>
+          )}
+
           {/* ══════════ Screen 1: Birth Data ══════════ */}
-          {step === 1 && (
+          {!awaitingConfirm && step === 1 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
@@ -638,8 +728,18 @@ export default function OnboardingPage() {
               <p className="text-secondary text-xs mb-1">
                 We&apos;ll map your whole chart — Sun, Moon, Rising, and more — not just your sun sign. The more precise your details, the more precise your chart.
               </p>
+              {/*
+                "Never shared" was an absolute the app cannot defend, sitting
+                two fields above a link to a privacy page that says the
+                opposite in detail: the city goes to OpenStreetMap as you type
+                it, and the chart goes to Anthropic whenever Dolly answers. An
+                absolute is the one shape of this sentence that gets quoted
+                back at you. This keeps the reassurance and drops the claim.
+              */}
               <p className="text-muted text-[11px] mb-4">
-                Private — your birth details are only used to build your chart, never shared.
+                Your birth details are used to build your chart and answer your questions &mdash; nothing
+                else. We don&rsquo;t sell them or advertise against them.{" "}
+                <a href="/privacy" className="underline underline-offset-2">What we do with your data</a>
               </p>
 
               <div className="flex flex-col gap-3">
@@ -977,7 +1077,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 4: Demographics (after the reveal) ══════════ */}
-          {step === 4 && (
+          {!awaitingConfirm && step === 4 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
@@ -1089,7 +1189,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 2: Sect Reveal (immediately after chart) ══════════ */}
-          {step === 2 && (
+          {!awaitingConfirm && step === 2 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <h1
                 className="text-[38px] mb-1 tracking-tight leading-tight"
@@ -1117,23 +1217,49 @@ export default function OnboardingPage() {
                     <span className="flex items-center gap-2.5">
                       <SignPlate sign={b.sign} size={42} tile />
                       <span className="text-[18px] font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-                        {b.sign ? fullSign(b.sign) : "add birth time"}
+                        {b.sign ? fullSign(b.sign) : "needs a birth time"}
                       </span>
                     </span>
                   </div>
                 ))}
               </div>
 
-              <p className="text-base leading-relaxed max-w-xs mb-3 opacity-90">
-                {sectInfo?.sect === "day"
-                  ? "You were born during the day."
-                  : "You were born at night."}
-              </p>
-              <p className="text-sm leading-relaxed max-w-xs opacity-75 mb-10">
-                {sectInfo?.sect === "day"
-                  ? "Your Sun is in charge. Day charts run outward — visible, driven, oriented toward action."
-                  : "Your Moon is in charge. Night charts run inward — reflective, intuitive, led by feeling."}
-              </p>
+              {/*
+                Three states, not two.
+                This used to be a bare day/night ternary, so a reader with no
+                birth time — for whom sect is unknowable, because it is
+                entirely a question of whether the Sun was above the horizon —
+                fell into the "night" branch and was told as plain fact that
+                they were born at night and their Moon was in charge. It was
+                the first thing they saw after handing over their details, and
+                for about half of them it was false. getSectLight now returns
+                null rather than guessing; this says so out loud.
+              */}
+              {!sectInfo ? (
+                <>
+                  <p className="text-base leading-relaxed max-w-xs mb-3 opacity-90">
+                    Whether you&rsquo;re a day chart or a night chart, we can&rsquo;t say yet.
+                  </p>
+                  <p className="text-sm leading-relaxed max-w-xs opacity-75 mb-10">
+                    It depends on where the Sun sat at your birth hour, so it&rsquo;s the one thing a
+                    birth time is genuinely needed for. Everything else below holds without it &mdash;
+                    and if you find your time later, add it in Settings and this fills itself in.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-base leading-relaxed max-w-xs mb-3 opacity-90">
+                    {sectInfo.sect === "day"
+                      ? "You were born during the day."
+                      : "You were born at night."}
+                  </p>
+                  <p className="text-sm leading-relaxed max-w-xs opacity-75 mb-10">
+                    {sectInfo.sect === "day"
+                      ? "Your Sun is in charge. Day charts run outward — visible, driven, oriented toward action."
+                      : "Your Moon is in charge. Night charts run inward — reflective, intuitive, led by feeling."}
+                  </p>
+                </>
+              )}
               <button
                 onClick={goNext}
                 className="px-10 py-3.5 rounded-full font-bold text-sm tracking-wide active:scale-[0.98] transition-all"
@@ -1148,14 +1274,36 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 3: Headline Cards ══════════ */}
-          {step === 3 && (
+          {!awaitingConfirm && step === 3 && (
             <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
+              {/*
+                Counted from what is actually there.
+                This said "Three things to know" unconditionally. Chart ruler
+                and lord of the year both need houses, and sect needs a birth
+                hour, so a reader without a time saw a heading promising three
+                things above an empty space and a Continue button — a heading
+                that counts what is not there is the worst kind of empty state.
+              */}
               <h1
                 className="text-[24px] text-foreground mb-5 tracking-tight text-center"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                Three things to know
+                {headlineCards.length === 0
+                  ? "What we can read without a time"
+                  : headlineCards.length === 1
+                  ? "One thing to know"
+                  : headlineCards.length === 2
+                  ? "Two things to know"
+                  : "Three things to know"}
               </h1>
+
+              {headlineCards.length === 0 && (
+                <p className="text-secondary text-sm leading-relaxed max-w-xs text-center mb-8">
+                  Your Sun and Moon are solid &mdash; they barely move in a day, so they hold whether or
+                  not you know your birth hour. Your rising sign, your houses and your sect all need one.
+                  If you find it later, add it in Settings and the rest of your chart fills in.
+                </p>
+              )}
 
               {headlineCards.length > 0 && (
                 <>
@@ -1235,7 +1383,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 5: Meet Dolly ══════════ */}
-          {step === 5 && (
+          {!awaitingConfirm && step === 5 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-4">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1248,14 +1396,27 @@ export default function OnboardingPage() {
               >
                 Meet Dolly
               </h1>
+              {/*
+                Three paragraphs to two, and two claims removed.
+                "Ask her anything" is the absolute lib/ai/dailyLimits exists to
+                retire — there is a real daily cap, and the plan copy was
+                rewritten to stop implying otherwise. This was the last screen
+                still making the promise. "Tells you the truth" is not
+                something anyone can say about a language model, and it is the
+                sentence that gets quoted back after her first confident
+                mistake. The screen also never said she was the paid tier, so
+                someone met her as an ordinary part of the app and lost her on
+                day eight.
+              */}
               <p className="text-secondary text-sm leading-relaxed max-w-xs mb-3">
-                Dolly is your AI astrology guide. She knows your chart, your transits, and the context you gave us.
-              </p>
-              <p className="text-secondary text-sm leading-relaxed max-w-xs mb-3">
-                She reads your chart in real time — your transits, your timing, the context you gave us. Less fortune-telling, more a sharp second opinion on what&apos;s actually in front of you.
+                Dolly is your AI guide. She reads your chart against the current sky &mdash; your transits,
+                your timing, the people you add &mdash; and answers in plain language. Less
+                fortune-telling, more a sharp second opinion on what&apos;s actually in front of you.
               </p>
               <p className="text-secondary text-xs leading-relaxed max-w-xs mb-8">
-                Ask her anything — your chart, your relationships, your timing. She&apos;s specific, grounded, and tells you the truth.
+                She&apos;s an AI, so she gets things wrong sometimes &mdash; Skeptic Mode will show you the
+                tradition behind any answer. She&apos;s on us for your first {TRIAL_DAYS} days, then she
+                lives in Mapped+. The rest of Mapped stays free either way.
               </p>
               <button
                 onClick={goNext}
@@ -1268,7 +1429,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 6: Pick Your Free Deck ══════════ */}
-          {step === 6 && (
+          {!awaitingConfirm && step === 6 && (
             <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
               <h1
                 className="text-[26px] text-foreground mb-2 tracking-tight text-center"
@@ -1334,7 +1495,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 7: Notifications ══════════ */}
-          {step === 7 && (
+          {!awaitingConfirm && step === 7 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-5">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1400,7 +1561,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 8: Moon Practice ══════════ */}
-          {step === 8 && (
+          {!awaitingConfirm && step === 8 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-4">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1436,7 +1597,7 @@ export default function OnboardingPage() {
           )}
 
           {/* ══════════ Screen 9: Final Orientation ══════════ */}
-          {step === 9 && (
+          {!awaitingConfirm && step === 9 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <h1
                 className="text-[30px] text-foreground mb-4 tracking-tight"

@@ -43,6 +43,7 @@ import { isAdmin } from "@/lib/admin";
 import { applyChartSystem, loadChartSystemPreference, saveChartSystemPreference } from "@/lib/chartSystemSync";
 import { chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
 import { defaultHouseSystem } from "@/lib/astro/vedic/houses";
+import { openCheckout } from "@/lib/openCheckout";
 
 export default function AccountPageWrapper() {
   return (
@@ -1325,13 +1326,33 @@ function SubscriptionSection() {
    * nothing. A bill and a cancel route, neither of them real.
    */
   const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
+  /**
+   * Stripe's view of the subscription — specifically whether a payment has
+   * failed.
+   *
+   * `subscription_status` has been written to the profile all along and read
+   * nowhere, so a renewal that failed was completely invisible: Stripe spends
+   * about three weeks retrying the card, and in that window the subscriber
+   * had no way to learn anything was wrong. (Until today they were also
+   * silently demoted to free for the duration — see the webhook.) Most failed
+   * renewals are an expired card, and most are fixable in a minute by
+   * somebody who knows.
+   */
+  const [subStatus, setSubStatus] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     getProfile()
-      .then((p) => { if (alive) setHasSubscription(!!p?.stripe_subscription_id); })
+      .then((p) => {
+        if (!alive) return;
+        setHasSubscription(!!p?.stripe_subscription_id);
+        setSubStatus(p?.subscription_status ?? null);
+      })
       .catch(() => { if (alive) setHasSubscription(false); });
     return () => { alive = false; };
   }, [tier]);
+
+  /** Stripe is retrying their card right now. */
+  const paymentFailing = subStatus === "past_due";
 
   // Any paid tier, not just Mapped+. Testing for "mid" alone showed a Mapped
   // Complete subscriber the Free card and an upgrade button.
@@ -1384,7 +1405,7 @@ function SubscriptionSection() {
 
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        openCheckout(data.url);
         return; // navigating away; leave the button busy
       }
       setBillingError("We couldn't open the billing portal. Please try again in a moment.");
@@ -1416,7 +1437,7 @@ function SubscriptionSection() {
 
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        openCheckout(data.url);
         return;
       }
       // Explicitly says nothing was charged: the common worry when a payment
@@ -1434,6 +1455,35 @@ function SubscriptionSection() {
     <>
       <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
         <h2 className="text-xs uppercase tracking-widest text-muted mb-3">Your plan</h2>
+
+        {/*
+          A failed renewal, said out loud.
+          This is the highest-value thing on the screen when it applies: the
+          person is still a subscriber, Stripe is still trying, and a minute
+          in the billing portal saves the account. Silence loses it.
+        */}
+        {paymentFailing && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl p-3.5"
+            style={{ background: "var(--background-elevated)", border: "1px solid var(--danger-text)" }}
+          >
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--danger-text)" }}>
+              Your last payment didn&rsquo;t go through
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
+              It&rsquo;s usually an expired card. Everything still works while we retry &mdash; update your
+              card and it&rsquo;ll sort itself out.
+            </p>
+            <button
+              onClick={handleManageSubscription}
+              className="mt-2.5 px-4 min-h-[44px] rounded-full text-sm font-semibold"
+              style={{ background: "var(--brass)", color: "var(--btn-primary-text)" }}
+            >
+              Update payment method
+            </button>
+          </div>
+        )}
 
         {/* Current tier badge */}
         <div className="flex items-center justify-between mb-3">

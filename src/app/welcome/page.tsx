@@ -25,6 +25,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { TRIAL_DAYS } from "@/lib/tier";
+import { friendlyAuthError } from "@/lib/authErrors";
 
 /**
  * Onboarding opens on its own "Hi. We're Mapped" screen. This page already
@@ -102,13 +104,10 @@ function WelcomePage() {
         return;
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(
-        msg.includes("Invalid login") ? "Wrong email or password."
-          : msg.includes("Email not confirmed") ? "Check your inbox — you need to confirm your email first."
-            : /fetch|network/i.test(msg) ? "Can't reach the server. Check your connection."
-              : msg || "Couldn't sign you in.",
-      );
+      // One mapper, not a local ternary that duplicates three of its cases
+      // and words them less kindly — "Can't reach the server" tells someone
+      // nothing about whether the thing they just typed survived.
+      setError(friendlyAuthError(err));
     }
     setBusy(false);
   }
@@ -119,7 +118,7 @@ function WelcomePage() {
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (err) setError(err.message);
+    if (err) setError(friendlyAuthError(err));
   }
 
   async function sendReset(e: React.FormEvent) {
@@ -130,7 +129,7 @@ function WelcomePage() {
       redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
     });
     setBusy(false);
-    if (err) setError(err.message);
+    if (err) setError(friendlyAuthError(err));
     else setResetSent(true);
   }
 
@@ -163,6 +162,19 @@ function WelcomePage() {
           <>
             <p className="mt-6 text-center text-secondary text-base leading-relaxed" style={{ fontFamily: "var(--font-body)" }}>
               Astrology for your actual life.
+            </p>
+            {/*
+              The trial, on the front door.
+              Every new account gets TRIAL_DAYS of Mapped+ — and until now that
+              was mentioned in exactly three files, none of which a stranger
+              ever sees. It is both the best thing we can say to someone
+              deciding, and the thing they will feel misled about on day eight
+              if nobody told them. Account settings already had the principle
+              written down: what people resent is not the trial ending, it is
+              not having been told it would.
+            */}
+            <p className="mt-3 text-center text-muted text-sm leading-relaxed">
+              Your first {TRIAL_DAYS} days include everything, Dolly and all. No card, no charge.
             </p>
             <div className="mt-12 w-full flex flex-col gap-3">
               <button
