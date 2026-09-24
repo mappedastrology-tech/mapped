@@ -1,5 +1,25 @@
+# Stripe configuration for Mapped.
+#
+# Four Price objects, because there are two tiers and two billing intervals.
+# Each must be a RECURRING price on the matching interval — a monthly price id
+# in an annual slot would charge a month for a button that said a year.
+#
+# Create them in the Stripe dashboard (Products -> Mapped+ / Mapped Complete),
+# then set these. Checkout refuses with a 500 and names the missing variable
+# in the log rather than falling back to another price.
+#
+#   Mapped+          $11.11 / month      $100 / year
+#   Mapped Complete  $22.22 / month      $200 / year
+
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_PRICE_ID=price_...
-STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Mapped+
+STRIPE_PRICE_ID=price_...              # $11.11 / month
+STRIPE_PRICE_ID_ANNUAL=price_...       # $100 / year
+
+# Mapped Complete
+STRIPE_PRICE_ID_MAX=price_...          # $22.22 / month
+STRIPE_PRICE_ID_MAX_ANNUAL=price_...   # $200 / year

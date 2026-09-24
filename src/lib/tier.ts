@@ -31,16 +31,25 @@ export interface TierInfo {
 
 export const TIERS: Record<TierLevel, TierInfo> = {
   free: { level: "free", name: "Free", price: 0, annualPrice: 0 },
-  mid: { level: "mid", name: "Mapped+", price: 11.11, annualPrice: 89 },
-  max: { level: "max", name: "Mapped Complete", price: 22.22, annualPrice: 178 },
+  // Annual is 25% off twelve months, on both tiers — a shade over nine
+  // months' money for twelve months of access.
+  mid: { level: "mid", name: "Mapped+", price: 11.11, annualPrice: 100 },
+  max: { level: "max", name: "Mapped Complete", price: 22.22, annualPrice: 200 },
 };
 
 export const DECK_PRICE = 5.55;
 
 /* ─── The new-account trial ─── */
 
-/** Days of Mapped+ every new account gets, so people meet Dolly before paying. */
-export const TRIAL_DAYS = 5;
+/**
+ * Days of Mapped+ every new account gets, so people meet Dolly before paying.
+ *
+ * Seven, not five. This product's value compounds — the almanac is daily,
+ * Dolly's memory builds across conversations, a ritual practice is a habit —
+ * and five days never covers a full week or a weekend. Seven is also what
+ * people expect a trial to be, so it reads as standard rather than stingy.
+ */
+export const TRIAL_DAYS = 7;
 
 /**
  * Whether an account is still inside its opening trial.
@@ -92,7 +101,7 @@ export function effectiveTier(
 
 /* ─── Feature definitions ─── */
 
-import { DAILY_AI_LIMITS } from "@/lib/ai/dailyLimits";
+import { DAILY_AI_LIMITS, AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD, dailyLimit } from "@/lib/ai/dailyLimits";
 
 export type FeatureKey =
   | "wizard"
@@ -125,6 +134,7 @@ export type FeatureKey =
   | "multiple_moon_practices"
   | "birth_time_rectification"
   | "ai_features"
+  | "more_dolly"
   | "all_decks";
 
 interface FeatureDef {
@@ -139,6 +149,7 @@ const TIER_ORDER: Record<TierLevel, number> = { free: 0, mid: 1, max: 2 };
 export const FEATURES: FeatureDef[] = [
   // The two tier-defining gates.
   { key: "ai_features", minTier: "mid", label: "Everything with Dolly", description: "Dolly, the ritual wizard, daily horoscopes, chart readings and palm readings." },
+  { key: "more_dolly", minTier: "max", label: `${AI_MULTIPLIER_WORD[AI_TIER_MULTIPLIER.max] ?? `${AI_TIER_MULTIPLIER.max}x`} the time with Dolly`, description: "The same Dolly, with room for much longer conversations and heavier weeks." },
   { key: "all_decks", minTier: "max", label: "Every Oracle Deck", description: "All oracle decks, yours to read with while your subscription is active." },
   // Mapped+ features
   { key: "wizard", minTier: "mid", label: "Ritual Wizard", description: "Create personalized rituals guided by your chart and the current sky." },
@@ -219,7 +230,7 @@ export const USAGE_LIMITS = {
   mid: {
     // Not Infinity: the server enforces this, and a UI that believes otherwise
     // cannot warn anyone they are close to it.
-    dollyMessagesPerDay: DAILY_AI_LIMITS.dolly,
+    dollyMessagesPerDay: dailyLimit("dolly", "mid"),
     pullsPerDay: Infinity,
     synastryPartners: Infinity,
     familyMembers: Infinity,
@@ -227,7 +238,7 @@ export const USAGE_LIMITS = {
     transitsShown: Infinity,
   },
   max: {
-    dollyMessagesPerDay: DAILY_AI_LIMITS.dolly,
+    dollyMessagesPerDay: dailyLimit("dolly", "max"),
     pullsPerDay: Infinity,
     synastryPartners: Infinity,
     familyMembers: Infinity,

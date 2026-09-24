@@ -22,6 +22,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { effectiveTier, type TierLevel } from "@/lib/tier";
+import { AI_TIER_MULTIPLIER } from "@/lib/ai/dailyLimits";
 import { costMicros, type TokenUsage } from "@/lib/ai/pricing";
 
 /**
@@ -31,10 +32,18 @@ import { costMicros, type TokenUsage } from "@/lib/ai/pricing";
  * well above what an ordinary month of use costs — they exist to stop runaway
  * or automated use, not to ration normal reading.
  */
+/** What Mapped+ gets in a month. The figure itself stays server-side. */
+const MONTHLY_BUDGET_BASE_MICROS = 5_000_000; // $5.00
+
+/**
+ * Derived from the shared multiplier rather than written out per tier, so the
+ * ceilings cannot drift from the ratio the app sells Mapped Complete on. The
+ * base stays private here; only the ratio is public.
+ */
 const MONTHLY_BUDGET_MICROS: Record<TierLevel, number> = {
-  free: 0,
-  mid: 5_000_000,   // $5.00
-  max: 15_000_000,  // $15.00
+  free: MONTHLY_BUDGET_BASE_MICROS * AI_TIER_MULTIPLIER.free,
+  mid: MONTHLY_BUDGET_BASE_MICROS * AI_TIER_MULTIPLIER.mid,
+  max: MONTHLY_BUDGET_BASE_MICROS * AI_TIER_MULTIPLIER.max,
 };
 
 /**

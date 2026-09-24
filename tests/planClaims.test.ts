@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { FEATURES, USAGE_LIMITS, getFeatureInfo } from "../src/lib/tier";
-import { DAILY_AI_LIMITS } from "../src/lib/ai/dailyLimits";
+import { FEATURES, USAGE_LIMITS, getFeatureInfo, TIERS, TRIAL_DAYS } from "../src/lib/tier";
+import { DAILY_AI_LIMITS, AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD, dailyLimit } from "../src/lib/ai/dailyLimits";
 
 /**
  * What the plan promises has to be what the product does.
@@ -15,6 +15,20 @@ import { DAILY_AI_LIMITS } from "../src/lib/ai/dailyLimits";
  * copy claimed no limit at all. Nobody was lying on purpose — the numbers were
  * just written three times and drifted. These tests make drift fail.
  */
+
+test("the tiers do not contradict each other", () => {
+  // Mapped+ said "Dolly, whenever you want her" while Mapped Complete was
+  // sold on having three times as much of her. A plan cannot offer unlimited
+  // and then charge more for extra.
+  const paywall = readFileSync(join(process.cwd(), "src/components/Paywall.tsx"), "utf8");
+  const start = paywall.indexOf("const PLUS_FEATURES");
+  const list = paywall.slice(start, paywall.indexOf("];", start));
+  assert.doesNotMatch(
+    list.replace(/\/\/.*$/gm, ""),
+    /whenever you (want|need)|as much as you like|unlimited dolly/i,
+    "the middle tier implies unlimited Dolly",
+  );
+});
 
 test("no plan copy promises something unlimited that is capped", () => {
   const capped = new Set(["unlimited_dolly", "unlimited_wizard"]);
@@ -82,11 +96,17 @@ test("the private monthly spend ceilings are still not disclosed anywhere", () =
   assert.doesNotMatch(section, /\b\d+\s*(messages?|rituals?)\b/i, "the AI limits section quotes a count");
 });
 
-test("the UI's idea of the Dolly limit matches the server's", () => {
+test("the UI's idea of the Dolly limit matches the server's, per tier", () => {
   // USAGE_LIMITS said Infinity, so nothing in the app could ever warn someone
-  // they were near the cap, or explain the refusal when they hit it.
-  assert.equal(USAGE_LIMITS.mid.dollyMessagesPerDay, DAILY_AI_LIMITS.dolly);
-  assert.equal(USAGE_LIMITS.max.dollyMessagesPerDay, DAILY_AI_LIMITS.dolly);
+  // they were near the cap, or explain the refusal when they hit it. Now the
+  // cap differs by tier, so the UI has to agree per tier — not just agree
+  // that a number exists.
+  assert.equal(USAGE_LIMITS.mid.dollyMessagesPerDay, dailyLimit("dolly", "mid"));
+  assert.equal(USAGE_LIMITS.max.dollyMessagesPerDay, dailyLimit("dolly", "max"));
+  assert.ok(
+    USAGE_LIMITS.max.dollyMessagesPerDay > USAGE_LIMITS.mid.dollyMessagesPerDay,
+    "the UI thinks both paid tiers get the same daily allowance",
+  );
 });
 
 test("the routes read the shared cap instead of their own literal", () => {
@@ -97,6 +117,109 @@ test("the routes read the shared cap instead of their own literal", () => {
     ["src/app/api/wizard/route.ts", "wizard"],
   ] as const) {
     const src = readFileSync(join(process.cwd(), file), "utf8");
-    assert.match(src, new RegExp(`DAILY_AI_LIMITS\\.${key}`), `${file} should use DAILY_AI_LIMITS.${key}`);
+    // Via dailyLimit(), which reads the same constants and then scales them
+    // by tier — a bare literal, or the unscaled base, would make the cap flat.
+    assert.match(src, new RegExp(`dailyLimit\\("${key}"`), `${file} should use dailyLimit("${key}", tier)`);
   }
+});
+
+/* ─── Mapped Complete: what it promises vs what it delivers ─── */
+
+test("the top tier's value is Dolly, and the plan card says so first", () => {
+  // It used to list only "Every oracle deck" and "New decks the day they
+  // arrive". Someone paying double saw nothing but the throw-in, and the
+  // thing they were actually buying was mentioned nowhere in the app.
+  const paywall = readFileSync(join(process.cwd(), "src/components/Paywall.tsx"), "utf8");
+  const start = paywall.indexOf("const COMPLETE_FEATURES");
+  const list = paywall.slice(start, paywall.indexOf("];", start));
+  const firstBullet = list.indexOf("`") >= 0 ? list.indexOf("`") : list.indexOf('"');
+  assert.ok(
+    list.slice(firstBullet, firstBullet + 120).includes("Dolly"),
+    "the decks still lead the Complete card",
+  );
+});
+
+test("the multiple in the copy is the multiple that is enforced", () => {
+  // The promise and the delivery come from one constant. Written separately
+  // they drift, and the drift is the app quietly not delivering what it sold
+  // — which is the exact shape of the "Unlimited Dolly" bug.
+  const info = getFeatureInfo("more_dolly");
+  assert.ok(info, "the top tier has no Dolly feature");
+  const word = AI_MULTIPLIER_WORD[AI_TIER_MULTIPLIER.max];
+  assert.ok(word, `no word for a ${AI_TIER_MULTIPLIER.max}x multiplier`);
+  assert.match(info.label, new RegExp(word, "i"), `label should say "${word}": "${info.label}"`);
+});
+
+test("the daily cap actually scales with the tier", () => {
+  // This is where the promise was untrue in the one place a reader would
+  // notice: the cap was a flat 30 for everybody, so a Complete subscriber
+  // could send exactly as many messages in a day as a Mapped+ one and only
+  // pulled ahead by sustaining heavy use for weeks.
+  assert.equal(dailyLimit("dolly", "free"), 0);
+  assert.equal(
+    dailyLimit("dolly", "max"),
+    dailyLimit("dolly", "mid") * AI_TIER_MULTIPLIER.max,
+    "Complete's daily cap is not the promised multiple of Mapped+'s",
+  );
+  assert.ok(dailyLimit("wizard", "max") > dailyLimit("wizard", "mid"));
+});
+
+test("the routes resolve the tier BEFORE applying a daily cap", () => {
+  // Order matters: the cap cannot scale with a tier the route has not
+  // resolved yet. Both routes used to rate-limit first, which is what made
+  // the cap flat.
+  for (const [file, budgetCall] of [
+    ["src/app/api/dolly/route.ts", "await checkAiBudget(uid)"],
+    ["src/app/api/wizard/route.ts", 'await guardAiTiered(uid, "wizard")'],
+  ] as const) {
+    const src = readFileSync(join(process.cwd(), file), "utf8");
+    const tierAt = src.indexOf(budgetCall);
+    const capAt = src.indexOf("checkRateLimitDurable(");
+    assert.ok(tierAt >= 0 && capAt >= 0, `${file}: anchors missing — this test is stale`);
+    assert.ok(tierAt < capAt, `${file} rate-limits before it knows the tier`);
+    assert.match(src, /dailyLimit\(/, `${file} still uses a flat cap`);
+  }
+});
+
+/* ─── Annual billing ─── */
+
+test("annual is offered, and is genuinely cheaper than twelve months", () => {
+  for (const tier of ["mid", "max"] as const) {
+    const t = TIERS[tier];
+    assert.ok(t.annualPrice > 0, `${tier} has no annual price`);
+    assert.ok(
+      t.annualPrice < t.price * 12,
+      `${tier}: $${t.annualPrice}/yr is not cheaper than $${(t.price * 12).toFixed(2)} of months`,
+    );
+  }
+});
+
+test("both tiers discount annual by the same proportion", () => {
+  // Different discounts per tier make the comparison between them harder to
+  // read, and there is no reason for one here.
+  const pct = (t: (typeof TIERS)["mid"]) => 1 - t.annualPrice / (t.price * 12);
+  assert.ok(Math.abs(pct(TIERS.mid) - pct(TIERS.max)) < 0.01);
+});
+
+test("checkout has a configured price for every plan and interval", () => {
+  // Four Stripe Price objects, four env vars. A missing annual one must
+  // refuse rather than quietly charge a month for a button that said a year.
+  const src = readFileSync(join(process.cwd(), "src/app/api/stripe/checkout/route.ts"), "utf8");
+  for (const v of ["STRIPE_PRICE_ID", "STRIPE_PRICE_ID_ANNUAL", "STRIPE_PRICE_ID_MAX", "STRIPE_PRICE_ID_MAX_ANNUAL"]) {
+    assert.match(src, new RegExp(v), `checkout never reads ${v}`);
+  }
+  assert.match(src, /Stripe price not configured/, "a missing price should refuse, not fall back");
+});
+
+test("the renewal terms follow the interval being bought", () => {
+  // Telling someone buying a year that it "renews every month" is the kind of
+  // mismatch an app store reviewer looks for.
+  const src = readFileSync(join(process.cwd(), "src/components/Paywall.tsx"), "utf8");
+  assert.match(src, /renew every \{billing === "month" \? "month" : "year"\}/);
+});
+
+test("the trial is long enough to cover a week", () => {
+  // Five days never covered a weekend, on a product whose value compounds
+  // daily.
+  assert.ok(TRIAL_DAYS >= 7, `trial is ${TRIAL_DAYS} days`);
 });

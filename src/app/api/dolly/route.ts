@@ -328,20 +328,13 @@ export async function POST(request: NextRequest) {
       status: 200, headers: { "Content-Type": "application/json" },
     });
 
-  // Rate limit per day per user (durable when Redis is set).
-  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
-  const { DAILY_AI_LIMITS } = await import("@/lib/ai/dailyLimits");
-  const { allowed } = await checkRateLimitDurable(`dolly:${uid}`, DAILY_AI_LIMITS.dolly, 24 * 60 * 60 * 1000);
-  if (!allowed) {
-    if (isCrisis) return crisisResponse();
-    return new Response(
-      JSON.stringify({ error: "You've reached the daily limit for Dolly conversations. Try again tomorrow." }),
-      { status: 429, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // Tier gate + monthly spend ceiling. The message deliberately says nothing
-  // about limits or money; see src/lib/ai/budget.ts.
+  /**
+   * Tier gate + monthly spend ceiling FIRST, because it is the gate that
+   * resolves which tier this account is on — and the daily cap below is
+   * three times larger for Mapped Complete, which is the whole thing that
+   * tier is sold on. Checking the cap first would have meant a flat limit for
+   * everyone, which is what it used to be.
+   */
   const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
   const { streamBilling } = await import("@/lib/ai/meter");
   const budget = await checkAiBudget(uid);
@@ -350,6 +343,22 @@ export async function POST(request: NextRequest) {
     return new Response(
       JSON.stringify({ error: budget.message }),
       { status: budget.status ?? 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Daily cap, scaled to the tier (durable when Redis is set).
+  const { checkRateLimitDurable } = await import("@/lib/rateLimit");
+  const { dailyLimit } = await import("@/lib/ai/dailyLimits");
+  const { allowed } = await checkRateLimitDurable(
+    `dolly:${uid}`,
+    dailyLimit("dolly", budget.tier),
+    24 * 60 * 60 * 1000,
+  );
+  if (!allowed) {
+    if (isCrisis) return crisisResponse();
+    return new Response(
+      JSON.stringify({ error: "You've reached the daily limit for Dolly conversations. Try again tomorrow." }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
     );
   }
 

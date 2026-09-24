@@ -46,16 +46,37 @@ export async function POST(request: Request) {
     // $11.11 tier rather than rejected, so an older client that posts no body
     // still checks out at the price it was showing.
     let plan: "mid" | "max" = "mid";
+    /**
+     * Monthly unless asked otherwise. An older client that posts no interval
+     * gets the monthly price it was showing, rather than being billed a year
+     * up front for a button that said $11.11.
+     */
+    let interval: "month" | "year" = "month";
     try {
       const body = await request.json();
       if (body?.plan === "max") plan = "max";
-    } catch { /* no body — keep the default */ }
+      if (body?.interval === "year") interval = "year";
+    } catch { /* no body — keep the defaults */ }
 
     // Build checkout session params
     const origin = request.headers.get("origin") || "https://mapped.app";
-    const priceId = plan === "max" ? process.env.STRIPE_PRICE_ID_MAX : process.env.STRIPE_PRICE_ID;
+    /**
+     * Four prices: two tiers times two billing intervals. Each is its own
+     * Stripe Price object, so each needs its own env var.
+     *
+     * An unconfigured ANNUAL price falls back to the monthly one rather than
+     * 500ing — but that would silently charge a month for a button that said
+     * a year, which is worse than failing. So it refuses instead, and says
+     * which variable is missing in the log.
+     */
+    const PRICE_ENV: Record<"mid" | "max", Record<"month" | "year", string>> = {
+      mid: { month: "STRIPE_PRICE_ID", year: "STRIPE_PRICE_ID_ANNUAL" },
+      max: { month: "STRIPE_PRICE_ID_MAX", year: "STRIPE_PRICE_ID_MAX_ANNUAL" },
+    };
+    const envName = PRICE_ENV[plan][interval];
+    const priceId = process.env[envName];
     if (!priceId) {
-      console.error(`[stripe] no price configured for plan "${plan}"`);
+      console.error(`[stripe] no price configured for plan "${plan}" ${interval}ly — set ${envName}`);
       return NextResponse.json({ error: "Stripe price not configured" }, { status: 500 });
     }
 
@@ -73,11 +94,13 @@ export async function POST(request: Request) {
           // the subscription, not just the session, so renewals and plan
           // changes still say which tier they are for.
           mapped_tier: plan,
+          mapped_interval: interval,
         },
       },
       metadata: {
         supabase_user_id: user.id,
         mapped_tier: plan,
+        mapped_interval: interval,
       },
     };
 

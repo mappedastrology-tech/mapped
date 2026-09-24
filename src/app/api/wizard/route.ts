@@ -227,21 +227,26 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: "Sign in required." }), { status: 401, headers: { "Content-Type": "application/json" } });
   }
 
+  // Tier gate + monthly spend ceiling FIRST — it resolves the tier, and the
+  // daily cap below scales with it.
+  const { guardAiTiered, streamBilling } = await import("@/lib/ai/meter");
+  const { recordAiUsage } = await import("@/lib/ai/budget");
+  const verdict = await guardAiTiered(uid, "wizard");
+  if ("denied" in verdict) return verdict.denied;
+
   const { checkRateLimitDurable } = await import("@/lib/rateLimit");
-  const { DAILY_AI_LIMITS } = await import("@/lib/ai/dailyLimits");
-  const { allowed } = await checkRateLimitDurable(`wizard:${uid}`, DAILY_AI_LIMITS.wizard, 24 * 60 * 60 * 1000);
+  const { dailyLimit } = await import("@/lib/ai/dailyLimits");
+  const { allowed } = await checkRateLimitDurable(
+    `wizard:${uid}`,
+    dailyLimit("wizard", verdict.tier),
+    24 * 60 * 60 * 1000,
+  );
   if (!allowed) {
     return new Response(
       JSON.stringify({ error: "You've reached the daily wizard limit. Try again tomorrow." }),
       { status: 429, headers: { "Content-Type": "application/json" } }
     );
   }
-
-  // Tier gate + monthly spend ceiling.
-  const { guardAi, streamBilling } = await import("@/lib/ai/meter");
-  const { recordAiUsage } = await import("@/lib/ai/budget");
-  const denied = await guardAi(uid, "wizard");
-  if (denied) return denied;
 
   try {
     const body: WizardRequest = await request.json();

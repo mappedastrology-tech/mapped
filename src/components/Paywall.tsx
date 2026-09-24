@@ -13,6 +13,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { type FeatureKey, type TierLevel, getFeatureInfo, getMinTier, TIERS, recordPaywallDismissed } from "@/lib/tier";
+import { AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD } from "@/lib/ai/dailyLimits";
 
 interface PaywallProps {
   feature: FeatureKey;
@@ -141,7 +142,10 @@ const FREE_FEATURES = [
 // Dolly and the daily horoscope live here rather than on Free: everything
 // written by AI is what the first paid step buys.
 const PLUS_FEATURES = [
-  "Dolly, whenever you want her",
+  // Not "whenever you want her": that reads as unlimited, and it directly
+  // contradicts the tier below, which is sold on having three times as much
+  // of her. A plan cannot offer unlimited and then charge for more.
+  "Dolly, every day — your chart, your timing, your people",
   "Daily horoscopes written for your chart",
   "The ritual wizard and custom practices",
   "Palm readings and chart readings",
@@ -150,13 +154,27 @@ const PLUS_FEATURES = [
   "Every connection on the map",
 ];
 
+// Dolly leads. This card used to list only the decks, so someone paying
+// double saw nothing but the throw-in — and the thing they were actually
+// buying, three times the room with Dolly, was never mentioned anywhere.
+// The multiple comes from AI_TIER_MULTIPLIER, which also sets the daily caps
+// and the monthly ceilings, so the promise cannot drift from the delivery.
 const COMPLETE_FEATURES = [
+  `${AI_MULTIPLIER_WORD[AI_TIER_MULTIPLIER.max] ?? `${AI_TIER_MULTIPLIER.max}x`} the time with Dolly, for long conversations and heavy weeks`,
   "Every oracle deck, included",
   "New decks the day they arrive",
 ];
 
 export function PlansPage({ currentTier, onClose }: PlansPageProps) {
   const [loadingPlan, setLoadingPlan] = useState<"mid" | "max" | null>(null);
+  /**
+   * Annual was defined in TIERS from the start and shown nowhere, so every
+   * subscriber was offered the most expensive way to pay and no other.
+   */
+  // Named `billing`, not `interval`: a state setter called setInterval
+  // shadows window.setInterval for the whole component, which is a trap for
+  // whoever adds a timer here next.
+  const [billing, setBilling] = useState<"month" | "year">("month");
   const plansDialogRef = useRef<HTMLDivElement>(null);
 
   // Focus trap for plans page
@@ -203,7 +221,7 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval: billing }),
       });
 
       const data = await res.json();
@@ -218,6 +236,33 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
       setLoadingPlan(null);
     }
   }
+
+  /**
+   * What a plan costs, in the interval being shown.
+   *
+   * Yearly is quoted per month with the total beside it, because "$100/year"
+   * against "$11.11/month" asks the reader to do division before they can
+   * compare — and the comparison is the entire reason the cheaper option is
+   * worth showing.
+   */
+  function priceLabel(tier: "mid" | "max"): string {
+    const t = TIERS[tier];
+    if (billing === "month") return `$${t.price.toFixed(2)}/month`;
+    return `$${(t.annualPrice / 12).toFixed(2)}/month · $${t.annualPrice}/year`;
+  }
+
+  /**
+   * Rounded to nearest, not down.
+   *
+   * At the current prices the real saving is 24.99% — twelve months of
+   * $11.11 is $133.32, not $133.32 — and flooring that printed "save 24%",
+   * which reads as a typo and undersells the offer by a rounding error.
+   * Rounding can in principle overstate by up to half a point, so if these
+   * prices ever change, check this still describes them fairly.
+   */
+  const annualSavingPct = Math.round(
+    (1 - TIERS.mid.annualPrice / (TIERS.mid.price * 12)) * 100,
+  );
 
   const rank: Record<TierLevel, number> = { free: 0, mid: 1, max: 2 };
 
@@ -303,15 +348,46 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
 
       {/* Plan cards */}
       <div className="px-5 pb-8 pt-4 space-y-4">
+        {/*
+          Monthly or yearly. role="radiogroup", not two buttons: this is one
+          choice between two options, and a screen reader should hear it that
+          way rather than as two unrelated controls that happen to sit
+          together.
+        */}
+        <div
+          role="radiogroup"
+          aria-label="Billing period"
+          className="flex gap-1 p-1 rounded-full mx-auto w-fit"
+          style={{ background: "var(--surface-mid)", border: "0.5px solid var(--border-card)" }}
+        >
+          {(["month", "year"] as const).map((v) => {
+            const on = billing === v;
+            return (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={on}
+                onClick={() => setBilling(v)}
+                className="px-4 min-h-[44px] rounded-full text-sm font-semibold transition-colors"
+                style={on
+                  ? { background: "var(--brass)", color: "var(--btn-primary-text)" }
+                  : { background: "transparent", color: "var(--foreground-secondary)" }}
+              >
+                {v === "month" ? "Monthly" : `Yearly · save ${annualSavingPct}%`}
+              </button>
+            );
+          })}
+        </div>
+
         <PlanCard plan="free" title="Free" price="$0">
           <Bullets items={FREE_FEATURES} />
         </PlanCard>
 
-        <PlanCard plan="mid" title="Mapped+" price="$11.11/month">
+        <PlanCard plan="mid" title="Mapped+" price={priceLabel("mid")}>
           <Bullets items={PLUS_FEATURES} lead="Everything in Free, plus:" />
         </PlanCard>
 
-        <PlanCard plan="max" title="Mapped Complete" price="$22.22/month">
+        <PlanCard plan="max" title="Mapped Complete" price={priceLabel("max")}>
           <Bullets items={COMPLETE_FEATURES} lead="Everything in Mapped+, plus:" />
         </PlanCard>
 
@@ -325,10 +401,13 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
             qualifier travels with the claim now too, rather than living only
             on the Account card where nobody buying anything will see it. */}
         <div className="pt-2 flex flex-col gap-2">
+          {/* Follows the toggle. Telling someone buying a year that it
+              "renews every month" is exactly the kind of mismatch a store
+              reviewer looks for. */}
           <p className="text-center text-muted text-xs leading-relaxed">
-            Subscriptions renew every month at the price shown until you cancel.
-            Cancel any time from Account → Your plan; you keep access until the
-            end of the month you have paid for. Prices in USD.
+            Subscriptions renew every {billing === "month" ? "month" : "year"} at the price shown
+            until you cancel. Cancel any time from Account &rarr; Your plan; you keep access until
+            the end of the {billing === "month" ? "month" : "year"} you have paid for. Prices in USD.
           </p>
           {/* A pricing card is the wrong place for a message count: no
               subscription quotes one, and a number here reads as a ration

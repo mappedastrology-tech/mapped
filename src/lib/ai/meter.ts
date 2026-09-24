@@ -10,6 +10,7 @@
  * finished message.
  */
 
+import type { TierLevel } from "@/lib/tier";
 import { checkAiBudget, recordAiUsage } from "@/lib/ai/budget";
 
 /**
@@ -17,13 +18,32 @@ import { checkAiBudget, recordAiUsage } from "@/lib/ai/budget";
  * null when they may. Callers should `if (denied) return denied;`.
  */
 export async function guardAi(userId: string, route: string): Promise<Response | null> {
+  const verdict = await guardAiTiered(userId, route);
+  return "denied" in verdict ? verdict.denied : null;
+}
+
+/**
+ * The same gate, but it hands back the tier when it lets you through.
+ *
+ * For routes whose per-day cap scales with the plan: the tier has to be known
+ * BEFORE the cap is checked, and resolving it means reading the profile —
+ * which this already did and then threw away. Without it a route can only
+ * apply one flat limit to everybody, which is what made Mapped Complete's
+ * headline promise untrue in the one place a reader would notice.
+ */
+export async function guardAiTiered(
+  userId: string,
+  route: string,
+): Promise<{ denied: Response } | { tier: TierLevel }> {
   const verdict = await checkAiBudget(userId);
-  if (verdict.allowed) return null;
+  if (verdict.allowed) return { tier: verdict.tier };
   console.info(`[ai-budget] ${route} refused for ${userId} (tier ${verdict.tier})`);
-  return new Response(JSON.stringify({ error: verdict.message }), {
-    status: verdict.status ?? 429,
-    headers: { "Content-Type": "application/json" },
-  });
+  return {
+    denied: new Response(JSON.stringify({ error: verdict.message }), {
+      status: verdict.status ?? 429,
+      headers: { "Content-Type": "application/json" },
+    }),
+  };
 }
 
 /**

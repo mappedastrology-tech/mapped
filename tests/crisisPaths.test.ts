@@ -48,7 +48,10 @@ test("the Dolly route reads the message before any gate can refuse it", () => {
   const src = read("src/app/api/dolly/route.ts");
   const parse = indexOfOrFail(src, "body = await request.json()", "the body parse");
   const detect = indexOfOrFail(src, "detectCrisis(message)", "the crisis check");
-  const rate = indexOfOrFail(src, "checkRateLimitDurable(`dolly:", "the rate limit");
+  // Matched on the function, not its arguments: the call is now multi-line
+  // and tier-aware, and an anchor that tracks formatting is a test that
+  // breaks for the wrong reason.
+  const rate = indexOfOrFail(src, "checkRateLimitDurable(", "the rate limit");
   const budget = indexOfOrFail(src, "await checkAiBudget(uid)", "the budget ceiling");
   assert.ok(parse < detect, "the message must be parsed before it can be checked");
   assert.ok(detect < rate, "the rate limit would refuse before the message is read");
