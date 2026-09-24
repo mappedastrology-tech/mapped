@@ -232,6 +232,19 @@ export default function OnboardingPage() {
       setTimeout(() => {
         setStep(target);
         setAnimating(false);
+        /**
+         * Put focus on the new screen's heading.
+         *
+         * Every goNext() swapped the entire screen and left focus on <body>,
+         * announcing nothing. A screen-reader user pressed a button and heard
+         * silence, then had to re-read from the top to work out whether
+         * anything had happened — ten times in a row. The live region below
+         * says which step it is; this puts them at the start of it.
+         */
+        requestAnimationFrame(() => {
+          const heading = containerRef.current?.querySelector<HTMLElement>("h1, h2");
+          heading?.focus();
+        });
       }, 280);
     },
     [animating],
@@ -299,7 +312,34 @@ export default function OnboardingPage() {
   }
 
   async function handleBirthSubmit() {
-    if (!birthValid || !accountValid) return;
+    if (isSubmitting) return;
+
+    /**
+     * Say what is missing, rather than doing nothing.
+     *
+     * The button used to be `disabled`, so this early return was unreachable
+     * and silence was the whole experience: nothing happened, nothing was
+     * announced, and nothing named the field at fault. The city is the one
+     * that actually traps people, because it is only set by choosing a
+     * suggestion and there was no way to do that without a mouse.
+     */
+    if (!birthValid || !accountValid) {
+      const missing =
+        !name.trim() ? { msg: "Please add your name.", id: "signup-name" }
+        : !birthDate ? { msg: "Please add your birth date.", id: "signup-birthdate" }
+        : timePrecision !== "unknown" && !birthTime ? { msg: "Please add your birth time, or choose \u201cDon\u2019t know\u201d.", id: "signup-birthtime" }
+        : !location ? { msg: "Please choose your birth city from the list of suggestions.", id: "signup-city" }
+        : !email.trim() ? { msg: "Please add your email address.", id: "signup-email" }
+        : { msg: "Please add a password of at least 6 characters.", id: "signup-password" };
+      setError(missing.msg);
+      // Focus the field at fault, so the message is not just read out but
+      // acted on — otherwise they hear it and are still nowhere near it.
+      requestAnimationFrame(() => {
+        document.getElementById(missing.id)?.focus();
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setError("");
 
@@ -621,9 +661,46 @@ export default function OnboardingPage() {
         onTouchEnd={onTouchEnd}
         className="relative z-10 w-full max-w-[440px] mx-auto flex-1 flex flex-col overflow-hidden"
       >
+        {/*
+          Back.
+          A horizontal swipe was the ONLY way to return, which is a path-based
+          gesture and needs a single-pointer alternative (WCAG 2.5.1) — and on
+          desktop there was no way back at all. Someone who mistyped their
+          birth date on step 1 and moved on could not return to fix it.
+
+          Not on step 1: there is nothing before it, and not on the sect
+          reveal, which paints its own colours.
+        */}
+        {step > 1 && !awaitingConfirm && (
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Go back a step"
+            className="absolute top-8 left-3 z-30 w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ color: step === 2 && sectInfo?.sect === "night" ? "#e8e0d4" : INK }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Announced on every step change; see goTo. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {step > 0 ? `Step ${step} of ${dots.length - 1}` : ""}
+        </p>
+
         {/* ── Progress bar ── */}
         {step > 0 && (
-          <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-4 pt-4">
+          <div
+            className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-4 pt-4"
+            role="progressbar"
+            aria-valuemin={1}
+            aria-valuemax={dots.length - 1}
+            aria-valuenow={step}
+            aria-valuetext={`Step ${step} of ${dots.length - 1}`}
+            aria-label="Setup progress"
+          >
             {dots.map((i) => (
               <div
                 key={i}
@@ -636,7 +713,10 @@ export default function OnboardingPage() {
                       ? step === 2 && sectInfo?.sect === "night"
                         ? "#e8e0d4"
                         : INK
-                      : "rgba(42,31,24,0.15)",
+                      // 0.15 was 1.34:1 — the remaining segments were
+                      // invisible, so there was no track to read progress
+                      // against. 0.45 measures 3.06:1.
+                      : "rgba(42,31,24,0.45)",
                 }}
               />
             ))}
@@ -650,7 +730,7 @@ export default function OnboardingPage() {
           {!awaitingConfirm && step === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-10">
-                <h2 className="text-[52px] leading-none tracking-tight" aria-label="Mapped">
+                <h2 tabIndex={-1} className="text-[52px] leading-none tracking-tight" aria-label="Mapped">
                   <span style={{ fontFamily: "'Bodoni Moda', serif", fontStyle: "italic", fontWeight: 400 }}>mapp</span>
                   <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, letterSpacing: "-0.02em" }}>ed.</span>
                 </h2>
@@ -678,7 +758,7 @@ export default function OnboardingPage() {
           */}
           {awaitingConfirm && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <h1 className="text-[28px] text-foreground mb-3 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+              <h1 tabIndex={-1} className="text-[28px] text-foreground mb-3 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                 Check your inbox
               </h1>
               <p className="text-secondary text-sm leading-relaxed max-w-xs mb-2">
@@ -719,7 +799,7 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 1: Birth Data ══════════ */}
           {!awaitingConfirm && step === 1 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -751,6 +831,8 @@ export default function OnboardingPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Taylor"
+                    id="signup-name"
+                    autoComplete="name"
                     aria-label="Full name"
                     className={inputClass}
                   />
@@ -763,6 +845,8 @@ export default function OnboardingPage() {
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
+                    id="signup-birthdate"
+                    autoComplete="bday"
                     aria-label="Birth date"
                     className={inputClass}
                   />
@@ -805,6 +889,7 @@ export default function OnboardingPage() {
                       type="time"
                       value={birthTime}
                       onChange={(e) => setBirthTime(e.target.value)}
+                      id="signup-birthtime"
                       aria-label="Birth time"
                       className={inputClass}
                     />
@@ -857,14 +942,18 @@ export default function OnboardingPage() {
                       <p className="text-[11px] text-secondary mb-2">
                         Don&apos;t know your birth time? We&apos;ll build everything that doesn&apos;t depend on it — which is more than you&apos;d think.
                       </p>
+                      {/* Same as the other one: a styled <button> that never
+                          said whether it was checked. */}
                       <button
                         type="button"
+                        role="checkbox"
+                        aria-checked={dayNightKnown}
                         onClick={() => setDayNightKnown(!dayNightKnown)}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 py-2 min-h-[44px]"
                       >
                         <span
                           className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                            dayNightKnown ? "border-sage bg-sage" : "border-foreground/30"
+                            dayNightKnown ? "border-sage bg-sage" : "border-foreground/55"
                           }`}
                         >
                           {dayNightKnown && (
@@ -995,6 +1084,9 @@ export default function OnboardingPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email"
+                        id="signup-email"
+                        autoComplete="email"
+                        inputMode="email"
                         aria-label="Email"
                         className={inputClass}
                       />
@@ -1003,23 +1095,48 @@ export default function OnboardingPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password (6+ characters)"
+                        id="signup-password"
+                        autoComplete={hasAccount ? "current-password" : "new-password"}
+                        minLength={6}
                         aria-label="Password"
                         aria-describedby="password-hint"
                         className={inputClass}
                       />
-                      {password.length > 0 && password.length < 6 && (
+                      {/*
+                        Rendered whenever the field is empty OR short, not
+                        only while short. The input declares
+                        aria-describedby="password-hint" permanently, so on an
+                        empty field it pointed at nothing — and an empty field
+                        is exactly when someone needs to hear the rule.
+                      */}
+                      {password.length < 6 && (
                         <p id="password-hint" className="text-terracotta text-[11px] -mt-1" role="status">
-                          Passwords need at least 6 characters — {6 - password.length} more to go.
+                          {password.length === 0
+                            ? "At least 6 characters. A few unrelated words beats one clever one."
+                            : `Passwords need at least 6 characters — ${6 - password.length} more to go.`}
                         </p>
                       )}
+                      {/*
+                        A real checkbox, semantically.
+                        This was a <button> styled as one, with no role and no
+                        aria-checked, so a screen reader said "I already have
+                        an account, button" and never whether it was on. It
+                        decides whether the flow calls signUp or
+                        signInWithPassword, so a returning user who cannot
+                        perceive its state gets "already registered" errors
+                        they have no way to explain. py-2 takes the row past
+                        the 24px minimum target, which its 17px height failed.
+                      */}
                       <button
                         type="button"
+                        role="checkbox"
+                        aria-checked={hasAccount}
                         onClick={() => setHasAccount(!hasAccount)}
-                        className="flex items-center gap-2 self-start"
+                        className="flex items-center gap-2 self-start py-2 min-h-[44px]"
                       >
                         <span
                           className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                            hasAccount ? "border-terracotta" : "border-foreground/30"
+                            hasAccount ? "border-terracotta" : "border-foreground/55"
                           }`}
                           style={{ backgroundColor: hasAccount ? TERRACOTTA : "transparent" }}
                         >
@@ -1043,13 +1160,38 @@ export default function OnboardingPage() {
                   </>
                 )}
 
-                {/* Error */}
-                {error && <p className="text-terracotta text-xs text-center font-semibold">{error}</p>}
+                {/*
+                  role="alert", and coloured as an error rather than as the
+                  brand gold — which is the same colour as the Terms and
+                  Privacy links beside it. Nothing announced this before, so a
+                  blind user pressed the button, heard the spinner come and
+                  go, and never learned why no account was made.
+                */}
+                {error && (
+                  <p
+                    id="signup-error"
+                    role="alert"
+                    className="text-xs text-center font-semibold"
+                    style={{ color: "var(--danger-text)" }}
+                  >
+                    {error}
+                  </p>
+                )}
 
-                {/* Submit */}
+                {/*
+                  Submit.
+                  NOT `disabled` any more. A disabled button leaves the tab
+                  order, so someone who could not select a city — which was
+                  everybody using a keyboard, see CitySearch — tabbed past the
+                  password straight out of the page. The control that creates
+                  the account simply did not exist for them, with no error and
+                  nothing to explain it. It stays reachable now and says what
+                  is missing when pressed.
+                */}
                 <button
                   onClick={handleBirthSubmit}
-                  disabled={!birthValid || !accountValid || isSubmitting}
+                  aria-disabled={!birthValid || !accountValid || isSubmitting}
+                  aria-describedby={error ? "signup-error" : undefined}
                   className={ctaBtn(!!birthValid && !!accountValid && !isSubmitting)}
                   style={birthValid && accountValid && !isSubmitting ? { ...ctaShadow, ...ctaTextColor } : undefined}
                 >
@@ -1079,7 +1221,7 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 4: Demographics (after the reveal) ══════════ */}
           {!awaitingConfirm && step === 4 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1191,7 +1333,7 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 2: Sect Reveal (immediately after chart) ══════════ */}
           {!awaitingConfirm && step === 2 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[38px] mb-1 tracking-tight leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1284,7 +1426,7 @@ export default function OnboardingPage() {
                 things above an empty space and a Continue button — a heading
                 that counts what is not there is the worst kind of empty state.
               */}
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[24px] text-foreground mb-5 tracking-tight text-center"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1390,7 +1532,7 @@ export default function OnboardingPage() {
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                 </svg>
               </div>
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[30px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1431,7 +1573,7 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 6: Pick Your Free Deck ══════════ */}
           {!awaitingConfirm && step === 6 && (
             <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[26px] text-foreground mb-2 tracking-tight text-center"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1503,7 +1645,7 @@ export default function OnboardingPage() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
               </div>
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[26px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1568,7 +1710,7 @@ export default function OnboardingPage() {
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
               </div>
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[26px] text-foreground mb-3 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -1599,7 +1741,7 @@ export default function OnboardingPage() {
           {/* ══════════ Screen 9: Final Orientation ══════════ */}
           {!awaitingConfirm && step === 9 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <h1
+              <h1 tabIndex={-1}
                 className="text-[30px] text-foreground mb-4 tracking-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >

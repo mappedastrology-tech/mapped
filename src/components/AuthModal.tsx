@@ -169,8 +169,11 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
       </p>
 
       {/* Success message */}
+      {/* role="status": this appears at the same moment the form flips from
+          signup to signin, and nothing announced either. Colour was text-sage
+          on bg-sage/10 — 2.91:1 in dark. */}
       {successMessage && (
-        <p className="text-sage text-sm mb-4 p-3 rounded-xl bg-sage/10 border border-sage/20">
+        <p role="status" className="text-sm mb-4 p-3 rounded-xl bg-sage/10 border border-sage/20" style={{ color: "var(--sage-strong, var(--foreground))" }}>
           {successMessage}
         </p>
       )}
@@ -238,7 +241,12 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 rounded-full bg-terracotta text-cream font-semibold text-sm
+          /* text-cream on brass is 1.82:1 in dark — pale cream on pale gold,
+             on the button that creates the account. --on-brass exists for
+             exactly this and both other auth screens already use it; this
+             component was never migrated. 8.01:1 dark, 5.16:1 light. */
+          style={{ color: "var(--on-brass)" }}
+          className="w-full py-3 rounded-full bg-terracotta font-semibold text-sm
                      tracking-wide hover:bg-terracotta-light active:scale-[0.98]
                      transition-all duration-200 disabled:opacity-50 mt-1"
         >
@@ -255,7 +263,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
         </button>
 
         {mode === "signup" && (
-          <p className="text-center text-muted/80 text-[11px] leading-relaxed mt-3">
+          <p className="text-center text-secondary text-[11px] leading-relaxed mt-3">
             By creating an account, you agree to our{" "}
             <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-terracotta hover:text-terracotta-light transition-colors">Terms</a>{" "}
             and{" "}
