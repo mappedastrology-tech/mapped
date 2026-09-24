@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 import { PROMPT_LIMITS, clampText, boundHistory } from "@/lib/ai/promptLimits";
+import { cachedSystem, withCachedHistory } from "@/lib/ai/promptCache";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
 import { HOUSE_SYSTEM_LABELS } from "@/lib/astro/vedic/houses";
 
@@ -370,45 +371,69 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Build the context block from chart data
-    const contextParts: string[] = [];
+    /**
+     * The prompt is built in three tiers, most stable first, because that is
+     * what prompt caching needs.
+     *
+     * Caching works on a PREFIX: Anthropic hashes everything up to a
+     * breakpoint and bills a later identical prefix at a tenth of the input
+     * rate. So the order is the whole mechanism — one volatile block early
+     * invalidates everything after it, and the cache never hits.
+     *
+     * Before this, none of it was cached and none of it was ordered. Every
+     * single message re-sent and re-paid for the same ~6,500 tokens: an
+     * 11,000-character system prompt, the chart summary, the precomputed
+     * depth and timing, and up to twelve saved people's entire birth charts.
+     * For a twenty-message conversation that is the same chart data bought
+     * twenty times.
+     *
+     *   forever  — the system prompt. Identical for every user, so it stays
+     *              warm from other people's traffic, not just this reader's.
+     *   stable   — their chart, and the charts of people on their map.
+     *              Changes when they edit a chart or add someone, not between
+     *              messages.
+     *   volatile — memory, journal, tarot, today's sky, the passages
+     *              retrieved for this particular question. Never cached.
+     */
+    const stableParts: string[] = [];
+    const volatileParts: string[] = [];
     if (chart) {
       // Which zodiac the numbers are in, first — so no reading mixes systems.
-      contextParts.push(chartSystemContext(chart));
-      contextParts.push(buildChartSummary(chart, userName));
+      stableParts.push(chartSystemContext(chart));
+      stableParts.push(buildChartSummary(chart, userName));
       // Precomputed depth so Dolly never has to do the math herself.
       try {
         const { buildChartDepth } = await import("@/lib/astro/dollyDepth");
         const depth = buildChartDepth(chart, new Date());
-        if (depth) contextParts.push(`\n## Precomputed chart depth (already calculated — trust and use these)\n${depth}`);
+        if (depth) stableParts.push(`\n## Precomputed chart depth (already calculated — trust and use these)\n${depth}`);
       } catch { /* non-fatal */ }
       // Upcoming exact transit dates (concrete timing windows).
       try {
         const { getUpcomingTransitWindows } = await import("@/lib/astro/dollyTiming");
         const timing = getUpcomingTransitWindows(chart, new Date());
-        if (timing) contextParts.push(`\n${timing}\nWhen the user asks about timing, cite these real dates instead of a vague "soon."`);
+        if (timing) stableParts.push(`\n${timing}\nWhen the user asks about timing, cite these real dates instead of a vague "soon."`);
       } catch { /* non-fatal */ }
     }
-    if (transits) contextParts.push(buildTransitSummary(transits));
+    if (transits) volatileParts.push(buildTransitSummary(transits));
     // Bounded: a chart per person is not small, and nothing stopped a client
     // sending a hundred of them.
-    if (connections?.length) contextParts.push(buildConnectionsSummary(connections.slice(0, PROMPT_LIMITS.connections)));
+    if (connections?.length) stableParts.push(buildConnectionsSummary(connections.slice(0, PROMPT_LIMITS.connections)));
 
     // Cross-session memory — what Dolly remembers about this person's life.
     try {
       const { data } = await supabase.from("dolly_memory").select("summary").eq("user_id", uid).maybeSingle();
       const summary = (data?.summary as string | null) || "";
       if (summary.trim()) {
-        contextParts.push(`\n## What you remember about them (from past conversations)\n${summary}\nUse this to stay continuous and personal — weave it in naturally, don't recite it back.`);
+        volatileParts.push(`\n## What you remember about them (from past conversations)\n${summary}\nUse this to stay continuous and personal — weave it in naturally, don't recite it back.`);
       }
     } catch { /* memory table may not exist yet — non-fatal */ }
 
     // Cross-feature context from the rest of the app (sent by the client).
     if (journalContext?.trim()) {
-      contextParts.push(`\n## Their recent journaling\n${clampText(journalContext, PROMPT_LIMITS.context)}\nYou may reference these moods/themes when relevant — naturally and kindly, never surveillance-like.`);
+      volatileParts.push(`\n## Their recent journaling\n${clampText(journalContext, PROMPT_LIMITS.context)}\nYou may reference these moods/themes when relevant — naturally and kindly, never surveillance-like.`);
     }
     if (tarotContext?.trim()) {
-      contextParts.push(`\n## Their latest tarot/oracle pull\n${clampText(tarotContext, PROMPT_LIMITS.context)}\nIf they bring up their reading, interpret it and tie it to their chart and life.`);
+      volatileParts.push(`\n## Their latest tarot/oracle pull\n${clampText(tarotContext, PROMPT_LIMITS.context)}\nIf they bring up their reading, interpret it and tie it to their chart and life.`);
     }
 
     // Live sky: which planets are currently retrograde (computed from ephemeris).
@@ -416,13 +441,13 @@ export async function POST(request: NextRequest) {
       const { getActiveRetrogrades } = await import("@/lib/astro/currentSky");
       const retro = getActiveRetrogrades(new Date());
       if (retro.length) {
-        contextParts.push(
+        volatileParts.push(
           `\n## Current retrogrades (today)\nThese planets are retrograde right now: ${retro
             .map((r) => `${r.planet} in ${r.sign}`)
             .join(", ")}. If the user asks "what's in retrograde" or about a specific planet's retrograde, use this and apply it to their chart (which of their placements or houses it's activating).`
         );
       } else {
-        contextParts.push(`\n## Current retrogrades (today)\nNo major planets are retrograde right now.`);
+        volatileParts.push(`\n## Current retrogrades (today)\nNo major planets are retrograde right now.`);
       }
     } catch {
       // ephemeris unavailable — skip retrograde context
@@ -432,18 +457,24 @@ export async function POST(request: NextRequest) {
     try {
       const { retrieveDollyKnowledge } = await import("@/lib/dollyKnowledge");
       const kb = await retrieveDollyKnowledge(supabase, message, { limit: 5 });
-      if (kb) contextParts.push(kb);
+      if (kb) volatileParts.push(kb);
     } catch {
       // knowledge table may not exist yet — non-fatal
     }
 
-    const fullSystem = contextParts.length
-      ? `${DOLLY_SYSTEM_PROMPT}\n\n---\n\n${contextParts.join("\n")}`
-      : DOLLY_SYSTEM_PROMPT;
+    /**
+     * Ordered most-stable-first and cached — see lib/ai/promptCache for why
+     * the ordering IS the mechanism.
+     */
+    const system = cachedSystem({
+      base: DOLLY_SYSTEM_PROMPT,
+      stable: stableParts,
+      volatile: volatileParts,
+    });
 
     // Build message history for multi-turn conversation
     // Anthropic API requires alternating user/assistant roles, starting with user
-    const messages: { role: "user" | "assistant"; content: string }[] = [];
+    const messages: Anthropic.MessageParam[] = [];
 
     // Bounded, trimmed and role-alternating; see lib/ai/promptLimits.
     messages.push(...boundHistory(history));
@@ -456,14 +487,16 @@ export async function POST(request: NextRequest) {
     // Add current message
     messages.push({ role: "user", content: clampText(message, PROMPT_LIMITS.message) });
 
+    const cachedMessages = withCachedHistory(messages);
+
     const client = new Anthropic({ apiKey });
 
     // Use create() with stream: true — returns an async iterable
     const response = await client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1024,
-      system: fullSystem,
-      messages,
+      system,
+      messages: cachedMessages,
       stream: true,
     } as Parameters<typeof client.messages.create>[0]);
 

@@ -97,6 +97,12 @@ interface ConnectionContext {
 
 
 
+/**
+ * Messages between memory folds. Three exchanges — enough to be worth a call,
+ * and under the eight-message cap the memory route applies server-side.
+ */
+const FOLD_EVERY = 6;
+
 /** Long enough that a divider means "you came back", not "you paused". */
 const GAP_MS = 60 * 60 * 1000;
 
@@ -224,6 +230,8 @@ export default function DollyTab() {
   /** The last question actually sent, so a failed turn can be retried
    *  without the reader retyping it. */
   const lastAskRef = useRef<string | null>(null);
+  /** How far through `messages` the stored memory is up to date. */
+  const foldedUpToRef = useRef(0);
   const leaveRef = useRef<HTMLDivElement>(null);
   const deleteRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -375,6 +383,51 @@ export default function DollyTab() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingContext, isLoading]);
+
+  /**
+   * Fold recent turns into Dolly's stored memory — every few exchanges, not
+   * every reply.
+   *
+   * This used to fire after every single assistant message, which meant each
+   * question the reader asked cost TWO model calls: the answer itself, and a
+   * second one to re-summarise a conversation that had moved on by one turn.
+   * On a typical message that second call was around a seventh of the cost,
+   * bought over and over to re-learn almost exactly what was already known.
+   *
+   * Batching is lossless rather than merely less frequent: the window sent is
+   * everything since the last fold, so nothing is skipped. FOLD_EVERY is 6 —
+   * three exchanges — and stays under the eight-message cap the route applies
+   * server-side, which is what would actually drop turns if the window grew
+   * too large.
+   */
+  const foldMemory = useCallback((msgs: Message[], force = false) => {
+    const unfolded = msgs.length - foldedUpToRef.current;
+    if (unfolded <= 0) return;
+    if (!force && unfolded < FOLD_EVERY) return;
+
+    // Notices and support cards are the app talking, not the conversation.
+    const window = msgs
+      .slice(foldedUpToRef.current)
+      .filter((m) => !m.notice && !m.crisis && m.content.trim());
+    foldedUpToRef.current = msgs.length;
+    if (!window.length) return;
+
+    try {
+      void authedFetch("/api/dolly/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recentMessages: window.slice(-FOLD_EVERY).map((m) => ({
+            role: m.role,
+            content: m.role === "assistant" ? dollyBody(m.content) : m.content,
+          })),
+        }),
+        // The flush on leaving a conversation has to survive the navigation
+        // that triggered it.
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* memory is best-effort; never block the reader */ }
+  }, []);
 
   // Save conversation — one row per user/day, mirrored to localStorage under
   // the same canonical id so a chat never appears twice in history.
@@ -642,21 +695,9 @@ export default function DollyTab() {
       // follow-up chips aren't read as part of the sentence.
       setAnnouncement(fullText.trim() ? dollyBody(fullText) : "");
 
-      // Fold the latest turns into Dolly's cross-session memory (fire-and-forget).
-      if (fullText.trim()) {
-        try {
-          void authedFetch("/api/dolly/memory", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              recentMessages: finalMessages.slice(-6).map((m) => ({
-                role: m.role,
-                content: m.role === "assistant" ? dollyBody(m.content) : m.content,
-              })),
-            }),
-          }).catch(() => {});
-        } catch { /* ignore */ }
-      }
+      // Fold the latest turns into Dolly's cross-session memory, but not on
+      // every reply — see foldMemory.
+      if (fullText.trim()) foldMemory(finalMessages);
     } catch (err) {
       const aborted = (err as Error).name === "AbortError";
       // A timeout is an abort too, and it used to return here silently —
@@ -722,6 +763,30 @@ export default function DollyTab() {
   // Declared up here, not beside the sheet's markup: the early returns for the
   // loading spinner and the history view sit between, and a hook after them
   // changes the hook count between renders.
+  /**
+   * Flush on the way out.
+   *
+   * Closing the tab, navigating away or backgrounding the app all end the
+   * conversation without passing through "new chat", so without this the
+   * tail of most conversations would never reach her memory. visibilitychange
+   * rather than beforeunload: iOS Safari and a Capacitor WebView often do not
+   * fire beforeunload at all, and backgrounding is how a phone user leaves.
+   */
+  const messagesRef = useRef<Message[]>([]);
+  // In an effect, not during render: writing a ref while rendering is the
+  // thing React tells you not to do, and it is not needed here.
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    const flush = () => {
+      if (document.visibilityState === "hidden") foldMemory(messagesRef.current, true);
+    };
+    document.addEventListener("visibilitychange", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      foldMemory(messagesRef.current, true);
+    };
+  }, [foldMemory]);
+
   const closeLeave = useCallback(() => setShowLeavePrompt(false), []);
   useDialogKeys(showLeavePrompt, leaveRef, closeLeave);
   const closeDelete = useCallback(() => setPendingDelete(null), []);
@@ -780,6 +845,11 @@ export default function DollyTab() {
     if (isStreaming) {
       abortRef.current?.abort();
     }
+    // Flush whatever hasn't been folded yet. Batching would otherwise lose
+    // the last one or two exchanges of every conversation — exactly the ones
+    // most worth remembering.
+    foldMemory(messages, true);
+    foldedUpToRef.current = 0;
     setMessages([]);
     setConversationId(null);
     conversationIdRef.current = null;
