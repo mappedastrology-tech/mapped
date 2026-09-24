@@ -12,7 +12,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
-import { DAILY_AI_LIMITS } from "@/lib/ai/dailyLimits";
 
 // ─── Static content ─────────────────────────────────────────────────────────
 
@@ -85,7 +84,7 @@ const PLANS = [
   { name: "Free", price: "$0", per: "forever", tagline: "The daily basics, always free.", featured: false, btn: "Start free",
     perks: ["Daily almanac & moon phase", "Your full birth chart", "One tarot card a day", "Basic sky map"] },
   { name: "Premium", price: "$11.11", per: "/ month", tagline: "The whole sky, unlocked.", featured: true, btn: "Go Premium",
-    perks: ["Everything in Free", "Unlimited tarot & full spreads", `Ask Dolly — ${DAILY_AI_LIMITS.dolly} messages a day`, "Weekly & monthly almanac", "Rituals, journal & synastry"] },
+    perks: ["Everything in Free", "Unlimited tarot & full spreads", "Ask Dolly about your chart", "Weekly & monthly almanac", "Rituals, journal & synastry"] },
 ];
 
 // ─── Starfield for the plum panels (deterministic) ──────────────────────────

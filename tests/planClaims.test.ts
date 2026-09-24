@@ -34,14 +34,52 @@ test("'fair use' is not used to stand in for a hard number", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("the Dolly plan copy names the cap the server actually enforces", () => {
-  const info = getFeatureInfo("unlimited_dolly");
-  assert.ok(info, "the Dolly plan feature is missing");
-  assert.match(
-    info.description,
-    new RegExp(`\\b${DAILY_AI_LIMITS.dolly}\\b`),
-    `copy should name ${DAILY_AI_LIMITS.dolly}: "${info.description}"`,
-  );
+test("plan copy does NOT quote a message count", () => {
+  // The first fix for the "Unlimited Dolly" overclaim was to print the exact
+  // daily figure on the pricing card. That trades one problem for another: no
+  // subscription quotes a message count, and a number there reads as a ration
+  // rather than an allowance — it invites a comparison that helps nobody and
+  // makes a generous limit sound mean. Non-absolute language on the card, the
+  // figures in the Terms, and a plain message at the moment someone reaches
+  // one.
+  for (const f of FEATURES) {
+    assert.doesNotMatch(
+      f.description,
+      /\b\d+\s*(messages?|rituals?|requests?|chats?)\b/i,
+      `${f.key} quotes a count: "${f.description}"`,
+    );
+  }
+});
+
+test("the limits are disclosed somewhere a reader can find them", () => {
+  // Not naming a number on the pricing card is only acceptable because the
+  // limits are documented and linked. Vague-by-omission would be the original
+  // "subject to fair use" problem again.
+  const terms = readFileSync(join(process.cwd(), "src/app/terms/page.tsx"), "utf8");
+  assert.match(terms, /Limits on AI features/, "the Terms have no limits section");
+  assert.match(terms, /per-day cap/i);
+  assert.match(terms, /monthly ceiling/i);
+
+  // And the surfaces that used to carry the claim now point at it.
+  for (const file of ["src/components/Paywall.tsx", "src/app/account/page.tsx"]) {
+    const src = readFileSync(join(process.cwd(), file), "utf8");
+    assert.match(src, /AI features have usage limits/, `${file} does not mention limits`);
+    assert.match(src, /href="\/terms"/, `${file} does not link the Terms`);
+  }
+});
+
+test("the private monthly spend ceilings are still not disclosed anywhere", () => {
+  // The per-day caps are a product limit and fair to document. The monthly
+  // DOLLAR ceilings are not: they are a cost control, and naming them tells
+  // people how much AI they can extract for their subscription.
+  const terms = readFileSync(join(process.cwd(), "src/app/terms/page.tsx"), "utf8");
+  // Scoped to the AI section: the liability cap elsewhere names a figure, and
+  // is supposed to.
+  const from = terms.indexOf("Limits on AI features");
+  const section = terms.slice(from, terms.indexOf("Acceptable use", from));
+  assert.ok(section.length > 200, "the AI limits section was not found — this test is stale");
+  assert.doesNotMatch(section, /\$\s*\d/, "the AI limits section names a dollar figure");
+  assert.doesNotMatch(section, /\b\d+\s*(messages?|rituals?)\b/i, "the AI limits section quotes a count");
 });
 
 test("the UI's idea of the Dolly limit matches the server's", () => {

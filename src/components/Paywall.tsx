@@ -12,7 +12,6 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { DAILY_AI_LIMITS } from "@/lib/ai/dailyLimits";
 import { type FeatureKey, type TierLevel, getFeatureInfo, getMinTier, TIERS, recordPaywallDismissed } from "@/lib/tier";
 
 interface PaywallProps {
@@ -331,11 +330,14 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
             Cancel any time from Account → Your plan; you keep access until the
             end of the month you have paid for. Prices in USD.
           </p>
-          {/* Was "subject to fair use", which reads as "be reasonable and
-              you'll be fine" — not what a fixed daily cap is. Someone
-              deciding whether to pay should see the actual number. */}
+          {/* A pricing card is the wrong place for a message count: no
+              subscription quotes one, and a number here reads as a ration
+              rather than an allowance. It is not vague-by-omission either —
+              the figures are in the Terms, and the app says so plainly at the
+              moment someone actually reaches one. */}
           <p className="text-center text-muted text-xs">
-            Dolly answers up to {DAILY_AI_LIMITS.dolly} messages a day, and the ritual wizard up to {DAILY_AI_LIMITS.wizard}.
+            AI features have usage limits — see the{" "}
+            <a href="/terms" className="underline underline-offset-2">Terms</a>.
           </p>
           <p className="text-center text-xs">
             <a href="/terms" className="underline underline-offset-2" style={{ color: "var(--foreground-secondary)", minHeight: 44, display: "inline-block", paddingTop: 12, paddingBottom: 12 }}>
