@@ -32,8 +32,21 @@ import { claimFreeDeck } from "@/lib/freeDeck";
 import DeckStack from "@/components/tarot/DeckStack";
 import { friendlyAuthError } from "@/lib/authErrors";
 
-const TOTAL_STEPS = 10;
-const LS_KEY = "mapped:onboarding-step";
+/**
+ * Eleven, not ten: the account ask is its own screen now (step 4).
+ *
+ * It used to sit at the bottom of screen 1, so a stranger had to hand over an
+ * email and a password before seeing a single thing the app does — the button
+ * even said "Calculate & save my chart" rather than admitting it created an
+ * account. That is the classic top-of-funnel leak, and chart/result already
+ * had the better pattern built: show the chart, then offer to keep it.
+ *
+ * Birth details now calculate the chart with no account at all (the chart API
+ * needs no auth), the reveal and the headline cards land, and only then does
+ * anyone get asked to sign up — for something they can already see.
+ */
+const TOTAL_STEPS = 11;
+const LS_KEY = "mapped:onboarding-step-v2";
 
 /* ── palette ── */
 const PAPER = "var(--background)";
@@ -77,9 +90,24 @@ export default function OnboardingPage() {
   /* ── birth data form ── */
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [birthTime, setBirthTime] = useState("12:00");
+  /**
+   * Empty, not "12:00".
+   *
+   * The field was pre-filled with noon AND the "Exact" tab was pre-selected,
+   * and birthValid only checked that birthTime was truthy. So someone who did
+   * not know their time — or simply did not notice the field — could submit
+   * noon, asserted as exact, and be given a rising sign, houses and a sect
+   * reading built on it. Unlike the "Don't know" path nothing downstream
+   * knows to hedge, because unknownTime is false: calculateChart emits the
+   * Ascendant and all twelve houses as real. That is precisely the fabricated
+   * precision the astro library goes out of its way to refuse, manufactured
+   * by a default value.
+   */
+  const [birthTime, setBirthTime] = useState("");
   const [unknownTime, setUnknownTime] = useState(false);
-  const [timePrecision, setTimePrecision] = useState<"exact" | "approximate" | "unknown">("exact");
+  /** null until they choose. Pre-selecting "Exact" asserted a precision
+   *  nobody had claimed — see birthTime above. */
+  const [timePrecision, setTimePrecision] = useState<"exact" | "approximate" | "unknown" | null>(null);
   const [timeWindow, setTimeWindow] = useState<string | null>(null);
   const [dayNightKnown, setDayNightKnown] = useState(false);
   const [isDaytime, setIsDaytime] = useState<boolean | null>(null);
@@ -140,8 +168,8 @@ export default function OnboardingPage() {
     eclipses: true,
     mercury_retrograde: true,
     major_ingresses: true,
-    practice_reminders: true,
-    re_engagement: true,
+    practice_reminders: false,
+    re_engagement: false,
   });
   const [notifHour, setNotifHour] = useState(19); // 7 PM default
 
@@ -286,7 +314,7 @@ export default function OnboardingPage() {
   }
 
   /* ── birth data submit ── */
-  const birthValid = name.trim() && birthDate && location && (
+  const birthValid = name.trim() && birthDate && location && timePrecision !== null && (
     timePrecision === "unknown" || birthTime
   ) && (
     timePrecision !== "approximate" || timeWindow
@@ -323,14 +351,13 @@ export default function OnboardingPage() {
      * that actually traps people, because it is only set by choosing a
      * suggestion and there was no way to do that without a mouse.
      */
-    if (!birthValid || !accountValid) {
+    if (!birthValid) {
       const missing =
         !name.trim() ? { msg: "Please add your name.", id: "signup-name" }
         : !birthDate ? { msg: "Please add your birth date.", id: "signup-birthdate" }
+        : timePrecision === null ? { msg: "Please say how sure you are of your birth time \u2014 exact, a rough idea, or you don\u2019t know.", id: "signup-birthtime" }
         : timePrecision !== "unknown" && !birthTime ? { msg: "Please add your birth time, or choose \u201cDon\u2019t know\u201d.", id: "signup-birthtime" }
-        : !location ? { msg: "Please choose your birth city from the list of suggestions.", id: "signup-city" }
-        : !email.trim() ? { msg: "Please add your email address.", id: "signup-email" }
-        : { msg: "Please add a password of at least 6 characters.", id: "signup-password" };
+        : { msg: "Please choose your birth city from the list of suggestions.", id: "signup-city" };
       setError(missing.msg);
       // Focus the field at fault, so the message is not just read out but
       // acted on — otherwise they hear it and are still nowhere near it.
@@ -368,6 +395,42 @@ export default function OnboardingPage() {
 
       setChartData(result as ChartData);
       sessionStorage.setItem("mapped:chartData", JSON.stringify(result));
+      // Kept so the account step can save it once there is someone to save
+      // it for, and so a confirmation-email round trip does not lose it.
+      sessionStorage.setItem("chartResult", JSON.stringify(result));
+
+      goNext();
+    } catch (err) {
+      setError(friendlyAuthError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  /**
+   * Step 4: make the account, now that they have seen what it is for.
+   *
+   * Everything below used to run inside handleBirthSubmit, before the chart
+   * had been shown to anybody.
+   */
+  async function handleAccountSubmit() {
+    if (isSubmitting) return;
+    if (!accountValid) {
+      const missing = !email.trim()
+        ? { msg: "Please add your email address.", id: "signup-email" }
+        : { msg: "Please add a password of at least 6 characters.", id: "signup-password" };
+      setError(missing.msg);
+      requestAnimationFrame(() => { document.getElementById(missing.id)?.focus(); });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const stored = sessionStorage.getItem("chartResult");
+      const result = stored ? JSON.parse(stored) : chartData;
+      if (!result) throw new Error("We lost your chart — please go back a step and rebuild it.");
 
       let userId: string | null = existingUserId;
       let isReturningUser = false;
@@ -853,11 +916,20 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Birth time — 3-option system */}
-                <div className="flex flex-col gap-2">
-                  <label className={labelClass}>Birth time</label>
+                {/* A real group. These were three unrelated buttons to a
+                    screen reader — no group name, no "1 of 3", and selection
+                    conveyed only by a colour swap. */}
+                <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+                  <legend className={labelClass}>Birth time</legend>
+                  {/* Shown beside the choice, not after it: the reassurance
+                      used to appear only once someone had already picked
+                      "Don't know", which is after the moment of hesitation. */}
+                  <p className="text-muted text-[11px] -mt-1">
+                    Plenty of people don&rsquo;t know theirs. Your Sun and Moon barely move in a day.
+                  </p>
 
                   {/* Precision selector */}
-                  <div className="flex rounded-xl overflow-hidden border border-foreground/18">
+                  <div role="radiogroup" aria-label="How sure are you of your birth time?" className="flex rounded-xl overflow-hidden border border-foreground/18">
                     {([
                       { key: "exact", label: "Exact" },
                       { key: "approximate", label: "Rough idea" },
@@ -866,13 +938,19 @@ export default function OnboardingPage() {
                       <button
                         key={key}
                         type="button"
+                        role="radio"
+                        aria-checked={timePrecision === key}
+                        id={key === "exact" ? "signup-birthtime" : undefined}
                         onClick={() => {
                           setTimePrecision(key);
                           setUnknownTime(key === "unknown");
+                          // Noon only when they have SAID they don't know, so
+                          // unknownTime travels with it and everything
+                          // downstream hedges. It is never an assumed default.
                           if (key === "unknown") { setBirthTime("12:00"); setTimeWindow(null); }
-                          if (key === "exact") setTimeWindow(null);
+                          if (key === "exact") { setBirthTime(""); setTimeWindow(null); }
                         }}
-                        className={`flex-1 py-2 text-[11px] font-medium transition-colors ${
+                        className={`flex-1 py-2.5 min-h-[44px] text-[11px] font-medium transition-colors ${
                           timePrecision === key
                             ? "bg-ink text-cream"
                             : "bg-foreground/5 text-muted"
@@ -994,7 +1072,7 @@ export default function OnboardingPage() {
                       )}
                     </div>
                   )}
-                </div>
+                </fieldset>
 
                 {/* City */}
                 <div className="flex flex-col gap-1">
@@ -1063,6 +1141,83 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
+                {/*
+                  role="alert", and coloured as an error rather than as the
+                  brand gold — which is the same colour as the Terms and
+                  Privacy links beside it. Nothing announced this before, so a
+                  blind user pressed the button, heard the spinner come and
+                  go, and never learned why no account was made.
+                */}
+                {error && (
+                  <p
+                    id="signup-error"
+                    role="alert"
+                    className="text-xs text-center font-semibold"
+                    style={{ color: "var(--danger-text)" }}
+                  >
+                    {error}
+                  </p>
+                )}
+
+                {/*
+                  Submit.
+                  NOT `disabled` any more. A disabled button leaves the tab
+                  order, so someone who could not select a city — which was
+                  everybody using a keyboard, see CitySearch — tabbed past the
+                  password straight out of the page. The control that creates
+                  the account simply did not exist for them, with no error and
+                  nothing to explain it. It stays reachable now and says what
+                  is missing when pressed.
+                */}
+                <button
+                  onClick={handleBirthSubmit}
+                  aria-disabled={!birthValid || isSubmitting}
+                  aria-describedby={error ? "signup-error" : undefined}
+                  className={ctaBtn(!!birthValid && !isSubmitting)}
+                  style={birthValid && !isSubmitting ? { ...ctaShadow, ...ctaTextColor } : undefined}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 rounded-full animate-spin" role="status" aria-label="Loading" style={{ borderColor: "rgba(61,36,21,0.3)", borderTopColor: "#3d2415" }} />
+                      Calculating your chart...
+                    </span>
+                  ) : (
+                    "Build my chart"
+                  )}
+                </button>
+
+                {!existingUserId && (
+                  <button
+                    // Was router.push("/welcome?mode=signin"), which discarded the
+                      // name, date, time and city they had already typed — none
+                      // of it is persisted — and landed them on a different
+                      // screen. The checkbox above does the same job in place.
+                      onClick={() => { setHasAccount(true); requestAnimationFrame(() => document.getElementById("signup-email")?.focus()); }}
+                    className="text-terracotta text-xs hover:opacity-80 transition-colors self-center pb-2"
+                  >
+                    Already have an account?{" "}
+                    <span className="underline underline-offset-2">Sign in</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════ Screen 4: Keep this (account) ══════════
+              The account ask, after the chart rather than before it. */}
+          {!awaitingConfirm && step === 4 && (
+            <div className="flex-1 overflow-y-auto px-5 pt-16 pb-8">
+              <h1 tabIndex={-1} className="text-[26px] text-foreground mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+                Keep this
+              </h1>
+              <p className="text-secondary text-xs mb-1">
+                Your chart&rsquo;s built. Make an account and it&rsquo;s here whenever you open Mapped.
+              </p>
+              <p className="text-muted text-[11px] mb-5 leading-relaxed">
+                Your first {TRIAL_DAYS} days include everything, Dolly and all &mdash; no card, no charge.
+              </p>
+
+              <div className="flex flex-col gap-3">
                 {/* Account */}
                 {existingUserId ? (
                   <div className="flex items-center gap-2 py-2 px-3 rounded-xl bg-sage/10 border border-sage/25">
@@ -1160,66 +1315,33 @@ export default function OnboardingPage() {
                   </>
                 )}
 
-                {/*
-                  role="alert", and coloured as an error rather than as the
-                  brand gold — which is the same colour as the Terms and
-                  Privacy links beside it. Nothing announced this before, so a
-                  blind user pressed the button, heard the spinner come and
-                  go, and never learned why no account was made.
-                */}
+
                 {error && (
-                  <p
-                    id="signup-error"
-                    role="alert"
-                    className="text-xs text-center font-semibold"
-                    style={{ color: "var(--danger-text)" }}
-                  >
+                  <p id="account-error" role="alert" className="text-xs text-center font-semibold" style={{ color: "var(--danger-text)" }}>
                     {error}
                   </p>
                 )}
 
-                {/*
-                  Submit.
-                  NOT `disabled` any more. A disabled button leaves the tab
-                  order, so someone who could not select a city — which was
-                  everybody using a keyboard, see CitySearch — tabbed past the
-                  password straight out of the page. The control that creates
-                  the account simply did not exist for them, with no error and
-                  nothing to explain it. It stays reachable now and says what
-                  is missing when pressed.
-                */}
                 <button
-                  onClick={handleBirthSubmit}
-                  aria-disabled={!birthValid || !accountValid || isSubmitting}
-                  aria-describedby={error ? "signup-error" : undefined}
-                  className={ctaBtn(!!birthValid && !!accountValid && !isSubmitting)}
-                  style={birthValid && accountValid && !isSubmitting ? { ...ctaShadow, ...ctaTextColor } : undefined}
+                  onClick={handleAccountSubmit}
+                  aria-disabled={!accountValid || isSubmitting}
+                  aria-describedby={error ? "account-error" : undefined}
+                  className={ctaBtn(!!accountValid && !isSubmitting)}
+                  style={accountValid && !isSubmitting ? { ...ctaShadow, ...ctaTextColor } : undefined}
                 >
                   {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 rounded-full animate-spin" role="status" aria-label="Loading" style={{ borderColor: "rgba(61,36,21,0.3)", borderTopColor: "#3d2415" }} />
-                      Calculating your chart...
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" role="status" aria-label="Saving your chart" />
+                      Saving your chart…
                     </span>
-                  ) : (
-                    "Calculate & save my chart"
-                  )}
+                  ) : hasAccount ? "Sign in & keep my chart" : "Create my account"}
                 </button>
-
-                {!existingUserId && (
-                  <button
-                    onClick={() => router.push("/welcome?mode=signin")}
-                    className="text-terracotta text-xs hover:opacity-80 transition-colors self-center pb-2"
-                  >
-                    Already have an account?{" "}
-                    <span className="underline underline-offset-2">Sign in</span>
-                  </button>
-                )}
               </div>
             </div>
           )}
 
-          {/* ══════════ Screen 4: Demographics (after the reveal) ══════════ */}
-          {!awaitingConfirm && step === 4 && (
+          {/* ══════════ Screen 5: Demographics (after the reveal) ══════════ */}
+          {!awaitingConfirm && step === 5 && (
             <div className="flex-1 flex flex-col px-5 pt-12 pb-5 overflow-y-auto">
               <h1 tabIndex={-1}
                 className="text-[28px] text-foreground mb-1 tracking-tight leading-tight"
@@ -1227,8 +1349,23 @@ export default function OnboardingPage() {
               >
                 Tell us about you
               </h1>
-              <p className="text-secondary text-xs mb-4">
-                All optional. Helps us personalize what you see.
+              {/*
+                Say who reads it and what it buys.
+                These options include bereavement, pregnancy, divorce, caring
+                for a parent and being out of work — health, grief and
+                relationship data — collected four screens into a signup and
+                justified by five words. It also goes to Dolly with every
+                question she answers, which was disclosed only on the privacy
+                page. Someone handing this over deserves to know both before
+                they tap, not after.
+              */}
+              <p className="text-secondary text-xs mb-1">
+                Only if you want to &mdash; every one of these can stay blank.
+              </p>
+              <p className="text-muted text-[11px] mb-4 leading-relaxed">
+                Dolly reads this when she answers, so a transit to your seventh house lands as
+                something about your actual life rather than a textbook. You can change or clear any
+                of it in Settings.
               </p>
 
               <div className="flex flex-col gap-4">
@@ -1256,10 +1393,15 @@ export default function OnboardingPage() {
                     {[
                       "Single", "Dating", "In a partnership", "Married",
                       "Going through a breakup or divorce", "Recently widowed", "It's complicated",
+                      // Family situation offered this and Life stage did not,
+                      // so the one asking about breakups and bereavement was
+                      // the one with no way to decline explicitly.
+                      "Prefer not to say",
                     ].map((opt) => (
                       <button
                         key={opt}
                         type="button"
+                        aria-pressed={lifeStage.includes(opt)}
                         onClick={() => toggleMulti(lifeStage, opt, setLifeStage)}
                         className={pillBtn(lifeStage.includes(opt))}
                       >
@@ -1281,6 +1423,7 @@ export default function OnboardingPage() {
                       <button
                         key={opt}
                         type="button"
+                        aria-pressed={familySituation.includes(opt)}
                         onClick={() => toggleMulti(familySituation, opt, setFamilySituation)}
                         className={pillBtn(familySituation.includes(opt))}
                       >
@@ -1524,8 +1667,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 5: Meet Dolly ══════════ */}
-          {!awaitingConfirm && step === 5 && (
+          {/* ══════════ Screen 6: Meet Dolly ══════════ */}
+          {!awaitingConfirm && step === 6 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-4">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1570,8 +1713,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 6: Pick Your Free Deck ══════════ */}
-          {!awaitingConfirm && step === 6 && (
+          {/* ══════════ Screen 7: Pick Your Free Deck ══════════ */}
+          {!awaitingConfirm && step === 7 && (
             <div className="flex-1 flex flex-col items-center justify-center px-5 pt-14 pb-8">
               <h1 tabIndex={-1}
                 className="text-[26px] text-foreground mb-2 tracking-tight text-center"
@@ -1636,8 +1779,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 7: Notifications ══════════ */}
-          {!awaitingConfirm && step === 7 && (
+          {/* ══════════ Screen 8: Notifications ══════════ */}
+          {!awaitingConfirm && step === 8 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-5">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1652,10 +1795,11 @@ export default function OnboardingPage() {
                 Stay in the loop
               </h1>
               <p className="text-secondary text-sm mb-2 max-w-xs leading-relaxed">
-                Get notified for full moons, transits to your chart, and other moments that matter.
+                New and full moons, eclipses, and the transits that actually hit your chart.
               </p>
               <p className="text-muted text-xs mb-8 max-w-xs leading-relaxed">
-                Max a few per week. You can change this anytime in settings.
+                A few a week, at 7pm your time. Nothing chasing you to come back. Change any of it
+                in Settings.
               </p>
 
               <div className="flex flex-col gap-3 w-full max-w-sm">
@@ -1677,7 +1821,14 @@ export default function OnboardingPage() {
                             major_transits: true, retrograde_stations: true,
                             birthday_week: true, solar_return: true,
                             eclipses: true, mercury_retrograde: true, major_ingresses: true,
-                            daily_content: false, practice_reminders: true, re_engagement: true,
+                            // practice_reminders and re_engagement default OFF.
+                            // The button above promises "a few a week" and
+                            // "moments that matter"; a re-engagement nudge is
+                            // a retention ping, not a moment that matters, and
+                            // switching it on under that sentence is the
+                            // sentence not being true. Both are still
+                            // available in Settings for anyone who wants them.
+                            daily_content: false, practice_reminders: false, re_engagement: false,
                             preferred_hour: 19, paused_until: null, email_marketing: false,
                           },
                         }).eq("id", session.user.id);
@@ -1702,8 +1853,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 8: Moon Practice ══════════ */}
-          {!awaitingConfirm && step === 8 && (
+          {/* ══════════ Screen 9: Moon Practice ══════════ */}
+          {!awaitingConfirm && step === 9 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <div className="mb-4">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={TERRACOTTA} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1738,8 +1889,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ══════════ Screen 9: Final Orientation ══════════ */}
-          {!awaitingConfirm && step === 9 && (
+          {/* ══════════ Screen 10: Final Orientation ══════════ */}
+          {!awaitingConfirm && step === 10 && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
               <h1 tabIndex={-1}
                 className="text-[30px] text-foreground mb-4 tracking-tight"

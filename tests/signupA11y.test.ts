@@ -51,7 +51,7 @@ test("finding cities is announced, not just failing to find them", () => {
   // "No results" and "lookup failed" were both announced; success was not, so
   // a blind user typed a city, heard nothing, and never knew there was a list.
   const src = read("src/components/CitySearch.tsx");
-  assert.match(src, /cities\b.*found|found.*\$\{results\.length\}/s);
+  assert.match(src, /\$\{results\.length\}[\s\S]{0,40}(city|cities)/);
 });
 
 test("the signup error is announced and is not brand gold", () => {

@@ -148,3 +148,77 @@ test("no auth screen prints a raw error message any more", () => {
     assert.doesNotMatch(src, /setError\([^)]*err\.message/, `${file} leaks a raw message`);
   }
 });
+
+/* ─── The chart comes before the account ─── */
+
+test("step 1 asks for birth details only", () => {
+  // A stranger had to hand over an email and a password before seeing a
+  // single thing the app does, behind a button that said "Calculate & save my
+  // chart" rather than admitting it made an account. chart/result already had
+  // the better pattern: show the chart, then offer to keep it.
+  const src = read("src/app/onboarding/page.tsx");
+  const s1 = src.slice(src.indexOf("Screen 1: Birth Data"), src.indexOf("Screen 4: Keep this"));
+  assert.doesNotMatch(s1, /id="signup-email"/, "the email field is still on the birth screen");
+  assert.doesNotMatch(s1, /id="signup-password"/, "the password field is still on the birth screen");
+  assert.match(src, /"Build my chart"/, "the button still hides what it does");
+});
+
+test("the chart is calculated with no account at all", () => {
+  const src = read("src/app/onboarding/page.tsx");
+  const fn = src.slice(src.indexOf("async function handleBirthSubmit"), src.indexOf("async function handleAccountSubmit"));
+  assert.doesNotMatch(fn, /auth\.signUp|signInWithPassword/, "building a chart still signs you up");
+  assert.match(fn, /api\/chart\/calculate/);
+});
+
+test("the account step exists and names the trial", () => {
+  const src = read("src/app/onboarding/page.tsx");
+  assert.match(src, /step === 4 &&/);
+  assert.match(src, /Keep this/);
+  assert.match(src, /handleAccountSubmit/);
+});
+
+/* ─── No asserted precision nobody claimed ─── */
+
+test("birth time is not pre-filled, and no precision is pre-selected", () => {
+  // The field defaulted to "12:00" with the "Exact" tab pre-selected, and
+  // birthValid only checked the time was truthy — so noon could be submitted
+  // AS EXACT, producing a rising sign, houses and a sect reading built on it,
+  // with unknownTime false so nothing downstream hedged.
+  const src = read("src/app/onboarding/page.tsx");
+  assert.match(src, /const \[birthTime, setBirthTime\] = useState\(""\)/);
+  assert.match(src, /useState<"exact" \| "approximate" \| "unknown" \| null>\(null\)/);
+  assert.match(src, /birthValid = [\s\S]{0,200}timePrecision !== null/, "a precision choice is not required");
+});
+
+test("the precision choice is a real group", () => {
+  const src = read("src/app/onboarding/page.tsx");
+  assert.match(src, /role="radiogroup"/);
+  assert.match(src, /<legend className=\{labelClass\}>Birth time<\/legend>/);
+});
+
+/* ─── Promises that match the switches ─── */
+
+test("notifications default to what the screen promises", () => {
+  // The copy said "a few per week" and "moments that matter" while switching
+  // on eleven categories including re_engagement — a retention ping is not a
+  // moment that matters.
+  const src = read("src/app/onboarding/page.tsx");
+  assert.doesNotMatch(strip(src), /re_engagement: true/, "re-engagement still defaults on");
+  assert.doesNotMatch(strip(src), /practice_reminders: true/, "practice nags still default on");
+  assert.doesNotMatch(strip(src), /Max a few per week/);
+});
+
+test("the demographics screen says who reads it", () => {
+  // It asks about divorce, bereavement, pregnancy and being out of work,
+  // justified by five words, and never said the answers go to Dolly.
+  const src = read("src/app/onboarding/page.tsx");
+  assert.match(src, /Dolly reads this when she answers/);
+  assert.doesNotMatch(strip(src), /All optional\. Helps us personalize what you see\./);
+  // And the group asking about breakups now has an opt-out, like the other one.
+  // Searched forward from the label: "Professional" also appears much
+  // earlier as a state name, so a plain indexOf gives a backwards slice and
+  // an empty string, which would pass or fail for the wrong reason.
+  const from = src.indexOf("Where you are in life");
+  const lifeStage = src.slice(from, src.indexOf("Professional", from));
+  assert.match(lifeStage, /Prefer not to say/);
+});
