@@ -115,16 +115,37 @@ export async function POST(request: Request) {
     const tier = best ? tierOf(best) : "free";
     const status = best?.status ?? subs.data[0]?.status ?? null;
 
+    /**
+     * What they are actually paying, and when it renews.
+     *
+     * Read off the price rather than the metadata we stamped at checkout: a
+     * plan changed later in the billing portal updates the price and not our
+     * metadata, so metadata would drift into quoting the wrong figure.
+     */
+    const item = best?.items?.data?.[0];
+    const interval = item?.price?.recurring?.interval === "year" ? "year"
+      : item?.price?.recurring?.interval === "month" ? "month"
+      : null;
+    const periodEnd = typeof item?.current_period_end === "number"
+      ? new Date(item.current_period_end * 1000).toISOString()
+      : null;
+    // Cancelled in the portal but still running: status stays "active" to the
+    // end of the paid period, so only this flag tells a renewal from an expiry.
+    const cancelAtPeriodEnd = best?.cancel_at_period_end === true;
+
     await admin
       .from("profiles")
       .update({
         tier,
         subscription_status: status,
         stripe_subscription_id: best?.id ?? null,
+        subscription_interval: interval,
+        subscription_period_end: periodEnd,
+        subscription_cancel_at_period_end: cancelAtPeriodEnd,
       })
       .eq("id", user.id);
 
-    return NextResponse.json({ tier, status });
+    return NextResponse.json({ tier, status, interval, periodEnd, cancelAtPeriodEnd });
   } catch (err) {
     console.error("[stripe] sync failed:", err);
     // Deliberately vague: the reader cannot act on a Stripe API error, and

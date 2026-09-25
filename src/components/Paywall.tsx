@@ -129,6 +129,21 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
 interface PlansPageProps {
   currentTier: TierLevel;
   onClose: () => void;
+  /**
+   * What they are billed today, so the sheet opens on the interval they are
+   * already on. An annual subscriber who opened this saw Monthly selected and
+   * a monthly price, and could move from a $100 year to a $22.22 month
+   * without the screen ever mentioning that the interval had changed too.
+   */
+  currentInterval?: "month" | "year";
+  /**
+   * Whether there is a live Stripe subscription. A plan change is not a
+   * purchase — the server sends an existing subscriber to Stripe's plan-change
+   * screen rather than selling them a second subscription — so the button has
+   * to stop saying "Subscribe" and stop quoting a full price that will in fact
+   * be prorated.
+   */
+  hasSubscription?: boolean;
 }
 
 const FREE_FEATURES = [
@@ -169,7 +184,7 @@ const COMPLETE_FEATURES = [
   "New decks the day they arrive",
 ];
 
-export function PlansPage({ currentTier, onClose }: PlansPageProps) {
+export function PlansPage({ currentTier, onClose, currentInterval, hasSubscription = false }: PlansPageProps) {
   const [loadingPlan, setLoadingPlan] = useState<"mid" | "max" | null>(null);
   /**
    * Annual was defined in TIERS from the start and shown nowhere, so every
@@ -178,7 +193,7 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
   // Named `billing`, not `interval`: a state setter called setInterval
   // shadows window.setInterval for the whole component, which is a trap for
   // whoever adds a timer here next.
-  const [billing, setBilling] = useState<"month" | "year">("month");
+  const [billing, setBilling] = useState<"month" | "year">(currentInterval ?? "month");
   const plansDialogRef = useRef<HTMLDivElement>(null);
 
   // Focus trap for plans page
@@ -329,10 +344,19 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
                 <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
                 Connecting...
               </span>
+            ) : hasSubscription ? (
+              `Switch to ${title}`
             ) : (
               `Subscribe — ${price}`
             )}
           </button>
+        )}
+        {/* Said before they press it, not discovered on the Stripe screen. */}
+        {canBuy && hasSubscription && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            You&rsquo;ll change plan in the billing portal &mdash; Stripe credits what you have
+            already paid for.
+          </p>
         )}
       </div>
     );
@@ -409,8 +433,12 @@ export function PlansPage({ currentTier, onClose }: PlansPageProps) {
               "renews every month" is exactly the kind of mismatch a store
               reviewer looks for. */}
           <p className="text-center text-muted text-xs leading-relaxed">
-            Subscriptions renew every {billing === "month" ? "month" : "year"} at the price shown
-            until you cancel. Cancel any time from Account &rarr; Your plan; you keep access until
+            {/* Explicit {" "}: JSX drops the space between an expression and
+                text that then wraps to the next line, and this rendered as
+                "renews every monthat the price shown" on the subscribe
+                screen — the one screen a store reviewer reads word for word. */}
+            Subscriptions renew every {billing === "month" ? "month" : "year"}{" "}
+            at the price shown until you cancel. Cancel any time from Account &rarr; Your plan; you keep access until
             the end of the {billing === "month" ? "month" : "year"} you have paid for. Prices in USD.
           </p>
           {/* A pricing card is the wrong place for a message count: no

@@ -20,7 +20,6 @@ import BottomNav from "@/components/BottomNav";
 import SideNav from "@/components/SideNav";
 import AppTour from "@/components/AppTour";
 import BugReportButton from "@/components/BugReportButton";
-import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
 import { ensureAccountIsolation } from "@/lib/accountIsolation";
@@ -150,45 +149,43 @@ export default function TabsLayout({
   }
 
   return (
-    <TierProvider>
-      <BirthTimeProvider>
-        {/* Desktop web pages take over the whole viewport with their own
-            top-nav shell. Otherwise: mobile TopBar + scrolling content +
-            BottomNav (column), with a left SideNav rail on lg+. */}
-        {showWeb ? (
-          <div className="h-dvh overflow-y-auto overscroll-contain">
-            <WebPage />
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row h-dvh">
-            <SideNav />
-            <div className="flex-1 min-h-0 flex flex-col">
-              {/* Chat owns its own scrolling: the thread scrolls inside a fixed
-                  frame while the header and composer stay put. Leaving it in
-                  the page scroller would mean two nested scrollers and a
-                  composer that slides away mid-conversation. */}
-              {ownsScroll ? (
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <TopBar />
-                  <div className="flex-1 min-h-0 flex flex-col">
-                    {children}
-                  </div>
+    <BirthTimeProvider>
+      {/* Desktop web pages take over the whole viewport with their own
+          top-nav shell. Otherwise: mobile TopBar + scrolling content +
+          BottomNav (column), with a left SideNav rail on lg+. */}
+      {showWeb ? (
+        <div className="h-dvh overflow-y-auto overscroll-contain">
+          <WebPage />
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row h-dvh">
+          <SideNav />
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* Chat owns its own scrolling: the thread scrolls inside a fixed
+                frame while the header and composer stay put. Leaving it in
+                the page scroller would mean two nested scrollers and a
+                composer that slides away mid-conversation. */}
+            {ownsScroll ? (
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <TopBar />
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {children}
                 </div>
-              ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                  <TopBar />
-                  <div className="pb-4 lg:pb-10">
-                    {children}
-                  </div>
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                <TopBar />
+                <div className="pb-4 lg:pb-10">
+                  {children}
                 </div>
-              )}
-              <BottomNav />
-            </div>
+              </div>
+            )}
+            <BottomNav />
           </div>
-        )}
-        <BugReportButton liftAboveComposer={ownsScroll} />
-        {showTour && <AppTour onComplete={handleTourComplete} />}
-      </BirthTimeProvider>
-    </TierProvider>
+        </div>
+      )}
+      <BugReportButton liftAboveComposer={ownsScroll} />
+      {showTour && <AppTour onComplete={handleTourComplete} />}
+    </BirthTimeProvider>
   );
 }

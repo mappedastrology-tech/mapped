@@ -7,7 +7,7 @@
  * Exposes: tier, setTier, hasAccess(feature), limits.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   type TierLevel,
@@ -119,12 +119,15 @@ export function TierProvider({ children }: { children: ReactNode }) {
    * Guarded so it runs at most once a minute: coming back to the app is a
    * frequent event, and this costs a Stripe API call.
    */
+  const lastSyncRef = useRef(0);
   useEffect(() => {
-    let last = 0;
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
-      if (Date.now() - last < 60_000) return;
-      last = Date.now();
+      // A ref, not a local: `tier` is in this effect's deps, so the effect
+      // re-runs whenever the tier resolves. A local counter would be reset by
+      // that re-run and the throttle would not hold across it.
+      if (Date.now() - lastSyncRef.current < 60_000) return;
+      lastSyncRef.current = Date.now();
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) return;

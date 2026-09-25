@@ -1700,8 +1700,8 @@ export default function OnboardingPage() {
               </p>
               <p className="text-secondary text-xs leading-relaxed max-w-xs mb-8">
                 She&apos;s an AI, so she gets things wrong sometimes &mdash; Skeptic Mode will show you the
-                tradition behind any answer. She&apos;s on us for your first {TRIAL_DAYS} days, then she
-                lives in Mapped+. The rest of Mapped stays free either way.
+                tradition behind any answer. She&apos;s on us for your first {TRIAL_DAYS}{" "}
+                days, then she lives in Mapped+. The rest of Mapped stays free either way.
               </p>
               <button
                 onClick={goNext}

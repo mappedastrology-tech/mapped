@@ -1339,6 +1339,12 @@ function SubscriptionSection() {
    * somebody who knows.
    */
   const [subStatus, setSubStatus] = useState<string | null>(null);
+  /** "month" | "year" — what they are actually being billed. */
+  const [subInterval, setSubInterval] = useState<string | null>(null);
+  /** When the next charge lands. */
+  const [renewsAt, setRenewsAt] = useState<string | null>(null);
+  /** They have cancelled; renewsAt is the end of access, not the next charge. */
+  const [cancelling, setCancelling] = useState(false);
   useEffect(() => {
     let alive = true;
     getProfile()
@@ -1346,6 +1352,9 @@ function SubscriptionSection() {
         if (!alive) return;
         setHasSubscription(!!p?.stripe_subscription_id);
         setSubStatus(p?.subscription_status ?? null);
+        setSubInterval(p?.subscription_interval ?? null);
+        setRenewsAt(p?.subscription_period_end ?? null);
+        setCancelling(p?.subscription_cancel_at_period_end === true);
       })
       .catch(() => { if (alive) setHasSubscription(false); });
     return () => { alive = false; };
@@ -1361,11 +1370,36 @@ function SubscriptionSection() {
   const planName = TIERS[tier].name;
   // Only bill someone who is being billed. Access without a subscription says
   // how it was granted instead of quoting a price nobody is paying.
+  /**
+   * What they are actually paying.
+   *
+   * This said "$11.11/month" for every paying subscriber, because that is
+   * what TIERS[tier].price holds and nothing recorded which plan they bought.
+   * Since annual shipped, someone paying $100 a year was quoted a monthly
+   * figure they are not being charged — on the one screen where money is
+   * discussed. The interval comes off the Stripe price now, so a plan changed
+   * in the billing portal is reflected too.
+   *
+   * Falls back to the monthly figure only when the interval is genuinely
+   * unknown, which is the case for subscriptions that predate the column.
+   */
   const planPrice =
     tier === "free" ? "Free"
-    : hasSubscription ? `$${TIERS[tier].price.toFixed(2)}/month`
+    : hasSubscription
+      ? subInterval === "year"
+        ? `$${TIERS[tier].annualPrice}/year`
+        : `$${TIERS[tier].price.toFixed(2)}/month`
     : onTrial ? "Free trial"
     : "Included — no charge";
+
+  /** "25 September 2027", or null when we do not know. */
+  const renewalDate = (() => {
+    if (!renewsAt) return null;
+    const d = new Date(renewsAt);
+    return Number.isNaN(d.getTime())
+      ? null
+      : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  })();
 
   // What this plan actually includes now. The old free list promised a daily
   // horoscope and five Dolly messages, neither of which free has any more.
@@ -1500,6 +1534,28 @@ function SubscriptionSection() {
           </span>
         </div>
 
+        {/*
+          When the next charge lands.
+          Nothing said this anywhere. On a $100 annual plan the renewal is the
+          single most material fact about the subscription, and "cancel any
+          time" means little without the date it would be cancelling before.
+        */}
+        {isPaid && hasSubscription && renewalDate && !paymentFailing && (
+          <p className="text-muted text-[11.5px] mb-3" style={{ fontFamily: "var(--font-ui)" }}>
+            {/*
+              Cancelling first. Somebody who cancelled in the portal keeps the
+              status "active" until the period runs out, so a check on the
+              status alone told them their plan renews on the very date it
+              ends — backwards, on the one line they came back to verify.
+            */}
+            {cancelling
+              ? `Cancelled — ${planName} is yours until ${renewalDate}.`
+              : subStatus === "canceled" || subStatus === "unpaid"
+                ? `Access until ${renewalDate}.`
+                : `Renews ${renewalDate}.`}
+          </p>
+        )}
+
         {/* On the house right now. Said plainly and with the end date, because
             the thing people resent is not the trial ending, it is not having
             been told it would. */}
@@ -1525,6 +1581,26 @@ function SubscriptionSection() {
         {/* Upgrade, Manage, or — for access that was granted rather than
             bought — neither. */}
         {isPaid && hasSubscription ? (
+          <>
+          {/*
+            A way up.
+            A Mapped+ subscriber's only control here was "Manage Subscription",
+            which opens Stripe's portal — so there was no way to even SEE the
+            plans from inside the app, let alone move to Complete. That is the
+            tier now sold on three times the time with Dolly and the whole
+            relational map, and this is the screen where someone is already
+            thinking about their plan. Shown only to Mapped+, because there is
+            nothing above Complete.
+          */}
+          {tier === "mid" && (
+            <button
+              onClick={() => setShowPlans(true)}
+              className="w-full py-3 mb-2 rounded-full text-sm font-semibold active:scale-[0.98] transition-all"
+              style={{ background: "var(--brass)", color: "var(--btn-primary-text)" }}
+            >
+              Compare with {TIERS.max.name}
+            </button>
+          )}
           <button
             onClick={handleManageSubscription}
             disabled={loadingPortal}
@@ -1539,6 +1615,7 @@ function SubscriptionSection() {
               "Manage Subscription"
             )}
           </button>
+          </>
         ) : (
           <div className="flex flex-col gap-2">
             <button
@@ -1559,7 +1636,11 @@ function SubscriptionSection() {
               onClick={() => setShowPlans(true)}
               className="w-full py-2 text-muted text-xs hover:text-secondary transition-colors"
             >
-              Compare plans
+              {/* The direct button above is the monthly price, which is the
+                  more expensive of the two. Annual exists and is a quarter
+                  cheaper; someone deciding deserves to know that before they
+                  press the other one. */}
+              Compare plans &mdash; yearly is ${TIERS.mid.annualPrice}, about {Math.round((1 - TIERS.mid.annualPrice / (TIERS.mid.price * 12)) * 100)}% less
             </button>
           </div>
         )}
@@ -1573,7 +1654,9 @@ function SubscriptionSection() {
         {/* Manage billing note — only where there is billing to manage. */}
         {isPaid && hasSubscription && (
           <p className="text-center text-muted text-[10px] mt-2">
-            Cancel or change your plan any time through the billing portal.
+            {cancelling
+              ? "Changed your mind? You can restart it in the billing portal before it ends."
+              : "Cancel or change your plan any time through the billing portal."}
           </p>
         )}
         {isPaid && hasSubscription === false && (
@@ -1596,6 +1679,8 @@ function SubscriptionSection() {
       {showPlans && (
         <PlansPage
           currentTier={tier}
+          currentInterval={subInterval === "year" ? "year" : subInterval === "month" ? "month" : undefined}
+          hasSubscription={hasSubscription === true}
           onClose={() => setShowPlans(false)}
         />
       )}

@@ -225,7 +225,15 @@ export const USAGE_LIMITS = {
     dollyMessagesPerDay: 0,
     pullsPerDay: 1,
     synastryPartners: 1,
-    familyMembers: 10,
+    /**
+     * One, matching synastryPartners — the map counts people, not categories.
+     *
+     * This said 10 while mid said 1, so read literally, upgrading to Mapped+
+     * would have SHRUNK your map from ten people to one. Nothing consumes this
+     * key yet (the gate reads synastryPartners), which is exactly why it was
+     * free to drift; the next person to wire it up would have shipped that.
+     */
+    familyMembers: 1,
     wizardPerMonth: 0,
     transitsShown: 3,
   },

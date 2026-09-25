@@ -75,6 +75,39 @@ function isEntitled(status: Stripe.Subscription.Status): boolean {
   return ENTITLED_STATUSES.has(status);
 }
 
+/**
+ * What the subscriber is actually paying, for the account screen.
+ *
+ * Read off the price rather than the mapped_interval metadata we stamp at
+ * checkout: a plan changed later in the billing portal updates the price and
+ * leaves that metadata behind, so metadata would drift into quoting a figure
+ * nobody is being charged.
+ */
+function billingShape(sub: Stripe.Subscription): {
+  subscription_interval: "month" | "year" | null;
+  subscription_period_end: string | null;
+  subscription_cancel_at_period_end: boolean;
+} {
+  const item = sub.items?.data?.[0];
+  const raw = item?.price?.recurring?.interval;
+  return {
+    subscription_interval: raw === "year" ? "year" : raw === "month" ? "month" : null,
+    subscription_period_end:
+      typeof item?.current_period_end === "number"
+        ? new Date(item.current_period_end * 1000).toISOString()
+        : null,
+    /**
+     * Cancelled, but not over yet.
+     *
+     * The portal's Cancel does not delete the subscription — it flips this and
+     * leaves the status "active" for the rest of the paid period. Without it,
+     * "active plus a future period end" is indistinguishable from a renewal,
+     * and account settings promised one to somebody who had just cancelled.
+     */
+    subscription_cancel_at_period_end: sub.cancel_at_period_end === true,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     // Read raw body for signature verification
@@ -207,6 +240,7 @@ export async function POST(request: Request) {
               .update({
                 tier: isEntitled(subscription.status) ? tierFromMetadata(subscription.metadata) : "free",
                 subscription_status: subscription.status,
+                ...billingShape(subscription),
               })
               .eq("id", profile.id);
           }
@@ -218,6 +252,7 @@ export async function POST(request: Request) {
           .update({
             tier: isEntitled(subscription.status) ? tierFromMetadata(subscription.metadata) : "free",
             subscription_status: subscription.status,
+            ...billingShape(subscription),
           })
           .eq("id", userId);
 

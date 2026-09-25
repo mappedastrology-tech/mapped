@@ -520,6 +520,14 @@ export default function DollyTab() {
         setAnnouncement(AI_UPGRADE_MESSAGE);
         return;
       }
+      // The tier has not resolved yet, so this is not known to be a free
+      // reader at all — quite possibly a subscriber who opened the app and
+      // typed straight away. Say so and keep what they wrote, rather than
+      // swallowing the tap.
+      if (reason === "pending") {
+        setAnnouncement("Just a moment — checking your plan.");
+        return;
+      }
       if (reason !== "allowed") return;
     }
 

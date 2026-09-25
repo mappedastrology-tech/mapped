@@ -64,6 +64,62 @@ export async function POST(request: Request) {
     // and checkout now opens in the system browser, which cannot reach it.
     const origin = returnBaseUrl(request.headers.get("origin"));
     /**
+     * Never sell a second subscription to somebody who already has one.
+     *
+     * Checkout creates a NEW subscription every time. Account settings now
+     * offers a Mapped+ subscriber a "Compare with Mapped Complete" button,
+     * and the plans sheet put a "Subscribe — $22.22/month" under it — so one
+     * tap billed them for Complete WITHOUT ending Mapped+, and they paid
+     * $33.33 a month for one account until somebody noticed. Stripe will
+     * happily do this; nothing about a second subscription looks like an
+     * error to it.
+     *
+     * A plan change is a different operation from a purchase, and Stripe has
+     * a screen for it: the portal's subscription_update flow, which prorates
+     * the difference and replaces the plan rather than adding one. Sending
+     * them there is both the correct billing and the honest one.
+     */
+    if (profile?.stripe_customer_id) {
+      const existing = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status: "all",
+        limit: 10,
+      });
+      // Same entitled set as the webhook and the sync route: past_due counts,
+      // because Stripe is still retrying and the subscription is still live.
+      const live = existing.data.find((s) =>
+        s.status === "active" || s.status === "trialing" || s.status === "past_due",
+      );
+      if (live) {
+        try {
+          const flow = await stripe.billingPortal.sessions.create({
+            customer: profile.stripe_customer_id,
+            return_url: `${origin}/account`,
+            flow_data: {
+              type: "subscription_update",
+              subscription_update: { subscription: live.id },
+            },
+          });
+          return NextResponse.json({ url: flow.url, mode: "portal" });
+        } catch (err) {
+          /**
+           * The update flow needs the portal configuration to have plan
+           * switching turned on with the products listed. If it is not, this
+           * throws — and the one thing we must not do then is fall through to
+           * creating a second subscription. A plain portal session still lets
+           * them change or cancel; it just costs them a click.
+           */
+          console.error("[stripe] subscription_update flow unavailable:", err);
+          const plain = await stripe.billingPortal.sessions.create({
+            customer: profile.stripe_customer_id,
+            return_url: `${origin}/account`,
+          });
+          return NextResponse.json({ url: plain.url, mode: "portal" });
+        }
+      }
+    }
+
+    /**
      * Four prices: two tiers times two billing intervals. Each is its own
      * Stripe Price object, so each needs its own env var.
      *

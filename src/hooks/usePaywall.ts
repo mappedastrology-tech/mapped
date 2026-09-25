@@ -15,10 +15,11 @@
  *   {PaywallModal}
  */
 
-import { useState, useCallback, createElement } from "react";
+import { useState, useCallback, useEffect, createElement } from "react";
 import { useTier } from "@/components/TierProvider";
 import { type FeatureKey, isPaywallCoolingDown, getFeatureInfo } from "@/lib/tier";
 import { useToast } from "@/components/Toast";
+import { getProfile } from "@/lib/profileCache";
 import Paywall, { PlansPage } from "@/components/Paywall";
 
 /**
@@ -35,13 +36,37 @@ import Paywall, { PlansPage } from "@/components/Paywall";
  * button and all six starter prompts — inert, with no paywall, no message and
  * no disabled state. It reads as broken software, not as a price.
  */
-export type GateResult = "allowed" | "paywall" | "cooldown";
+export type GateResult = "allowed" | "paywall" | "cooldown" | "pending";
 
 export function usePaywall() {
-  const { tier, hasAccess } = useTier();
+  const { tier, hasAccess, loading: tierLoading } = useTier();
   const { toast } = useToast();
   const [activeFeature, setActiveFeature] = useState<FeatureKey | null>(null);
   const [showPlans, setShowPlans] = useState(false);
+
+  /**
+   * What they are billed, so the plans sheet opens on their interval and calls
+   * a plan change a plan change. Read from the shared profile cache, which
+   * every screen has already populated by the time a gate can close, so this
+   * costs nothing.
+   */
+  const [billing, setBilling] = useState<{ interval?: "month" | "year"; hasSubscription: boolean }>(
+    { hasSubscription: false },
+  );
+  useEffect(() => {
+    let alive = true;
+    getProfile()
+      .then((p) => {
+        if (!alive) return;
+        const raw = p?.subscription_interval;
+        setBilling({
+          interval: raw === "year" ? "year" : raw === "month" ? "month" : undefined,
+          hasSubscription: !!p?.stripe_subscription_id,
+        });
+      })
+      .catch(() => { /* defaults are correct for someone with no subscription */ });
+    return () => { alive = false; };
+  }, [tier]);
 
   /**
    * Gate a feature and say why it closed — for screens that can show something
@@ -51,12 +76,26 @@ export function usePaywall() {
    */
   const gateWithReason = useCallback(
     (feature: FeatureKey): GateResult => {
+      /**
+       * Decide nothing until the tier is known.
+       *
+       * TierProvider starts at "free" and resolves a moment later, so a gate
+       * asked during that window says no to everybody — including people who
+       * pay. From an event handler that never showed, because the tier had
+       * long since landed; /rectification calls this in its render body, on
+       * mount, and a Mapped+ subscriber got the paywall every single time.
+       * Once activeFeature is set the tier arriving does not take it back
+       * down, so it was not even a flicker.
+       *
+       * Blocked but silent: the caller waits rather than being told no.
+       */
+      if (tierLoading) return "pending";
       if (hasAccess(feature)) return "allowed";
       if (isPaywallCoolingDown(feature)) return "cooldown";
       setActiveFeature(feature);
       return "paywall";
     },
-    [hasAccess],
+    [hasAccess, tierLoading],
   );
 
   /**
@@ -69,6 +108,13 @@ export function usePaywall() {
   const gate = useCallback(
     (feature: FeatureKey): boolean => {
       const reason = gateWithReason(feature);
+      // Still loading the tier. Not a price, so not a paywall and not an
+      // upgrade toast — but not silence either: a tap that does nothing at all
+      // is the thing this hook already exists to avoid.
+      if (reason === "pending") {
+        toast.info("One moment — checking your plan.");
+        return true;
+      }
       if (reason === "cooldown") {
         const info = getFeatureInfo(feature);
         toast.info(
@@ -100,6 +146,8 @@ export function usePaywall() {
     : showPlans
     ? createElement(PlansPage, {
         currentTier: tier,
+        currentInterval: billing.interval,
+        hasSubscription: billing.hasSubscription,
         onClose: () => setShowPlans(false),
       })
     : null;

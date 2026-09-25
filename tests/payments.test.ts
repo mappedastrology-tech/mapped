@@ -120,3 +120,164 @@ test("both Stripe routes build their return URLs through it", () => {
     );
   }
 });
+
+/* ─── Every screen that asks "what am I paying?" must be able to answer ─── */
+
+test("tier is provided at the root, not only inside the tab group", () => {
+  // This was the bug behind everything below it. TierProvider was mounted in
+  // src/app/(tabs)/layout.tsx, which covers the five tab screens and nothing
+  // else — and /account and /rectification live outside that group. useTier()
+  // there fell back to the context default, tier "free", so account settings
+  // showed the Free plan card to every paying subscriber: no renewal date, no
+  // Manage Subscription, and an "Upgrade to Mapped+" button offered to
+  // somebody already paying for Mapped+.
+  //
+  // Pinned structurally rather than behaviourally because the failure mode is
+  // a file's location, which no unit test of the page itself can see.
+  assert.match(read("src/app/layout.tsx"), /<TierProvider>/, "the root layout does not mount it");
+  assert.doesNotMatch(
+    read("src/app/(tabs)/layout.tsx"),
+    /<TierProvider>/,
+    "still nested inside (tabs) — two providers means two profile reads",
+  );
+});
+
+test("an annual subscriber is not quoted a monthly price", () => {
+  // TIERS[tier].price is the monthly figure, and it was shown to everyone.
+  // Someone on $100/year was told "$11.11/month" on the one screen where
+  // money is discussed.
+  const src = read("src/app/account/page.tsx");
+  assert.match(src, /subInterval === "year"/, "the billing interval is not consulted");
+  assert.match(src, /annualPrice\}\/year/, "no annual price is ever shown");
+});
+
+/* ─── Cancelled is not the same as renewing ─── */
+
+test("both Stripe routes record cancel_at_period_end", () => {
+  // Cancelling in the portal does not delete the subscription — it leaves the
+  // status "active" until the period runs out. Without this flag, "active
+  // with a future period end" reads identically to a renewal.
+  for (const file of ["src/app/api/stripe/webhook/route.ts", "src/app/api/stripe/sync/route.ts"]) {
+    assert.match(
+      read(file),
+      /subscription_cancel_at_period_end/,
+      `${file} never persists the cancellation flag`,
+    );
+  }
+});
+
+test("the new billing column is pinned to the server like the others", () => {
+  // profiles' "Users can update own profile" policy has no WITH CHECK, so a
+  // billing column that the lock trigger does not pin can be PATCHed by any
+  // authenticated client against its own row.
+  const sql = read("supabase/migrations/20260925b_subscription_cancel_at_period_end.sql");
+  assert.match(sql, /add column if not exists subscription_cancel_at_period_end/);
+  assert.match(
+    sql,
+    /new\.subscription_cancel_at_period_end := old\.subscription_cancel_at_period_end/,
+    "the trigger does not pin it on UPDATE",
+  );
+  assert.match(sql, /new\.subscription_cancel_at_period_end := false/, "not reset on INSERT");
+});
+
+test("someone who cancelled is not told their plan renews", () => {
+  const src = read("src/app/account/page.tsx");
+  assert.match(src, /cancelling\s*\n?\s*\?/, "the renewal line never branches on it");
+  assert.match(src, /is yours until \$\{renewalDate\}/, "no copy for the cancelled case");
+});
+
+/* ─── The plan ladder must not run backwards ─── */
+
+test("no limit shrinks as the tier goes up", async () => {
+  // free.familyMembers was 10 against mid's 1, so read literally, paying for
+  // Mapped+ shrank your map from ten people to one. Nothing consumes that key
+  // yet, which is precisely why it was free to drift.
+  const { USAGE_LIMITS } = await import("../src/lib/tier");
+  const keys = Object.keys(USAGE_LIMITS.free) as (keyof typeof USAGE_LIMITS.free)[];
+  for (const key of keys) {
+    const free = USAGE_LIMITS.free[key] as number;
+    const mid = USAGE_LIMITS.mid[key] as number;
+    const max = USAGE_LIMITS.max[key] as number;
+    assert.ok(mid >= free, `${key}: Mapped+ (${mid}) is worse than free (${free})`);
+    assert.ok(max >= mid, `${key}: Complete (${max}) is worse than Mapped+ (${mid})`);
+  }
+});
+
+/* ─── One account, one subscription ─── */
+
+test("an existing subscriber cannot be sold a second subscription", () => {
+  // Checkout creates a NEW subscription every time. Account settings offers a
+  // Mapped+ subscriber "Compare with Mapped Complete", and the plans sheet put
+  // a Subscribe button under it — so one tap billed them for Complete without
+  // ending Mapped+: $33.33 a month for one account, and nothing about it looks
+  // like an error to Stripe.
+  const src = read("src/app/api/stripe/checkout/route.ts");
+  const guard = src.slice(0, src.indexOf("const sessionParams"));
+  assert.match(guard, /subscriptions\.list/, "checkout never looks for an existing subscription");
+  assert.match(guard, /billingPortal\.sessions\.create/, "no plan-change path");
+  assert.match(guard, /subscription_update/, "not sent to Stripe's plan-change flow");
+  // And the fallback when that flow is not configured must not be "sell anyway".
+  const fallback = guard.slice(guard.indexOf("catch (err)"));
+  assert.doesNotMatch(strip(fallback), /checkout\.sessions\.create/, "falls through to a second sale");
+});
+
+test("the plans sheet opens on the interval they are actually billed", () => {
+  // An annual subscriber saw Monthly selected and monthly prices, and could
+  // move from a $100 year to a $22.22 month without the screen mentioning
+  // that the interval had changed too.
+  const src = read("src/components/Paywall.tsx");
+  assert.match(src, /useState<"month" \| "year">\(currentInterval \?\? "month"\)/);
+  assert.match(src, /hasSubscription \? \(\s*`Switch to \$\{title\}`/, "a plan change still says Subscribe");
+});
+
+/* ─── Copy that renders as written ─── */
+
+test("the renewal terms do not render as 'every monthat the price shown'", () => {
+  // JSX drops the space between an expression and text that wraps to the next
+  // line. This was on the subscribe screen — the paragraph a store reviewer
+  // reads word for word.
+  const src = read("src/components/Paywall.tsx");
+  assert.doesNotMatch(
+    src,
+    /\{billing === "month" \? "month" : "year"\} at the price shown\n/,
+    "the space is implicit again and will be dropped",
+  );
+  assert.match(src, /\{billing === "month" \? "month" : "year"\}\{" "\}/);
+});
+
+/* ─── Don't decide who pays before you know who pays ─── */
+
+test("a gate asked before the tier resolves refuses to answer", () => {
+  // TierProvider starts at "free" and resolves a moment later. Any gate asked
+  // in that window said no to everybody, subscribers included — and once the
+  // paywall is up, the tier arriving does not take it back down.
+  const src = read("src/hooks/usePaywall.ts");
+  assert.match(src, /loading: tierLoading/, "the hook never looks at whether the tier is known");
+  const fn = src.slice(src.indexOf("const gateWithReason"), src.indexOf("const gate ="));
+  assert.match(fn, /if \(tierLoading\) return "pending"/);
+  // And the pending branch must come BEFORE anything that shows a paywall.
+  assert.ok(
+    fn.indexOf('return "pending"') < fn.indexOf("setActiveFeature"),
+    "the paywall can still fire before the tier is known",
+  );
+});
+
+test("a pending gate is never silent", () => {
+  // A tap that does nothing at all reads as broken software — the failure this
+  // hook already exists to avoid.
+  const gateSrc = read("src/hooks/usePaywall.ts");
+  assert.match(gateSrc, /reason === "pending"[\s\S]{0,200}toast\.info/);
+  const dolly = read("src/app/(tabs)/dolly/page.tsx");
+  assert.match(dolly, /reason === "pending"[\s\S]{0,200}setAnnouncement/);
+});
+
+test("rectification asks the gate from an effect, and uses the answer", () => {
+  // `const blocked = gate(...)` sat in the render body: setState during
+  // render, the result assigned and never read, so the whole seven-step flow
+  // rendered underneath the paywall — and it ran before the tier was known,
+  // which meant it locked out subscribers most reliably of all.
+  const src = read("src/app/rectification/page.tsx");
+  assert.doesNotMatch(strip(src), /const blocked = gate\(/, "still gating during render");
+  assert.match(src, /useEffect\(\(\) => \{\s*if \(tierLoading\) return;/);
+  assert.match(src, /!tierLoading && allowed/, "the answer is still not used to gate the flow");
+});

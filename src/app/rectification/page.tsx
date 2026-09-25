@@ -7,10 +7,11 @@
  * and personality/appearance questions.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { usePaywall } from "@/hooks/usePaywall";
+import { useTier } from "@/components/TierProvider";
 import {
   TIME_WINDOWS,
   type TimeWindow,
@@ -35,7 +36,8 @@ function spanLabel(r: RectificationResult): string {
 
 export default function RectificationPage() {
   const router = useRouter();
-  const { gate, PaywallModal } = usePaywall();
+  const { gateWithReason, canAccess, PaywallModal } = usePaywall();
+  const { loading: tierLoading } = useTier();
 
   const [step, setStep] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -70,8 +72,24 @@ export default function RectificationPage() {
     if (step > 0) setStep(step - 1);
   }
 
-  // Gate: rectification is Mapped+ tier
-  const blocked = gate("birth_time_rectification");
+  /**
+   * Gate: rectification is a Mapped+ feature.
+   *
+   * Two things were wrong with `const blocked = gate(...)` in the render body.
+   * It called setState during render, which is the kind of thing that works
+   * until it doesn't; and `blocked` was assigned and never read, so the whole
+   * seven-step flow rendered underneath the paywall either way. Worse, it ran
+   * before the tier had resolved — see the note in usePaywall — so the person
+   * it locked out most reliably was a subscriber.
+   *
+   * Asked from an effect now, once the tier is actually known, and the answer
+   * is used.
+   */
+  useEffect(() => {
+    if (tierLoading) return;
+    gateWithReason("birth_time_rectification");
+  }, [tierLoading, gateWithReason]);
+  const allowed = canAccess("birth_time_rectification");
 
   const handleCalculate = useCallback(async () => {
     setIsCalculating(true);
@@ -185,6 +203,38 @@ export default function RectificationPage() {
         </button>
         <h1 className="text-base font-semibold text-foreground">Birth Time Rectification</h1>
       </div>
+
+      {/* Nothing is decided until the tier lands, so say so rather than
+          showing either the flow or a paywall on a guess. */}
+      {tierLoading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div
+            className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin"
+            role="status"
+            aria-label="Loading"
+          />
+        </div>
+      )}
+
+      {/* The paywall sits on top; this is what is behind it, and it should not
+          be a working copy of the thing being sold. */}
+      {!tierLoading && !allowed && (
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-3">
+          <p className="text-foreground text-base font-semibold">Rectification comes with Mapped+</p>
+          <p className="text-secondary text-sm leading-relaxed">
+            It works backwards from things you remember to narrow down the minute you were born.
+          </p>
+          <button
+            onClick={() => gateWithReason("birth_time_rectification")}
+            className={btnPrimary}
+          >
+            See what&rsquo;s included
+          </button>
+        </div>
+      )}
+
+      {!tierLoading && allowed && (
+      <>
 
       {/* Progress */}
       <div className="px-5 mb-6">
@@ -471,6 +521,8 @@ export default function RectificationPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {PaywallModal}
     </div>

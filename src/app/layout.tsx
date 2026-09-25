@@ -5,6 +5,7 @@ import ThemeProvider from "@/components/ThemeProvider";
 import AccountIsolation from "@/components/AccountIsolation";
 import OfflineNotice from "@/components/OfflineNotice";
 import ToastProvider from "@/components/Toast";
+import { TierProvider } from "@/components/TierProvider";
 import ErrorMonitorInit from "@/components/ErrorMonitorInit";
 import ApiBaseInit from "@/components/ApiBaseInit";
 
@@ -119,9 +120,27 @@ export default function RootLayout({
         <AccountIsolation />
         <ThemeProvider>
           <ToastProvider>
-            {/* Renders nothing while online. */}
-            <OfflineNotice />
-            {children}
+            {/*
+              Tier lives at the root, not in (tabs).
+
+              It used to be mounted in src/app/(tabs)/layout.tsx, which covers
+              the five tab screens and nothing else. /account and
+              /rectification sit outside that group, so useTier() there fell
+              back to the context default — tier "free" — and account settings
+              showed the free plan card to every paying subscriber: no renewal
+              date, no Manage Subscription, and an "Upgrade to Mapped+" button
+              offered to someone already paying for it.
+
+              Hoisting it here means a route cannot miss it by virtue of where
+              its file happens to live. The cost is one extra read of the
+              shared profile cache on signed-out screens, which resolves to
+              null and settles on "free" without a network call.
+            */}
+            <TierProvider>
+              {/* Renders nothing while online. */}
+              <OfflineNotice />
+              {children}
+            </TierProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

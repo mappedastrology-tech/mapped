@@ -49,6 +49,12 @@ export interface CachedProfile {
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   subscription_status?: string | null;
+  /** "month" | "year" — what they are actually being billed. */
+  subscription_interval?: string | null;
+  /** ISO timestamp of the next renewal — or of the end of access, if cancelled. */
+  subscription_period_end?: string | null;
+  /** Cancelled in the portal; still entitled until subscription_period_end. */
+  subscription_cancel_at_period_end?: boolean | null;
   [key: string]: unknown;
 }
 
