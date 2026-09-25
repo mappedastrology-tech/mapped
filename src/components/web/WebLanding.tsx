@@ -12,10 +12,33 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { TIERS, TRIAL_DAYS } from "@/lib/tier";
 
 // ─── Static content ─────────────────────────────────────────────────────────
 
-const CRED = ["Featured in Sky & Telescope", "AASM Wellness Pick 2026", "“The almanac, reborn.”", "40,000+ daily readers", "Apple Design nominee"];
+/**
+ * What the app actually is, not what anyone has said about it.
+ *
+ * This strip used to read "Featured in Sky & Telescope", "AASM Wellness Pick
+ * 2026", "40,000+ daily readers" and "Apple Design nominee". None of it had
+ * happened. Invented press, invented awards and an invented readership on a
+ * public page are false advertising, two of them borrow somebody else's
+ * trademark, and the Apple one would be read by the reviewer deciding whether
+ * to approve the app. Replaced with five things that are true of the build
+ * and can be checked in it.
+ *
+ * Put real press here when there is real press.
+ */
+const CRED = [
+  "Western and Vedic, side by side",
+  "Whole sign or Placidus houses",
+  "Positions computed, not looked up",
+  "No ads",
+  // Not "iPhone and Android": the native builds are not in the stores yet,
+  // and a landing page should not name a way to get the app that does not
+  // exist. Put the stores back here when the apps are actually there.
+  "Works in any browser, phone or desktop",
+];
 
 const GLOW = "drop-shadow(0 12px 30px rgba(0,0,0,0.45))";
 const FEATURES = [
@@ -75,16 +98,76 @@ const STEPS = [
   { n: "ii", title: "We read the live sky", body: "Every morning we compare today’s heavens to your chart — moon phase, transits, and timing." },
   { n: "iii", title: "Your day, translated", body: "Almanac, tarot, ritual and guidance, arranged the way you like and written in plain language." },
 ];
-const QUOTES = [
-  { text: "It’s the first astrology thing I’ve actually kept up with. The daily almanac is my new coffee ritual.", name: "Mara L.", role: "Portland, OR", initial: "M" },
-  { text: "Dolly explained my Saturn return without a single confusing chart. I finally get it.", name: "Devon R.", role: "Austin, TX", initial: "D" },
-  { text: "The sky map alone is worth it. I roam it every clear night and actually know what I’m looking at now.", name: "Priya S.", role: "Brooklyn, NY", initial: "P" },
-];
+/**
+ * Empty until somebody real says something.
+ *
+ * There were three quotes here, complete with names, cities, initials and
+ * five stars — "Mara L., Portland, OR" and two more. Nobody said any of them.
+ * Testimonials attributed to invented people are the clearest kind of false
+ * advertising there is, and the section renders nothing while this is empty,
+ * so the page is simply shorter until there is something honest to put in it.
+ */
+const QUOTES: { text: string; name: string; role: string; initial: string }[] = [];
+/**
+ * The three plans that actually exist, priced from TIERS.
+ *
+ * This listed two — "Free" and "Premium, $11.11/month" — which was wrong in
+ * four ways at once: Premium is not a plan name (it is Mapped+), Mapped
+ * Complete was missing entirely, annual billing was not mentioned although it
+ * is a quarter cheaper, and the prices were typed in by hand where they could
+ * drift from what Stripe charges. Prices now come from the same constants the
+ * checkout and the account screen use.
+ */
 const PLANS = [
-  { name: "Free", price: "$0", per: "forever", tagline: "The daily basics, always free.", featured: false, btn: "Start free",
-    perks: ["Daily almanac & moon phase", "Your full birth chart", "One tarot card a day", "Basic sky map"] },
-  { name: "Premium", price: "$11.11", per: "/ month", tagline: "The whole sky, unlocked.", featured: true, btn: "Go Premium",
-    perks: ["Everything in Free", "Unlimited tarot & full spreads", "Ask Dolly about your chart", "Weekly & monthly almanac", "Rituals, journal & synastry"] },
+  {
+    name: TIERS.free.name,
+    price: "$0",
+    per: "forever",
+    year: null,
+    tagline: "The daily basics, always free.",
+    featured: false,
+    btn: "Start free",
+    perks: [
+      "Daily almanac & moon phase",
+      "Your full birth chart, Western or Vedic",
+      "One oracle deck, and a card a day",
+      "Journal, Learn and the sky map",
+    ],
+  },
+  {
+    name: TIERS.mid.name,
+    price: `$${TIERS.mid.price.toFixed(2)}`,
+    per: "/ month",
+    year: `or $${TIERS.mid.annualPrice} a year`,
+    tagline: "Everything written for your chart.",
+    featured: true,
+    btn: "Start free",
+    perks: [
+      "Everything in Free",
+      "Dolly, every day — your chart, your timing, your people",
+      "Daily horoscopes written for your chart",
+      "Unlimited card pulls and full spreads",
+      "Astrocartography, rituals and full transits",
+      "Your partner on the map, read in full depth",
+    ],
+  },
+  {
+    name: TIERS.max.name,
+    price: `$${TIERS.max.price.toFixed(2)}`,
+    per: "/ month",
+    year: `or $${TIERS.max.annualPrice} a year`,
+    tagline: "More room with Dolly, and everyone on your map.",
+    featured: false,
+    // Not a bare "Start free": the opening trial is Mapped+, not Complete, and
+    // a free-trial label on the dearest plan promises something it is not.
+    btn: "Start free, upgrade later",
+    perks: [
+      `Everything in ${TIERS.mid.name}`,
+      "Three times the time with Dolly",
+      "Everyone on your map — family, friends, colleagues",
+      "Every oracle deck, included",
+    ],
+  },
 ];
 
 // ─── Starfield for the plum panels (deterministic) ──────────────────────────
@@ -151,9 +234,14 @@ export default function WebLanding() {
             <Link href="/onboarding" style={{ fontSize: 16, fontWeight: 700, padding: "15px 30px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 32%, transparent)" }}>Start free — no card</Link>
             <a href="#features" style={{ fontSize: 16, fontWeight: 600, padding: "15px 26px", borderRadius: 999, background: "transparent", color: "var(--fg)", border: "1px solid var(--hair)", display: "inline-flex", alignItems: "center", gap: 9 }}>Explore features <span style={{ color: "var(--brass)" }}>→</span></a>
           </div>
+          {/* Was five gold stars and "Loved by 40,000+ daily sky-watchers".
+              There are no ratings and there are no 40,000 readers. Says what
+              the app costs to try instead, which is true and is the thing
+              somebody standing here actually wants to know. */}
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 26 }}>
-            <div style={{ display: "flex", gap: 2, color: "var(--brass)", fontSize: 15 }}>★★★★★</div>
-            <span style={{ fontSize: 13, color: "var(--muted)" }}>Loved by <strong style={{ color: "var(--fg2)" }}>40,000+</strong> daily sky-watchers</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>
+              Free to start, no card. {TRIAL_DAYS} days of {TIERS.mid.name} included.
+            </span>
           </div>
         </div>
         <div style={{ position: "relative", height: 520 }}>
@@ -278,13 +366,16 @@ export default function WebLanding() {
       </section>
 
       {/* ===== TESTIMONIALS ===== */}
+      {QUOTES.length > 0 && (
       <section style={{ borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", background: "var(--soft)" }}>
         <div style={{ maxWidth: 1240, margin: "0 auto", padding: "80px 32px" }}>
           <h2 style={{ ...sectionH2, fontSize: 38, textAlign: "center", marginBottom: 46 }}>A daily habit that stuck</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 22 }}>
             {QUOTES.map((q) => (
               <div key={q.name} style={{ borderRadius: 20, padding: "28px 26px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 18px var(--shadow)" }}>
-                <div style={{ color: "var(--brass)", fontSize: 14, marginBottom: 14 }}>★★★★★</div>
+                {/* No star row: a quote is something somebody said, a rating
+                    is a number they gave, and the template used to attach five
+                    of them to every quote whether or not one existed. */}
                 <p style={{ fontFamily: "var(--deco)", fontSize: 18, fontStyle: "italic", lineHeight: 1.5, color: "var(--fg)", margin: "0 0 20px", textWrap: "pretty" }}>“{q.text}”</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <span style={{ width: 38, height: 38, borderRadius: "50%", background: "color-mix(in srgb, var(--brass) 18%, transparent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--deco)", fontWeight: 600, color: "var(--brass)" }}>{q.initial}</span>
@@ -298,6 +389,7 @@ export default function WebLanding() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ===== PRICING ===== */}
       <section style={{ maxWidth: 1000, margin: "0 auto", padding: "96px 32px" }}>
@@ -306,7 +398,7 @@ export default function WebLanding() {
           <h2 style={{ ...sectionH2, fontSize: 44, marginBottom: 12 }}>Simple, honest pricing</h2>
           <p style={{ fontSize: 16, color: "var(--fg2)", margin: 0 }}>Free forever for the daily basics. Go deeper whenever you&rsquo;re ready.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24, alignItems: "stretch" }}>
           {PLANS.map((p) => (
             <div key={p.name} style={{
               position: "relative", borderRadius: 24, padding: "36px 32px", display: "flex", flexDirection: "column",
@@ -314,12 +406,17 @@ export default function WebLanding() {
               border: p.featured ? "1.5px solid var(--brass)" : "1px solid var(--hair)",
               boxShadow: p.featured ? "0 16px 44px color-mix(in srgb, var(--brass) 22%, var(--shadow))" : "0 6px 24px var(--shadow)",
             }}>
-              {p.featured && <span style={{ position: "absolute", top: 20, right: 20, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "6px 12px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Most loved</span>}
+              {p.featured && <span style={{ position: "absolute", top: 20, right: 20, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "6px 12px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Recommended</span>}
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 12px" }}>{p.name}</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
                 <span style={{ fontFamily: "var(--deco)", fontSize: 52, fontWeight: 500, color: "var(--fg)", lineHeight: 1 }}>{p.price}</span>
                 <span style={{ fontSize: 15, color: "var(--muted)" }}>{p.per}</span>
               </div>
+              {/* Annual exists and is a quarter cheaper; a pricing table that
+                  shows only the dearer way to pay is not honest pricing. */}
+              {p.year && (
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>{p.year}</p>
+              )}
               <p style={{ fontSize: 14, color: "var(--fg2)", margin: "0 0 22px" }}>{p.tagline}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 26 }}>
                 {p.perks.map((pk) => (
@@ -338,6 +435,20 @@ export default function WebLanding() {
             </div>
           ))}
         </div>
+        {/*
+          What happens after the button. A pricing table with subscribe
+          buttons and no renewal terms is the first thing an app store
+          reviewer looks for, and the trial was named nowhere on this page at
+          all — so the "Start free" under a paid plan read as a free plan.
+        */}
+        <p style={{ maxWidth: 680, margin: "28px auto 0", textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12.5, lineHeight: 1.6, color: "var(--muted)" }}>
+          Every new account opens with {TRIAL_DAYS} days of {TIERS.mid.name}, no card needed.{" "}
+          After that, {TIERS.mid.name} and {TIERS.max.name}{" "}
+          renew at the price shown until you cancel, and you keep access to the end of the period
+          you have paid for. Cancel any time from Account
+          &rarr; Your plan. Prices in USD. AI features have usage limits &mdash; see the{" "}
+          <Link href="/terms" style={{ color: "inherit", textDecoration: "underline" }}>Terms</Link>.
+        </p>
       </section>
 
       {/* ===== CTA BAND ===== */}
