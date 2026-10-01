@@ -55,6 +55,16 @@ export function TierProvider({ children }: { children: ReactNode }) {
   const [trialLeft, setTrialLeft] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Which signed-in user the current `tier` was computed for — null for
+   * nobody, undefined before the first read has finished.
+   *
+   * The auth listener below compares against this to decide whether anything
+   * has actually changed, so a token refresh every hour does not cost a
+   * profile read.
+   */
+  const resolvedForRef = useRef<string | null | undefined>(undefined);
+
   const fetchTier = useCallback(async (opts?: { fresh?: boolean }) => {
     // refreshTier is called right after something changed the tier (a promo
     // redemption, a return from checkout), so it has to bypass the cache or it
@@ -66,6 +76,7 @@ export function TierProvider({ children }: { children: ReactNode }) {
       // of two places that additionally paid for a networked auth.getUser().
       const profile = await getProfile();
       const userId = profile?.id ?? null;
+      resolvedForRef.current = userId;
       if (!userId) {
         setTier("free");
         setLoading(false);
@@ -105,6 +116,46 @@ export function TierProvider({ children }: { children: ReactNode }) {
   }, [fetchTier]);
 
   /**
+   * Read the tier again whenever WHO is signed in changes.
+   *
+   * Without this, the tier was read exactly once, on mount, and never again.
+   * That survived only because this provider used to be mounted inside
+   * src/app/(tabs)/layout.tsx, which renders nothing until getSession() and a
+   * profiles round trip have both come back — so by the time it mounted, the
+   * session was always there. Hoisting it to the root layout (so /account and
+   * /rectification could see the tier at all) moved that single read to first
+   * paint, which is BEFORE supabase has restored the session from storage.
+   * The read then found no session, settled on "free", and nothing ever
+   * asked again.
+   *
+   * The visibilitychange path below could not rescue it either: it only
+   * re-reads when Stripe disagrees with what is being shown, and for an
+   * account whose tier was granted in the database rather than bought — no
+   * Stripe customer at all — Stripe says "free" too, which agrees. So a
+   * Mapped+ account with no subscription latched on free for the life of the
+   * page, and Dolly refused every message.
+   *
+   * INITIAL_SESSION covers exactly that race. SIGNED_IN and SIGNED_OUT cover
+   * switching accounts without a page load, which was never handled here
+   * either. Comparing the user id means TOKEN_REFRESHED, which fires roughly
+   * hourly with the same user, costs nothing.
+   */
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user?.id ?? null;
+      if (uid === resolvedForRef.current) return;
+      // Claim it before the read finishes, so two events in quick succession
+      // do not both start one.
+      resolvedForRef.current = uid;
+      // fresh: AccountIsolation invalidates the shared profile cache on auth
+      // events too, but listener order is not guaranteed — this must not read
+      // a row cached for the previous account.
+      void fetchTier({ fresh: true });
+    });
+    return () => data.subscription.unsubscribe();
+  }, [fetchTier]);
+
+  /**
    * Reconcile with Stripe when the app comes back to the foreground.
    *
    * Checkout finishes OUTSIDE the app now — Apple's 3.1.1 means the native
@@ -123,14 +174,30 @@ export function TierProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      /**
+       * Before the throttle, not after it.
+       *
+       * There is a session, and the tier on screen was resolved for somebody
+       * else — or for nobody. That is the stuck state described on the auth
+       * listener above, and the Stripe comparison further down cannot rescue
+       * it, because an account with no Stripe customer agrees that it is
+       * "free". This is a read of the local profile row, not a Stripe call,
+       * so it does not belong behind a throttle whose whole purpose is to
+       * ration Stripe calls.
+       */
+      if (resolvedForRef.current !== session.user.id) {
+        await fetchTier({ fresh: true });
+      }
+
       // A ref, not a local: `tier` is in this effect's deps, so the effect
       // re-runs whenever the tier resolves. A local counter would be reset by
       // that re-run and the throttle would not hold across it.
       if (Date.now() - lastSyncRef.current < 60_000) return;
       lastSyncRef.current = Date.now();
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
         const res = await fetch(`${API_BASE}/api/stripe/sync`, {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}` },

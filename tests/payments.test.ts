@@ -281,3 +281,35 @@ test("rectification asks the gate from an effect, and uses the answer", () => {
   assert.match(src, /useEffect\(\(\) => \{\s*if \(tierLoading\) return;/);
   assert.match(src, /!tierLoading && allowed/, "the answer is still not used to gate the flow");
 });
+
+/* ─── The tier has to be re-read when who is signed in changes ─── */
+
+test("TierProvider re-reads the tier on auth changes", () => {
+  // It read the tier exactly once, on mount, and never again. That survived
+  // only because the provider used to sit inside (tabs), which renders
+  // nothing until getSession() and a profiles round trip have both returned.
+  // At the root it mounts on first paint, and signing in without a page load
+  // — a client-side navigation — never refreshed it at all. AccountIsolation
+  // already drops the cached profile row on every auth event precisely
+  // because entitlements resolve through it; nothing told this to re-read.
+  const src = read("src/components/TierProvider.tsx");
+  assert.match(src, /onAuthStateChange/, "the provider never listens for auth");
+  assert.match(src, /resolvedForRef/, "nothing tracks who the tier was resolved for");
+  const listener = src.slice(src.indexOf("onAuthStateChange"));
+  assert.match(listener.slice(0, 600), /fetchTier\(\{ fresh: true \}\)/, "it re-reads from the cache");
+});
+
+test("a stuck tier is recovered before the Stripe throttle, not after", () => {
+  // The foreground path re-read only when Stripe DISAGREED with what was on
+  // screen — and for an account granted its tier in the database, with no
+  // Stripe customer at all, Stripe says "free" too. So the one path that
+  // could have rescued a wrong tier agreed with it. The recovery is a local
+  // profile read, so it must not sit behind a throttle that exists to ration
+  // Stripe calls.
+  const src = read("src/components/TierProvider.tsx");
+  const fn = src.slice(src.indexOf("const onVisible"), src.indexOf("document.addEventListener"));
+  const recovery = fn.indexOf("resolvedForRef.current !== session.user.id");
+  const throttle = fn.indexOf("lastSyncRef.current < 60_000");
+  assert.ok(recovery > -1, "there is no stuck-state recovery");
+  assert.ok(recovery < throttle, "the recovery is behind the Stripe throttle");
+});
