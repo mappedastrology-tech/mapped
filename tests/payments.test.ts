@@ -313,3 +313,33 @@ test("a stuck tier is recovered before the Stripe throttle, not after", () => {
   assert.ok(recovery > -1, "there is no stuck-state recovery");
   assert.ok(recovery < throttle, "the recovery is behind the Stripe throttle");
 });
+
+/* ─── Stripe only gets to revoke what Stripe granted ─── */
+
+test("the sync route never downgrades an account Stripe did not grant", () => {
+  // Not every paid account came through checkout — a comp, a tester, support
+  // making something right, or a promo code all set the tier directly. None
+  // of them have a subscription, so Stripe correctly reports nothing
+  // entitled. Writing "free" on the strength of that revokes a tier somebody
+  // deliberately gave, and this route runs on every app foreground, so it
+  // would land within a minute of them opening the app.
+  const src = read("src/app/api/stripe/sync/route.ts");
+  assert.match(src, /stripeOwnsTier/, "nothing distinguishes a lapse from a grant");
+  assert.match(
+    src,
+    /!!best \|\| !!profile\?\.stripe_subscription_id/,
+    "a customer id alone is being treated as evidence Stripe owns the tier",
+  );
+  // The column must be left alone, not written as null.
+  assert.match(src, /tier === undefined \? \{\} : \{ tier \}/);
+  // And the route has to read the column it now depends on.
+  assert.match(src, /select\("stripe_customer_id, stripe_subscription_id, tier"\)/);
+});
+
+test("a genuinely lapsed subscriber is still downgraded", () => {
+  // The fix must not turn "cancelled three months ago" into permanent access.
+  // A profile that carries a stripe_subscription_id is one Stripe granted, so
+  // Stripe is entitled to take it away.
+  const src = read("src/app/api/stripe/sync/route.ts");
+  assert.match(src, /stripeOwnsTier \? "free" : undefined/);
+});

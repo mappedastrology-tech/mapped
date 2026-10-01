@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("stripe_customer_id, tier")
+      .select("stripe_customer_id, stripe_subscription_id, tier")
       .eq("id", user.id)
       .single();
 
@@ -112,7 +112,27 @@ export async function POST(request: Request) {
       if (!best || RANK[tierOf(sub)] > RANK[tierOf(best)]) best = sub;
     }
 
-    const tier = best ? tierOf(best) : "free";
+    /**
+     * Never downgrade somebody Stripe was never the source of truth for.
+     *
+     * Not every paid account came through checkout. A tier can be granted in
+     * the database — a comp, a friend, a tester, support making something
+     * right — and a promo code does the same thing. None of those have a
+     * subscription, so Stripe correctly reports nothing entitled, and writing
+     * "free" on the strength of that silently revokes a tier somebody
+     * deliberately gave. This route runs on every app foreground, so the
+     * revocation would land within a minute of them opening the app, with no
+     * event and no record of why.
+     *
+     * A customer id alone is not evidence: anyone who ever opened checkout —
+     * or who shares an email with a Stripe customer, which is how we match
+     * when the id is missing — has one. The evidence that Stripe owns this
+     * account's tier is a subscription: one live now, or one we recorded
+     * earlier and that has since ended. That second case is the real lapse,
+     * and it still downgrades.
+     */
+    const stripeOwnsTier = !!best || !!profile?.stripe_subscription_id;
+    const tier = best ? tierOf(best) : stripeOwnsTier ? "free" : undefined;
     const status = best?.status ?? subs.data[0]?.status ?? null;
 
     /**
@@ -136,7 +156,9 @@ export async function POST(request: Request) {
     await admin
       .from("profiles")
       .update({
-        tier,
+        // Omitted entirely, not set to null, when Stripe does not own this
+        // account's tier — a key that is absent is a column left alone.
+        ...(tier === undefined ? {} : { tier }),
         subscription_status: status,
         stripe_subscription_id: best?.id ?? null,
         subscription_interval: interval,
@@ -145,7 +167,15 @@ export async function POST(request: Request) {
       })
       .eq("id", user.id);
 
-    return NextResponse.json({ tier, status, interval, periodEnd, cancelAtPeriodEnd });
+    // The caller compares this against what it is showing, so report the tier
+    // the account actually has, not the one Stripe would have picked.
+    return NextResponse.json({
+      tier: tier ?? profile?.tier ?? "free",
+      status,
+      interval,
+      periodEnd,
+      cancelAtPeriodEnd,
+    });
   } catch (err) {
     console.error("[stripe] sync failed:", err);
     // Deliberately vague: the reader cannot act on a Stripe API error, and
