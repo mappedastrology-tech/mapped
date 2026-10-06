@@ -20,41 +20,15 @@ export interface SkyPerson {
   sun: string | null;
 }
 
-/**
- * A place on the map, as a star.
- *
- * Places used to be a single fixed dot wired straight to the astrocartography
- * screen — one door, not a branch. But a place belongs in the constellation on
- * the same footing as a person: you at the centre, branching out to partner,
- * family, friends and the places you have lived. Somewhere you spent six years
- * is at least as much a part of your map as somebody you met once.
- */
-export interface SkyPlace {
-  id: string;
-  name: string;
-  /** Where the chart was cast, versus somewhere lived since. */
-  kind: "born" | "lived";
-}
-
-const PLACES_GROUP = "places";
-
-const GROUP_META: Record<string, { label: string; color: string; angle: number; r?: number }> = {
+const GROUP_META: Record<string, { label: string; color: string; angle: number }> = {
   circle: { label: "Partner", color: "#c98a7a", angle: -90 },       // top
   origin: { label: "Origin Family", color: "#B8A0D2", angle: 148 }, // lower-left
   friend: { label: "Friends", color: "#6a9a4a", angle: 32 },        // lower-right
-  /**
-   * Straight down, which is where the old single "Your places" star sat, so
-   * the branch grows out of the spot people already know.
-   *
-   * Further out than the rest, because every cluster hangs its label above
-   * itself and this is the only one directly beneath You — at the shared
-   * radius the pill landed on top of "You / Gemini". Pushing the branch out
-   * gives the label its own air without making it the one group that reads
-   * bottom-up.
-   */
-  [PLACES_GROUP]: { label: "Places", color: "#c9a961", angle: 90, r: 178 },
 };
-const GROUP_ORDER = ["circle", "origin", "friend", PLACES_GROUP];
+const GROUP_ORDER = ["circle", "origin", "friend"];
+
+/** The brass of the "Your places" star — the one node that is not a person. */
+const PLACES_COLOR = "#c9a961";
 
 /**
  * How many stars the sky holds before a search appears.
@@ -78,17 +52,13 @@ const CLAMP = 380;
 const MIN_SCALE = 0.45;
 const MAX_SCALE = 2.6;
 
-type SkyNode = { id: string; name: string; group: string; sun: string | null; kind?: "born" | "lived" };
-type LaidNode = SkyNode & { x: number; y: number; color: string };
+type LaidNode = SkyPerson & { x: number; y: number; color: string };
 type Cluster = { group: string; label: string; color: string; cx: number; cy: number; lx: number; ly: number };
 
-// Group people and places into labelled clusters around You (0,0).
-function layout(people: SkyPerson[], places: SkyPlace[]): { nodes: LaidNode[]; clusters: Cluster[] } {
-  const groups: Record<string, SkyNode[]> = { circle: [], origin: [], friend: [], [PLACES_GROUP]: [] };
+// Group people into labelled clusters around You (0,0).
+function layout(people: SkyPerson[]): { nodes: LaidNode[]; clusters: Cluster[]; placesY: number } {
+  const groups: Record<string, SkyPerson[]> = { circle: [], origin: [], friend: [] };
   people.forEach((p) => { (groups[p.group] || groups.friend).push(p); });
-  places.forEach((pl) => {
-    groups[PLACES_GROUP].push({ id: pl.id, name: pl.name, group: PLACES_GROUP, sun: null, kind: pl.kind });
-  });
   const present = GROUP_ORDER.filter((g) => groups[g].length > 0);
   const nodes: LaidNode[] = [];
   const clusters: Cluster[] = [];
@@ -113,7 +83,7 @@ function layout(people: SkyPerson[], places: SkyPlace[]): { nodes: LaidNode[]; c
   present.forEach((g) => {
     const meta = GROUP_META[g];
     const ang = (meta.angle * Math.PI) / 180;
-    const R = (meta.r ?? 122) + spread;
+    const R = 122 + spread;
     const cx = Math.cos(ang) * R;
     const cy = Math.sin(ang) * R;
     const arr = groups[g];
@@ -137,27 +107,32 @@ function layout(people: SkyPerson[], places: SkyPlace[]): { nodes: LaidNode[]; c
       nodes.push({ ...p, x, y, color: meta.color });
     });
   });
-  return { nodes, clusters };
+  /**
+   * Where the single "Your places" star sits — straight below You.
+   *
+   * It is not a group and has nothing hanging off it: one star, one tap, the
+   * astrocartography map. But it still has to move out of the way as the
+   * people clusters grow, or a deep Origin Family lands on top of it.
+   */
+  const placesY = 132 + spread;
+
+  return { nodes, clusters, placesY };
 }
 
 export default function NightSky({
   people,
-  places,
   userSun,
   hasChart,
   onSelectPerson,
-  onSelectPlace,
   onSelectSelf,
   onSelectGroup,
   onAdd,
   onOpenPlaces,
 }: {
   people: SkyPerson[];
-  places: SkyPlace[];
   userSun: string | null;
   hasChart: boolean;
   onSelectPerson: (id: string) => void;
-  onSelectPlace: (id: string) => void;
   onSelectSelf: () => void;
   onSelectGroup: (group: string) => void;
   onAdd: (category: string) => void;
@@ -174,7 +149,7 @@ export default function NightSky({
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const { nodes, clusters } = useMemo(() => layout(people, places), [people, places]);
+  const { nodes, clusters, placesY } = useMemo(() => layout(people), [people]);
 
   const apply = () => {
     if (midRef.current) {
@@ -280,7 +255,7 @@ export default function NightSky({
    */
   const fitScale = () => {
     const el = skyRef.current;
-    if (!el || nodes.length === 0) return 1;
+    if (!el) return 1;
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return 1;
     /**
@@ -293,8 +268,10 @@ export default function NightSky({
      * star's halo and the name printed under it.
      */
     const halo = 72;
-    const maxX = Math.max(...nodes.map((n) => Math.abs(n.x))) + halo;
-    const maxY = Math.max(...nodes.map((n) => Math.abs(n.y))) + halo;
+    const maxX = Math.max(...nodes.map((n) => Math.abs(n.x)), 0) + halo;
+    // placesY included: the brass star hangs below everything and was the
+    // first thing to fall off the bottom edge when the sky filled up.
+    const maxY = Math.max(...nodes.map((n) => Math.abs(n.y)), placesY) + halo;
     const fit = Math.min(r.width / 2 / maxX, r.height / 2 / maxY);
     return Math.max(MIN_SCALE, Math.min(1, fit));
   };
@@ -308,6 +285,7 @@ export default function NightSky({
   useEffect(() => {
     if (fittedFor.current === nodes.length) return;
     fittedFor.current = nodes.length;
+    // placesY moves with the same spread, so one signal covers both.
     pan.current = { x: 0, y: 0 };
     scale.current = fitScale();
     apply();
@@ -395,6 +373,8 @@ export default function NightSky({
             {clusters.map((c) => (
               <line key={`c-${c.group}`} x1={550} y1={550} x2={550 + c.cx} y2={550 + c.cy} stroke={c.color} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             ))}
+            {/* You → Your places, the one thread that does not lead to a person */}
+            <line x1={550} y1={550} x2={550} y2={550 + placesY} stroke={PLACES_COLOR} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             {nodes.map((n) => {
               const cl = clusters.find((c) => c.group === n.group)!;
               return <line key={`n-${n.id}`} x1={550 + cl.cx} y1={550 + cl.cy} x2={550 + n.x} y2={550 + n.y} stroke={n.color} strokeOpacity="0.3" strokeWidth="1" />;
@@ -403,24 +383,21 @@ export default function NightSky({
 
           {/* cluster labels — Origin Family is a tappable pill that opens the family panel */}
           {clusters.map((c) => (
-            c.group === "origin" || c.group === PLACES_GROUP ? (
+            c.group === "origin" ? (
               <button
                 key={`l-${c.group}`}
-                onClick={tap(() => (c.group === PLACES_GROUP ? onOpenPlaces() : onSelectGroup("origin")))}
-                aria-label={c.group === PLACES_GROUP ? "Places — open the world map of your planetary lines" : "Origin Family — view traits & patterns"}
+                onClick={tap(() => onSelectGroup("origin"))}
+                aria-label="Origin Family — view traits & patterns"
                 style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1, fontFamily: "inherit",
-                color: c.color, padding: "8px 15px", borderRadius: 16,
-                background: c.group === PLACES_GROUP ? "rgba(201,169,97,.20)" : "rgba(184,160,210,.22)",
+                color: c.color, padding: "8px 15px", borderRadius: 16, background: "rgba(184,160,210,.22)",
                 border: `1px solid ${c.color}`, cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,.55)",
               }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
                   {c.label} <span aria-hidden="true" style={{ opacity: 0.85, fontSize: 13 }}>›</span>
                 </span>
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>
-                  {c.group === PLACES_GROUP ? "tap for the world map" : "tap for traits & patterns"}
-                </span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; patterns</span>
               </button>
             ) : (
               <span key={`l-${c.group}`} style={{
@@ -441,29 +418,8 @@ export default function NightSky({
             {hasChart && userSun && <span style={{ fontFamily: "var(--font-ui)", fontSize: 9, color: "#cdbfa6", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{userSun}</span>}
           </button>
 
-          {/* people and places — stars */}
+          {/* people — stars */}
           {nodes.map((person, i) => (
-            person.group === PLACES_GROUP ? (
-              /* A place wears a globe rather than an initial — "L" could be
-                 Lisbon or Logan, and on a map of your life those are not the
-                 same kind of thing. Where the chart was cast gets a filled
-                 centre, so your beginning reads differently from somewhere you
-                 moved to later. */
-              <button
-                key={person.id}
-                onClick={tap(() => onSelectPlace(person.id))}
-                aria-label={`${person.name}${person.kind === "born" ? " — where your chart was cast" : ""}`}
-                style={{ position: "absolute", left: person.x, top: person.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: `ns-drift ${6 + (i % 3)}s ease-in-out infinite` }}
-              >
-                <span style={{ position: "relative", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ position: "absolute", inset: -6, borderRadius: 999, background: `radial-gradient(circle, ${person.color}99, ${person.color}22 60%, transparent 74%)` }} />
-                  <span style={{ position: "relative", width: 30, height: 30, borderRadius: 999, background: person.kind === "born" ? `${person.color}33` : "rgba(10,7,16,.6)", border: `1px solid ${person.color}`, display: "flex", alignItems: "center", justifyContent: "center", color: person.color }}>
-                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
-                  </span>
-                </span>
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name}</span>
-              </button>
-            ) : (
             <button key={person.id} onClick={tap(() => onSelectPerson(person.id))} style={{ position: "absolute", left: person.x, top: person.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: `ns-drift ${5 + (i % 4)}s ease-in-out infinite` }}>
               <span style={{ position: "relative", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ position: "absolute", inset: -6, borderRadius: 999, background: `radial-gradient(circle, ${person.color}99, ${person.color}22 60%, transparent 74%)` }} />
@@ -473,8 +429,27 @@ export default function NightSky({
               </span>
               <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name.split(" ")[0]}</span>
             </button>
-            )
           ))}
+
+          {/*
+            Your places — one star, below You, with nothing hanging off it.
+            Not a group: the branches are for people. This is a single door to
+            the astrocartography map, and it moves out with the rest of the sky
+            as the people clusters grow so a deep family never lands on it.
+          */}
+          <button
+            onClick={tap(onOpenPlaces)}
+            aria-label="Your places — open your astrocartography map"
+            style={{ position: "absolute", left: 0, top: placesY, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: "ns-drift 7s ease-in-out infinite" }}
+          >
+            <span style={{ position: "relative", width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ position: "absolute", inset: -7, borderRadius: 999, background: `radial-gradient(circle, ${PLACES_COLOR}99, ${PLACES_COLOR}2e 60%, transparent 74%)` }} />
+              <span style={{ position: "relative", width: 32, height: 32, borderRadius: 999, background: "rgba(10,7,16,.6)", border: `1px solid ${PLACES_COLOR}`, display: "flex", alignItems: "center", justifyContent: "center", color: PLACES_COLOR }}>
+                <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
+              </span>
+            </span>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>Your places</span>
+          </button>
 
         </div>
       </div>

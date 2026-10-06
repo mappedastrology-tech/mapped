@@ -15,38 +15,34 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const sky = () => read("src/app/(tabs)/maps/NightSky.tsx");
 
-/* ─── Places are a branch, not a door to somewhere else ─── */
+/* ─── Your places is one star, and one door ─── */
 
-test("places is a group in the constellation, like partner and family", () => {
-  // It was a single fixed dot wired straight to the astrocartography screen —
-  // one door, not a branch. A place you lived for six years belongs on the map
-  // on the same footing as a person.
+test("places is not a group — the branches are for people", () => {
+  // I built it as a fourth branch with a star per city. That is not what the
+  // map is: the constellation is the people in your orbit, and places is the
+  // single door out of it to the astrocartography map.
   const src = sky();
-  assert.match(src, /const PLACES_GROUP = "places"/);
-  assert.match(src, /GROUP_ORDER = \["circle", "origin", "friend", PLACES_GROUP\]/);
-  assert.match(src, /\[PLACES_GROUP\]: \{ label: "Places"/);
+  assert.doesNotMatch(src, /PLACES_GROUP/, "places is a cluster again");
+  assert.match(src, /GROUP_ORDER = \["circle", "origin", "friend"\]/);
+  assert.doesNotMatch(src, /SkyPlace/, "the per-place type is back");
 });
 
-test("the old hand-placed places dot is gone", () => {
-  // Two "Your places" affordances, one of them positioned by hand at a
-  // hardcoded y, would drift apart the moment the layout changed.
-  const src = strip(sky());
-  assert.doesNotMatch(src, /Astrocartography — your places, as a star on the map/);
-  assert.doesNotMatch(src, /x2=\{550\} y2=\{682\}/, "the hardcoded branch line is still drawn");
+test("one Your places star, below You, that opens the map", () => {
+  const src = sky();
+  assert.match(src, /aria-label="Your places — open your astrocartography map"/);
+  assert.match(src, /onClick=\{tap\(onOpenPlaces\)\}/);
+  // Exactly one — two would drift apart the moment the layout changed.
+  assert.equal((src.match(/>Your places</g) ?? []).length, 1);
 });
 
-test("place stars are told apart from people, and birth from lived", () => {
-  // An initial is ambiguous — "L" could be Lisbon or Logan — and on a map of
-  // your life those are not the same kind of thing.
+test("the places star moves out as the people clusters grow", () => {
+  // It sits straight below You at a fixed offset, so a deep Origin Family
+  // used to land on top of it.
   const src = sky();
-  assert.match(src, /person\.group === PLACES_GROUP \?/, "places render the same as people");
-  assert.match(src, /kind === "born"/, "nothing distinguishes where the chart was cast");
-});
-
-test("the Places label opens the world map", () => {
-  const src = sky();
-  assert.match(src, /c\.group === "origin" \|\| c\.group === PLACES_GROUP/);
-  assert.match(src, /onOpenPlaces\(\) : onSelectGroup\("origin"\)/);
+  assert.match(src, /const placesY = 132 \+ spread/);
+  assert.match(src, /top: placesY/);
+  // And the sky has to zoom to hold it, or it falls off the bottom edge.
+  assert.match(src, /Math\.abs\(n\.y\)\), placesY\)/);
 });
 
 /* ─── The search earns its place by waiting ─── */
@@ -81,7 +77,7 @@ test("branches push out as groups get deeper", () => {
   // fixed radius those rows grew straight into the next group.
   const src = sky();
   assert.match(src, /const deepestRows = /);
-  assert.match(src, /const R = \(meta\.r \?\? 122\) \+ spread/);
+  assert.match(src, /const R = 122 \+ spread/);
 });
 
 test("the sky zooms itself to fit what is in it", () => {
