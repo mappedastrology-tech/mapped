@@ -170,7 +170,7 @@ test("the new billing column is pinned to the server like the others", () => {
   // profiles' "Users can update own profile" policy has no WITH CHECK, so a
   // billing column that the lock trigger does not pin can be PATCHed by any
   // authenticated client against its own row.
-  const sql = read("supabase/migrations/20260925b_subscription_cancel_at_period_end.sql");
+  const sql = read("supabase/migrations/20260925_subscription_cancel_at_period_end.sql");
   assert.match(sql, /add column if not exists subscription_cancel_at_period_end/);
   assert.match(
     sql,
