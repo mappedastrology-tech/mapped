@@ -15,18 +15,9 @@ import { useConstellation } from "./useConstellation";
 const SKY_W = 2400, SKY_H = 1600, VH = 620;
 const DEFAULT_PAN = { x: -612, y: -490 };
 
-const SAMPLE_YOU = { id: "you", name: "You", initials: "Y", rel: "The center", x: 1200, y: 800, signs: "Sun Cancer · Moon Pisces · Leo rising", color: "#c9a961" };
-type Person = { id: string; name: string; initials: string; rel: string; x: number; y: number; color: string; score: number; connLabel: string; harm: number; chall: number; fated: number; signs: string; summary: string };
-const SAMPLE_PEOPLE: Person[] = [
-  { id: "maya", name: "Maya", initials: "M", rel: "Partner", x: 770, y: 560, color: "#b5654a", score: 92, connLabel: "Deeply woven", harm: 8, chall: 2, fated: 3, signs: "Sun Taurus · Moon Cancer · Scorpio rising", summary: "Your water Moons meet her earth Sun — you feel everything, she makes it safe to. A rare, steadying love; the work is letting her slower pace soothe rather than worry you." },
-  { id: "priya", name: "Priya", initials: "P", rel: "Closest friend", x: 1660, y: 1080, color: "#c9a961", score: 88, connLabel: "Easy & bright", harm: 7, chall: 1, fated: 2, signs: "Sun Libra · Moon Gemini · Libra rising", summary: "Air to your water — she lifts you out of your depths and into the light. Conversations that run for hours. The friendship that feels like weather you both just live in." },
-  { id: "theo", name: "Theo", initials: "T", rel: "Best friend", x: 1720, y: 600, color: "#c9a961", score: 84, connLabel: "Adventurous", harm: 6, chall: 2, fated: 2, signs: "Sun Sagittarius · Moon Aries · Gemini rising", summary: "Fire to your water makes steam — he pushes you past your comfort, you soften his edges. Great for travel and big plans, trickier when you both need looking-after at once." },
-  { id: "rosa", name: "Rosa", initials: "R", rel: "Mother", x: 620, y: 900, color: "#7ba055", score: 81, connLabel: "Rooted", harm: 6, chall: 3, fated: 4, signs: "Sun Virgo · Moon Capricorn · Taurus rising", summary: "Earth holds your water. She is the ground you grew from — practical where you are tidal. The fated markers run deep here; old patterns, and the chance to gently rewrite them." },
-  { id: "nadia", name: "Nadia", initials: "N", rel: "Mentor", x: 1180, y: 420, color: "#7d9cc0", score: 79, connLabel: "Elevating", harm: 6, chall: 2, fated: 3, signs: "Sun Capricorn · Moon Virgo · Scorpio rising", summary: "Saturn between your charts — she asks more of you than you’d ask of yourself, and you rise to it. Not always comfortable, always worth it. The teacher your chart called in." },
-  { id: "jonah", name: "Jonah", initials: "J", rel: "Brother", x: 760, y: 1060, color: "#7ba055", score: 71, connLabel: "Spirited", harm: 5, chall: 4, fated: 2, signs: "Sun Aries · Moon Leo · Aries rising", summary: "Two strong currents — his fire, your water. You spark and you clash in equal measure. The love is never in question; the timing of who leads sometimes is." },
-  { id: "sam", name: "Sam", initials: "S", rel: "Colleague", x: 1820, y: 860, color: "#988b78", score: 66, connLabel: "Complementary", harm: 5, chall: 3, fated: 1, signs: "Sun Gemini · Moon Aquarius · Virgo rising", summary: "All air, all ideas — brilliant at work, where you supply the feeling and they supply the frame. Keep it in the studio; the emotional registers don’t always meet." },
-  { id: "lena", name: "Lena", initials: "L", rel: "Old friend", x: 1080, y: 1180, color: "#c9a961", score: 74, connLabel: "Enduring", harm: 5, chall: 2, fated: 3, signs: "Sun Pisces · Moon Scorpio · Cancer rising", summary: "A mirror — three water placements between you. You understand each other without speaking, which is a gift and, on heavy days, a riptide. Space keeps this one healthy." },
-];
+/** Where "You" sits at the centre of the sky, and nothing more. The signs come
+ *  from the real chart via useConstellation, or stay empty. */
+const YOU_NODE = { id: "you", name: "You", initials: "Y", rel: "The center", x: 1200, y: 800, signs: "", color: "#c9a961" };
 
 function ava(color: string, size: number, fs: number, breathe = false): React.CSSProperties {
   return {
@@ -65,10 +56,20 @@ export default function WebMaps() {
   const movedRef = useRef(false);
   const field = useMemo(() => starField(24680), []);
 
-  // Real connections when the user has any; otherwise the sample constellation.
+  /**
+   * Real connections, or none — never invented ones.
+   *
+   * This fell back to a sample cast when the user had nobody on their map, so
+   * a new account opened the Maps tab on a laptop and met eight strangers laid
+   * out as its own constellation: "Maya — Partner", "Rosa — Mother", "Jonah —
+   * Brother", each with a written synastry reading. It is presented as your
+   * map, with your name at the centre, so the only things you can conclude are
+   * that the app has data about you that it should not, or that none of this
+   * means anything. An empty sky and an invitation says the true thing.
+   */
   const live = useConstellation();
-  const people = live?.people ?? SAMPLE_PEOPLE;
-  const you = live ? { ...SAMPLE_YOU, signs: live.you.signs } : SAMPLE_YOU;
+  const people = live?.people ?? [];
+  const you = live ? { ...YOU_NODE, signs: live.you.signs } : { ...YOU_NODE, signs: "" };
 
   useEffect(() => {
     const measure = () => { if (vpRef.current) { const w = vpRef.current.clientWidth; if (w) setVw(w); } };
@@ -121,6 +122,16 @@ export default function WebMaps() {
             onPointerLeave={onUp}
             style={{ position: "relative", width: "100%", height: VH, overflow: "hidden", touchAction: "none", cursor: dragging ? "grabbing" : "grab" }}
           >
+            {/* Nobody on the map yet. Said plainly, over the empty sky. */}
+            {people.length === 0 && (
+              <div style={{ position: "absolute", inset: 0, zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, textAlign: "center", padding: "0 32px", pointerEvents: "none" }}>
+                <p style={{ fontFamily: "var(--deco)", fontSize: 26, color: "#f0e6d2", margin: 0 }}>Your sky is still empty.</p>
+                <p style={{ fontSize: 15, lineHeight: 1.6, color: "#cdbfa6", margin: 0, maxWidth: 420 }}>
+                  Add the people in your life and they&rsquo;ll appear here as stars, with the lines
+                  between your charts drawn in.
+                </p>
+              </div>
+            )}
             <div style={{ position: "absolute", left: 0, top: 0, width: SKY_W, height: SKY_H, transform: `translate(${pan.x}px, ${pan.y}px)`, transition: dragging ? undefined : "transform .5s cubic-bezier(.22,1,.36,1)" }}>
               <svg width={SKY_W} height={SKY_H} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
                 {people.map((p) => (

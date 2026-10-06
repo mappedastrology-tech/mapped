@@ -11,6 +11,25 @@ import { supabase } from "@/lib/supabase";
 import WebLanding from "@/components/web/WebLanding";
 import { isInstalledApp } from "@/lib/isNativeApp";
 
+/**
+ * A phone-sized browser, measured rather than sniffed.
+ *
+ * The same 1024px line the app uses everywhere else to mean "desktop" (see
+ * lib/useIsDesktop). A tablet in landscape counts as a desktop here, which is
+ * right: it has the room for the landing page.
+ *
+ * Read inside the effect, never during render, so it cannot desync the
+ * server-rendered HTML from the first client paint.
+ */
+function onAPhone(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.matchMedia("(max-width: 1023px)").matches;
+  } catch {
+    return false;
+  }
+}
+
 export default function Home() {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
@@ -33,13 +52,21 @@ export default function Home() {
           // Supabase unreachable but user has a session — send to home
           router.replace("/home");
         }
-      } else if (isInstalledApp()) {
+      } else if (isInstalledApp() || onAPhone()) {
         // Inside the app — native, or opened from the Home Screen — this must
         // never be the marketing page. Someone who has the app open doesn't
         // need to be sold it, and a native app that opens on a website (site
         // nav, "Start free", a footer) is the shape App Review rejects under
         // Guideline 4.2. They get the app's own front door: create a chart,
         // or sign in.
+        //
+        // And now a phone browser too. Nearly every link to Mapped is opened
+        // on a phone — it is sent in a message — and what landed was the
+        // desktop marketing site squeezed into 390px: a seven-item nav bar, a
+        // hero, a pricing table, a footer. The thing the sender wanted them to
+        // do, which is start a chart, was several screens down behind all of
+        // it. A laptop still gets the landing page, where it has room to work
+        // and where somebody researching rather than being invited arrives.
         router.replace("/welcome");
       } else {
         setChecked(true);
@@ -47,7 +74,7 @@ export default function Home() {
     }).catch(() => {
       // Can't reach Supabase at all. Same split: the app still has an
       // onboarding flow to show, the web has its landing page.
-      if (isInstalledApp()) router.replace("/welcome");
+      if (isInstalledApp() || onAPhone()) router.replace("/welcome");
       else setChecked(true);
     });
   }, [router]);

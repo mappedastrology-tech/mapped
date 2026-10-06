@@ -34,8 +34,11 @@ import ExportButton from "@/components/ExportButton";
 import { WORLD_COUNTRY_PATHS } from "@/lib/worldPaths";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import { DEFAULT_COORDS } from "@/lib/celestialMechanics";
-import NightSky from "./NightSky";
+import NightSky, { type SkyPlace } from "./NightSky";
 import { chartCalcParams, chartSystemFromChart, chartSystemFromRow, type ChartSystem } from "@/lib/astro/vedic/system";
+
+/** The one place everybody has: where the chart was cast. Not a timeline row. */
+const BORN_PLACE_ID = "born";
 
 /* ═══════════════════════════════════════════
    Error Boundary — catches rendering crashes
@@ -150,6 +153,8 @@ interface UserChart {
   bigThree: { sun: string; moon: string; rising: string };
   birthDate?: string;
   birthTime?: string;
+  /** Where the chart was cast — the first star on the places branch. */
+  cityName?: string;
   latitude?: number;
   longitude?: number;
   timezone?: string;
@@ -2461,6 +2466,31 @@ export default function MapsTab() {
   const [tlEnd, setTlEnd] = useState("");
   const [tlPresent, setTlPresent] = useState(false);
   const [expandedTimeline, setExpandedTimeline] = useState<string | null>(null);
+
+  /**
+   * The places branch of the constellation.
+   *
+   * Where the chart was cast comes first and always — it is the one place
+   * everybody has, and the map looked empty without it — then every chapter
+   * from the life timeline, oldest first, so the branch reads as a life in
+   * order rather than a bag of cities.
+   */
+  const skyPlaces: SkyPlace[] = useMemo(() => {
+    const out: SkyPlace[] = [];
+    const born = userChart?.cityName?.trim();
+    if (born) out.push({ id: BORN_PLACE_ID, name: born.split(",")[0].trim(), kind: "born" });
+    [...timelineEntries]
+      .sort((a, b) => String(a.startDate || "").localeCompare(String(b.startDate || "")))
+      .forEach((t) => {
+        const name = (t.cityName || "").split(",")[0].trim();
+        // The birth city is already the first star; a timeline entry for the
+        // same place would put two identical stars side by side.
+        if (name && name.toLowerCase() !== born?.split(",")[0].trim().toLowerCase()) {
+          out.push({ id: t.id, name, kind: "lived" });
+        }
+      });
+    return out;
+  }, [userChart?.cityName, timelineEntries]);
   const [editingTimelineId, setEditingTimelineId] = useState<string | null>(null);
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
@@ -2584,6 +2614,7 @@ export default function MapsTab() {
             bigThree: chartData.big_three,
             birthDate: chartData.birth_date,
             birthTime: chartData.birth_time,
+            cityName: chartData.city_name ?? undefined,
             latitude: chartData.latitude,
             longitude: chartData.longitude,
             timezone: chartData.timezone,
@@ -7474,6 +7505,16 @@ export default function MapsTab() {
         onSelectSelf={() => { setShowSelfView(true); setSelectedId(null); setSelfTab("transits"); if (!selfTransitData) fetchSelfTransits(); }}
         onSelectGroup={(g) => { if (g === "origin") setShowFamilyPanel(true); }}
         onAdd={(category) => openAddForm(category)}
+        places={skyPlaces}
+        onSelectPlace={(id) => {
+          // Same gates as the map itself, then open it with that chapter
+          // already unfolded — tapping Lisbon should land on Lisbon, not on a
+          // world map you then have to go looking through.
+          if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
+          if (gate("astrocartography")) return;
+          if (id !== BORN_PLACE_ID) setExpandedTimeline(id);
+          setShowAstroMap(true);
+        }}
         onOpenPlaces={() => {
           if (!shouldRenderTimeFeature("astrocartography")) { setShowBirthTimePlaceholder(true); return; }
           if (gate("astrocartography")) return;

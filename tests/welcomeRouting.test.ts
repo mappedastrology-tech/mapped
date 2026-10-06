@@ -52,8 +52,22 @@ test("signing out goes to the sign-in screen, not the website", () => {
 });
 
 test("the app's signed-out routes never send people to the marketing page", () => {
+  // The rule has since widened: a phone browser goes to /welcome too, because
+  // a link to Mapped is nearly always opened on a phone and the marketing site
+  // at 390px buries the one thing the sender wanted them to do. Still asserts
+  // that the signed-out root ends at /welcome, not at the website.
   const root = readFileSync("src/app/page.tsx", "utf8");
-  assert.match(root, /isInstalledApp\(\)\) router\.replace\("\/welcome"\)/);
+  assert.match(root, /isInstalledApp\(\) \|\| onAPhone\(\)\) \{?\s*(\/\/[^\n]*\n\s*)*/);
+  assert.match(root, /router\.replace\("\/welcome"\)/);
   const tabs = readFileSync("src/app/(tabs)/layout.tsx", "utf8");
   assert.match(tabs, /router\.replace\(isInstalledApp\(\) \? "\/welcome" : "\/"\)/);
+});
+
+test("a laptop still gets the landing page", () => {
+  // The widening must not become "nobody ever sees the marketing site". A
+  // desktop visitor — somebody researching rather than being invited — is
+  // still who that page is for.
+  const root = readFileSync("src/app/page.tsx", "utf8");
+  assert.match(root, /else \{\s*(\/\/[^\n]*\n\s*)*setChecked\(true\)/, "the desktop branch is gone");
+  assert.match(root, /return <WebLanding \/>/);
 });

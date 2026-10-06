@@ -20,12 +20,52 @@ export interface SkyPerson {
   sun: string | null;
 }
 
-const GROUP_META: Record<string, { label: string; color: string; angle: number }> = {
+/**
+ * A place on the map, as a star.
+ *
+ * Places used to be a single fixed dot wired straight to the astrocartography
+ * screen — one door, not a branch. But a place belongs in the constellation on
+ * the same footing as a person: you at the centre, branching out to partner,
+ * family, friends and the places you have lived. Somewhere you spent six years
+ * is at least as much a part of your map as somebody you met once.
+ */
+export interface SkyPlace {
+  id: string;
+  name: string;
+  /** Where the chart was cast, versus somewhere lived since. */
+  kind: "born" | "lived";
+}
+
+const PLACES_GROUP = "places";
+
+const GROUP_META: Record<string, { label: string; color: string; angle: number; r?: number }> = {
   circle: { label: "Partner", color: "#c98a7a", angle: -90 },       // top
   origin: { label: "Origin Family", color: "#B8A0D2", angle: 148 }, // lower-left
   friend: { label: "Friends", color: "#6a9a4a", angle: 32 },        // lower-right
+  /**
+   * Straight down, which is where the old single "Your places" star sat, so
+   * the branch grows out of the spot people already know.
+   *
+   * Further out than the rest, because every cluster hangs its label above
+   * itself and this is the only one directly beneath You — at the shared
+   * radius the pill landed on top of "You / Gemini". Pushing the branch out
+   * gives the label its own air without making it the one group that reads
+   * bottom-up.
+   */
+  [PLACES_GROUP]: { label: "Places", color: "#c9a961", angle: 90, r: 178 },
 };
-const GROUP_ORDER = ["circle", "origin", "friend"];
+const GROUP_ORDER = ["circle", "origin", "friend", PLACES_GROUP];
+
+/**
+ * How many stars the sky holds before a search appears.
+ *
+ * Below this you can see the whole constellation at a glance and a search box
+ * would be furniture. Above it, names start to overlap and finding one person
+ * means dragging around hunting for them — so the field appears, and only
+ * then. Clusters lay out three to a row, so this is about the point where the
+ * third row of the biggest group starts colliding with its neighbours.
+ */
+export const CROWDED_AT = 10;
 
 const ADD_OPTIONS: { cat: string; label: string; hint: string }[] = [
   { cat: "circle", label: "Your Home", hint: "Partner & children" },
@@ -34,23 +74,46 @@ const ADD_OPTIONS: { cat: string; label: string; hint: string }[] = [
 ];
 
 const CLAMP = 380;
-const MIN_SCALE = 0.6;
+// Low enough that a map with a dozen people still fits a phone at a glance.
+const MIN_SCALE = 0.45;
 const MAX_SCALE = 2.6;
 
-type LaidNode = SkyPerson & { x: number; y: number; color: string };
+type SkyNode = { id: string; name: string; group: string; sun: string | null; kind?: "born" | "lived" };
+type LaidNode = SkyNode & { x: number; y: number; color: string };
 type Cluster = { group: string; label: string; color: string; cx: number; cy: number; lx: number; ly: number };
 
-// Group people into labelled clusters around You (0,0).
-function layout(people: SkyPerson[]): { nodes: LaidNode[]; clusters: Cluster[] } {
-  const groups: Record<string, SkyPerson[]> = { circle: [], origin: [], friend: [] };
+// Group people and places into labelled clusters around You (0,0).
+function layout(people: SkyPerson[], places: SkyPlace[]): { nodes: LaidNode[]; clusters: Cluster[] } {
+  const groups: Record<string, SkyNode[]> = { circle: [], origin: [], friend: [], [PLACES_GROUP]: [] };
   people.forEach((p) => { (groups[p.group] || groups.friend).push(p); });
+  places.forEach((pl) => {
+    groups[PLACES_GROUP].push({ id: pl.id, name: pl.name, group: PLACES_GROUP, sun: null, kind: pl.kind });
+  });
   const present = GROUP_ORDER.filter((g) => groups[g].length > 0);
   const nodes: LaidNode[] = [];
   const clusters: Cluster[] = [];
+
+  /**
+   * The constellation opens out as it fills.
+   *
+   * Members stack three to a row, so a group of ten is four rows deep. At a
+   * fixed radius those rows grew straight into the next group — names landing
+   * on names, a friend sitting on top of a place — and the map stopped being
+   * readable at exactly the point someone had bothered to fill it in. Pushing
+   * every branch out by the depth of the deepest one keeps the gaps the layout
+   * was designed around, whatever gets added.
+   *
+   * Every branch moves by the same amount, not just the full one, because the
+   * shape is a constellation: branches of different lengths from one centre
+   * would read as a lopsided diagram rather than a sky.
+   */
+  const deepestRows = Math.max(1, ...present.map((g) => Math.ceil(groups[g].length / 3)));
+  const spread = (deepestRows - 1) * 72;
+
   present.forEach((g) => {
     const meta = GROUP_META[g];
     const ang = (meta.angle * Math.PI) / 180;
-    const R = 122;
+    const R = (meta.r ?? 122) + spread;
     const cx = Math.cos(ang) * R;
     const cy = Math.sin(ang) * R;
     const arr = groups[g];
@@ -79,18 +142,22 @@ function layout(people: SkyPerson[]): { nodes: LaidNode[]; clusters: Cluster[] }
 
 export default function NightSky({
   people,
+  places,
   userSun,
   hasChart,
   onSelectPerson,
+  onSelectPlace,
   onSelectSelf,
   onSelectGroup,
   onAdd,
   onOpenPlaces,
 }: {
   people: SkyPerson[];
+  places: SkyPlace[];
   userSun: string | null;
   hasChart: boolean;
   onSelectPerson: (id: string) => void;
+  onSelectPlace: (id: string) => void;
   onSelectSelf: () => void;
   onSelectGroup: (group: string) => void;
   onAdd: (category: string) => void;
@@ -105,8 +172,9 @@ export default function NightSky({
   const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
   const moved = useRef(0);
   const [addOpen, setAddOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const { nodes, clusters } = useMemo(() => layout(people), [people]);
+  const { nodes, clusters } = useMemo(() => layout(people, places), [people, places]);
 
   const apply = () => {
     if (midRef.current) {
@@ -200,8 +268,89 @@ export default function NightSky({
     apply();
     window.setTimeout(() => { if (m) m.style.transition = ""; }, 480);
   };
-  const recenter = () => { pan.current = { x: 0, y: 0 }; scale.current = 1; animate(); };
+  /**
+   * The zoom that shows the whole constellation at once.
+   *
+   * Branches push outward as they fill (see `spread` in layout), which keeps
+   * stars from landing on each other but means a full map no longer fits the
+   * screen at 1:1 — people were arriving to a sky cropped at every edge, with
+   * their places off the bottom. So the view backs off far enough to hold
+   * whatever is there, down to MIN_SCALE, and never zooms past 1:1, because
+   * magnifying three stars to fill a phone looks like a mistake.
+   */
+  const fitScale = () => {
+    const el = skyRef.current;
+    if (!el || nodes.length === 0) return 1;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return 1;
+    /**
+     * Measured per axis, not as one radius.
+     *
+     * A phone is far taller than it is wide, and the groups that overflow are
+     * the ones that spread sideways. Fitting a radius against the smaller of
+     * the two dimensions wastes the height and still clips the width, so each
+     * axis gets its own answer and the tighter one wins. The margin covers the
+     * star's halo and the name printed under it.
+     */
+    const halo = 72;
+    const maxX = Math.max(...nodes.map((n) => Math.abs(n.x))) + halo;
+    const maxY = Math.max(...nodes.map((n) => Math.abs(n.y))) + halo;
+    const fit = Math.min(r.width / 2 / maxX, r.height / 2 / maxY);
+    return Math.max(MIN_SCALE, Math.min(1, fit));
+  };
+
+  /**
+   * Refit when the shape of the map changes — someone added, a place added —
+   * and not otherwise, so it never yanks the view out from under somebody who
+   * has zoomed in to read something.
+   */
+  const fittedFor = useRef(-1);
+  useEffect(() => {
+    if (fittedFor.current === nodes.length) return;
+    fittedFor.current = nodes.length;
+    pan.current = { x: 0, y: 0 };
+    scale.current = fitScale();
+    apply();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length]);
+
+  const recenter = () => { pan.current = { x: 0, y: 0 }; scale.current = fitScale(); animate(); };
   const zoomBy = (f: number) => { scale.current = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale.current * f)); animate(); };
+
+  /**
+   * Fly to a star and put it in the middle.
+   *
+   * Searching a map should move the map. Jumping straight into the reading
+   * would answer the question but teach you nothing about where the star sits,
+   * and next time you would search again instead of remembering. So this
+   * travels there and leaves it centred under the viewer.
+   */
+  const focusNode = (node: LaidNode) => {
+    // A step in from wherever the map currently sits, capped — not a jump to a
+    // fixed zoom, which on a full map would mean flying from "whole sky" to
+    // "one star filling the screen" with nothing recognisable in between.
+    const s = Math.max(scale.current, Math.min(MAX_SCALE, fitScale() * 1.6));
+    scale.current = s;
+    pan.current = {
+      x: Math.max(-CLAMP, Math.min(CLAMP, -node.x * s)),
+      y: Math.max(-CLAMP, Math.min(CLAMP, -node.y * s)),
+    };
+    animate();
+  };
+
+  /**
+   * The search only exists once the sky is too full to read.
+   *
+   * Three stars do not need a search field, and putting one there would be
+   * furniture sitting on top of the thing it is meant to help you look at.
+   * Past CROWDED_AT, names start to overlap and finding somebody means
+   * dragging around hunting for them — so it appears, and only then.
+   */
+  const crowded = nodes.length > CROWDED_AT;
+  const q = query.trim().toLowerCase();
+  const matches = crowded && q
+    ? nodes.filter((n) => n.name.toLowerCase().includes(q)).slice(0, 6)
+    : [];
 
   // A tap (not a drag) on a star selects it. A little drift is forgiven so an
   // imperfect tap on the pannable map still registers.
@@ -246,8 +395,6 @@ export default function NightSky({
             {clusters.map((c) => (
               <line key={`c-${c.group}`} x1={550} y1={550} x2={550 + c.cx} y2={550 + c.cy} stroke={c.color} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             ))}
-            {/* You → Your places (astrocartography star) */}
-            <line x1={550} y1={550} x2={550} y2={682} stroke="#c9a961" strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 4" />
             {nodes.map((n) => {
               const cl = clusters.find((c) => c.group === n.group)!;
               return <line key={`n-${n.id}`} x1={550 + cl.cx} y1={550 + cl.cy} x2={550 + n.x} y2={550 + n.y} stroke={n.color} strokeOpacity="0.3" strokeWidth="1" />;
@@ -256,17 +403,24 @@ export default function NightSky({
 
           {/* cluster labels — Origin Family is a tappable pill that opens the family panel */}
           {clusters.map((c) => (
-            c.group === "origin" ? (
-              <button key={`l-${c.group}`} onClick={tap(() => onSelectGroup("origin"))} aria-label="Origin Family — view traits & patterns" style={{
+            c.group === "origin" || c.group === PLACES_GROUP ? (
+              <button
+                key={`l-${c.group}`}
+                onClick={tap(() => (c.group === PLACES_GROUP ? onOpenPlaces() : onSelectGroup("origin")))}
+                aria-label={c.group === PLACES_GROUP ? "Places — open the world map of your planetary lines" : "Origin Family — view traits & patterns"}
+                style={{
                 position: "absolute", left: c.lx, top: c.ly, transform: "translate(-50%,-50%)", whiteSpace: "nowrap",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1, fontFamily: "inherit",
-                color: c.color, padding: "8px 15px", borderRadius: 16, background: "rgba(184,160,210,.22)",
+                color: c.color, padding: "8px 15px", borderRadius: 16,
+                background: c.group === PLACES_GROUP ? "rgba(201,169,97,.20)" : "rgba(184,160,210,.22)",
                 border: `1px solid ${c.color}`, cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,.55)",
               }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase" }}>
                   {c.label} <span aria-hidden="true" style={{ opacity: 0.85, fontSize: 13 }}>›</span>
                 </span>
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>tap for traits &amp; patterns</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 8.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "none", opacity: 0.8 }}>
+                  {c.group === PLACES_GROUP ? "tap for the world map" : "tap for traits & patterns"}
+                </span>
               </button>
             ) : (
               <span key={`l-${c.group}`} style={{
@@ -287,8 +441,29 @@ export default function NightSky({
             {hasChart && userSun && <span style={{ fontFamily: "var(--font-ui)", fontSize: 9, color: "#cdbfa6", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{userSun}</span>}
           </button>
 
-          {/* people — stars */}
+          {/* people and places — stars */}
           {nodes.map((person, i) => (
+            person.group === PLACES_GROUP ? (
+              /* A place wears a globe rather than an initial — "L" could be
+                 Lisbon or Logan, and on a map of your life those are not the
+                 same kind of thing. Where the chart was cast gets a filled
+                 centre, so your beginning reads differently from somewhere you
+                 moved to later. */
+              <button
+                key={person.id}
+                onClick={tap(() => onSelectPlace(person.id))}
+                aria-label={`${person.name}${person.kind === "born" ? " — where your chart was cast" : ""}`}
+                style={{ position: "absolute", left: person.x, top: person.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: `ns-drift ${6 + (i % 3)}s ease-in-out infinite` }}
+              >
+                <span style={{ position: "relative", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ position: "absolute", inset: -6, borderRadius: 999, background: `radial-gradient(circle, ${person.color}99, ${person.color}22 60%, transparent 74%)` }} />
+                  <span style={{ position: "relative", width: 30, height: 30, borderRadius: 999, background: person.kind === "born" ? `${person.color}33` : "rgba(10,7,16,.6)", border: `1px solid ${person.color}`, display: "flex", alignItems: "center", justifyContent: "center", color: person.color }}>
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
+                  </span>
+                </span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name}</span>
+              </button>
+            ) : (
             <button key={person.id} onClick={tap(() => onSelectPerson(person.id))} style={{ position: "absolute", left: person.x, top: person.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: `ns-drift ${5 + (i % 4)}s ease-in-out infinite` }}>
               <span style={{ position: "relative", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ position: "absolute", inset: -6, borderRadius: 999, background: `radial-gradient(circle, ${person.color}99, ${person.color}22 60%, transparent 74%)` }} />
@@ -298,18 +473,9 @@ export default function NightSky({
               </span>
               <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>{person.name.split(" ")[0]}</span>
             </button>
+            )
           ))}
 
-          {/* Astrocartography — your places, as a star on the map */}
-          <button onClick={tap(onOpenPlaces)} style={{ position: "absolute", left: 0, top: 132, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: "inherit", animation: "ns-drift 7s ease-in-out infinite" }}>
-            <span style={{ position: "relative", width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ position: "absolute", inset: -7, borderRadius: 999, background: "radial-gradient(circle, rgba(201,169,97,.6), rgba(201,169,97,.18) 60%, transparent 74%)" }} />
-              <span style={{ position: "relative", width: 32, height: 32, borderRadius: 999, background: "rgba(10,7,16,.6)", border: "1px solid #c9a961", display: "flex", alignItems: "center", justifyContent: "center", color: "#c9a961" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" /></svg>
-              </span>
-            </span>
-            <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, color: "#e8dfc4", whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>Your places</span>
-          </button>
         </div>
       </div>
 
@@ -319,6 +485,52 @@ export default function NightSky({
           <p style={{ fontSize: 13, color: "#cdbfa6", lineHeight: 1.6, margin: 0, textShadow: "0 1px 6px rgba(0,0,0,.9)" }}>
             Add the people in your life and they&rsquo;ll join your sky as stars.
           </p>
+        </div>
+      )}
+
+      {/* Search — only once there is too much sky to scan by eye */}
+      {crowded && (
+        <div style={{ position: "absolute", left: 14, right: 74, top: 74, zIndex: 36 }}>
+          <label htmlFor="sky-search" className="sr-only">Find someone or somewhere on your map</label>
+          <input
+            id="sky-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Find any of your ${nodes.length} stars…`}
+            style={{
+              width: "100%", padding: "10px 14px", minHeight: 44, borderRadius: 999,
+              background: "rgba(20,16,28,.72)", border: "1px solid rgba(201,169,97,.3)",
+              backdropFilter: "blur(8px)", color: "#f0e6d2", fontFamily: "var(--font-ui)", fontSize: 13,
+              outline: "none", boxShadow: "0 6px 18px rgba(0,0,0,.4)",
+            }}
+          />
+          {/* Said out loud, because a list that appears under a field is
+              invisible to somebody who cannot see it appear. */}
+          <p aria-live="polite" className="sr-only">
+            {q ? `${matches.length} ${matches.length === 1 ? "match" : "matches"} for ${query}` : ""}
+          </p>
+          {matches.length > 0 && (
+            <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 6, borderRadius: 14, background: "rgba(20,16,28,.92)", border: "1px solid rgba(201,169,97,.22)", backdropFilter: "blur(8px)", boxShadow: "0 10px 26px rgba(0,0,0,.5)" }}>
+              {matches.map((n) => (
+                <li key={`${n.group}-${n.id}`}>
+                  <button
+                    onClick={() => { focusNode(n); setQuery(""); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 10px", minHeight: 44, background: "none", border: "none", cursor: "pointer", textAlign: "left", borderRadius: 10, color: "#f0e6d2", fontFamily: "var(--font-ui)", fontSize: 13 }}
+                  >
+                    <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 999, background: n.color, flex: "0 0 auto" }} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
+                    <span style={{ fontSize: 10.5, color: "#a79b86" }}>{GROUP_META[n.group]?.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {q && matches.length === 0 && (
+            <p style={{ margin: "6px 0 0", padding: "9px 12px", borderRadius: 12, background: "rgba(20,16,28,.92)", border: "1px solid rgba(201,169,97,.22)", color: "#cdbfa6", fontFamily: "var(--font-ui)", fontSize: 12.5 }}>
+              Nobody and nowhere by that name yet.
+            </p>
+          )}
         </div>
       )}
 
