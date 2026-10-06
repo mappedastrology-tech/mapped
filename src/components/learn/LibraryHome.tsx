@@ -9,7 +9,6 @@ import { getDueReviewCount } from "@/lib/learn/reviewStore";
 import { loadEngagement, emptyEngagement, type Engagement } from "@/lib/learn/engagement";
 import { getWeakTopics } from "@/lib/learn/weakTopics";
 import type { Course, CourseProgress } from "@/lib/learn/types";
-import TopBar from "@/components/TopBar";
 import { useTheme } from "@/components/ThemeProvider";
 import { PrimaryPill } from "./LessonChrome";
 
@@ -267,7 +266,6 @@ export default function LibraryHome() {
         </filter>
       </svg>
 
-      <TopBar />
       <h1 className="sr-only">Learn</h1>
 
       <div className="max-w-lg mx-auto relative" style={{ paddingLeft: 22, paddingRight: 22, paddingBottom: 96 }}>

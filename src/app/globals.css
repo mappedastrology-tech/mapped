@@ -815,6 +815,28 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * A focus ring that follows the shape it is focusing.
+ *
+ * Text fields match :focus-visible on every focus, including a tap — that is
+ * what the spec asks for, and it is right. But the Dolly composer is a
+ * stadium-shaped pill with the textarea and the send button inside it, so the
+ * ring landed as a hard square rectangle in the middle of a round pill. As the
+ * textarea grew with the message it grew with it, and the composer read as
+ * broken rather than focused: a box jutting out of its own container.
+ *
+ * The ring moves to the pill, which is the thing a reader thinks of as "the
+ * box", and the field inside stops drawing its own. Nobody loses a focus
+ * indicator — it is the same 2px brass, on a shape that fits.
+ */
+.dl-composer:focus-within {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+.dl-composer :focus-visible {
+  outline: none;
+}
+
 /* Dolly user chat bubble — the lavender bubble is light in dark mode and deep
    purple in light mode, so the text color must flip to stay readable. */
 .dl-user-bubble { color: #161022; }

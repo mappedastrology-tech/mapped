@@ -1774,7 +1774,8 @@ function PromoCodeSection() {
           onChange={(e) => { setCode(e.target.value.toUpperCase()); setStatus("idle"); setMessage(""); }}
           placeholder="Enter code"
           aria-label="Promo code"
-          className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm placeholder:text-muted focus:outline-none focus:border-sage/50 tracking-wider font-mono"
+          /* text-base, not text-sm: below 16px iOS zooms the page in on focus. */
+          className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-base placeholder:text-muted focus:outline-none focus:border-sage/50 tracking-wider font-mono"
           onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
           disabled={status === "loading"}
         />

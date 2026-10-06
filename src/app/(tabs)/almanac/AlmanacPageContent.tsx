@@ -2334,7 +2334,9 @@ export default function AlmanacPageContent() {
                       // Delay so tap on result registers before blur closes dropdown
                       setTimeout(() => setFishingSearchOpen(false), 200);
                     }}
-                    className="w-full rounded-lg px-3 py-2 text-[13px]"
+                    /* text-base, not text-[13px]: below 16px iOS zooms the page
+                       in on focus and leaves it zoomed. */
+                    className="w-full rounded-lg px-3 py-2 text-base"
                     style={{
                       background: "color-mix(in srgb, var(--foreground) 6%, transparent)",
                       border: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)",

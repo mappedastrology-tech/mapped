@@ -235,6 +235,7 @@ export default function DollyTab() {
   const leaveRef = useRef<HTMLDivElement>(null);
   const deleteRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   /** True when the 90s safety net fired, so a timeout can be told apart from
    *  the user starting a new chat — one deserves an explanation, one doesn't. */
@@ -784,6 +785,33 @@ export default function DollyTab() {
   // In an effect, not during render: writing a ref while rendering is the
   // thing React tells you not to do, and it is not needed here.
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  /**
+   * The composer sizes itself to what is actually in it.
+   *
+   * This used to run from the textarea's onInput, which fires when a person
+   * types but NOT when the value is set in code — so sending a long message
+   * left an empty box still standing at its full 120px, and the starter
+   * prompts filled a one-line box without growing it. Driving it off `input`
+   * covers typing, sending, and anything that prefills, with one rule.
+   *
+   * The pill's radius follows. At 99px a one-line composer is the stadium it
+   * is meant to be, but a six-line one is a giant lozenge with the text
+   * pushed into the middle by its own curve. Past two lines it relaxes into a
+   * rounded box, which is the shape a growing text field wants.
+   *
+   * Written straight to the DOM rather than held in state: it is a measurement
+   * of something the browser has already laid out, and routing it through a
+   * render would mean laying the page out twice for every keystroke.
+   */
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "24px";
+    const h = Math.min(el.scrollHeight, 120);
+    el.style.height = `${h}px`;
+    if (composerRef.current) composerRef.current.style.borderRadius = h > 52 ? "22px" : "99px";
+  }, [input]);
   useEffect(() => {
     const flush = () => {
       if (document.visibilityState === "hidden") foldMemory(messagesRef.current, true);
@@ -1903,7 +1931,7 @@ export default function DollyTab() {
           paddingBottom: `max(1rem, env(safe-area-inset-bottom), ${keyboardInset}px)`,
         }}
       >
-        <div className="flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" /* No inline fallback: --soft is a real token now, and the fallback
+        <div ref={composerRef} className="dl-composer flex items-end gap-2 ml-12 lg:ml-0 pl-[18px] pr-2 py-2 transition-all" /* No inline fallback: --soft is a real token now, and the fallback
                that used to cover for it (white at 5%) was itself the bug — on
                the cream page it meant the composer had no surface at all. */
             style={{ background: "var(--soft)", border: "0.5px solid var(--border-card)", borderRadius: 99 }}>
@@ -1935,11 +1963,6 @@ export default function DollyTab() {
                the viewport in layout.tsx). Sizing the input correctly solves
                it without costing anyone their magnification. */
             style={{ minHeight: "24px", fontSize: 16 }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = "24px";
-              target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-            }}
           />
           {/* Send, or Stop while she is writing. There was no way to stop a
               reply at all: the only route to the abort controller was "New

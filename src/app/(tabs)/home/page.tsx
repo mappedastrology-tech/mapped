@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSheetDismiss } from "@/lib/useSheetDismiss";
 import { supabase } from "@/lib/supabase";
 import { buildFallbackHoroscope } from "@/lib/fallbackHoroscope";
 import { authedFetch } from "@/lib/authedFetch";
@@ -169,6 +170,14 @@ export default function HomeTab() {
   const [showRetroBanner, setShowRetroBanner] = useState<boolean | null>(null);
   const [pullDeck, setPullDeck] = useState<"tarot" | "oracle">("tarot");
   const [expandedCard, setExpandedCard] = useState<"tarot" | "oracle" | null>(null);
+  /**
+   * Push the reading sheet down to put it away.
+   *
+   * Only one sheet is ever open, so both share this. The grab handle at the
+   * top of the sheet was drawn from the start and did nothing — the only ways
+   * out were a 10px "collapse" link and the backdrop behind it.
+   */
+  const sheetSwipe = useSheetDismiss(() => setExpandedCard(null));
   const [copiedShare, setCopiedShare] = useState<"tarot" | "oracle" | null>(null);
   // Which oracle decks this account owns, and which one it pulls from. The
   // choice itself lives in Settings → Oracle deck; the home screen only reads
@@ -1349,13 +1358,16 @@ export default function HomeTab() {
 
         {/* Expanded tarot reading */}
         {pullDeck === "tarot" && expandedCard === "tarot" && tarotRevealed && (
-          <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
+          <div
+            ref={sheetSwipe.ref}
+            {...sheetSwipe.handlers}
+            className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center -mt-1 pb-1" aria-hidden="true"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-ui)" }}>
                 {dailyTarot.name}
               </p>
-              <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
+              <button onClick={() => setExpandedCard(null)} aria-label="Close reading" className="text-[11px] min-h-[44px] px-2 -mr-2" style={{ color: "#c9a961" }}>collapse</button>
             </div>
             {(dailyTarot.element || dailyTarot.zodiac || dailyTarot.planet) && (
               <div className="flex items-center gap-1.5 text-[9px] opacity-50">
@@ -1502,13 +1514,16 @@ export default function HomeTab() {
 
         {/* Expanded oracle reading */}
         {pullDeck === "oracle" && expandedCard === "oracle" && oracleRevealed && dailyOracle && (
-          <div className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center -mt-1 pb-1"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
+          <div
+            ref={sheetSwipe.ref}
+            {...sheetSwipe.handlers}
+            className="fixed inset-x-0 bottom-0 z-[91] w-full max-w-lg mx-auto rounded-t-3xl px-5 pt-4 pb-9 space-y-3 overflow-y-auto" style={{ backgroundColor: "var(--plum)", color: "#f0e6d2", maxHeight: "86vh" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center -mt-1 pb-1" aria-hidden="true"><div className="w-10 h-1 rounded-full" style={{ background: "rgba(240,230,210,0.3)" }} /></div>
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-medium" style={{ fontFamily: "var(--font-ui)" }}>
                 {dailyOracle.animal}
               </p>
-              <button onClick={() => setExpandedCard(null)} className="text-[10px]" style={{ color: "#c9a961" }}>collapse</button>
+              <button onClick={() => setExpandedCard(null)} aria-label="Close reading" className="text-[11px] min-h-[44px] px-2 -mr-2" style={{ color: "#c9a961" }}>collapse</button>
             </div>
             <p className="text-[13px] leading-[1.65] opacity-85">{dailyOracle.meaning}</p>
             <div className="rounded-xl px-3.5 py-3" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>

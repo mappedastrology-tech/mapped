@@ -34,6 +34,8 @@ import Link from "next/link";
 import RitualCompletionCheckin from "@/components/RitualCompletionCheckin";
 import RefreshModal from "@/components/RefreshModal";
 import MoonEventScreen from "@/components/MoonEventScreen";
+import RitualWizard from "@/components/RitualWizard";
+import { useToast } from "@/components/Toast";
 // feedback utils available if needed later
 import { getGoodForToday, getTodaySky } from "@/lib/almanacData";
 import { getCachedLocation, fetchUserLocation, type UserLocation } from "@/lib/userLocation";
@@ -773,6 +775,16 @@ export default function RitualPageContent() {
   const [expandedRitual, setExpandedRitual] = useState<string | null>(null);
   const [expandedQuick, setExpandedQuick] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<RitualCategory | null>(null);
+  /**
+   * Whether the intention tiles have opened their own screen.
+   *
+   * Tapping "Love" used to set a filter on a list that lives a long way down
+   * the page, below the search bar — so from where your thumb was, the tap did
+   * nothing at all. It is a place you are going, so it behaves like one: a
+   * screen with the intention's name at the top, its rituals under it, and a
+   * way back.
+   */
+  const [browsingCategory, setBrowsingCategory] = useState(false);
   const [expandedCatalogRitual, setExpandedCatalogRitual] = useState<string | null>(null);
   const [catalogPage, setCatalogPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -786,6 +798,8 @@ export default function RitualPageContent() {
 
   // Refresh mode state
   const [showRefresh, setShowRefresh] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const { toast } = useToast();
 
   // Moon event overlay (full/new moon detail screen)
   const [showMoonEvent, setShowMoonEvent] = useState(false);
@@ -1054,6 +1068,160 @@ export default function RitualPageContent() {
   // Calendar expanded state
   const [showCalendar, setShowCalendar] = useState(false);
 
+  /**
+   * The search box, the ritual list and its pager.
+   *
+   * Shared verbatim between the main page and the intention screen, so the
+   * two can never drift into being two different browsers of the same
+   * catalogue.
+   */
+  const ritualResults = (
+    <>
+          {/* Search bar */}
+          <div className="mb-4">
+            <div className="relative">
+              <svg aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search rituals..."
+                aria-label="Search rituals"
+                /* text-base, not text-[13px]: below 16px iOS zooms the page in on focus
+                   and leaves it zoomed. */
+                className="w-full pl-10 pr-4 py-3 rounded-2xl text-base focus:outline-none transition-all"
+                style={{
+                  backgroundColor: "var(--background-card)",
+                  border: "1px solid var(--border-card)",
+                  color: "var(--foreground)",
+                  boxShadow: cardShadow,
+                }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  style={{ color: "var(--foreground-muted)" }}
+                >
+                  <svg aria-hidden="true" className="w-5 h-5 rounded-full p-0.5" style={{ backgroundColor: "var(--background-elevated)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Ritual list (paginated) */}
+          <div className="space-y-2.5">
+            {paginatedRituals.map((ritual) => (
+              <div key={ritual.id} style={{ boxShadow: cardShadow }} className="rounded-2xl">
+                <RitualDetailCard
+                  ritual={ritual}
+                  isExpanded={expandedCatalogRitual === ritual.id}
+                  onToggle={() => setExpandedCatalogRitual(expandedCatalogRitual === ritual.id ? null : ritual.id)}
+                  onComplete={handleRitualComplete}
+                />
+              </div>
+            ))}
+
+            {filteredRituals.length === 0 && (
+              <div className="text-center py-10">
+                <div className="text-[32px] mb-3 opacity-40">🔮</div>
+                <p className="text-[14px] font-medium mb-1" style={{ color: "var(--foreground-muted)" }}>No rituals found</p>
+                <p className="text-[12px]" style={{ color: "var(--foreground-faint)" }}>
+                  {searchQuery ? `Nothing matches "${searchQuery}"` : "Try a different category"}
+                </p>
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="mt-3 px-4 py-2 rounded-full text-[12px] font-medium" style={{ backgroundColor: "var(--terracotta-bg)", color: "var(--terracotta)" }}>
+                    Clear search
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-5 px-1">
+              <button
+                onClick={() => setCatalogPage((p) => Math.max(0, p - 1))}
+                disabled={catalogPage === 0}
+                className="px-4 py-2.5 rounded-full text-[12px] font-medium transition-all"
+                style={{
+                  color: catalogPage === 0 ? "var(--foreground-ghost)" : "var(--foreground-secondary)",
+                  backgroundColor: catalogPage === 0 ? "transparent" : "var(--background-card)",
+                  boxShadow: catalogPage === 0 ? "none" : cardShadow,
+                  cursor: catalogPage === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                ← Prev
+              </button>
+              <span className="text-[11px] font-medium" style={{ color: "var(--foreground-faint)" }}>
+                {catalogPage + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCatalogPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={catalogPage >= totalPages - 1}
+                className="px-4 py-2.5 rounded-full text-[12px] font-medium transition-all"
+                style={{
+                  color: catalogPage >= totalPages - 1 ? "var(--foreground-ghost)" : "var(--foreground-secondary)",
+                  backgroundColor: catalogPage >= totalPages - 1 ? "transparent" : "var(--background-card)",
+                  boxShadow: catalogPage >= totalPages - 1 ? "none" : cardShadow,
+                  cursor: catalogPage >= totalPages - 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+    </>
+  );
+
+  /**
+   * The intention screen.
+   *
+   * Everything the tiles used to filter, on a screen of its own, with the
+   * intention named at the top and a way back. Rendered instead of the page
+   * rather than over it, so the browser's own Back has nothing to undo and
+   * the bottom navigation stays exactly where it was.
+   */
+  if (browsingCategory) {
+    const meta = RITUAL_CATEGORIES.find((c) => c.key === selectedCategory);
+    const label = meta?.label ?? "All rituals";
+    const accent = INTENTION_ACCENTS[selectedCategory ?? "all"];
+    return (
+      <main className="flex-1 flex flex-col max-w-lg lg:max-w-2xl mx-auto w-full pb-6 px-5 lg:pt-6">
+        <div className="flex items-center gap-3 pt-4 pb-3">
+          <button
+            onClick={() => { setBrowsingCategory(false); setSearchQuery(""); }}
+            aria-label="Back to rituals"
+            className="shrink-0 flex items-center justify-center rounded-full"
+            style={{ width: 36, height: 36, background: "var(--background-card)", border: "0.5px solid var(--border-card)", color: "var(--foreground-secondary)" }}
+          >
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <span className="shrink-0 w-10 h-10 rounded-[12px] flex items-center justify-center"
+                style={{ background: `linear-gradient(150deg, color-mix(in srgb, ${accent} 90%, #100810), color-mix(in srgb, ${accent} 66%, #180e18))`, border: `0.5px solid color-mix(in srgb, ${accent} 55%, transparent)` }}>
+            {selectedCategory === null
+              ? <span style={{ color: TILE_CREAM, fontSize: 17 }}>{"\u2726\uFE0E"}</span>
+              : <RitualIcon name={selectedCategory} size={21} />}
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate" style={{ fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 500, color: "var(--foreground)" }}>{label}</h1>
+            <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+              {filteredRituals.length} {filteredRituals.length === 1 ? "ritual" : "rituals"}
+            </p>
+          </div>
+        </div>
+        {ritualResults}
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1 flex flex-col max-w-lg lg:max-w-2xl mx-auto w-full pb-6 px-5 lg:pt-6">
 
@@ -1077,13 +1245,21 @@ export default function RitualPageContent() {
             Customize
           </button>
         </div>
-        <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1, color: "var(--brass)", margin: "0 0 2px" }}>
+        {/*
+          The greeting sat at lineHeight 1 with a 2px gap under it, so the
+          script font's descenders ran straight into the cap-height of SEEKER
+          below — two display faces colliding, which is most of why the top of
+          this page was hard to read. It gets its own line now, and the
+          sentence under the title moves off --foreground-muted, which at
+          13.5px on this background was the faintest text on the screen.
+        */}
+        <p style={{ fontFamily: "var(--font-script)", fontSize: 30, lineHeight: 1.25, color: "var(--brass)", margin: "0 0 4px" }}>
           {ritualGreeting},
         </p>
-        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 40, fontWeight: 400, letterSpacing: "0.04em", lineHeight: 1, margin: "0 0 9px", color: "var(--foreground)" }}>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 40, fontWeight: 400, letterSpacing: "0.04em", lineHeight: 1.05, margin: "0 0 10px", color: "var(--foreground)" }}>
           Seeker <span style={{ fontFamily: "var(--font-script)", fontSize: 24, color: "var(--brass)" }}>☾</span>
         </h1>
-        <p className="text-[13.5px] leading-[1.5]" style={{ color: "var(--foreground-muted)" }}>
+        <p className="text-[14.5px] leading-[1.55]" style={{ color: "var(--foreground-secondary)" }}>
           Small rituals for whatever you&rsquo;re calling in — matched to tonight&rsquo;s moon.
         </p>
       </div>
@@ -1184,14 +1360,31 @@ export default function RitualPageContent() {
           </button>
         </div>
       </div>
-      {/* Something else */}
-      <button
-        onClick={() => setShowRefresh(true)}
-        className="w-full py-3 mb-4 text-[14px] font-medium transition-colors"
-        style={{ color: "var(--foreground-faint)" }}
-      >
-        Something else
-      </button>
+      {/*
+        Two ways past tonight's suggestion.
+
+        This was a single line of --foreground-faint text reading "Something
+        else", which says neither what it does nor that it is a button. And
+        the ritual wizard — the thing that builds you one of your own — was
+        reachable from nowhere in the app at all: the component existed and
+        nothing rendered it.
+      */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setShowRefresh(true)}
+          className="flex-1 py-3 rounded-full text-[13.5px] font-medium transition-colors"
+          style={{ color: "var(--foreground-secondary)", border: "0.5px solid var(--border-card)", background: "var(--background-card)" }}
+        >
+          Suggest another
+        </button>
+        <button
+          onClick={() => setShowWizard(true)}
+          className="flex-1 py-3 rounded-full text-[13.5px] font-semibold transition-colors"
+          style={{ color: "var(--btn-primary-text)", background: "var(--brass)" }}
+        >
+          Create your own
+        </button>
+      </div>
 
       {/* Expanded today's ritual detail */}
       {expandedRitual === dailySuggestion.id && (
@@ -1436,7 +1629,11 @@ export default function RitualPageContent() {
             return (
               <button
                 key={cat.key ?? "all"}
-                onClick={() => setSelectedCategory(cat.key === selectedCategory ? null : (cat.key as RitualCategory | null))}
+                onClick={() => {
+                  setSelectedCategory(cat.key as RitualCategory | null);
+                  setSearchQuery("");
+                  setBrowsingCategory(true);
+                }}
                 className="flex items-center gap-3 px-3.5 py-3.5 rounded-[16px] text-left transition-all"
                 style={{
                   background: `linear-gradient(150deg, color-mix(in srgb, ${accent} 90%, #100810), color-mix(in srgb, ${accent} 66%, #180e18))`,
@@ -1458,105 +1655,7 @@ export default function RitualPageContent() {
           })}
         </div>
 
-        {/* Search bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <svg aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--foreground-faint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search rituals..."
-              aria-label="Search rituals"
-              className="w-full pl-10 pr-4 py-3 rounded-2xl text-[13px] focus:outline-none transition-all"
-              style={{
-                backgroundColor: "var(--background-card)",
-                border: "1px solid var(--border-card)",
-                color: "var(--foreground)",
-                boxShadow: cardShadow,
-              }}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                style={{ color: "var(--foreground-muted)" }}
-              >
-                <svg aria-hidden="true" className="w-5 h-5 rounded-full p-0.5" style={{ backgroundColor: "var(--background-elevated)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Ritual list (paginated) */}
-        <div className="space-y-2.5">
-          {paginatedRituals.map((ritual) => (
-            <div key={ritual.id} style={{ boxShadow: cardShadow }} className="rounded-2xl">
-              <RitualDetailCard
-                ritual={ritual}
-                isExpanded={expandedCatalogRitual === ritual.id}
-                onToggle={() => setExpandedCatalogRitual(expandedCatalogRitual === ritual.id ? null : ritual.id)}
-                onComplete={handleRitualComplete}
-              />
-            </div>
-          ))}
-
-          {filteredRituals.length === 0 && (
-            <div className="text-center py-10">
-              <div className="text-[32px] mb-3 opacity-40">🔮</div>
-              <p className="text-[14px] font-medium mb-1" style={{ color: "var(--foreground-muted)" }}>No rituals found</p>
-              <p className="text-[12px]" style={{ color: "var(--foreground-faint)" }}>
-                {searchQuery ? `Nothing matches "${searchQuery}"` : "Try a different category"}
-              </p>
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="mt-3 px-4 py-2 rounded-full text-[12px] font-medium" style={{ backgroundColor: "var(--terracotta-bg)", color: "var(--terracotta)" }}>
-                  Clear search
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-5 px-1">
-            <button
-              onClick={() => setCatalogPage((p) => Math.max(0, p - 1))}
-              disabled={catalogPage === 0}
-              className="px-4 py-2.5 rounded-full text-[12px] font-medium transition-all"
-              style={{
-                color: catalogPage === 0 ? "var(--foreground-ghost)" : "var(--foreground-secondary)",
-                backgroundColor: catalogPage === 0 ? "transparent" : "var(--background-card)",
-                boxShadow: catalogPage === 0 ? "none" : cardShadow,
-                cursor: catalogPage === 0 ? "not-allowed" : "pointer",
-              }}
-            >
-              ← Prev
-            </button>
-            <span className="text-[11px] font-medium" style={{ color: "var(--foreground-faint)" }}>
-              {catalogPage + 1} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCatalogPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={catalogPage >= totalPages - 1}
-              className="px-4 py-2.5 rounded-full text-[12px] font-medium transition-all"
-              style={{
-                color: catalogPage >= totalPages - 1 ? "var(--foreground-ghost)" : "var(--foreground-secondary)",
-                backgroundColor: catalogPage >= totalPages - 1 ? "transparent" : "var(--background-card)",
-                boxShadow: catalogPage >= totalPages - 1 ? "none" : cardShadow,
-                cursor: catalogPage >= totalPages - 1 ? "not-allowed" : "pointer",
-              }}
-            >
-              Next →
-            </button>
-          </div>
-        )}
+        {ritualResults}
       </div>
 
       {/* ═══ MODALS ═══ */}
@@ -1582,6 +1681,30 @@ export default function RitualPageContent() {
           }}
           onClose={() => setShowRefresh(false)}
         />
+      )}
+
+      {/* The ritual wizard — builds a custom ritual from your chart and tonight's sky. */}
+      {showWizard && (
+        /*
+          The wizard calls itself role="dialog" aria-modal but lays itself out
+          as a flow element — it was written to BE a page, and nothing ever
+          rendered it. Dropped in as-is it appeared below the whole rituals
+          page, so "Create your own" looked like it had done nothing. The
+          overlay is here rather than inside the component so the wizard stays
+          usable as a full screen if it ever gets a route of its own.
+        */
+        <div
+          className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain"
+          style={{ background: "var(--background)" }}
+        >
+          <RitualWizard
+            onClose={() => setShowWizard(false)}
+            onSave={(ritual) => {
+              setShowWizard(false);
+              toast.success(`“${ritual.title}” saved to your rituals.`);
+            }}
+          />
+        </div>
       )}
 
       {/* Customize ritual tools popup */}

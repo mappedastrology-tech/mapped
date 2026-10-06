@@ -1092,7 +1092,10 @@ export default function TarotTab() {
           autoFocus
           placeholder="What’s on your mind? Hold it as the cards turn…"
           className="w-full resize-none outline-none"
-          style={{ boxSizing: "border-box", padding: "14px 15px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", color: "#f0e6d2", fontFamily: "inherit", fontSize: 14, lineHeight: 1.5 }}
+          /* 16px exactly: below it, tapping this field makes iOS zoom the whole
+             page in and stay there — which is why opening a spread left the
+             reading too big to see without pinching back out. */
+          style={{ boxSizing: "border-box", padding: "14px 15px", borderRadius: 14, background: "#4a2540", border: "1px solid rgba(201,169,97,0.16)", color: "#f0e6d2", fontFamily: "inherit", fontSize: 16, lineHeight: 1.5 }}
         />
 
         <button

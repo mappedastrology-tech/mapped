@@ -810,7 +810,8 @@ function JournalPage() {
               placeholder={`Let the words come — whatever's on your mind ${timeWord}…`}
               aria-label="Journal entry"
               className="w-full bg-transparent resize-none focus:outline-none"
-              style={{ minHeight: 180, fontSize: 15, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
+              /* 16px: below it iOS zooms the page in on focus and leaves it zoomed. */
+              style={{ minHeight: 180, fontSize: 16, lineHeight: 1.8, color: "var(--foreground-secondary)" }}
             />
 
             {/* Attached photo preview */}

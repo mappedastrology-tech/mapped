@@ -117,3 +117,111 @@ test("a phone browser lands on the begin screen", () => {
   const hits = src.match(/isInstalledApp\(\) \|\| onAPhone\(\)/g) ?? [];
   assert.equal(hits.length, 2, "one of the two signed-out paths still shows the website");
 });
+
+/* ─── Typable fields must not make iOS zoom the page ─── */
+
+test("no typable field is under 16px", () => {
+  // Safari zooms the whole page in when a field under 16px takes focus, and
+  // leaves it zoomed — which is what "I tap a spread and have to pinch back
+  // out to see the page" is. Five fields were under it: the tarot question,
+  // the journal entry, the ritual search, the almanac water search and the
+  // promo code.
+  const files: [string, RegExp[]][] = [
+    ["src/app/(tabs)/tarot/TarotPageContent.tsx", [/fontSize: 16, lineHeight: 1\.5/]],
+    ["src/app/(tabs)/journal/JournalClient.tsx", [/minHeight: 180, fontSize: 16/]],
+    ["src/app/(tabs)/learn/RitualPageContent.tsx", [/rounded-2xl text-base/]],
+    ["src/app/(tabs)/almanac/AlmanacPageContent.tsx", [/rounded-lg px-3 py-2 text-base/]],
+    ["src/app/account/page.tsx", [/tracking-wider font-mono/]],
+  ];
+  for (const [file, patterns] of files) {
+    const src = read(file);
+    for (const re of patterns) assert.match(src, re, `${file} lost its 16px floor`);
+  }
+  // And the ones that were explicitly small must not come back.
+  assert.doesNotMatch(read("src/app/(tabs)/learn/RitualPageContent.tsx"), /rounded-2xl text-\[13px\]/);
+  assert.doesNotMatch(read("src/app/(tabs)/almanac/AlmanacPageContent.tsx"), /px-3 py-2 text-\[13px\]/);
+});
+
+/* ─── Chrome that does not disappear mid-lesson ─── */
+
+test("every /library screen gets the app's top and bottom bars", () => {
+  // The top bar was rendered by Library Home and the reference screen only, so
+  // a course, a lesson and the final test each dropped it — you tapped into a
+  // lesson and the app's own header vanished.
+  const layout = read("src/app/library/layout.tsx");
+  assert.match(layout, /<TopBar \/>/);
+  assert.match(layout, /<BottomNav \/>/);
+  // And the two pages that used to render their own must not double up.
+  for (const f of ["src/app/library/reference/page.tsx", "src/components/learn/LibraryHome.tsx"]) {
+    assert.doesNotMatch(read(f), /<TopBar \/>/, `${f} renders a second top bar`);
+  }
+});
+
+/* ─── A sheet you can push away ─── */
+
+test("the home reading sheets can be swiped down", () => {
+  // They drew the grab handle every bottom sheet wears and listened to
+  // nothing: the only ways out were a 10px "collapse" link and the backdrop.
+  const src = read("src/app/(tabs)/home/page.tsx");
+  assert.match(src, /useSheetDismiss/);
+  assert.equal((src.match(/\{\.\.\.sheetSwipe\.handlers\}/g) ?? []).length, 2, "one of the two sheets is not swipeable");
+});
+
+test("a twitch does not throw the reading away", () => {
+  // Velocity alone fires on a 25px wobble while somebody steadies their thumb.
+  const src = read("src/lib/useSheetDismiss.ts");
+  assert.match(src, /const FLICK_MIN = \d+/);
+  assert.match(src, /travelled > DISTANCE \|\| \(travelled > FLICK_MIN && speed > VELOCITY\)/);
+  // And a drag must not start mid-scroll, or it steals scrolling up.
+  assert.match(src, /node\.scrollTop > 0\) return/);
+});
+
+/* ─── Rituals: a category is a place, and you can make your own ─── */
+
+test("an intention tile opens its own screen", () => {
+  // It set a filter on a list far below the fold, so from where the thumb
+  // was, the tap did nothing.
+  const src = read("src/app/(tabs)/learn/RitualPageContent.tsx");
+  assert.match(src, /const \[browsingCategory, setBrowsingCategory\] = useState\(false\)/);
+  assert.match(src, /if \(browsingCategory\) \{/);
+  assert.match(src, /aria-label="Back to rituals"/);
+  // The list is shared, not duplicated.
+  assert.match(src, /const ritualResults = \(/);
+  assert.equal((src.match(/\{ritualResults\}/g) ?? []).length, 2);
+});
+
+test("the ritual wizard is reachable, and renders as a dialog", () => {
+  // RitualWizard existed and nothing in the app rendered it. It also lays
+  // itself out as a flow element, so dropped in plain it appeared below the
+  // whole page.
+  const src = read("src/app/(tabs)/learn/RitualPageContent.tsx");
+  assert.match(src, /import RitualWizard from "@\/components\/RitualWizard"/);
+  assert.match(src, /Create your own/);
+  assert.match(src, /showWizard && \(/);
+  assert.match(src, /fixed inset-0 z-50 flex flex-col overflow-y-auto/);
+  assert.doesNotMatch(strip(src), />\s*Something else\s*</, "the unlabelled link is back");
+});
+
+/* ─── The Dolly composer ─── */
+
+test("the composer's focus ring follows the pill, not the field", () => {
+  // Text fields match :focus-visible on every focus, including a tap. The
+  // global ring is a square, the composer is a stadium, so focusing it drew a
+  // hard rectangle through the middle of a round pill — and it grew with the
+  // message.
+  const css = read("src/app/globals.css");
+  assert.match(css, /\.dl-composer:focus-within \{/);
+  assert.match(css, /\.dl-composer :focus-visible \{\s*outline: none;/);
+  // The global ring itself must survive — it is the keyboard indicator.
+  assert.match(css, /:focus-visible \{\s*outline: 2px solid var\(--brass\)/);
+  assert.match(read("src/app/(tabs)/dolly/page.tsx"), /className="dl-composer /);
+});
+
+test("the composer resizes from its value, not from typing", () => {
+  // onInput never fires when the value is set in code, so sending a long
+  // message left an empty box standing at its full height.
+  const src = read("src/app/(tabs)/dolly/page.tsx");
+  assert.doesNotMatch(src, /onInput=\{\(e\) => \{/, "still resizing from the input event");
+  assert.match(src, /\}, \[input\]\);/);
+  assert.match(src, /composerRef\.current\.style\.borderRadius/);
+});
