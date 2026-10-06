@@ -225,3 +225,39 @@ test("the composer resizes from its value, not from typing", () => {
   assert.match(src, /\}, \[input\]\);/);
   assert.match(src, /composerRef\.current\.style\.borderRadius/);
 });
+
+/* ─── Chart insights: the same words, in paragraphs ─── */
+
+test("a long reading is broken up; a short one is left alone", async () => {
+  // The interpretations arrive as one long string — six or seven sentences
+  // with nothing between them — and were rendered as a single block. Ten
+  // cards deep that is a wall. This changes where the breaks go and not one
+  // word of the copy.
+  const { toParagraphs } = await import("../src/components/ChartInsightsPanel");
+
+  const short = "Moon is in the sign that Jupiter rules. They are in each other's home.";
+  assert.deepEqual(toParagraphs(short), [short], "a two-sentence reading should stay whole");
+
+  const long = "One sentence here. Two sentences here. Three sentences here. Four sentences here. Five sentences here. Six sentences here.";
+  const out = toParagraphs(long);
+  assert.ok(out.length > 1, "a six-sentence reading should break");
+  assert.equal(out.join(" ").replace(/\s+/g, " "), long, "breaking must not change a word");
+});
+
+test("breaks the copy already carries are honoured", () => {
+  // Some readings are authored with their own paragraphs; re-flowing those
+  // would override a decision somebody made on purpose.
+  return import("../src/components/ChartInsightsPanel").then(({ toParagraphs }) => {
+    assert.deepEqual(toParagraphs("First para.\n\nSecond para."), ["First para.", "Second para."]);
+  });
+});
+
+test("a lone trailing sentence is folded back", () => {
+  // Pairs leave an orphan when the count is odd, and a one-line paragraph at
+  // the end of a reading looks like an afterthought rather than a conclusion.
+  return import("../src/components/ChartInsightsPanel").then(({ toParagraphs }) => {
+    const five = "Alpha one. Beta two. Gamma three. Delta four. Epsilon five.";
+    const out = toParagraphs(five);
+    assert.ok(!/^Epsilon five\.$/.test(out[out.length - 1]), "the orphan was left standing alone");
+  });
+});

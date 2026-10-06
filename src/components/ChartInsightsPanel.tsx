@@ -441,6 +441,36 @@ function InsightSection({
 
 // ─── Insight Card ─────────────────────────────────────────────────────────────
 
+/**
+ * Break a reading into paragraphs.
+ *
+ * The interpretations arrive as one long string — six or seven sentences with
+ * nothing between them — and were rendered as a single block. Stacked ten
+ * cards deep that is a wall, and the eye has nowhere to rest or resume. This
+ * does not touch a word of the copy; it only decides where the breaks go.
+ *
+ * Any breaks the copy already carries are honoured as written. Otherwise
+ * sentences are grouped in pairs, which is short enough to scan and long
+ * enough that a reading does not turn into a list of disconnected lines.
+ */
+export function toParagraphs(text: string): string[] {
+  const authored = text.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+  if (authored.length > 1) return authored;
+
+  const sentences = text.match(/[^.!?]+[.!?]+["')\]]*\s*/g);
+  if (!sentences || sentences.length < 4) return [text.trim()];
+
+  const out: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    out.push(sentences.slice(i, i + 2).join("").trim());
+  }
+  // A single trailing sentence reads as an afterthought; fold it back.
+  if (out.length > 1 && (out[out.length - 1].match(/[.!?]/g) ?? []).length === 1 && out[out.length - 1].length < 90) {
+    out[out.length - 2] = `${out[out.length - 2]} ${out.pop()}`;
+  }
+  return out;
+}
+
 function InsightCard({ tone, eyebrow, title, subtitle, children }: {
   tone: "harmony" | "tension" | "neutral";
   eyebrow: string;
@@ -449,14 +479,30 @@ function InsightCard({ tone, eyebrow, title, subtitle, children }: {
   children: React.ReactNode;
 }) {
   const accent = tone === "harmony" ? "var(--insight-harmony)" : tone === "tension" ? "var(--insight-tension)" : "var(--insight-neutral)";
+  // Only the plain-string readings get re-flowed. Several cards pass real
+  // markup — bolded planet names, their own paragraphs — and that is already
+  // structured; re-flowing it would mean parsing it back out of JSX.
+  const paras = typeof children === "string" ? toParagraphs(children) : null;
   return (
     <div style={{ background: "var(--insight-card)", borderRadius: 16, borderLeft: `3px solid ${accent}`, boxShadow: "var(--insight-shadow)", padding: "18px 20px", marginBottom: 14 }}>
-      <p style={{ color: accent, fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase", margin: 0, marginBottom: 8 }}>{eyebrow}</p>
-      <div style={{ marginBottom: 8, lineHeight: 1.2 }}>
-        <span style={{ fontFamily: "var(--font-heading)", fontSize: 21, color: "var(--insight-ink)" }}>{title}</span>
+      {/* 600, not 700, and a shorter track: at 700/0.12em in a tone colour the
+          eyebrow competed with the title directly under it. */}
+      <p style={{ color: accent, fontFamily: "var(--font-ui)", fontSize: 10.5, letterSpacing: "0.1em", fontWeight: 600, textTransform: "uppercase", margin: 0, marginBottom: 7 }}>{eyebrow}</p>
+      {/* 19, not 21: ten of these down a phone screen in a display face at
+          21px is the "shouting" part of the complaint. */}
+      <div style={{ marginBottom: 10, lineHeight: 1.25 }}>
+        <span style={{ fontFamily: "var(--font-heading)", fontSize: 19, color: "var(--insight-ink)" }}>{title}</span>
         {subtitle ? <span style={{ marginLeft: 8, fontSize: 13, color: "var(--insight-muted)" }}>{subtitle}</span> : null}
       </div>
-      <div style={{ color: "var(--insight-body)", fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-line" }}>{children}</div>
+      {/* 1.72 line height and a measure capped near 58 characters — the band
+          where a paragraph stops needing to be re-read. */}
+      <div style={{ color: "var(--insight-body)", fontSize: 14.5, lineHeight: 1.72, maxWidth: "58ch", whiteSpace: paras ? "normal" : "pre-line" }}>
+        {paras
+          ? paras.map((t, i) => (
+              <p key={i} style={{ margin: 0, marginBottom: i === paras.length - 1 ? 0 : 13 }}>{t}</p>
+            ))
+          : children}
+      </div>
     </div>
   );
 }
