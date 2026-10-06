@@ -85,3 +85,29 @@ test("the free-trial label is not put on the plan the trial does not cover", () 
   const btn = complete.slice(complete.indexOf("btn:"), complete.indexOf("perks:"));
   assert.doesNotMatch(btn, /btn: "Start free",/, "the dearest plan is labelled as a free trial");
 });
+
+/* ─── A footer link has to go somewhere ─── */
+
+test("no footer link points back at the page it sits on", () => {
+  // "Contact" and "About" were both href="/". From the homepage — which is
+  // where the footer mostly gets read — clicking Contact did nothing at all.
+  // There is no contact route in the bundle, the sitemap or robots.txt.
+  // Stripped: the note explaining the fix quotes the old href, and matching
+  // a comment would make this pass or fail for the wrong reason.
+  const src = strip(read("src/components/web/WebShell.tsx"));
+  assert.doesNotMatch(src, /label: "About", href: "\/"/);
+  assert.doesNotMatch(src, /href="\/"[^>]*>Contact</);
+  assert.match(src, /const SUPPORT_EMAIL = /);
+  assert.match(src, /mailto:\$\{SUPPORT_EMAIL\}/);
+});
+
+test("the footer writes to the address the legal pages publish", () => {
+  // Two support addresses is worse than one dead link: whichever a person
+  // picks, they have a 50% chance of writing somewhere nobody reads.
+  const shell = read("src/components/web/WebShell.tsx");
+  const email = shell.match(/const SUPPORT_EMAIL = "([^"]+)"/)?.[1];
+  assert.ok(email, "no support address");
+  for (const page of ["src/app/privacy/page.tsx", "src/app/terms/page.tsx"]) {
+    assert.ok(read(page).includes(email), `${page} publishes a different address`);
+  }
+});

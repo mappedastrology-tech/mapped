@@ -200,10 +200,22 @@ export default function WebShell({
   );
 }
 
+/**
+ * The support address, as published in Privacy and Terms.
+ *
+ * Kept here as one constant so the footer cannot drift from the two legal
+ * pages that tell people where to write.
+ */
+const SUPPORT_EMAIL = "contacttaylorsometimes@gmail.com";
+
 const FOOT_COLS = [
   { head: "Explore", links: [ { label: "Almanac", href: "/almanac" }, { label: "Maps", href: "/maps" }, { label: "Library", href: "/library" }, { label: "Tarot", href: "/tarot" } ] },
   { head: "Practice", links: [ { label: "Journal", href: "/journal" }, { label: "Ask Dolly", href: "/dolly" }, { label: "Rituals", href: "/learn" }, { label: "Numerology", href: "/numerology" } ] },
-  { head: "Company", links: [ { label: "About", href: "/" }, { label: "The app", href: "/home" }, { label: "Help", href: "/dolly" }, { label: "Log in", href: "/onboarding" } ] },
+  // "About" was href="/" too — a self-link from the page it sits on. It points
+  // at the section that actually explains what Mapped is. "Help" goes to the
+  // same address as Contact rather than to Dolly, which is a paid feature a
+  // signed-out visitor cannot reach and would not be help anyway.
+  { head: "Company", links: [ { label: "About", href: "/#features" }, { label: "The app", href: "/home" }, { label: "Help", href: `mailto:${SUPPORT_EMAIL}` }, { label: "Log in", href: "/onboarding" } ] },
 ];
 
 function FullFooter() {
@@ -222,8 +234,12 @@ function FullFooter() {
           <div key={fc.head}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)", margin: "0 0 16px" }}>{fc.head}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+              {/* mailto: is not a route, so it goes through a plain anchor —
+                  next/link would try to prefetch and client-navigate it. */}
               {fc.links.map((l) => (
-                <Link key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</Link>
+                l.href.startsWith("mailto:")
+                  ? <a key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</a>
+                  : <Link key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</Link>
               ))}
             </div>
           </div>
@@ -234,7 +250,17 @@ function FullFooter() {
         <div style={{ display: "flex", gap: 22 }}>
           <Link href="/privacy" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Privacy</Link>
           <Link href="/terms" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Terms</Link>
-          <Link href="/" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Contact</Link>
+          {/*
+            A mailto, not href="/".
+            Both "Contact" and "About" pointed at the homepage, so from the
+            homepage — which is where the footer mostly gets read — clicking
+            Contact did nothing at all. There is no contact route in the
+            bundle, the sitemap or robots.txt, and never was. This is the
+            address Privacy and Terms already publish, so it is the one people
+            are told to use; inventing a second would be worse than the dead
+            link.
+          */}
+          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Contact</a>
         </div>
       </div>
     </footer>
