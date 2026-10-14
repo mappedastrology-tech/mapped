@@ -336,7 +336,13 @@ export async function POST(request: NextRequest) {
    * everyone, which is what it used to be.
    */
   const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const { guardAiConsent } = await import("@/lib/ai/consent");
   const { streamBilling } = await import("@/lib/ai/meter");
+  // Consent before the request leaves us (Guideline 5.1.2(i)). Separate
+  // from the budget check above: that one says "not right now", this one
+  // says "not until you have said yes".
+  const consentRefusal = await guardAiConsent(uid);
+  if (consentRefusal) return consentRefusal;
   const budget = await checkAiBudget(uid);
   if (!budget.allowed) {
     if (isCrisis) return crisisResponse();

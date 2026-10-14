@@ -254,3 +254,67 @@ test("both providers go through the same call", () => {
   assert.match(welcome, /function social\(provider: "google" \| "apple"\)/);
   assert.doesNotMatch(strip(welcome), /provider: "google",/, "google is still hardcoded");
 });
+
+/* ─── Guideline 5.1.2(i): permission before data reaches an AI company ─── */
+
+test("every route that sends data to the AI provider checks consent first", () => {
+  // Four of the seven did not even check the AI budget, so hanging consent
+  // off that check would have left three routes sending birth charts and
+  // journal text with nobody's permission.
+  const routes = [
+    "src/app/api/dolly/route.ts",
+    "src/app/api/dolly/summarize/route.ts",
+    "src/app/api/dolly/memory/route.ts",
+    "src/app/api/dolly/notes/route.ts",
+    "src/app/api/wizard/route.ts",
+    "src/app/api/journal/reflect/route.ts",
+    "src/app/api/journal/prompt/route.ts",
+    "src/app/api/horoscope/route.ts",
+  ];
+  for (const r of routes) {
+    const src = read(r);
+    assert.match(src, /guardAiConsent\(/, `${r} sends data without checking consent`);
+    assert.match(src, /if \(consentRefusal\) return consentRefusal;/, `${r} ignores the refusal`);
+  }
+});
+
+test("consent is enforced on the server, not only in the UI", () => {
+  // A screen the client can skip is a disclosure, not a permission.
+  const src = read("src/lib/ai/consent.ts");
+  assert.match(src, /SUPABASE_SERVICE_ROLE_KEY/, "not a server-side check");
+  assert.match(src, /status: 403/);
+  assert.match(src, /ai_consent_required/, "the client cannot tell this from a paywall");
+  // A failed read must refuse, not wave it through.
+  assert.match(src, /console\.error\("\[ai-consent\][\s\S]{0,80}return false/);
+});
+
+test("the consent screen names the company and what leaves", () => {
+  const src = read("src/components/AiConsentScreen.tsx");
+  assert.match(src, /AI_PROVIDER_NAME/);
+  assert.match(src, /AI_SHARED_ITEMS/);
+  const lib = read("src/lib/aiConsent.ts");
+  assert.match(lib, /AI_PROVIDER_NAME = "Anthropic"/, "the provider is not named");
+  assert.match(lib, /birth date, time and place/i);
+  // The timestamp requirement: the stored value is the moment they agreed.
+  assert.match(lib, /saveSetting\(uid, AI_CONSENT_KEY, new Date\(\)\.toISOString\(\)\)/);
+});
+
+test("declining is a real answer, and does not disable the rest of the app", () => {
+  const dolly = read("src/app/(tabs)/dolly/page.tsx");
+  assert.match(dolly, /aiConsent === "declined"/, "declining just re-shows the screen");
+  assert.match(dolly, /Dolly is switched off/);
+  assert.match(read("src/lib/aiConsent.ts"), /AI_DECLINED_KEY/);
+});
+
+/* ─── Guideline 5.1.1(v): deleting an account is not cancelling a plan ─── */
+
+test("the delete dialog says who to cancel the subscription with", () => {
+  // Inside the app that is Apple, and only iPhone Settings can stop it, so
+  // "manage it here" would tell somebody their billing had stopped when it
+  // had not.
+  const src = read("src/app/account/page.tsx");
+  assert.match(src, /iPhone Settings/);
+  assert.match(src, /isNativeApp\(\)/);
+  assert.match(src, /billed through Stripe/, "web subscribers get no warning");
+  assert.match(src, /Dolly conversations/, "the dialog does not say Dolly history goes too");
+});

@@ -19,6 +19,12 @@ export async function POST(req: NextRequest) {
   const uid = await getAuthedUserId(req);
   if (!uid) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
 
+  // Consent before anything personal reaches the AI provider
+  // (Guideline 5.1.2(i)). This route sends data too, so it asks too.
+  const { guardAiConsent } = await import("@/lib/ai/consent");
+  const consentRefusal = await guardAiConsent(uid);
+  if (consentRefusal) return consentRefusal;
+
   const { checkRateLimitDurable } = await import("@/lib/rateLimit");
   const { allowed } = await checkRateLimitDurable(`journal-prompt:${uid}`, 10, 60 * 60 * 1000);
   if (!allowed) return NextResponse.json({ error: "Rate limited" }, { status: 429 });

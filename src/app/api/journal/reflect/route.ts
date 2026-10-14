@@ -30,6 +30,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
 
+      // Consent before anything personal reaches the AI provider
+      // (Guideline 5.1.2(i)). This route sends data too, so it asks too.
+      const { guardAiConsent } = await import("@/lib/ai/consent");
+      const consentRefusal = await guardAiConsent(uid);
+      if (consentRefusal) return consentRefusal;
+
     // Rate limit: this route makes paid AI calls. 10 reflections/hr per user.
     const { checkRateLimitDurable } = await import("@/lib/rateLimit");
     const { allowed } = await checkRateLimitDurable(`journal-reflect:${uid}`, 10, 60 * 60 * 1000);

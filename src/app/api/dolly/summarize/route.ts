@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
   // over-budget account gets an empty title rather than an error — the client
   // falls back to a generic label, and nothing on screen looks broken.
   const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const { guardAiConsent } = await import("@/lib/ai/consent");
+  // Consent before the request leaves us (Guideline 5.1.2(i)). Separate
+  // from the budget check above: that one says "not right now", this one
+  // says "not until you have said yes".
+  const consentRefusal = await guardAiConsent(ctx.userId);
+  if (consentRefusal) return consentRefusal;
   const verdict = await checkAiBudget(ctx.userId);
   if (!verdict.allowed) return new Response(JSON.stringify({ summary: "" }), { status: 200 });
 

@@ -12,6 +12,8 @@ import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
+import AiConsentScreen from "@/components/AiConsentScreen";
+import { readAiConsent, AI_PROVIDER_NAME, type AiConsentState } from "@/lib/aiConsent";
 import { incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
@@ -199,6 +201,10 @@ export default function DollyTab() {
   const [connections, setConnections] = useState<ConnectionContext[]>([]);
   const [userName, setUserName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  /** Whether this account has agreed to Dolly talking to the AI provider. */
+  const [aiConsent, setAiConsent] = useState<AiConsentState>("unknown");
+  /** Distinguishes "still reading" from "read, and they have not been asked". */
+  const [consentChecked, setConsentChecked] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   /** What the live region says once a reply lands. See the region itself. */
   const [announcement, setAnnouncement] = useState("");
@@ -786,6 +792,17 @@ export default function DollyTab() {
   // thing React tells you not to do, and it is not needed here.
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
+  // One read on mount. "Read it again" resets to unknown without clearing
+  // this flag, so it falls through to the consent screen rather than the
+  // spinner.
+  useEffect(() => {
+    let alive = true;
+    readAiConsent()
+      .then((state) => { if (alive) setAiConsent(state); })
+      .finally(() => { if (alive) setConsentChecked(true); });
+    return () => { alive = false; };
+  }, []);
+
   /**
    * The composer sizes itself to what is actually in it.
    *
@@ -1171,6 +1188,61 @@ export default function DollyTab() {
   }
 
   // ─── Render ───
+
+  /**
+   * Permission comes before the screen Dolly lives on.
+   *
+   * Placed above the loading return deliberately: somebody who has not been
+   * asked should never see the greeting and the starter prompts first and the
+   * permission question second. The server refuses these calls anyway (see
+   * lib/ai/consent.ts) — this is so the refusal is a question rather than an
+   * error.
+   *
+   * `unknown` while the read is in flight shows the same spinner as any other
+   * load; guessing either way would be wrong.
+   */
+  if (aiConsent === "unknown" && !consentChecked) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
+      </main>
+    );
+  }
+
+  /**
+   * Said no. Not asked again — that was the promise the decline button made,
+   * and re-showing the same screen on every visit would turn a choice into a
+   * nag. A quiet off state with one way back in.
+   */
+  if (aiConsent === "declined") {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-3">
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 22, color: "var(--foreground)" }}>
+          Dolly is switched off
+        </h1>
+        <p className="text-[14px] leading-[1.6] max-w-xs" style={{ color: "var(--foreground-secondary)" }}>
+          You chose not to send your chart and messages to {AI_PROVIDER_NAME}. Everything else in
+          Mapped still works.
+        </p>
+        <button
+          onClick={() => setAiConsent("unknown")}
+          className="mt-2 px-5 rounded-full text-[14px] font-semibold active:scale-[0.98] transition-all"
+          style={{ minHeight: 46, background: "var(--brass)", color: "var(--btn-primary-text)" }}
+        >
+          Read it again
+        </button>
+      </main>
+    );
+  }
+
+  if (aiConsent !== "granted") {
+    return (
+      <AiConsentScreen
+        onGranted={() => setAiConsent("granted")}
+        onDeclined={() => setAiConsent("declined")}
+      />
+    );
+  }
 
   if (isLoading) {
     return (

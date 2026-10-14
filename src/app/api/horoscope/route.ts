@@ -284,6 +284,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
 
+  // Consent before anything personal reaches the AI provider
+  // (Guideline 5.1.2(i)). This route sends data too, so it asks too.
+  const { guardAiConsent } = await import("@/lib/ai/consent");
+  const consentRefusal = await guardAiConsent(userId);
+  if (consentRefusal) return consentRefusal;
+
   // Rate limit per user (durable across workers when Redis is configured).
   const { checkRateLimitDurable } = await import("@/lib/rateLimit");
   const { allowed } = await checkRateLimitDurable(`horoscope:${userId}`, 5, 60 * 60 * 1000);

@@ -43,6 +43,7 @@ import { isAdmin } from "@/lib/admin";
 import { applyChartSystem, loadChartSystemPreference, saveChartSystemPreference } from "@/lib/chartSystemSync";
 import { chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
 import { defaultHouseSystem } from "@/lib/astro/vedic/houses";
+import { isNativeApp } from "@/lib/isNativeApp";
 import { openCheckout } from "@/lib/openCheckout";
 
 export default function AccountPageWrapper() {
@@ -2118,6 +2119,21 @@ function AccountPage() {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  /**
+   * Whether there is a subscription that deleting the account will NOT stop.
+   *
+   * Read here rather than reached for from SubscriptionSection, which is a
+   * sibling — the warning has to be in the dialog, and the dialog lives in
+   * this component.
+   */
+  const [hasSubscription, setHasSubscription] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    getProfile()
+      .then((p) => { if (alive) setHasSubscription(!!p?.stripe_subscription_id); })
+      .catch(() => { /* no warning is better than a wrong one */ });
+    return () => { alive = false; };
+  }, []);
 
   const [connectionError, setConnectionError] = useState(false);
 
@@ -2753,7 +2769,22 @@ function AccountPage() {
           {showDeleteConfirm && (
             <ConfirmDialog
               title="Delete your account?"
-              message="This will permanently delete your account, your birth chart, journal entries, and all other data. This can't be undone."
+              /*
+                The subscription sentence is Guideline 5.1.1(v): deleting an
+                account must not be mistaken for cancelling what you pay for.
+                Which sentence depends on who takes the money — inside the app
+                that is Apple, and only iPhone Settings can stop it, so saying
+                "manage it here" would be telling somebody their billing had
+                stopped when it had not. On the web it is Stripe, and the
+                billing portal is ours.
+              */
+              message={`This will permanently delete your account, your birth chart, journal entries, Dolly conversations, and all other data. This can't be undone.${
+                hasSubscription
+                  ? isNativeApp()
+                    ? " Your subscription is billed through Apple and is not cancelled by this — cancel it in iPhone Settings → your name → Subscriptions."
+                    : " Your subscription is billed through Stripe. Cancel it first in the billing portal, or you'll keep being charged."
+                  : ""
+              }`}
               confirmLabel="Delete everything"
               confirmDestructive
               onConfirm={handleDeleteAccount}

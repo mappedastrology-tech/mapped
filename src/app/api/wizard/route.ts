@@ -230,7 +230,13 @@ export async function POST(request: NextRequest) {
   // Tier gate + monthly spend ceiling FIRST — it resolves the tier, and the
   // daily cap below scales with it.
   const { guardAiTiered, streamBilling } = await import("@/lib/ai/meter");
+  const { guardAiConsent } = await import("@/lib/ai/consent");
   const { recordAiUsage } = await import("@/lib/ai/budget");
+  // Consent before the request leaves us (Guideline 5.1.2(i)). Separate
+  // from the budget check above: that one says "not right now", this one
+  // says "not until you have said yes".
+  const consentRefusal = await guardAiConsent(uid);
+  if (consentRefusal) return consentRefusal;
   const verdict = await guardAiTiered(uid, "wizard");
   if ("denied" in verdict) return verdict.denied;
 

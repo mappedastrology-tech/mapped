@@ -90,6 +90,12 @@ export async function POST(request: NextRequest) {
       return new Response(JSON.stringify({ error: "Sign in required." }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
 
+      // Consent before anything personal reaches the AI provider
+      // (Guideline 5.1.2(i)). This route sends data too, so it asks too.
+      const { guardAiConsent } = await import("@/lib/ai/consent");
+      const consentRefusal = await guardAiConsent(uid);
+      if (consentRefusal) return consentRefusal;
+
     const { checkRateLimitDurable } = await import("@/lib/rateLimit");
     const { allowed } = await checkRateLimitDurable(`dolly-notes:${uid}`, 60, 24 * 60 * 60 * 1000);
     if (!allowed) {

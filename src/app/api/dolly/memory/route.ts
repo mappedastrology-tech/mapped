@@ -60,6 +60,12 @@ Return ONLY the updated memory (bullets), no preamble.`;
   // Another background call — this one updates what Dolly remembers. Over
   // budget it simply doesn't run; the memory keeps its previous contents.
   const { checkAiBudget, recordAiUsage } = await import("@/lib/ai/budget");
+  const { guardAiConsent } = await import("@/lib/ai/consent");
+  // Consent before the request leaves us (Guideline 5.1.2(i)). Separate
+  // from the budget check above: that one says "not right now", this one
+  // says "not until you have said yes".
+  const consentRefusal = await guardAiConsent(userId);
+  if (consentRefusal) return consentRefusal;
   const verdict = await checkAiBudget(userId);
   if (!verdict.allowed) return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 });
 
