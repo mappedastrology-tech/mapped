@@ -222,3 +222,35 @@ test("the demographics screen says who reads it", () => {
   const lifeStage = src.slice(from, src.indexOf("Professional", from));
   assert.match(lifeStage, /Prefer not to say/);
 });
+
+/* ─── Guideline 4.8: Sign in with Apple, wherever Google is ─── */
+
+test("Apple sign-in is offered everywhere Google is", () => {
+  // handleSocialLogin accepted "apple" and AppleIcon was defined, but only
+  // the account screen ever rendered the button. The two surfaces where
+  // accounts are actually created — the sign-up modal and the app's front
+  // door inside the native shell — offered Google alone, which is the exact
+  // shape of a 4.8 rejection.
+  for (const file of [
+    "src/components/AuthModal.tsx",
+    "src/app/welcome/page.tsx",
+    "src/app/account/page.tsx",
+  ]) {
+    const src = read(file);
+    assert.match(src, /Continue with Apple/, `${file} does not offer Apple`);
+    assert.match(src, /Continue with Google/, `${file} lost Google`);
+    // Apple first is the iOS convention, and reviewers look for it.
+    assert.ok(
+      src.indexOf("Continue with Apple") < src.indexOf("Continue with Google"),
+      `${file} puts Google above Apple`,
+    );
+  }
+});
+
+test("both providers go through the same call", () => {
+  // Two code paths would let one drift — a different redirectTo on Apple is
+  // how the callback silently breaks for half the users.
+  const welcome = read("src/app/welcome/page.tsx");
+  assert.match(welcome, /function social\(provider: "google" \| "apple"\)/);
+  assert.doesNotMatch(strip(welcome), /provider: "google",/, "google is still hardcoded");
+});

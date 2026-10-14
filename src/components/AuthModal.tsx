@@ -178,13 +178,35 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
         </p>
       )}
 
-      {/* Social login buttons */}
-      <div className="flex gap-2.5 mb-4">
+      {/* Social login buttons.
+
+          Apple is here because Google is. Guideline 4.8 requires Sign in with
+          Apple as an equal option wherever a third-party social login is
+          offered, and this modal is where accounts are actually created — the
+          one surface that decides whether the app passes. handleSocialLogin
+          has always accepted "apple" and AppleIcon has always been defined;
+          only the button was missing, so review would have failed over markup
+          that was a dozen lines short.
+
+          Apple first, which is the platform convention on iOS, and stacked
+          rather than side by side so neither label truncates. */}
+      <div className="flex flex-col gap-2.5 mb-4">
+        <button
+          onClick={() => handleSocialLogin("apple")}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                     bg-card border border-foreground/15 text-foreground text-xs font-medium
+                     hover:bg-elevated active:scale-[0.98] transition-all duration-200"
+          style={{ minHeight: 44 }}
+        >
+          <AppleIcon />
+          Continue with Apple
+        </button>
         <button
           onClick={() => handleSocialLogin("google")}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                      bg-card border border-foreground/15 text-foreground text-xs font-medium
                      hover:bg-elevated active:scale-[0.98] transition-all duration-200"
+          style={{ minHeight: 44 }}
         >
           <GoogleIcon />
           Continue with Google

@@ -112,10 +112,17 @@ function WelcomePage() {
     setBusy(false);
   }
 
-  async function google() {
+  /**
+   * Google or Apple, through the same path.
+   *
+   * Apple is not optional: Guideline 4.8 requires Sign in with Apple wherever
+   * another social login is offered, and this screen is the app's front door
+   * inside the native shell.
+   */
+  async function social(provider: "google" | "apple") {
     setError("");
     const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (err) setError(friendlyAuthError(err));
@@ -199,9 +206,20 @@ function WelcomePage() {
           <div className="mt-10 w-full">
             <h2 className="text-xl text-foreground text-center" style={{ fontFamily: "var(--font-display)" }}>Welcome back</h2>
 
+            {/* Apple first — the platform convention on iOS. */}
             <button
-              onClick={google}
+              onClick={() => social("apple")}
               className="mt-6 w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-card border border-foreground/15 text-foreground text-sm font-medium active:scale-[0.98] transition-all"
+              style={{ minHeight: 44 }}
+            >
+              <AppleIcon />
+              Continue with Apple
+            </button>
+
+            <button
+              onClick={() => social("google")}
+              className="mt-2.5 w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-card border border-foreground/15 text-foreground text-sm font-medium active:scale-[0.98] transition-all"
+              style={{ minHeight: 44 }}
             >
               <GoogleIcon />
               Continue with Google
@@ -267,6 +285,15 @@ function WelcomePage() {
         <Link href="/terms" className="text-muted/70">Terms</Link>
       </div>
     </main>
+  );
+}
+
+/** Apple's mark, as used on the account screen and in AuthModal. */
+function AppleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.05 12.04c-.01-2.17 1.77-3.21 1.85-3.26-1.01-1.48-2.58-1.68-3.14-1.7-1.34-.13-2.61.78-3.29.78-.68 0-1.72-.76-2.83-.74-1.46.02-2.8.84-3.55 2.14-1.51 2.62-.39 6.5 1.09 8.62.72 1.04 1.58 2.2 2.71 2.16 1.09-.04 1.5-.7 2.82-.7 1.31 0 1.69.7 2.84.68 1.17-.02 1.91-1.06 2.63-2.1.83-1.21 1.17-2.38 1.19-2.44-.03-.01-2.28-.88-2.3-3.44zM14.9 5.6c.6-.73 1.01-1.74.9-2.75-.87.04-1.92.58-2.54 1.3-.56.65-1.05 1.68-.92 2.67.97.08 1.96-.49 2.56-1.22z" />
+    </svg>
   );
 }
 
