@@ -231,7 +231,7 @@ export default function NumerologyPageContent() {
   const keywordsOf = (n: number) => (getArchetype(n)?.keyword || "").split(/,\s*/).filter(Boolean);
 
   return (
-    <main className="flex-1 flex flex-col px-5 pt-5 lg:pt-8 pb-8 max-w-lg lg:max-w-2xl mx-auto w-full">
+    <main className="flex-1 flex flex-col px-5 pt-5 lg:pt-8 pb-8 app-read w-full">
       {/* Header */}
       <div className="text-center pb-1">
         <p className="text-[9px] tracking-[0.28em] uppercase font-bold" style={{ color: "var(--brass)" }}>

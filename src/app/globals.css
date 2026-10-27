@@ -1116,3 +1116,36 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   .pf-page [style*="animation"] { animation: none !important; }
 }
+
+/* ── Page width ─────────────────────────────────────────────────────────
+   One layout serves phone and desktop. On a phone a page is the 32rem
+   column it always was; from lg up it widens to use the window instead of
+   leaving the app in a phone-width strip down the middle of a monitor.
+
+   Two widths, chosen by what the page holds:
+
+     .app-page  a feed of cards or tiles. Pair it with
+                `lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-x-8
+                lg:items-start` on the stack inside, so the cards reflow
+                across columns and fill the width. A child that should run
+                the whole way across opts out with `lg:col-span-full`.
+                The third column waits for 2xl on purpose: the SideNav rail
+                takes 16rem off the window, so splitting three ways any
+                earlier makes the cards narrower than they were at lg.
+
+     .app-read  a single flow of prose — a lesson, a reading, a journal
+                entry. These stay narrow on purpose: past roughly 75
+                characters a line gets harder to read, not easier, so the
+                extra room goes to the margins.
+   ───────────────────────────────────────────────────────────────────── */
+.app-page,
+.app-read {
+  width: 100%;
+  max-width: 32rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .app-page { max-width: 96rem; }
+  .app-read { max-width: 48rem; }
+}

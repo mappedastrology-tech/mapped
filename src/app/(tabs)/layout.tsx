@@ -8,13 +8,17 @@
  * landing page, chart creation flow, and account settings) won't
  * have the nav bars.
  *
+ * One layout serves every screen size. On phones it is TopBar + content +
+ * BottomNav; from lg up the bars give way to a SideNav rail and the content
+ * widens to fill the window. There is no separate desktop build of the app.
+ *
  * The (tabs) folder name uses Next.js "route groups" — the parentheses
  * mean it organizes files without affecting the URL. So /home, /you, etc.
  * work directly.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import BottomNav from "@/components/BottomNav";
 import SideNav from "@/components/SideNav";
@@ -23,59 +27,14 @@ import BugReportButton from "@/components/BugReportButton";
 import { TierProvider } from "@/components/TierProvider";
 import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
-import { useIsDesktop } from "@/lib/useIsDesktop";
-import WebToday from "@/components/web/WebToday";
-import WebAlmanac from "@/components/web/WebAlmanac";
-import WebTarot from "@/components/web/WebTarot";
-import WebJournal from "@/components/web/WebJournal";
-import WebMaps from "@/components/web/WebMaps";
-import WebDolly from "@/components/web/WebDolly";
-import WebLibrary from "@/components/web/WebLibrary";
-import WebNumerology from "@/components/web/WebNumerology";
-import WebChart from "@/components/web/WebChart";
-import WebHumanDesign from "@/components/web/WebHumanDesign";
-import WebPalmistry from "@/components/web/WebPalmistry";
-import WebRitual from "@/components/web/WebRitual";
-import WebProfile from "@/components/web/WebProfile";
-
-// Routes (inside this group) with a desktop "web" experience
-// (design_handoff_mapped_web). On lg+ these render the web page and the mobile
-// chrome is hidden; on phones the mobile app shows. /library lives outside
-// (tabs) and wires its own desktop branch via DesktopWebRoute.
-const WEB_PAGES: Record<string, React.ComponentType> = {
-  "/home": WebToday,
-  "/almanac": WebAlmanac,
-  "/tarot": WebTarot,
-  "/journal": WebJournal,
-  "/maps": WebMaps,
-  "/dolly": WebDolly,
-  "/library": WebLibrary,
-  // "Fill-in" routes: the shared web shell wrapping each page's real content.
-  "/numerology": WebNumerology,
-  "/you": WebChart,
-  "/human-design": WebHumanDesign,
-  "/palmistry": WebPalmistry,
-  "/learn": WebRitual,
-  "/profile": WebProfile,
-};
-
 export default function TabsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const WebPage = WEB_PAGES[pathname];
   const [showTour, setShowTour] = useState(false);
   const [ready, setReady] = useState(false);
-  // Desktop web pages replace the mobile app entirely on lg+. We resolve the
-  // breakpoint after mount (during the auth spinner) so the mobile page is
-  // never mounted on desktop — its onboarding/chart redirects must not fire
-  // underneath the web layout.
-  // (NEXT_PUBLIC_FORCE_MOBILE=1 forces the mobile layout everywhere — see useIsDesktop.)
-  const isDesktop = useIsDesktop();
-  const showWeb = !!WebPage && isDesktop;
 
   const syncRan = useRef(false);
 
@@ -142,27 +101,20 @@ export default function TabsLayout({
   return (
     <TierProvider>
       <BirthTimeProvider>
-        {/* Desktop web pages take over the whole viewport with their own
-            top-nav shell. Otherwise: mobile TopBar + scrolling content +
-            BottomNav (column), with a left SideNav rail on lg+. */}
-        {showWeb ? (
-          <div className="h-dvh overflow-y-auto overscroll-contain">
-            <WebPage />
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row h-dvh">
-            <SideNav />
-            <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                <TopBar />
-                <div className="pb-4 lg:pb-10">
-                  {children}
-                </div>
+        {/* TopBar + scrolling content + BottomNav on phones; the bars hide
+            themselves from lg up, where the SideNav rail takes over. */}
+        <div className="flex flex-col lg:flex-row h-dvh">
+          <SideNav />
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              <TopBar />
+              <div className="pb-4 lg:pb-10">
+                {children}
               </div>
-              <BottomNav />
             </div>
+            <BottomNav />
           </div>
-        )}
+        </div>
         <BugReportButton />
         {showTour && <AppTour onComplete={handleTourComplete} />}
       </BirthTimeProvider>

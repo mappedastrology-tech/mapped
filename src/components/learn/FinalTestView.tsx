@@ -28,7 +28,7 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
     return (
       <main className="min-h-screen lib-felt">
         <LibraryHeader title="Final test" fallback={`/library/${courseId}`} />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This test isn&rsquo;t available yet.</p>
+        <p className="app-read px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This test isn&rsquo;t available yet.</p>
       </main>
     );
   }
@@ -68,7 +68,7 @@ export default function FinalTestView({ courseId }: { courseId: string }) {
         crumbs={[{ label: "Library", href: "/library" }, { label: course.title, href: `/library/${courseId}` }]}
         accent={domainAccent(course.domain)}
       />
-      <div className="max-w-lg mx-auto px-5 py-6 pb-28">
+      <div className="app-read px-5 py-6 pb-28">
         {phase === "intro" && (
           <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: "var(--background-card)", border: "1px solid var(--border-card)" }}>
             <div className="text-3xl mb-3" aria-hidden="true">📝</div>

@@ -42,7 +42,7 @@ export default function ReferenceSheet({ entry, onClose, onOpenEntry }: { entry:
           <filter id="refgrain"><feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={2} stitchTiles="stitch" /></filter>
         </svg>
 
-        <div className="max-w-lg mx-auto px-5 pt-3 pb-8 relative">
+        <div className="app-read px-5 pt-3 pb-8 relative">
           {/* grab handle */}
           <div className="w-10 h-1 rounded-full mx-auto mb-2" style={{ backgroundColor: "var(--border-strong)" }} aria-hidden="true" />
 

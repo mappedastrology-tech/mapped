@@ -18,16 +18,20 @@ export default function LibraryHeader({
   fallback = "/library",
   crumbs,
   accent = "var(--brass)",
+  wide = false,
 }: {
   title: string;
   fallback?: string;
   crumbs?: Crumb[];
   accent?: string;
+  /** Match a full-width page (a list of courses or tiles) rather than a
+   *  reading column, so the back button stays level with the content. */
+  wide?: boolean;
 }) {
   const router = useRouter();
   return (
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm" style={{ borderBottom: "1px solid var(--border-card)" }}>
-      <div className="max-w-lg mx-auto px-4 py-2.5">
+      <div className={`${wide ? "app-page" : "app-read"} px-4 py-2.5`}>
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push(fallback)}

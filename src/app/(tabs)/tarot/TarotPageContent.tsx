@@ -477,7 +477,7 @@ export default function TarotTab() {
   if (view === "card-detail" && isOracleDeck && detailOracleCard) {
     const oCard = detailOracleCard;
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-read w-full overflow-y-auto">
         <button
           onClick={() => { setDetailOracleCard(null); setView(selectedSpread ? "spread-view" : pickedOracleCards.length > 0 ? "freestyle-fan" : "decks"); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
@@ -586,7 +586,7 @@ export default function TarotTab() {
     const astroInsight = isAstro ? getAstroTarotInsight(card, reversed) : null;
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-read w-full overflow-y-auto">
         <button
           onClick={() => setView(selectedSpread ? "spread-view" : freestylePicks.length > 0 ? "freestyle-fan" : "decks")}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
@@ -713,7 +713,7 @@ export default function TarotTab() {
      ═══════════════════════════════════════════ */
   if (view === "decks") {
     return (
-      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 app-page w-full overflow-y-auto">
         <div className="text-center pt-1 pb-1">
           <p style={{ fontFamily: "var(--font-heading)", fontSize: 30, fontWeight: 400, letterSpacing: "0.16em", textTransform: "uppercase", lineHeight: 1.1, color: "var(--foreground)" }}>Tarot</p>
           <p style={{ fontFamily: "var(--font-script)", fontSize: 38, lineHeight: 1, marginTop: -2, color: "var(--brass)" }}>choose your deck</p>
@@ -723,7 +723,7 @@ export default function TarotTab() {
         </div>
 
         {/* Decks — plum horizontal cards with fanned cover */}
-        <div className="flex flex-col gap-4 mt-7">
+        <div className="flex flex-col gap-4 mt-7 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
           <DeckRow
             tag="Tarot · 78 cards"
             name="Classic Tarot"
@@ -917,7 +917,7 @@ export default function TarotTab() {
       width: 10, height: 15, borderRadius: 2.5, background: "rgba(201,169,97,0.2)", border: "0.5px solid rgba(201,169,97,0.4)", ...extra,
     });
     return (
-      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 app-page w-full overflow-y-auto">
         {/* Selected-deck hero */}
         <div className="flex flex-col items-center pt-2 pb-1">
           <span className="text-[8.5px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>
@@ -932,7 +932,7 @@ export default function TarotTab() {
         </div>
 
         <p className="text-[9px] tracking-[0.25em] uppercase font-bold mt-8 mb-4" style={{ color: "var(--brass)" }}>How would you like to read?</p>
-        <div className="flex flex-col gap-3 mb-3">
+        <div className="flex flex-col gap-3 mb-3 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
           {SPREADS.map((spread) => (
             <button
               key={spread.id}
@@ -987,7 +987,7 @@ export default function TarotTab() {
     const guide = isFree ? SPREAD_GUIDES["freestyle"] : (SPREAD_GUIDES[pendingSpreadId] || spread?.description || "");
     const deckName = isOracleDeck ? (activeOracleDeck?.name || getOracleDeck(selectedDeck)?.name || "Oracle") : "Classic Tarot";
     return (
-      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 pt-5 pb-8 app-read w-full overflow-y-auto">
         <button onClick={() => setView("spreads")} className="self-start text-[12px] flex items-center gap-1.5 mb-4" style={{ color: "var(--foreground-faint)" }}>
           <span style={{ fontSize: 16 }}>‹</span> Spreads
         </button>
@@ -1043,7 +1043,7 @@ export default function TarotTab() {
     const cardsInFan = Math.min(totalCards, 78);
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-4 max-w-lg mx-auto w-full overflow-hidden">
+      <main className="flex-1 flex flex-col px-5 py-4 app-read w-full overflow-hidden">
         <button onClick={() => { setView("spreads"); setPickedCards([]); }}
           className="flex items-center gap-2 text-muted text-sm mb-2 active:text-secondary"
         >
@@ -1149,7 +1149,7 @@ export default function TarotTab() {
       const allRevealed = pickedOracleCards.every(c => c.revealed);
 
       return (
-        <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+        <main className="flex-1 flex flex-col px-5 py-6 app-read w-full overflow-y-auto">
           <button onClick={() => { setView("spreads"); setPickedOracleCards([]); }}
             className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
           >
@@ -1175,7 +1175,7 @@ export default function TarotTab() {
             </div>
           )}
 
-          <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
+          <div className="relative w-full max-w-lg mx-auto" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
             {pickedOracleCards.map((oc, i) => {
               const pos = selectedSpread.positions[i];
               if (!pos) return null;
@@ -1363,7 +1363,7 @@ export default function TarotTab() {
     const allRevealed = pickedCards.every(c => c.revealed);
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-read w-full overflow-y-auto">
         <button onClick={() => { setView("spreads"); setPickedCards([]); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
         >
@@ -1389,7 +1389,7 @@ export default function TarotTab() {
           </div>
         )}
 
-        <div className="relative w-full" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
+        <div className="relative w-full max-w-lg mx-auto" style={{ minHeight: selectedSpread.cardCount <= 3 ? 220 : selectedSpread.cardCount <= 5 ? 340 : 440 }}>
           {pickedCards.map((dc, i) => {
             const pos = selectedSpread.positions[i];
             if (!pos) return null;
@@ -1643,7 +1643,7 @@ export default function TarotTab() {
     };
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-4 max-w-lg mx-auto w-full overflow-hidden">
+      <main className="flex-1 flex flex-col px-5 py-4 app-read w-full overflow-hidden">
         <button onClick={() => { setView("spreads"); setFreestylePicks([]); setPickedOracleCards([]); }}
           className="flex items-center gap-2 text-muted text-sm mb-2 active:text-secondary"
         >

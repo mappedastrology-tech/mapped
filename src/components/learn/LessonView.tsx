@@ -27,7 +27,7 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
     return (
       <main className="min-h-screen lib-felt">
         <LibraryHeader title="Lesson" fallback={`/library/${courseId}`} />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This lesson couldn&rsquo;t be found.</p>
+        <p className="app-read px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This lesson couldn&rsquo;t be found.</p>
       </main>
     );
   }
@@ -63,7 +63,7 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
       <div className="h-1" style={{ backgroundColor: "var(--lib-track)" }}>
         <div className="h-full" style={{ width: `${ctx.total > 0 ? ((ctx.index + 1) / ctx.total) * 100 : 0}%`, backgroundColor: accent }} />
       </div>
-      <div key={lessonId} className="max-w-lg mx-auto px-5 py-6 pb-28 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div key={lessonId} className="app-read px-5 py-6 pb-28 animate-in fade-in slide-in-from-right-4 duration-300">
         <p className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: accent }}>
           <span aria-hidden="true" className="text-[13px]">{course.icon}</span> Lesson {ctx.index + 1} of {ctx.total}
         </p>

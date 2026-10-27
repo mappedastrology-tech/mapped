@@ -128,7 +128,7 @@ export default function LibraryHome() {
 
       <h1 className="sr-only">Learn</h1>
 
-      <div className="max-w-lg mx-auto px-5 pb-24 relative">
+      <div className="app-page px-5 pb-24 relative">
         {/* Starfield (decorative, dark theme only — reads as ink specks on parchment in light) */}
         {!searching && theme === "dark" && (
           <div aria-hidden="true" style={{ position: "absolute", inset: "0 0 auto 0", height: 260, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
@@ -139,6 +139,9 @@ export default function LibraryHome() {
         )}
 
         <div className="relative" style={{ zIndex: 1 }}>
+          {/* The dashboard reads as one ordered column, so it stays centred
+              and narrow; only the topic tiles below use the full width. */}
+          <div className="lg:max-w-2xl lg:mx-auto">
           {/* Decorative eyebrow */}
           <div className="flex items-center justify-center gap-2.5 pt-2 pb-3.5">
             <span style={{ width: 16, height: 1, background: "color-mix(in srgb, var(--brass) 45%, transparent)" }} />
@@ -162,9 +165,11 @@ export default function LibraryHome() {
             {query && <button onClick={() => setQuery("")} aria-label="Clear search" className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>✕</button>}
           </div>
 
+          </div>
+
           {searching ? (
             /* ─── Search results ─── */
-            <div className="flex flex-col gap-5 mt-4">
+            <div className="flex flex-col gap-5 mt-4 lg:max-w-2xl lg:mx-auto">
               {refResults.length > 0 && (
                 <section>
                   <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "var(--brass)" }}>Library · {refResults.length}</p>
@@ -198,6 +203,7 @@ export default function LibraryHome() {
           ) : (
             /* ─── Browse ─── */
             <>
+              <div className="lg:max-w-2xl lg:mx-auto">
               {/* Level orb */}
               {eng && (() => {
                 const s = eng.stats;
@@ -341,12 +347,14 @@ export default function LibraryHome() {
                 </section>
               )}
 
-              {/* Browse all topics */}
+              </div>
+
+              {/* Browse all topics — the one block that uses the full width */}
               <div className="flex items-center gap-3 mt-8 mb-4">
                 <span className="text-[9px] font-semibold uppercase" style={{ letterSpacing: "0.2em", color: "var(--foreground-secondary)" }}>Browse all topics</span>
                 <span className="flex-1 h-px" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--foreground-muted) 28%, transparent)" }} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
                 {DOMAINS.map((d) => {
                   const domainCourses = ALL_COURSES.filter((c) => c.domain === d.id);
                   const target = domainCourses.length === 1 ? `/library/${domainCourses[0].id}` : `/library/d/${d.id}`;

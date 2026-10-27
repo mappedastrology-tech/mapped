@@ -216,7 +216,7 @@ export default function MoonEventScreen({ onClose, onStartRitual }: MoonEventScr
     >
       <NightSkyBackground />
 
-      <div className="relative z-10 max-w-lg mx-auto px-5 pb-10">
+      <div className="relative z-10 app-read px-5 pb-10">
         {/* Back button */}
         <button
           onClick={onClose}

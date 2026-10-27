@@ -25,7 +25,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
     return (
       <main className="min-h-screen lib-felt">
         <LibraryHeader title="Course" />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This course couldn&rsquo;t be found.</p>
+        <p className="app-read px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This course couldn&rsquo;t be found.</p>
       </main>
     );
   }
@@ -48,7 +48,7 @@ export default function CourseView({ courseId }: { courseId: string }) {
         <filter id="cvgrain"><feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={2} stitchTiles="stitch" /></filter>
       </svg>
       <LibraryHeader title={course.title} fallback="/library" accent={accent} />
-      <div className="max-w-lg mx-auto px-5 py-5 pb-24">
+      <div className="app-read px-5 py-5 pb-24">
         {/* Course hero (centered) */}
         <div className="text-center px-6 pt-2 pb-1">
           <div className="relative mx-auto mb-3" style={{ width: 74, height: 74 }}>

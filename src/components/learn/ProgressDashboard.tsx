@@ -41,7 +41,7 @@ export default function ProgressDashboard() {
   if (!eng) {
     return (
       <main className="min-h-screen lib-felt">
-        <LibraryHeader title="Your Progress" fallback="/library" />
+        <LibraryHeader wide title="Your Progress" fallback="/library" />
         <p className="text-center text-sm py-10" style={{ color: "var(--foreground-muted)" }}>Loading…</p>
       </main>
     );
@@ -53,8 +53,8 @@ export default function ProgressDashboard() {
 
   return (
     <main className="min-h-screen lib-felt">
-      <LibraryHeader title="Your Progress" fallback="/library" />
-      <div className="max-w-lg mx-auto px-5 py-5 pb-24">
+      <LibraryHeader wide title="Your Progress" fallback="/library" />
+      <div className="app-page px-5 py-5 pb-24">
         {/* Level + XP */}
         <div className="rounded-2xl p-5 mb-3" style={{ background: "linear-gradient(135deg, var(--plum), var(--plum-deep))", border: "1px solid var(--brass)" }}>
           <div className="flex items-center justify-between mb-2">
@@ -143,7 +143,7 @@ export default function ProgressDashboard() {
         <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "var(--brass)" }}>
           Achievements · {achievements.filter((a) => a.unlocked).length}/{achievements.length}
         </p>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5">
           {achievements.map(({ achievement, unlocked }) => (
             <div
               key={achievement.id}

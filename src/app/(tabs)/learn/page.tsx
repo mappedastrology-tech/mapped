@@ -29,7 +29,7 @@ export default function PracticePage() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* ━━━ Pill Toggle ━━━ */}
-      <div className="max-w-lg mx-auto w-full px-5 pt-4 pb-2">
+      <div className="app-read w-full px-5 pt-4 pb-2">
         <div
           className="flex rounded-lg overflow-hidden"
           style={{

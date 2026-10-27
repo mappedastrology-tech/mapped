@@ -28,8 +28,8 @@ export default function DomainHub({ domain, initialTab }: { domain: string; init
   if (!meta) {
     return (
       <main className="min-h-screen lib-felt">
-        <LibraryHeader title="Library" fallback="/library" />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>That topic couldn&rsquo;t be found.</p>
+        <LibraryHeader wide title="Library" fallback="/library" />
+        <p className="app-page px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>That topic couldn&rsquo;t be found.</p>
       </main>
     );
   }
@@ -40,8 +40,8 @@ export default function DomainHub({ domain, initialTab }: { domain: string; init
 
   return (
     <main className="min-h-screen lib-felt">
-      <LibraryHeader title={meta.title} fallback="/library" accent={accent} />
-      <div className="max-w-lg mx-auto px-5 py-5 pb-24">
+      <LibraryHeader wide title={meta.title} fallback="/library" accent={accent} />
+      <div className="app-page px-5 py-5 pb-24">
         {/* Domain hero */}
         <div className="relative overflow-hidden rounded-2xl p-5 mb-4" style={{ background: `linear-gradient(135deg, ${accent}3a, var(--background-card) 78%)`, border: `1px solid ${accent}66`, boxShadow: "var(--card-shadow)", minHeight: 104 }}>
           {meta.cover && (
@@ -72,7 +72,7 @@ export default function DomainHub({ domain, initialTab }: { domain: string; init
         )}
 
         {tab === "learn" || !hasReference ? (
-          <div className="flex flex-col gap-2.5 mt-3">
+          <div className="flex flex-col gap-2.5 mt-3 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
             {courses.map((course) => {
               const total = lessonCount(course);
               const prog = progress[course.id];

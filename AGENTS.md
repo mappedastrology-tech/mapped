@@ -13,9 +13,14 @@ current roadmap.
 Before finishing any UI or feature work, check it against all four:
 
 1. **Mobile web** — the `(tabs)` layout. The default; assume touch.
-2. **Desktop web** — the `src/components/web/Web*.tsx` screens, shown at `lg+`
-   via `WEB_PAGES` in `src/app/(tabs)/layout.tsx`. A new tab page usually needs
-   a matching `Web*` screen, or it will render the mobile layout on desktop.
+2. **Desktop web** — the same pages, widened. There is no separate desktop
+   build: from `lg` up the TopBar and BottomNav hide themselves, `SideNav`
+   takes over, and each page's container grows. Use the `.app-page` or
+   `.app-read` class (defined in `src/app/globals.css`) for a page's
+   container, and give a flat list of cards
+   `lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start` so it
+   fills the window instead of running down one column. Keep every desktop
+   rule behind an `lg:` prefix so the phone layout cannot regress.
 3. **iOS / Android** — the same React code inside Capacitor, served from a
    **static export**. This is the constraint that bites, so:
    - Keep pages client components. Server components must stay thin wrappers

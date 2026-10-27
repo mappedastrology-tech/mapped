@@ -5,7 +5,7 @@ Mapped targets four surfaces from one codebase.
 | Surface | Status | How it is built |
 |---|---|---|
 | Mobile web | **Live** | Next.js `(tabs)` layout, served from Netlify |
-| Desktop web | **Live** | `src/components/web/Web*.tsx`, swapped in at `lg+` |
+| Desktop web | **Live** | The same pages, widened at `lg+` — no separate build |
 | iOS app | **Not started** | Capacitor shell around a static export |
 | Android app | **Not started** | Same Capacitor project |
 

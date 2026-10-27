@@ -3715,7 +3715,7 @@ export default function MapsTab() {
     }
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-page w-full overflow-y-auto">
         <button
           onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
@@ -3886,7 +3886,7 @@ export default function MapsTab() {
                             Major transits
                           </h2>
                           <p className="text-muted text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
-                          <div className="flex flex-col gap-3">
+                          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
                             {major.map((ta, i) => {
                               const uid = `self-maj-${i}`;
                               const isOpen = openAspect === uid;
@@ -4024,7 +4024,7 @@ export default function MapsTab() {
                             Current activations
                           </h2>
                           <p className="text-muted text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
                             {minor.slice(0, 15).map((ta, i) => {
                               const uid = `self-min-${i}`;
                               const isOpen = openAspect === uid;
@@ -4510,7 +4510,7 @@ export default function MapsTab() {
 
     return (
       <DetailErrorBoundary onReset={() => { setSelectedId(null); setPersonTab("synastry"); }}>
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-page w-full overflow-y-auto">
         <button
           onClick={() => { setSelectedId(null); setOpenAspect(null); setPersonTab("synastry"); setOpenPlacement(null); setShowDetailedAspects(false); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
@@ -5422,7 +5422,7 @@ export default function MapsTab() {
                             Major transits
                           </h2>
                           <p className="text-muted text-xs mb-3">Slow-moving planets — these themes last weeks to years</p>
-                          <div className="flex flex-col gap-3">
+                          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
                             {major.map((ta, i) => {
                               const uid = `tr-maj-${i}`;
                               const isOpen = openAspect === uid;
@@ -5565,7 +5565,7 @@ export default function MapsTab() {
                             Current activations
                           </h2>
                           <p className="text-muted text-xs mb-3">Faster-moving planets — these set the day-to-day tone</p>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
                             {minor.slice(0, 15).map((ta, i) => {
                               const uid = `tr-min-${i}`;
                               const isOpen = openAspect === uid;
@@ -6154,7 +6154,7 @@ export default function MapsTab() {
   // ─── Family Analysis view ───
   if (familyAnalysis) {
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-read w-full overflow-y-auto">
         <button
           onClick={() => setFamilyAnalysis(null)}
           className="flex items-center gap-2 text-muted text-sm mb-6 active:text-secondary"
@@ -6277,7 +6277,7 @@ export default function MapsTab() {
             <h2 className="text-lg text-foreground mb-3" style={{ fontFamily: "var(--font-heading)" }}>
               Sibling dynamics
             </h2>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
               {familyAnalysis.siblingNotes.map((sn, si) => (
                 <div key={si} className="rounded-xl border border-foreground/15 bg-card/45 px-4 py-4">
                   <p className="text-foreground text-sm font-medium mb-1">{sn.trait}</p>
@@ -6378,7 +6378,7 @@ export default function MapsTab() {
     const allLines = astroLines || [];
 
     return (
-      <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
+      <main className="flex-1 flex flex-col px-5 py-6 app-page w-full overflow-y-auto">
         <button
           onClick={() => { setShowAstroMap(false); setAstroLines(null); setAstroNearby(null); setAstroParans([]); setAdvancedMode(false); }}
           className="flex items-center gap-2 text-muted text-sm mb-6 active:text-secondary"

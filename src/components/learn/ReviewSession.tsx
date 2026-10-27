@@ -49,7 +49,7 @@ export default function ReviewSession() {
     <main className="min-h-screen lib-felt">
       <style>{`@keyframes rev-floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
       <LibraryHeader title="Daily Review" fallback="/library" />
-      <div className="max-w-lg mx-auto px-5 py-6 pb-28">
+      <div className="app-read px-5 py-6 pb-28">
         {phase === "loading" && (
           <p className="text-center text-sm py-10" style={{ color: "var(--foreground-muted)" }}>Loading your review…</p>
         )}

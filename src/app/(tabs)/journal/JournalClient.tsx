@@ -668,7 +668,7 @@ function JournalPage() {
     const canSave = !!composeText.trim();
     return (
       <main className="min-h-full flex flex-col">
-        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
+        <div className="app-read flex flex-col flex-1">
         {/* Header — back · New entry / Burn after writing · Save / Burn */}
         <div className="flex items-center justify-between px-4 py-3 relative z-10" style={{ borderBottom: `0.5px solid ${isBurn ? "rgba(232,130,63,0.22)" : "var(--border-card)"}` }}>
           <button onClick={closeCompose} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
@@ -1021,7 +1021,7 @@ function JournalPage() {
 
     return (
       <main className="min-h-full flex flex-col">
-        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
+        <div className="app-read flex flex-col flex-1">
         {/* Header — back · Edit/Delete */}
         <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border-card)" }}>
           <button onClick={() => { setConfirmingDelete(false); setEditingEntry(false); setView("home"); }} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--foreground) 5%, transparent)", border: "0.5px solid var(--border-card)" }}>
@@ -1137,7 +1137,7 @@ function JournalPage() {
   if (view === "patterns") {
     return (
       <main className="min-h-full flex flex-col">
-        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
+        <div className="app-page flex flex-col flex-1">
         <div className="flex items-center gap-3 px-5 pt-5 pb-3">
           <button onClick={() => setView("home")} className="text-muted">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -1190,7 +1190,7 @@ function JournalPage() {
     const cardBg = "var(--background-card)", cardBd = "var(--border-card)";
     return (
       <main className="jt-overlay min-h-full flex flex-col" style={{ animation: "jt-push 0.28s cubic-bezier(0.22,1,0.36,1)" }}>
-        <div className="max-w-lg lg:max-w-2xl mx-auto w-full flex flex-col flex-1">
+        <div className="app-page flex flex-col flex-1">
           {/* Header */}
           <div className="px-4 pt-4 pb-3" style={{ borderBottom: `0.5px solid ${cardBd}` }}>
             <div className="flex items-center gap-3">
@@ -1231,7 +1231,7 @@ function JournalPage() {
                   <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>{month.replace(/ \d{4}$/, "")}</h3>
                   <span className="text-[11px]" style={{ letterSpacing: "0.04em", color: "var(--foreground-faint)" }}>{byMonth[month].length} {byMonth[month].length === 1 ? "entry" : "entries"}</span>
                 </div>
-                <div className="flex flex-col gap-[11px]">
+                <div className="flex flex-col gap-[11px] lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:gap-4 lg:items-start">
                   {byMonth[month].map((f) => (
                     <button key={f.key} onClick={() => { if (f.entry) openEntry(f.entry); }} className="flex gap-3.5 p-[15px] rounded-2xl text-left" style={{ background: cardBg, border: `0.5px solid ${cardBd}` }}>
                       <div className="shrink-0 w-11 text-center">
@@ -1315,7 +1315,7 @@ function JournalPage() {
 
   return (
     <main className="min-h-full">
-      <div className="max-w-lg mx-auto px-5 py-6 pb-8">
+      <div className="app-page px-5 py-6 pb-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>

@@ -113,7 +113,7 @@ export default function SolarEventScreen({ event, onClose }: { event: TodaysSola
       className="fixed inset-0 z-[60] overflow-y-auto"
       style={{ background: theme.bg, color: "#fff", paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="relative z-10 max-w-lg mx-auto px-5 pb-10">
+      <div className="relative z-10 app-read px-5 pb-10">
         <button onClick={onClose} className="pt-4 pb-2 flex items-center gap-1.5 text-[12px] min-h-[44px]" style={{ opacity: 0.6, color: "#fff" }} aria-label="Go back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />

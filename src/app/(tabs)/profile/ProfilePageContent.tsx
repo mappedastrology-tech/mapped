@@ -529,7 +529,7 @@ export default function ProfilePageContent() {
   const readCard: React.CSSProperties = { borderRadius: 16, padding: "15px 14px", background: "var(--pf-card)", border: "0.5px solid var(--pf-card-bd)", display: "flex", flexDirection: "column", gap: 9 };
 
   return (
-    <main className="pf-page flex-1 flex flex-col max-w-lg mx-auto w-full" style={{ padding: "0 22px 40px" }}>
+    <main className="pf-page flex-1 flex flex-col app-read w-full" style={{ padding: "0 22px 40px" }}>
 
       {/* Utility row — photo (left) · settings (right). Account controls live on /account. */}
       <div className="flex items-center justify-between pt-4">
