@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 
@@ -35,6 +36,7 @@ interface WizardRequest {
       transitPlanet: string;
       transitSign: string;
       natalPlanet: string;
+      alsoNatal?: string[];
       aspect: string;
       orb: number;
       transitHouse: number;
@@ -103,7 +105,7 @@ function buildTransitContext(transits: WizardRequest["transits"]): string {
 
   const lines = ["Active major transits:"];
   for (const a of major) {
-    lines.push(`Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${a.natalPlanet} (${a.orb.toFixed(1)}° orb)`);
+    lines.push(`Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${natalPointsLabel(a)} (${a.orb.toFixed(1)}° orb)`);
   }
   return lines.join("\n");
 }
