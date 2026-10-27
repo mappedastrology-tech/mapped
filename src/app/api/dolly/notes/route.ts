@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 import { chartSystemContext } from "@/lib/astro/vedic/system";
@@ -45,6 +46,7 @@ interface TransitData {
     transitPlanet: string;
     transitSign: string;
     natalPlanet: string;
+    alsoNatal?: string[];
     aspect: string;
     orb: number;
     transitHouse: number;
@@ -75,7 +77,7 @@ function buildContext(chart?: ChartData, transits?: TransitData): string {
 
     lines.push("\n## Active Transits Today");
     for (const a of active) {
-      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${a.natalPlanet} (house ${a.transitHouse})`);
+      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${natalPointsLabel(a)} (house ${a.transitHouse})`);
     }
   }
 

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 import { PROMPT_LIMITS, clampText, boundHistory } from "@/lib/ai/promptLimits";
@@ -59,6 +60,7 @@ interface TransitContext {
     transitPlanet: string;
     transitSign: string;
     natalPlanet: string;
+    alsoNatal?: string[];
     aspect: string;
     orb: number;
     transitHouse: number;
@@ -158,14 +160,14 @@ function buildTransitSummary(transits: TransitContext): string {
   if (major.length) {
     lines.push("\nMajor transits (long-term themes):");
     for (const a of major) {
-      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${a.natalPlanet} (${a.orb.toFixed(1)}° orb, house ${a.transitHouse})`);
+      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${natalPointsLabel(a)} (${a.orb.toFixed(1)}° orb, house ${a.transitHouse})`);
     }
   }
 
   if (minor.length) {
     lines.push("\nCurrent activations (short-term):");
     for (const a of minor.slice(0, 8)) {
-      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${a.natalPlanet} (${a.orb.toFixed(1)}° orb)`);
+      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign)} ${a.aspect} natal ${natalPointsLabel(a)} (${a.orb.toFixed(1)}° orb)`);
     }
   }
 

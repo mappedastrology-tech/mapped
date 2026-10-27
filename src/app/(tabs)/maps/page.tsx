@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { fmtDateRange, fmtExactDate, natalPointsLabel } from "@/lib/transitFormat";
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
 import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
@@ -226,6 +227,8 @@ interface TransitAspect {
   transitHouse: number;
   aspect: string;
   orb: number;
+  /** Natal points in the same patch of sky that this transit hits identically. */
+  alsoNatal?: string[];
   startDate?: string;
   exactDate?: string;
   endDate?: string;
@@ -876,20 +879,6 @@ function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function fmtTransitDate(dateStr?: string | number): string {
-  if (!dateStr) return "";
-  const [y, m, d] = String(dateStr).split("-").map(Number);
-  const month = SHORT_MONTHS[m - 1] || "";
-  return `${month} ${d}, ${y}`;
-}
-
-function fmtDateRange(start?: string, end?: string): string {
-  if (!start || !end) return "";
-  return `${fmtTransitDate(start)} – ${fmtTransitDate(end)}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -3932,7 +3921,7 @@ export default function MapsTab() {
                                     <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} your {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
@@ -3951,7 +3940,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -4015,7 +4004,7 @@ export default function MapsTab() {
                                           {ta.exactDate && (
                                             <>
                                               <span className="text-muted text-[10px]">&middot;</span>
-                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-xs">Exact {fmtExactDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
@@ -4070,7 +4059,7 @@ export default function MapsTab() {
                                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} your {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
@@ -5468,7 +5457,7 @@ export default function MapsTab() {
                                     <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
@@ -5487,7 +5476,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -5554,7 +5543,7 @@ export default function MapsTab() {
                                           {ta.exactDate && (
                                             <>
                                               <span className="text-muted text-[10px]">&middot;</span>
-                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-xs">Exact {fmtExactDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
@@ -5611,7 +5600,7 @@ export default function MapsTab() {
                                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
@@ -5621,7 +5610,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -5678,7 +5667,7 @@ export default function MapsTab() {
                                         <div className="flex items-center gap-2 mt-1 mb-1">
                                           <span className="text-muted text-[10px]">
                                             {fmtDateRange(ta.startDate, ta.endDate)}
-                                            {ta.exactDate && <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>}
+                                            {ta.exactDate && <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>}
                                           </span>
                                         </div>
                                       )}

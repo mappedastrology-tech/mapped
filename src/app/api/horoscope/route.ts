@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
 import { createMessageResilient, CLAUDE_MODEL } from "@/lib/aiModel";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
@@ -63,6 +64,7 @@ interface TransitData {
     transitPlanet: string;
     transitSign: string;
     natalPlanet: string;
+    alsoNatal?: string[];
     aspect: string;
     orb: number;
     transitHouse: number;
@@ -166,7 +168,7 @@ function buildTransitBlock(transits: TransitData): string {
     lines.push("\nMajor transits (long-term themes):");
     for (const a of major) {
       const orb = typeof a.orb === "number" ? ` (${a.orb.toFixed(1)}° orb)` : "";
-      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign || "")} ${a.aspect} natal ${a.natalPlanet}${orb}, house ${a.transitHouse || "?"}`);
+      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign || "")} ${a.aspect} natal ${natalPointsLabel(a)}${orb}, house ${a.transitHouse || "?"}`);
     }
   }
 
@@ -174,7 +176,7 @@ function buildTransitBlock(transits: TransitData): string {
     lines.push("\nCurrent activations (short-term):");
     for (const a of minor.slice(0, 8)) {
       const orb = typeof a.orb === "number" ? ` (${a.orb.toFixed(1)}° orb)` : "";
-      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign || "")} ${a.aspect} natal ${a.natalPlanet}${orb}`);
+      lines.push(`- Transit ${a.transitPlanet} in ${expandSign(a.transitSign || "")} ${a.aspect} natal ${natalPointsLabel(a)}${orb}`);
     }
   }
 
