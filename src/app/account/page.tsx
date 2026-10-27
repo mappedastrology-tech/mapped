@@ -242,7 +242,7 @@ function EditableField({
             aria-label={label}
             autoFocus
             className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                       text-foreground text-sm placeholder:text-muted
+                       text-foreground text-base placeholder:text-muted
                        focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
             onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") { setEditing(false); setDraft(value); } }}
           />
@@ -573,7 +573,7 @@ function BirthTimeSettingsSection() {
             type="time"
             value={draft}
             onChange={(e) => { setDraft(e.target.value); setSaveError(null); }}
-            className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-sm focus:outline-none focus:border-terracotta/40"
+            className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/15 text-foreground text-base focus:outline-none focus:border-terracotta/40"
             style={{ minHeight: 44 }}
             disabled={saving}
           />
@@ -2555,7 +2555,7 @@ function AccountPage() {
                   aria-label="New password"
                   autoFocus
                   className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                             text-foreground text-sm placeholder:text-muted
+                             text-foreground text-base placeholder:text-muted
                              focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
                 />
                 <input
@@ -2566,7 +2566,7 @@ function AccountPage() {
                   placeholder="Confirm new password"
                   aria-label="Confirm new password"
                   className="w-full px-3 py-2.5 rounded-xl bg-background border border-foreground/18
-                             text-foreground text-sm placeholder:text-muted
+                             text-foreground text-base placeholder:text-muted
                              focus:outline-none focus:border-terracotta/50 focus:ring-1 focus:ring-terracotta/25"
                   onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
                 />

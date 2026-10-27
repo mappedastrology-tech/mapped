@@ -7178,7 +7178,7 @@ export default function MapsTab() {
                                         value={editStart}
                                         onChange={(e) => setEditStart(e.target.value)}
                                         aria-label="Start date"
-                                        className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                                        className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                       />
                                     </div>
                                     <div>
@@ -7206,7 +7206,7 @@ export default function MapsTab() {
                                           value={editEnd}
                                           onChange={(e) => setEditEnd(e.target.value)}
                                           aria-label="End date"
-                                          className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                                          className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                         />
                                       )}
                                     </div>
@@ -7303,7 +7303,7 @@ export default function MapsTab() {
                         value={tlStart}
                         onChange={(e) => setTlStart(e.target.value)}
                         aria-label="Residence start date"
-                        className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                        className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                       />
                     </div>
                     <div>
@@ -7331,7 +7331,7 @@ export default function MapsTab() {
                           value={tlEnd}
                           onChange={(e) => setTlEnd(e.target.value)}
                           aria-label="Residence end date"
-                          className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                          className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                         />
                       )}
                     </div>

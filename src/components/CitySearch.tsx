@@ -132,10 +132,14 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+        /* text-base, not text-sm: iOS zooms the whole page in when a field
+           under 16px takes focus, and never zooms back out. Every other field
+           on the chart form is already 16px, so this one was the only thing
+           lurching the page mid-signup. */
         className="w-full px-4 py-2.5 rounded-xl bg-card/50 border border-foreground/15
                    text-foreground placeholder:text-muted
                    focus:outline-none focus:border-terracotta focus:ring-2 focus:ring-terracotta/20
-                   text-sm"
+                   text-base"
       />
 
       {/*
