@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { saveOrShareFile } from "./saveFile";
 
 /**
  * GDPR/CCPA-friendly "download my data" — gathers everything Mapped stores for
@@ -45,12 +46,7 @@ export async function exportUserData(): Promise<void> {
   }
 
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `mapped-data-export-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  await saveOrShareFile(blob, `mapped-data-export-${new Date().toISOString().slice(0, 10)}.json`, {
+    title: "Your Mapped data",
+  });
 }

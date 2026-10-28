@@ -17,8 +17,15 @@ export default function DataExportButton() {
           setBusy(true);
           try {
             await exportUserData();
-          } catch {
-            setError("Couldn't export your data right now. Please try again.");
+          } catch (err) {
+            // exportUserData now throws where a file cannot be saved at all
+            // (the native shell ignores a blob download), and "please try
+            // again" is the wrong advice for that — trying again cannot work.
+            setError(
+              err instanceof Error && err.message
+                ? err.message
+                : "Couldn't export your data right now. Please try again.",
+            );
           } finally {
             setBusy(false);
           }

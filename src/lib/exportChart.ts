@@ -1,3 +1,4 @@
+import { saveOrShareFile } from "./saveFile";
 /**
  * Chart data export utilities for Mapped.
  * Exports chart data as CSV or XLSX (via SheetJS-compatible CSV).
@@ -133,7 +134,7 @@ export function generateCSV(data: ExportData): string {
   return rows.map((row) => row.map(escapeCSV).join(",")).join("\n");
 }
 
-export function downloadCSV(data: ExportData) {
+export async function downloadCSV(data: ExportData): Promise<void> {
   const csv = generateCSV(data);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const safeName = (data.name + (data.name2 ? `-${data.name2}` : ""))
@@ -142,12 +143,5 @@ export function downloadCSV(data: ExportData) {
     .replace(/[^a-z0-9-]/g, "");
   const filename = `mapped-${data.type}-${safeName}.csv`;
 
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await saveOrShareFile(blob, filename, { title: filename });
 }
