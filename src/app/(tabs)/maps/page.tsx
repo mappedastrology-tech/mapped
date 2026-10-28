@@ -10,6 +10,8 @@
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useTheme } from "@/components/ThemeProvider";
+import { fmtDateRange, fmtExactDate, natalPointsLabel } from "@/lib/transitFormat";
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
 import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
@@ -150,6 +152,8 @@ interface UserChart {
   bigThree: { sun: string; moon: string; rising: string };
   birthDate?: string;
   birthTime?: string;
+  /** No birth time was given, so "12:00" is a placeholder and the angles are unknown. */
+  unknownTime?: boolean;
   /** Where the chart was cast — the first star on the places branch. */
   cityName?: string;
   latitude?: number;
@@ -226,6 +230,8 @@ interface TransitAspect {
   transitHouse: number;
   aspect: string;
   orb: number;
+  /** Natal points in the same patch of sky that this transit hits identically. */
+  alsoNatal?: string[];
   startDate?: string;
   exactDate?: string;
   endDate?: string;
@@ -876,20 +882,6 @@ function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function fmtTransitDate(dateStr?: string | number): string {
-  if (!dateStr) return "";
-  const [y, m, d] = String(dateStr).split("-").map(Number);
-  const month = SHORT_MONTHS[m - 1] || "";
-  return `${month} ${d}, ${y}`;
-}
-
-function fmtDateRange(start?: string, end?: string): string {
-  if (!start || !end) return "";
-  return `${fmtTransitDate(start)} – ${fmtTransitDate(end)}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -2527,7 +2519,21 @@ export default function MapsTab() {
   const [selfTab, setSelfTab] = useState<"transits" | "synastry" | "solar">("transits");
 
   // Maps is an immersive night-sky experience — force dark while this tab is
-  // mounted (no light mode here). Restore the saved theme preference on leave.
+  // mounted (no light mode here), and put back whatever was there on leave.
+  //
+  // This used to read "mapped:theme" from storage and fall back to "light"
+  // when it was anything else. But that key holds a MODE, which is
+  // legitimately "auto" — and on a fresh install ThemeProvider applies a
+  // detected theme without writing anything at all. So a new user on a
+  // dark-mode phone, or anyone who chose Auto, got switched to light every
+  // time they left this tab, while ThemeProvider still believed it was dark
+  // and handed dark-mode inks to everything that asked.
+  //
+  // The provider already knows what it resolved; restore that.
+  const { theme: resolvedTheme } = useTheme();
+  const resolvedThemeRef = useRef(resolvedTheme);
+  resolvedThemeRef.current = resolvedTheme;
+
   useEffect(() => {
     const html = document.documentElement;
     const forceDark = () => { if (html.getAttribute("data-theme") !== "dark") html.setAttribute("data-theme", "dark"); };
@@ -2536,12 +2542,25 @@ export default function MapsTab() {
     obs.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
       obs.disconnect();
-      let pref: string | null = null;
-      try { pref = localStorage.getItem("mapped:theme"); } catch { /* ignore */ }
-      html.setAttribute("data-theme", pref === "dark" || pref === "light" ? pref : "light");
+      html.setAttribute("data-theme", resolvedThemeRef.current);
     };
   }, []);
   const [selfTransitData, setSelfTransitData] = useState<TransitData | null>(null);
+  /**
+   * The date selfTransitData was computed for, and the person overlapTransitData
+   * belongs to.
+   *
+   * Two different functions write selfTransitData — fetchBothTransits always
+   * for today, fetchSelfTransits for whatever the date wheel says — and neither
+   * recorded which. Set the wheel to 15 Nov, open "Between Us", come back, and
+   * the wheel still read 15 Nov over today's sky, because the tab only refetches
+   * when the data is absent. Likewise, switching the overlap dropdown mid-flight
+   * let the slower response land last, so the header named one person while the
+   * cards described another. The detail tab already solved this with
+   * transitPersonId; these are the same idea.
+   */
+  const [selfTransitDateLoaded, setSelfTransitDateLoaded] = useState<string | null>(null);
+  const [overlapTransitPersonId, setOverlapTransitPersonId] = useState<string | null>(null);
   const [selfTransitLoading, setSelfTransitLoading] = useState(false);
   const [transitFilterLoY, setTransitFilterLoY] = useState(false);
 
@@ -3164,6 +3183,7 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: conn.birth_date,
           birthTime: conn.birth_time || "12:00",
+          unknownTime: !conn.birth_time,
           // last resort — user has no location set
           latitude: conn.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: conn.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -3301,7 +3321,7 @@ export default function MapsTab() {
           }),
         })
           .then(async (res) => {
-            if (res.ok) { setSelfTransitData(await res.json()); }
+            if (res.ok) { setSelfTransitData(await res.json()); setSelfTransitDateLoaded(today); }
             else { errors.push(`Your transits failed (${res.status})`); console.error("Self transit:", res.status, await res.text()); }
           })
           .catch((err) => { errors.push(`Your transits: ${err}`); console.error("Self transit error:", err); })
@@ -3322,7 +3342,7 @@ export default function MapsTab() {
           }),
         })
           .then(async (res) => {
-            if (res.ok) { setOverlapTransitData(await res.json()); }
+            if (res.ok) { setOverlapTransitData(await res.json()); setOverlapTransitPersonId(conn.id); }
             else { errors.push(`${conn.name} transits failed (${res.status})`); console.error("Overlap transit:", res.status, await res.text()); }
           })
           .catch((err) => { errors.push(`${conn.name} transits: ${err}`); console.error("Overlap transit error:", err); })
@@ -3356,7 +3376,7 @@ export default function MapsTab() {
           ...(userChart.zodiacSystem === "sidereal" ? { ayanamsa: userChart.ayanamsa || "lahiri" } : {}),
         }),
       });
-      if (res.ok) setSelfTransitData(await res.json());
+      if (res.ok) { setSelfTransitData(await res.json()); setSelfTransitDateLoaded(useDate); }
     } catch (err) { console.error("Self transit error:", err); }
     finally { setSelfTransitLoading(false); }
   }
@@ -3382,6 +3402,7 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: userChart.birthDate,
           birthTime: userChart.birthTime || "12:00",
+          unknownTime: !!userChart.unknownTime || !userChart.birthTime,
           // last resort — user has no location set
           latitude: userChart.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: userChart.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -3491,7 +3512,7 @@ export default function MapsTab() {
     type StoryCard = { icon: string; headline: string; body: string; advice: string; tone: "warm" | "tension" | "growth" | "neutral" };
     const storyCards: StoryCard[] = [];
 
-    if (selfTransitData && overlapTransitData && overlapPerson) {
+    if (selfTransitData && overlapTransitData && overlapPerson && overlapTransitPersonId === overlapPerson.id) {
       const yours = selfTransitData.transitAspects || [];
       const theirs = overlapTransitData.transitAspects || [];
 
@@ -3744,7 +3765,7 @@ export default function MapsTab() {
     return (
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
-          onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); }}
+          onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); setOverlapTransitPersonId(null); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
         >
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -3768,7 +3789,12 @@ export default function MapsTab() {
         {/* ═══ Tab Bar ═══ */}
         <div className="flex rounded-xl bg-card/45 border border-foreground/15 p-1 mb-6">
           <button
-            onClick={() => { setSelfTab("transits"); if (!selfTransitData && !selfTransitLoading) fetchSelfTransits(); }}
+            onClick={() => {
+              setSelfTab("transits");
+              // Refetch when what is loaded is not what the wheel is showing —
+              // the overlap view refills this state with today's sky.
+              if ((!selfTransitData || selfTransitDateLoaded !== selfTransitDate) && !selfTransitLoading) fetchSelfTransits();
+            }}
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               selfTab === "transits"
                 ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
@@ -3891,7 +3917,7 @@ export default function MapsTab() {
                   // Filter by LoY if toggle is active
                   let aspects = selfTransitData.transitAspects;
                   if (transitFilterLoY && loyPlanet) {
-                    aspects = aspects.filter(a => isLordOfYearTransit(a.transitPlanet, a.natalPlanet, loyPlanet));
+                    aspects = aspects.filter(a => isLordOfYearTransit(a, loyPlanet));
                   }
 
                   // Sort purely by intensity — most impactful first
@@ -3932,7 +3958,7 @@ export default function MapsTab() {
                                     <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} your {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
@@ -3951,7 +3977,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -3968,7 +3994,7 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                      {loyPlanet && isLordOfYearTransit(ta, loyPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
@@ -4015,7 +4041,7 @@ export default function MapsTab() {
                                           {ta.exactDate && (
                                             <>
                                               <span className="text-muted text-[10px]">&middot;</span>
-                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-xs">Exact {fmtExactDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
@@ -4070,7 +4096,7 @@ export default function MapsTab() {
                                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} your {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} your {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
@@ -4089,7 +4115,7 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                      {loyPlanet && isLordOfYearTransit(ta, loyPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1 py-0.5 rounded">
                                           LoY
                                         </span>
@@ -4228,7 +4254,12 @@ export default function MapsTab() {
                       {[
                         { label: "SR Sun", sign: selfSolarReturn.bigThree?.sun },
                         { label: "SR Moon", sign: selfSolarReturn.bigThree?.moon },
-                        { label: "SR Rising", sign: selfSolarReturn.bigThree?.rising },
+                        // Without a birth time the return instant is only known
+                        // to within 12 hours, which moves this Ascendant more
+                        // than a hundred degrees. Better absent than invented.
+                        ...(selfSolarReturn.bigThree?.rising
+                          ? [{ label: "SR Rising", sign: selfSolarReturn.bigThree.rising }]
+                          : []),
                       ].map((item) => (
                         <div key={item.label} className="flex-1 text-center py-2.5 rounded-xl border border-foreground/15 bg-card/40">
                           <p className="text-foreground text-sm font-medium">{item.sign}</p>
@@ -4243,11 +4274,19 @@ export default function MapsTab() {
                         type="solar"
                         name="My"
                         theme={yearSummary.title}
-                        subtitle={selfSolarReturn.bigThree ? `SR Sun ${selfSolarReturn.bigThree.sun} · SR Moon ${selfSolarReturn.bigThree.moon} · SR Rising ${selfSolarReturn.bigThree.rising}` : undefined}
+                        subtitle={selfSolarReturn.bigThree
+                          ? [
+                              `SR Sun ${selfSolarReturn.bigThree.sun}`,
+                              `SR Moon ${selfSolarReturn.bigThree.moon}`,
+                              ...(selfSolarReturn.bigThree.rising ? [`SR Rising ${selfSolarReturn.bigThree.rising}`] : []),
+                            ].join(" · ")
+                          : undefined}
                         highlights={[
                           { label: "SR Sun", value: selfSolarReturn.bigThree?.sun || "?" },
                           { label: "SR Moon", value: selfSolarReturn.bigThree?.moon || "?" },
-                          { label: "SR Rising", value: selfSolarReturn.bigThree?.rising || "?" },
+                          ...(selfSolarReturn.bigThree?.rising
+                            ? [{ label: "SR Rising", value: selfSolarReturn.bigThree.rising }]
+                            : []),
                         ]}
                       />
                       <ExportButton
@@ -4372,7 +4411,7 @@ export default function MapsTab() {
                 aria-label="Select a person for comparison"
                 onChange={(e) => {
                   const id = e.target.value;
-                  if (!id) { setOverlapPersonId(null); setOverlapTransitData(null); return; }
+                  if (!id) { setOverlapPersonId(null); setOverlapTransitData(null); setOverlapTransitPersonId(null); return; }
                   setOverlapPersonId(id);
                   setOverlapTransitData(null);
                   setSelfTransitData(null);
@@ -4430,7 +4469,7 @@ export default function MapsTab() {
             )}
 
             {/* Relationship story */}
-            {overlapPerson && selfTransitData && overlapTransitData && !selfTransitLoading && !overlapTransitLoading && (
+            {overlapPerson && selfTransitData && overlapTransitData && overlapTransitPersonId === overlapPerson.id && !selfTransitLoading && !overlapTransitLoading && (
               <>
                 <div className="flex items-center justify-center gap-4 mb-8">
                   <div className="flex flex-col items-center">
@@ -5468,7 +5507,7 @@ export default function MapsTab() {
                                     <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} {firstName}&rsquo;s {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span className={nature?.nature === "harmonious" ? "text-sage" : nature?.nature === "challenging" ? "text-terracotta" : "text-amber"}>
@@ -5487,7 +5526,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -5505,7 +5544,7 @@ export default function MapsTab() {
                                     </div>
                                     {/* Intensity badge */}
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {mapsLoY?.lordPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, mapsLoY.lordPlanet) && (
+                                      {mapsLoY?.lordPlanet && isLordOfYearTransit(ta, mapsLoY.lordPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
@@ -5554,7 +5593,7 @@ export default function MapsTab() {
                                           {ta.exactDate && (
                                             <>
                                               <span className="text-muted text-[10px]">&middot;</span>
-                                              <span className="text-muted text-xs">Exact {fmtTransitDate(ta.exactDate)}</span>
+                                              <span className="text-muted text-xs">Exact {fmtExactDate(ta.exactDate)}</span>
                                             </>
                                           )}
                                         </div>
@@ -5611,7 +5650,7 @@ export default function MapsTab() {
                                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-foreground text-sm font-medium">
-                                        {ta.transitPlanet} {ta.aspect} {ta.natalPlanet}
+                                        {ta.transitPlanet} {ta.aspect} {natalPointsLabel(ta)}
                                       </p>
                                       <div className="flex items-center gap-2 text-xs text-muted">
                                         <span>{tpInfo?.keyword || "Active"}</span>
@@ -5621,7 +5660,7 @@ export default function MapsTab() {
                                         <p className="text-muted text-[10px] mt-0.5">
                                           {fmtDateRange(ta.startDate, ta.endDate)}
                                           {ta.exactDate && (
-                                            <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>
+                                            <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>
                                           )}
                                         </p>
                                       )}
@@ -5678,7 +5717,7 @@ export default function MapsTab() {
                                         <div className="flex items-center gap-2 mt-1 mb-1">
                                           <span className="text-muted text-[10px]">
                                             {fmtDateRange(ta.startDate, ta.endDate)}
-                                            {ta.exactDate && <span className="text-muted"> · exact {fmtTransitDate(ta.exactDate)}</span>}
+                                            {ta.exactDate && <span className="text-muted"> · exact {fmtExactDate(ta.exactDate)}</span>}
                                           </span>
                                         </div>
                                       )}
@@ -7189,7 +7228,7 @@ export default function MapsTab() {
                                         value={editStart}
                                         onChange={(e) => setEditStart(e.target.value)}
                                         aria-label="Start date"
-                                        className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                                        className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                       />
                                     </div>
                                     <div>
@@ -7217,7 +7256,7 @@ export default function MapsTab() {
                                           value={editEnd}
                                           onChange={(e) => setEditEnd(e.target.value)}
                                           aria-label="End date"
-                                          className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-xs text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                                          className="w-full bg-foreground/5 rounded-lg px-2 py-1.5 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                                         />
                                       )}
                                     </div>
@@ -7314,7 +7353,7 @@ export default function MapsTab() {
                         value={tlStart}
                         onChange={(e) => setTlStart(e.target.value)}
                         aria-label="Residence start date"
-                        className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                        className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                       />
                     </div>
                     <div>
@@ -7342,7 +7381,7 @@ export default function MapsTab() {
                           value={tlEnd}
                           onChange={(e) => setTlEnd(e.target.value)}
                           aria-label="Residence end date"
-                          className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-sm text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
+                          className="w-full bg-foreground/5 rounded-lg px-3 py-2 text-base text-foreground border border-foreground/18 focus:border-ink/50 outline-none"
                         />
                       )}
                     </div>

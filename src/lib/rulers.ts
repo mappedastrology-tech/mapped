@@ -231,24 +231,24 @@ const HOUSE_THEMES: Record<number, string> = {
 };
 
 /**
- * Check if a transit involves the Lord of the Year planet.
- * Used for re-ranking transits on the Maps → My Transits screen.
+ * Does this transit involve the Lord of the Year?
+ *
+ * Takes the whole aspect, because calculateTransits folds natal points that
+ * sit within 10 degrees of each other into one row and lists the rest in
+ * `alsoNatal`. This predicate read only `natalPlanet`, so a row rendered as
+ * "Saturn square your Sun & Mercury" carried no year-ruler badge in a Mercury
+ * year, and the "Year ruler only" filter dropped it — while the unfiltered
+ * list named Mercury one line above.
+ *
+ * There used to be a second copy of this, todayInvolvesLord, with the same
+ * body and no callers. The fold broke both at once; one predicate cannot
+ * drift from itself.
  */
 export function isLordOfYearTransit(
-  transitPlanet: string,
-  natalPlanet: string,
-  lordPlanet: string
+  transit: { transitPlanet: string; natalPlanet: string; alsoNatal?: string[] },
+  lordPlanet: string,
 ): boolean {
-  return transitPlanet === lordPlanet || natalPlanet === lordPlanet;
-}
-
-/**
- * Determine if today's transit involves the Lord of the Year,
- * for use in home screen headline copy.
- */
-export function todayInvolvesLord(
-  transits: Array<{ transitPlanet: string; natalPlanet: string }>,
-  lordPlanet: string
-): boolean {
-  return transits.some(t => t.transitPlanet === lordPlanet || t.natalPlanet === lordPlanet);
+  if (transit.transitPlanet === lordPlanet) return true;
+  if (transit.natalPlanet === lordPlanet) return true;
+  return !!transit.alsoNatal?.includes(lordPlanet);
 }

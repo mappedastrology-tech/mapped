@@ -19,7 +19,7 @@
  * before the new session renders anything.
  */
 
-import { rawStorage, rawSessionStorage } from "./scopedStorage";
+import { rawStorage, rawSessionStorage, logicalKey } from "./scopedStorage";
 
 /**
  * Keys that describe the DEVICE rather than the person, and survive a switch.
@@ -42,9 +42,17 @@ const OWNED_PREFIXES = ["mapped:", "mapped_"];
  *
  * Kept pure and passed the key list so it can be tested without a browser.
  */
-export function personalKeys(allKeys: readonly string[]): string[] {
+export function personalKeys(
+  allKeys: readonly string[],
+  options: { keepOtherAccounts?: boolean } = {},
+): string[] {
   return allKeys.filter((key) => {
     if (DEVICE_ONLY_KEYS.has(key)) return false;
+    // On a switch, another account's namespace is not ours to delete. It is
+    // already invisible to whoever is signing in — that is what namespacing
+    // bought — and several of these keys (hearted rituals, chosen tools,
+    // widget order) have no server copy, so deleting them loses them for good.
+    if (options.keepOtherAccounts && logicalKey(key)) return false;
     if (OWNED_PREFIXES.some((p) => key.startsWith(p))) return true;
     // Two older keys predate the prefix convention.
     if (key.startsWith("horoscope-v")) return true;
@@ -54,8 +62,15 @@ export function personalKeys(allKeys: readonly string[]): string[] {
   });
 }
 
-/** Wipe every personal key from localStorage, and all of sessionStorage. */
-export function clearPersonalData(): void {
+/**
+ * Wipe personal keys from localStorage, and all of sessionStorage.
+ *
+ * `keepOtherAccounts` spares `mapped:u:<uid>::*` belonging to anyone else on
+ * the device. Use it on an account SWITCH, where the point is only to stop the
+ * incoming account seeing anything shared — not to destroy the other person's
+ * work. Sign-out still wipes everything, which is what a shared device wants.
+ */
+export function clearPersonalData(options: { keepOtherAccounts?: boolean } = {}): void {
   if (typeof window === "undefined") return;
   try {
     // The raw store, not the namespaced view: this has to reach EVERY
@@ -67,7 +82,7 @@ export function clearPersonalData(): void {
       const k = store.key(i);
       if (k) all.push(k);
     }
-    for (const key of personalKeys(all)) store.removeItem(key);
+    for (const key of personalKeys(all, options)) store.removeItem(key);
   } catch {
     // storage unavailable — nothing cached, so nothing to leak
   }
@@ -109,7 +124,7 @@ export function ensureAccountIsolation(userId: string | null | undefined): boole
   // wiping there would throw away the work of anyone who signed up, used the
   // app, and only then had this run for the first time.
   const switched = previous !== null && previous !== userId;
-  if (switched) clearPersonalData();
+  if (switched) clearPersonalData({ keepOtherAccounts: true });
 
   try {
     (rawStorage() ?? window.localStorage).setItem(LAST_USER_KEY, userId);

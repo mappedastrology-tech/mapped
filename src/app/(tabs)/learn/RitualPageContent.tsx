@@ -14,7 +14,7 @@
  * All colors use CSS custom properties for light/dark theme support.
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   getDailyEnergy,
   getCelestialEvents,
@@ -25,6 +25,7 @@ import Image from "next/image";
 import { getDailyRituals, type ModalityPrefs } from "@/lib/rituals";
 import {
   RITUAL_CATALOG,
+  ALL_RITUALS,
   RITUAL_CATEGORIES,
   type CatalogRitual,
   type RitualCategory,
@@ -830,7 +831,7 @@ export default function RitualPageContent() {
   };
 
   const savedRitualObjects = useMemo(
-    () => savedRituals.map((id) => RITUAL_CATALOG.find((r) => r.id === id)).filter((r): r is CatalogRitual => !!r),
+    () => savedRituals.map((id) => ALL_RITUALS.find((r) => r.id === id)).filter((r): r is CatalogRitual => !!r),
     [savedRituals]
   );
 
@@ -873,6 +874,21 @@ export default function RitualPageContent() {
     "tarot": ["tarot", "oracle"],
   }), []);
 
+  /**
+   * Whether a tool list mentions a keyword, as a WORD.
+   *
+   * This used to be a plain `includes`, and "oils" maps to the keyword "oil" —
+   * which is inside "soil". The Spring Equinox ritual needs "a small pot of
+   * soil", so the catalog's only Spring Equinox ritual vanished from Browse,
+   * search and both daily surfaces unless you happened to switch on Essential
+   * Oils. The trailing `s?` keeps real plurals matching ("essential oils",
+   * "crystals") without the substring reach.
+   */
+  const mentionsTool = useCallback((needed: string, keyword: string): boolean => {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}s?\\b`).test(needed);
+  }, []);
+
   // Check if user has the tools needed for a ritual
   const userHasToolsFor = useMemo(() => {
     return (ritual: CatalogRitual): boolean => {
@@ -881,12 +897,12 @@ export default function RitualPageContent() {
       for (const [toolId, keywords] of Object.entries(toolKeywords)) {
         if (myTools[toolId]) continue;
         for (const kw of keywords) {
-          if (needed.includes(kw)) return false;
+          if (mentionsTool(needed, kw)) return false;
         }
       }
       return true;
     };
-  }, [myTools, toolKeywords]);
+  }, [myTools, toolKeywords, mentionsTool]);
 
   // Filter catalog by user's tools
   const toolFilteredCatalog = useMemo(
@@ -931,7 +947,7 @@ export default function RitualPageContent() {
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const found = RITUAL_CATALOG.find(r => r.id === cached);
+          const found = ALL_RITUALS.find(r => r.id === cached);
           if (found) return found;
         }
         // Clean old days
@@ -994,10 +1010,15 @@ export default function RitualPageContent() {
   // Filtered catalog rituals (category + tools + search)
   // Filtered + paginated rituals for Browse section
   const filteredRituals = useMemo(() => {
+    // Searching reaches the whole library, including the opt-in-gated rituals
+    // — the catalog's own notes say "Always searchable regardless of opt-in
+    // status". Browsing and the daily suggestion do not.
+    const searching = !!searchQuery.trim();
+    const base = searching ? ALL_RITUALS.filter(userHasToolsFor) : toolFilteredCatalog;
     let pool = selectedCategory
-      ? toolFilteredCatalog.filter((r) => r.category === selectedCategory)
-      : toolFilteredCatalog;
-    if (searchQuery.trim()) {
+      ? base.filter((r) => r.category === selectedCategory)
+      : base;
+    if (searching) {
       const q = searchQuery.toLowerCase().trim();
       pool = pool.filter(
         (r) =>
@@ -1266,7 +1287,7 @@ export default function RitualPageContent() {
 
       {/* ═══ ACTIVE RITUAL (pinned multi-day practice — shown above today's ritual when active) ═══ */}
       {activeRitual && (() => {
-        const ritual = RITUAL_CATALOG.find(r => r.id === activeRitual.id);
+        const ritual = ALL_RITUALS.find(r => r.id === activeRitual.id);
         if (!ritual) return null;
         return (
           <>

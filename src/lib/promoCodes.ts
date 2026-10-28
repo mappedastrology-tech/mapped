@@ -202,8 +202,17 @@ export function getActivePromoTier(redemptions: PromoRedemption[]): TierLevel | 
 
   if (active.length === 0) return null;
 
-  // Any active tier-granting promo gives "mid" (Mapped+)
-  return "mid";
+  // Honour what the row actually granted. This used to hard-return "mid" for
+  // every active promo, so a Complete code read as Mapped+ — and because the
+  // caller took the promo tier over the paid one, a Complete SUBSCRIBER
+  // holding any promo was demoted to Mapped+ while still being billed.
+  const RANK: Record<string, number> = { free: 0, mid: 1, max: 2 };
+  let best: TierLevel = "free";
+  for (const r of active) {
+    const granted = (r.tier_granted === "max" || r.tier_granted === "mid") ? r.tier_granted : "mid";
+    if (RANK[granted] > RANK[best]) best = granted;
+  }
+  return best === "free" ? null : best;
 }
 
 /**

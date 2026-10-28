@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clampText, PROMPT_LIMITS } from "@/lib/ai/promptLimits";
 import Anthropic from "@anthropic-ai/sdk";
-import { createMessageResilient } from "@/lib/aiModel";
+import { createMessageResilient, CLAUDE_MODEL } from "@/lib/aiModel";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
     }
 
+    // Tier gate + monthly spend ceiling. This route writes the longest output
+    // in the app (1500 tokens for a year-in-review) and was recording no usage
+    // at all, so none of it reached checkAiBudget's sum over ai_usage.
+    const { guardAi, meterMessage } = await import("@/lib/ai/meter");
+    const denied = await guardAi(uid, "journal-reflect");
+    if (denied) return denied;
+
     const body: ReflectRequest = await req.json();
     const { cadence, periodStart, periodEnd, userName, chartSummary } = body;
     // Cap the number of entries we process to bound token cost.
@@ -72,7 +80,7 @@ Your tone: intimate, honest, poetic but grounded. Like a wise friend who sees pa
 Structure: Start with where they were at the beginning of this period. Notice the arc — what shifted, what they kept coming back to, what emerged. End with a forward-looking observation.
 
 Length: 3-5 paragraphs for weekly, 4-6 for monthly, 5-8 for quarterly/yearly.
-${cadence === "new-year" && chartSummary ? `\nAstrological context for the year:\n${chartSummary}\n\nWeave in references to how their chart's transits aligned with what they wrote about — but don't force it. Only mention astrology where it genuinely illuminates the pattern.` : ""}
+${cadence === "new-year" && chartSummary ? `\nAstrological context for the year:\n${clampText(chartSummary, PROMPT_LIMITS.context)}\n\nWeave in references to how their chart's transits aligned with what they wrote about — but don't force it. Only mention astrology where it genuinely illuminates the pattern.` : ""}
 
 Do NOT use bullet points or headers. Write in flowing prose.
 
@@ -88,6 +96,9 @@ SAFETY: If the entries suggest the person may be in crisis — thoughts of suici
         },
       ],
     });
+
+    // Record the spend against the monthly ceiling.
+    await meterMessage(uid, "journal-reflect", message, CLAUDE_MODEL);
 
     const reflection =
       message.content[0].type === "text"

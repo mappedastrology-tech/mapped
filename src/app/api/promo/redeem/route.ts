@@ -165,12 +165,26 @@ export async function POST(request: Request) {
       .update({ current_uses: promo.current_uses + 1 })
       .eq("id", promo.id);
 
-    // If it grants tier access, update the user's profile
+    // If it grants tier access, update the user's profile — but only upward.
+    // The hardcoded branch above has carried this guard since a Complete
+    // subscriber was silently downgraded by a Mapped+ code; this branch was
+    // written later and never got it, so the same bug lived on 80 lines down.
     if ((promo.type === "free_subscription" || promo.type === "extended_trial") && promo.tier_granted) {
-      await supabaseAdmin
+      const { data: current_profile } = await supabaseAdmin
         .from("profiles")
-        .update({ tier: promo.tier_granted })
-        .eq("id", user.id);
+        .select("tier")
+        .eq("id", user.id)
+        .single();
+
+      const RANK: Record<string, number> = { free: 0, mid: 1, max: 2 };
+      const current = RANK[current_profile?.tier ?? "free"] ?? 0;
+      const granted = RANK[promo.tier_granted] ?? 0;
+      if (granted > current) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ tier: promo.tier_granted })
+          .eq("id", user.id);
+      }
     }
 
     return NextResponse.json({

@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { saveOrShareFile } from "@/lib/saveFile";
 import type { CertificateRecord } from "@/lib/learn/types";
 
 /** A shareable, downloadable Certificate of Completion (honestly framed). */
 export default function Certificate({ cert }: { cert: CertificateRecord }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const dateStr = new Date(cert.issuedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
@@ -16,14 +18,16 @@ export default function Certificate({ cert }: { cert: CertificateRecord }) {
     try {
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(cardRef.current, { backgroundColor: null, scale: 2 });
-      const link = document.createElement("a");
-      link.download = `mapped-certificate-${cert.courseId}.png`;
-      link.href = canvas.toDataURL("image/png");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch {
-      /* fail soft */
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Couldn't render the certificate.");
+      // Was a `data:` URL on a synthetic link, which WKWebView ignores — so in
+      // the app the button finished and produced nothing, silently.
+      await saveOrShareFile(blob, `mapped-certificate-${cert.courseId}.png`, {
+        title: "My Mapped certificate",
+      });
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save the certificate.");
     } finally {
       setBusy(false);
     }
@@ -82,6 +86,12 @@ export default function Certificate({ cert }: { cert: CertificateRecord }) {
       >
         {busy ? "Preparing…" : "Download certificate"}
       </button>
+
+      {error && (
+        <p role="status" className="text-[10px] text-center px-2" style={{ color: "var(--danger-text)" }}>
+          {error}
+        </p>
+      )}
 
       <p className="text-[10px] leading-relaxed text-center px-2" style={{ color: "var(--foreground-muted)" }}>
         This documents completion of an educational course in Mapped. It is not an accredited continuing-education credential and may not satisfy professional licensing requirements.

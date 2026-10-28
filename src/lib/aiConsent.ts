@@ -25,6 +25,7 @@ export const AI_SHARED_ITEMS = [
   "What you write to Dolly, and what she has written back",
   "Journal entries, when you ask for a reflection or a prompt",
   "The people on your map — their names and charts — when a question is about them",
+  "A photograph of your palm, when you ask for a palmistry reading",
 ] as const;
 
 export type AiConsentState = "unknown" | "granted" | "declined";

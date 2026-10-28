@@ -45,6 +45,36 @@ function tierFromMetadata(metadata: Stripe.Metadata | null | undefined): "mid" |
 }
 
 /**
+ * Which tier a subscription grants, read off the PRICE it is actually billing.
+ *
+ * It used to read `mapped_tier` from the subscription metadata. That metadata
+ * is stamped once, at checkout, and nothing ever updates it — while every plan
+ * change by an existing subscriber goes through the billing portal's
+ * subscription_update flow (see /api/stripe/checkout), which swaps the price on
+ * the same subscription and leaves metadata alone. So an upgrade to Complete
+ * billed the Complete price and left the account on Mapped+ forever, and a
+ * downgrade kept full Complete access while billing Mapped+.
+ *
+ * The interval is already read off the price for exactly this reason; tier now
+ * does the same. Metadata stays as the fallback for subscriptions sold before
+ * the price ids existed, and "mid" is the final default rather than "free" so
+ * an unrecognised price can never cancel a paying customer.
+ */
+function tierOfSubscription(sub: Stripe.Subscription): "mid" | "max" {
+  const maxPrices = [process.env.STRIPE_PRICE_ID_MAX, process.env.STRIPE_PRICE_ID_MAX_ANNUAL]
+    .filter(Boolean);
+  const midPrices = [process.env.STRIPE_PRICE_ID, process.env.STRIPE_PRICE_ID_ANNUAL]
+    .filter(Boolean);
+
+  const priceId = sub.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    if (maxPrices.includes(priceId)) return "max";
+    if (midPrices.includes(priceId)) return "mid";
+  }
+  return sub.metadata?.mapped_tier === "max" ? "max" : "mid";
+}
+
+/**
  * Which subscription statuses still entitle someone to what they paid for.
  *
  * `past_due` is the important one, and it used to be missing. When a renewal
@@ -187,7 +217,7 @@ export async function POST(request: Request) {
               await supabaseAdmin
                 .from("profiles")
                 .update({
-                  tier: tierFromMetadata(subscription.metadata),
+                  tier: tierOfSubscription(subscription),
                   stripe_customer_id: session.customer
                     ? getCustomerId(session.customer as string | Stripe.Customer | Stripe.DeletedCustomer)
                     : null,
@@ -223,38 +253,50 @@ export async function POST(request: Request) {
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.supabase_user_id;
+        const metadataUserId = subscription.metadata?.supabase_user_id;
 
-        if (!userId) {
-          // Look up user by stripe_customer_id
-          const customerId = getCustomerId(subscription.customer);
-          const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("id")
-            .eq("stripe_customer_id", customerId)
-            .single();
-
-          if (profile) {
-            await supabaseAdmin
+        // Resolve the profile and, crucially, which subscription it holds.
+        const { data: profile } = metadataUserId
+          ? await supabaseAdmin
               .from("profiles")
-              .update({
-                tier: isEntitled(subscription.status) ? tierFromMetadata(subscription.metadata) : "free",
-                subscription_status: subscription.status,
-                ...billingShape(subscription),
-              })
-              .eq("id", profile.id);
-          }
-          break;
-        }
+              .select("id, stripe_subscription_id")
+              .eq("id", metadataUserId)
+              .single()
+          : await supabaseAdmin
+              .from("profiles")
+              .select("id, stripe_subscription_id")
+              .eq("stripe_customer_id", getCustomerId(subscription.customer))
+              .single();
+
+        if (!profile) break;
+
+        /**
+         * Only apply an update for the subscription actually on file.
+         *
+         * Stripe retries a failed webhook for days, and the retry carries the
+         * payload as it was, not as things now are. Cancel, have this handler
+         * throw once, let `deleted` land and null `stripe_subscription_id`,
+         * and the retry then arrived still saying "active" and wrote the paid
+         * tier back. Nothing ever undid it: /api/stripe/sync treats a profile
+         * with no subscription id and no live Stripe subscription as "not
+         * ours to touch", so the resurrected tier was free forever, burning
+         * real model spend against the paid ceiling.
+         *
+         * Comparing ids closes that, and the reversed case too — a stale event
+         * for an old subscription cannot overwrite a newer one. An `updated`
+         * that genuinely arrives before checkout.session.completed is skipped
+         * here, which is harmless: that handler sets the tier itself.
+         */
+        if (profile.stripe_subscription_id !== subscription.id) break;
 
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: isEntitled(subscription.status) ? tierFromMetadata(subscription.metadata) : "free",
+            tier: isEntitled(subscription.status) ? tierOfSubscription(subscription) : "free",
             subscription_status: subscription.status,
             ...billingShape(subscription),
           })
-          .eq("id", userId);
+          .eq("id", profile.id);
 
         break;
       }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clampText, PROMPT_LIMITS } from "@/lib/ai/promptLimits";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 
@@ -29,6 +30,13 @@ export async function POST(req: NextRequest) {
   const { allowed } = await checkRateLimitDurable(`journal-prompt:${uid}`, 10, 60 * 60 * 1000);
   if (!allowed) return NextResponse.json({ error: "Rate limited" }, { status: 429 });
 
+  // Tier gate + monthly spend ceiling. Without this the call is invisible to
+  // checkAiBudget, which sums ai_usage — so a free account whose ceiling is
+  // $0 could spend all day here and the ceiling would never notice.
+  const { guardAi, meterMessage } = await import("@/lib/ai/meter");
+  const denied = await guardAi(uid, "journal-prompt");
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const { horoscope, celestial, userName } = body;
@@ -51,7 +59,7 @@ export async function POST(req: NextRequest) {
           role: "user",
           content: `Generate a journal prompt for today based on this context:
 
-Horoscope: "${horoscope}"
+Horoscope: "${clampText(horoscope, PROMPT_LIMITS.context)}"
 Moon phase: ${moonPhase}
 Zodiac season: ${zodiacSeason}
 Planetary day: ${planetaryDay}
@@ -68,6 +76,9 @@ Return ONLY the JSON object, no other text.`,
         },
       ],
     });
+
+    // Record the spend against the monthly ceiling.
+    await meterMessage(uid, "journal-prompt", message, CLAUDE_MODEL);
 
     const raw =
       message.content[0].type === "text"

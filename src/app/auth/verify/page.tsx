@@ -22,6 +22,26 @@ function VerifyContent() {
     async function verify() {
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type");
+      const code = searchParams.get("code");
+
+      // Password reset and email change finish on the account page, which runs
+      // its own verifyOtp. Hand the token straight over without spending it —
+      // a token can only be exchanged once, so verifying here would make the
+      // account page's exchange fail.
+      //
+      // /auth/callback does this same routing server-side, but the native
+      // build deletes that route (scripts/build-app.mjs), so in the app the
+      // link has to land here instead. Doing it client-side works on all four
+      // platforms.
+      if (type === "recovery" || type === "email_change") {
+        const params = new URLSearchParams();
+        params.set(type === "recovery" ? "reset" : "emailChanged", "true");
+        if (code) params.set("code", code);
+        if (tokenHash) params.set("token_hash", tokenHash);
+        params.set("type", type);
+        router.replace(`/account?${params.toString()}`);
+        return;
+      }
 
       if (tokenHash && type) {
         const { error } = await supabase.auth.verifyOtp({

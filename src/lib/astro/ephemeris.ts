@@ -420,9 +420,18 @@ export function getHouses(
     cusp12,     // House 12
   ].map(c => Math.round(((c % 360 + 360) % 360) * 100) / 100);
 
-  // Vertex = Ascendant calculated for the co-latitude
+  /**
+   * Vertex — the ecliptic point on the WESTERN prime vertical (azimuth 270).
+   *
+   * The prime vertical of (lat, LST) is the horizon of (90 - lat, LST + 180),
+   * so this is the Ascendant of the co-latitude at RAMC + 180. Without the
+   * 180 the result is not on the prime vertical at all: measured at six
+   * latitudes it came out between 12 and 39 degrees away, and the value fed
+   * every "fated contact" in synastry at weight 88. With it, the azimuth is
+   * 270.00 exactly.
+   */
   const coLat = 90 - latitude;
-  const vertex = calcAscendant(ramc, obliquity, coLat);
+  const vertex = calcAscendant(ramc + 180, obliquity, coLat);
 
   return {
     cusps,

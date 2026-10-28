@@ -128,8 +128,13 @@ const TIMEZONE_ZONES: TzZone[] = [
   // ─── Oceania ───
   { tz: "Australia/Perth", latMin: -36, latMax: -13, lonMin: 113, lonMax: 129 },
   { tz: "Australia/Adelaide", latMin: -38, latMax: -26, lonMin: 129, lonMax: 141 },
-  { tz: "Australia/Sydney", latMin: -44, latMax: -10, lonMin: 141, lonMax: 154 },
+  // Queensland before New South Wales: the Sydney box contains the Brisbane
+  // one, and the first match wins. Reversed, every Queensland birth from
+  // October to April picked up NSW daylight saving that Queensland has not
+  // observed since 1972 — an hour out, which moves the Ascendant ~13deg and
+  // flips the rising sign outright about 43% of the time.
   { tz: "Australia/Brisbane", latMin: -29, latMax: -10, lonMin: 141, lonMax: 154 },
+  { tz: "Australia/Sydney", latMin: -44, latMax: -10, lonMin: 141, lonMax: 154 },
   { tz: "Pacific/Auckland", latMin: -47, latMax: -34, lonMin: 166, lonMax: 179 },
   { tz: "Pacific/Fiji", latMin: -21, latMax: -12, lonMin: 177, lonMax: 180 },
 ];

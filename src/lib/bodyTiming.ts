@@ -6,7 +6,12 @@
  * This is folklore for elective scheduling — never for emergencies.
  */
 
-import { getCurrentMoonSign, getMoonLongitude } from "@/lib/astro/currentSky";
+import {
+  getCurrentMoonSign,
+  getMoonLongitude,
+  getMoonPhaseFraction,
+  getMoonPhaseLabel as getMoonPhaseLabelFromSky,
+} from "@/lib/astro/currentSky";
 
 // ─── INTERFACES ─────────────────────────────────────────────────────────────
 
@@ -224,24 +229,29 @@ function getMoonSignForDate(date: Date): string {
   return full;
 }
 
+/**
+ * Moon phase, from the ephemeris.
+ *
+ * This used to be a hand-rolled approximation anchored to `new Date(2000,0,1)`
+ * — local midnight, and about 5.1 days before the new moon nearest that date.
+ * It was wrong by more than a day on every day tested, and the Almanac screen
+ * rendered it next to the correct value from this same ephemeris. An identical
+ * copy lived in fishingForecast.ts, so the one screen showed three different
+ * moons. Both copies are gone; this is the only source now.
+ *
+ * Lower-cased because the callers here match on substrings ("full", "waxing").
+ */
 function getMoonPhaseLabel(date: Date): string {
-  const J2000 = new Date(2000, 0, 1).getTime();
-  const daysSince = (date.getTime() - J2000) / 86400000;
-  const synodicPeriod = 29.530588;
-  const phaseDay = (daysSince % synodicPeriod + synodicPeriod) % synodicPeriod;
-  if (phaseDay < 1.5) return "new moon";
-  if (phaseDay < 7.4) return "waxing crescent";
-  if (phaseDay < 8.5) return "first quarter";
-  if (phaseDay < 14) return "waxing gibbous";
-  if (phaseDay < 15.5) return "full moon";
-  if (phaseDay < 22) return "waning gibbous";
-  if (phaseDay < 23.5) return "third quarter";
-  return "waning crescent";
+  return getMoonPhaseLabelFromSky(date).toLowerCase();
 }
 
+/**
+ * Waxing is simply the first half of the cycle — the fraction is exact, so
+ * there is no need to route this through a label and match strings.
+ */
 function isWaxing(date: Date): boolean {
-  const phase = getMoonPhaseLabel(date);
-  return phase.includes("waxing") || phase === "first quarter" || phase === "new moon";
+  const f = getMoonPhaseFraction(date);
+  return f < 0.5;
 }
 
 // ─── MERCURY RETROGRADE CHECK ──────────────────────────────────────────────

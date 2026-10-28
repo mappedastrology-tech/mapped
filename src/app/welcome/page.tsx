@@ -123,7 +123,7 @@ function WelcomePage() {
     setError("");
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/verify` },
     });
     if (err) setError(friendlyAuthError(err));
   }
@@ -133,7 +133,7 @@ function WelcomePage() {
     setBusy(true);
     setError("");
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      redirectTo: `${window.location.origin}/auth/verify?type=recovery`,
     });
     setBusy(false);
     if (err) setError(friendlyAuthError(err));

@@ -38,7 +38,33 @@ export const runtime = "nodejs";
  */
 const ENTITLED = new Set<Stripe.Subscription.Status>(["active", "trialing", "past_due"]);
 
+/**
+ * Which tier a subscription grants, read off the PRICE it is actually billing.
+ *
+ * It used to read `mapped_tier` from the subscription metadata. That metadata
+ * is stamped once, at checkout, and nothing ever updates it — while every plan
+ * change by an existing subscriber goes through the billing portal's
+ * subscription_update flow (see /api/stripe/checkout), which swaps the price on
+ * the same subscription and leaves metadata alone. So an upgrade to Complete
+ * billed the Complete price and left the account on Mapped+ forever, and a
+ * downgrade kept full Complete access while billing Mapped+.
+ *
+ * The interval is already read off the price for exactly this reason; tier now
+ * does the same. Metadata stays as the fallback for subscriptions sold before
+ * the price ids existed, and "mid" is the final default rather than "free" so
+ * an unrecognised price can never cancel a paying customer.
+ */
 function tierOf(sub: Stripe.Subscription): "mid" | "max" {
+  const maxPrices = [process.env.STRIPE_PRICE_ID_MAX, process.env.STRIPE_PRICE_ID_MAX_ANNUAL]
+    .filter(Boolean);
+  const midPrices = [process.env.STRIPE_PRICE_ID, process.env.STRIPE_PRICE_ID_ANNUAL]
+    .filter(Boolean);
+
+  const priceId = sub.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    if (maxPrices.includes(priceId)) return "max";
+    if (midPrices.includes(priceId)) return "mid";
+  }
   return sub.metadata?.mapped_tier === "max" ? "max" : "mid";
 }
 

@@ -113,3 +113,30 @@ test("a switch also gives up the device's push subscription", () => {
   const signOut = readFileSync("src/app/account/page.tsx", "utf8");
   assert.match(signOut, /unsubscribeFromPush/, "sign-out no longer releases the push subscription");
 });
+
+test("an account switch spares the other account's namespaced keys", () => {
+  const ana = "11111111-1111-4111-8111-111111111111";
+  const ben = "22222222-2222-4222-8222-222222222222";
+  const keys = [
+    `mapped:u:${ana}::saved-rituals`,     // Ana's, local-only — no server copy
+    `mapped:u:${ana}::widget-order`,
+    `mapped:u:${ben}::saved-rituals`,     // Ben's
+    "mapped:connections",                  // legacy, unnamespaced — shared, must go
+    "mapped_timeline",                     // older spelling — must go
+    "mapped:theme",                        // device-level — always kept
+  ];
+
+  // On a SWITCH only the unnamespaced keys are cleared.
+  assert.deepEqual(
+    personalKeys(keys, { keepOtherAccounts: true }).sort(),
+    ["mapped:connections", "mapped_timeline"].sort(),
+    "a switch must not delete either account's namespaced data",
+  );
+
+  // On SIGN-OUT everything personal still goes, which is what a shared device wants.
+  assert.deepEqual(
+    personalKeys(keys).sort(),
+    keys.filter((k) => k !== "mapped:theme").sort(),
+    "sign-out still wipes everything personal",
+  );
+});

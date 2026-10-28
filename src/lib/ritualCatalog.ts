@@ -15,6 +15,8 @@
  * Every ritual follows the 5-beat structure: Cleanse → Intent → Tool → Practice → Close
  */
 
+import type { MoonPhaseInfo } from "./celestialCalendar";
+
 export interface CatalogRitual {
   id: string;
   title: string;
@@ -24,7 +26,18 @@ export interface CatalogRitual {
   duration: string;
   element: "fire" | "water" | "earth" | "air" | "spirit";
   mood: "calm" | "energized" | "reflective" | "joyful" | "grounded" | "releasing";
-  bestPhases: string[];
+  /**
+   * Typed against the canonical phase keys rather than left as string[].
+   *
+   * Twenty entries carried space-separated names ("waxing crescent",
+   * "third quarter") that getMoonPhase never emits, so those rituals were
+   * silently excluded from the very phase they were tagged for — and two had
+   * no valid token at all, making them unreachable on every day of the year.
+   * Nothing caught it because the field was just strings. Now tsc does.
+   *
+   * Note "third quarter" has no canonical form: the key is "last-quarter".
+   */
+  bestPhases: MoonPhaseInfo["phase"][];
   icon: string;
   // New fields from research docs
   type?: "ritual" | "meditation";
@@ -2957,7 +2970,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "5 min",
     element: "earth",
     mood: "grounded",
-    bestPhases: ["new", "waning crescent", "third quarter", "waning gibbous", "full", "waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["new", "waning-crescent", "last-quarter", "waning-gibbous", "full", "waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "🔋",
     type: "ritual",
     tier: 0,
@@ -2988,7 +3001,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "12 min",
     element: "water",
     mood: "calm",
-    bestPhases: ["full", "waning gibbous", "third quarter", "waning crescent"],
+    bestPhases: ["full", "waning-gibbous", "last-quarter", "waning-crescent"],
     icon: "🤲",
     type: "meditation",
     tier: 0,
@@ -3016,7 +3029,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "7 min",
     element: "earth",
     mood: "grounded",
-    bestPhases: ["new", "waxing crescent", "first quarter", "waxing gibbous", "full", "waning gibbous", "third quarter", "waning crescent"],
+    bestPhases: ["new", "waxing-crescent", "first-quarter", "waxing-gibbous", "full", "waning-gibbous", "last-quarter", "waning-crescent"],
     icon: "🥄",
     type: "ritual",
     tier: 0,
@@ -3046,7 +3059,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "10 min",
     element: "earth",
     mood: "calm",
-    bestPhases: ["new", "waning crescent", "third quarter"],
+    bestPhases: ["new", "waning-crescent", "last-quarter"],
     icon: "🌾",
     type: "meditation",
     tier: 0,
@@ -3074,7 +3087,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "8 min",
     element: "air",
     mood: "grounded",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full"],
     icon: "📋",
     type: "ritual",
     tier: 0,
@@ -3105,7 +3118,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "25 min",
     element: "air",
     mood: "energized",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "🗣️",
     type: "ritual",
     tier: 0,
@@ -3134,7 +3147,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "15 min",
     element: "air",
     mood: "grounded",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full"],
     icon: "🚶",
     type: "meditation",
     tier: 0,
@@ -3162,7 +3175,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "5 min",
     element: "earth",
     mood: "calm",
-    bestPhases: ["new", "waning crescent", "third quarter", "waning gibbous", "full", "waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["new", "waning-crescent", "last-quarter", "waning-gibbous", "full", "waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "🫧",
     type: "ritual",
     tier: 0,
@@ -3189,7 +3202,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "20 min",
     element: "fire",
     mood: "joyful",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full"],
     icon: "✨",
     type: "meditation",
     tier: 0,
@@ -3217,7 +3230,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "15 min",
     element: "air",
     mood: "grounded",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "📝",
     type: "ritual",
     tier: 0,
@@ -3248,7 +3261,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "5 min",
     element: "water",
     mood: "calm",
-    bestPhases: ["new", "waning crescent", "third quarter", "waning gibbous", "full", "waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["new", "waning-crescent", "last-quarter", "waning-gibbous", "full", "waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "🪞",
     type: "ritual",
     tier: 0,
@@ -3277,7 +3290,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "10 min",
     element: "water",
     mood: "releasing",
-    bestPhases: ["full", "waning gibbous", "third quarter", "waning crescent"],
+    bestPhases: ["full", "waning-gibbous", "last-quarter", "waning-crescent"],
     icon: "🕊️",
     type: "meditation",
     tier: 0,
@@ -3305,7 +3318,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "12 min",
     element: "water",
     mood: "grounded",
-    bestPhases: ["new", "waxing crescent", "first quarter", "full"],
+    bestPhases: ["new", "waxing-crescent", "first-quarter", "full"],
     icon: "💪",
     type: "ritual",
     tier: 1,
@@ -3334,7 +3347,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "10 min",
     element: "water",
     mood: "calm",
-    bestPhases: ["new", "waning crescent", "third quarter", "waning gibbous", "full", "waxing crescent", "first quarter", "waxing gibbous"],
+    bestPhases: ["new", "waning-crescent", "last-quarter", "waning-gibbous", "full", "waxing-crescent", "first-quarter", "waxing-gibbous"],
     icon: "🌙",
     type: "meditation",
     tier: 0,
@@ -3362,7 +3375,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "10 min",
     element: "water",
     mood: "grounded",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full"],
     icon: "📱",
     type: "ritual",
     tier: 0,
@@ -3396,7 +3409,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "20 min",
     element: "fire",
     mood: "grounded",
-    bestPhases: ["new", "waning crescent", "third quarter"],
+    bestPhases: ["new", "waning-crescent", "last-quarter"],
     icon: "📋",
     type: "ritual",
     tier: 0,
@@ -3425,7 +3438,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "10 min",
     element: "fire",
     mood: "grounded",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full"],
     icon: "🪟",
     type: "meditation",
     tier: 0,
@@ -3455,7 +3468,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "30 min",
     element: "air",
     mood: "reflective",
-    bestPhases: ["full", "waning gibbous", "third quarter", "waning crescent"],
+    bestPhases: ["full", "waning-gibbous", "last-quarter", "waning-crescent"],
     icon: "🚪",
     type: "ritual",
     tier: 0,
@@ -3485,7 +3498,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "15 min",
     element: "water",
     mood: "releasing",
-    bestPhases: ["full", "waning gibbous", "third quarter", "waning crescent", "new"],
+    bestPhases: ["full", "waning-gibbous", "last-quarter", "waning-crescent", "new"],
     icon: "🌊",
     type: "meditation",
     tier: 0,
@@ -3513,7 +3526,7 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
     duration: "5 min",
     element: "earth",
     mood: "energized",
-    bestPhases: ["waxing crescent", "first quarter", "waxing gibbous", "full", "waning gibbous"],
+    bestPhases: ["waxing-crescent", "first-quarter", "waxing-gibbous", "full", "waning-gibbous"],
     icon: "⏰",
     type: "ritual",
     tier: 0,
@@ -3531,7 +3544,14 @@ const UNDERSERVED_RITUALS: CatalogRitual[] = [
 // COMBINED CATALOG
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const RITUAL_CATALOG: CatalogRitual[] = [
+/**
+ * Every ritual, including the opt-in-gated ones.
+ *
+ * Use this to look a ritual up by id (a saved ritual may well be a gated one)
+ * and to search, which the catalog's own notes say stays unfiltered. Do NOT
+ * use it to pick something for someone.
+ */
+export const ALL_RITUALS: CatalogRitual[] = [
   ...TIER0_RITUALS,
   ...TIER1_RITUALS,
   ...ZODIAC_RITUALS,
@@ -3542,6 +3562,24 @@ export const RITUAL_CATALOG: CatalogRitual[] = [
   ...UNDERSERVED_RITUALS,
 ];
 
+/**
+ * The rituals that may be SUGGESTED.
+ *
+ * UNDERSERVED_RITUALS carry contentTags and are documented in three places as
+ * opt-in only — "These rituals require user opt-in to surface algorithmically"
+ * — but they were spread into the catalog with no filter, and nothing
+ * downstream ever read contentTags to gate on. So "Permission to Grieve What's
+ * Gone", written about a memory from before the baby, could be served to
+ * someone who picked "10 min / in bed / cry it out" and had given no
+ * postpartum context at all.
+ *
+ * Filtering at the export fails safe: a new gated ritual is excluded the
+ * moment it is tagged, without every consumer having to remember.
+ */
+export const RITUAL_CATALOG: CatalogRitual[] = ALL_RITUALS.filter(
+  (r) => !r.contentTags?.length,
+);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DAILY SUGGESTION ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3550,7 +3588,8 @@ export const RITUAL_CATALOG: CatalogRitual[] = [
  * Get the daily suggested ritual based on moon phase, horoscope themes, and time of day.
  */
 export function getDailySuggestedRitual(
-  moonPhase: string,
+  /** A canonical phase key. Typed, because a free string silently matched nothing. */
+  moonPhase: MoonPhaseInfo["phase"] | (string & {}),
   horoscopeThemes?: string[],
   maxTier?: number,
 ): CatalogRitual {
@@ -3561,7 +3600,7 @@ export function getDailySuggestedRitual(
 
   // Find rituals that match the current moon phase
   const phaseMatches = tierPool.filter((r) =>
-    r.bestPhases.includes(moonPhase)
+    (r.bestPhases as readonly string[]).includes(moonPhase)
   );
 
   if (phaseMatches.length === 0) return tierPool[0] || RITUAL_CATALOG[0];

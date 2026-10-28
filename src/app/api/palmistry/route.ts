@@ -81,6 +81,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Consent before the photograph leaves us (Guideline 5.1.2(i)). Separate
+    // from the tier gate below: that one says "not right now", this one says
+    // "not until you have said yes". A palm photograph is personal data, so
+    // this has to run before the image is read, not after.
+    const { guardAiConsent } = await import("@/lib/ai/consent");
+    const consentRefusal = await guardAiConsent(uid);
+    if (consentRefusal) return consentRefusal;
+
     // Tier gate + monthly spend ceiling.
     const { guardAi, meterMessage } = await import("@/lib/ai/meter");
     const denied = await guardAi(uid, "palmistry");

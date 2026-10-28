@@ -263,7 +263,7 @@ export default function BugReportModal({
               rows={4}
               autoFocus
               disabled={phase === "submitting"}
-              className="w-full rounded-xl border border-foreground/15 bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/70 focus:outline-none focus:border-terracotta/40 resize-none"
+              className="w-full rounded-xl border border-foreground/15 bg-surface px-3 py-2.5 text-base text-foreground placeholder:text-muted/70 focus:outline-none focus:border-terracotta/40 resize-none"
             />
 
             {screenshot && (

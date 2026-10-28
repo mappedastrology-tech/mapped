@@ -6,6 +6,7 @@
  */
 
 import { useCallback } from "react";
+import { useToast } from "@/components/Toast";
 import { downloadCSV } from "@/lib/exportChart";
 
 interface ExportButtonProps {
@@ -21,19 +22,27 @@ interface ExportButtonProps {
 }
 
 export default function ExportButton(props: ExportButtonProps) {
-  const handleExport = useCallback(() => {
-    downloadCSV({
-      type: props.type,
-      name: props.name,
-      name2: props.name2,
-      bigThree: props.bigThree,
-      planets: props.planets,
-      houses: props.houses,
-      aspects: props.aspects,
-      specialPoints: props.specialPoints,
-      meta: props.meta,
-    });
-  }, [props]);
+  const { toast } = useToast();
+  // downloadCSV can now fail loudly where a file cannot be saved — in the
+  // native shell a blob download silently does nothing, and this button used
+  // to return to its resting state as though it had worked.
+  const handleExport = useCallback(async () => {
+    try {
+      await downloadCSV({
+        type: props.type,
+        name: props.name,
+        name2: props.name2,
+        bigThree: props.bigThree,
+        planets: props.planets,
+        houses: props.houses,
+        aspects: props.aspects,
+        specialPoints: props.specialPoints,
+        meta: props.meta,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save the file.");
+    }
+  }, [props, toast]);
 
   return (
     <button

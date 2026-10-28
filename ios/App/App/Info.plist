@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Mapped uses the camera so you can photograph your palm for a palmistry reading. Photos are only used for that reading.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mapped lets you choose an existing photo of your palm, or a profile picture, from your library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
