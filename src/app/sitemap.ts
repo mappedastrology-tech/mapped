@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 // (output: "export") requires metadata routes to declare it.
 export const dynamic = "force-static";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-olive.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-astrology.netlify.app";
 
 /** Only the publicly indexable pages belong in the sitemap. */
 export default function sitemap(): MetadataRoute.Sitemap {

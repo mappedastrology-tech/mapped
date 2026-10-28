@@ -1,8 +1,9 @@
 {
-  "crons": [
+  "redirects": [
     {
-      "path": "/api/cron/notifications",
-      "schedule": "0 * * * *"
+      "source": "/(.*)",
+      "destination": "https://mapped-astrology.netlify.app/$1",
+      "permanent": true
     }
   ]
 }

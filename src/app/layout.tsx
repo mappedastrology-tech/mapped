@@ -14,7 +14,7 @@ import NativeAuthBridge from "@/components/NativeAuthBridge";
 // instead of next/font, because next/font downloads fonts at build time
 // and some build environments block that. This works just as well.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-olive.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-astrology.netlify.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
