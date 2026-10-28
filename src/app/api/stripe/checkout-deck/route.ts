@@ -16,6 +16,7 @@ import { stripe } from "@/lib/stripe";
 import { STORE_DECK_BY_ID, resolveStripePrice } from "@/lib/deckStore";
 
 import { withCors, corsPreflight } from "@/lib/cors";
+import { returnUrl } from "@/lib/siteUrl";
 async function handlePOST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -69,14 +70,14 @@ async function handlePOST(request: Request) {
       .eq("id", user.id)
       .single();
 
-    const origin = request.headers.get("origin") || "https://mapped-olive.vercel.app";
+    const origin = request.headers.get("origin");
     const sessionParams: Record<string, unknown> = {
       mode: "payment" as const,
       payment_method_types: ["card"] as const,
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
-      success_url: `${origin}/tarot?deck_purchased=${deck.id}`,
-      cancel_url: `${origin}/tarot?store=1`,
+      success_url: returnUrl(origin, `/tarot?deck_purchased=${deck.id}`),
+      cancel_url: returnUrl(origin, "/tarot?store=1"),
       metadata: {
         supabase_user_id: user.id,
         deck_id: deck.id,
