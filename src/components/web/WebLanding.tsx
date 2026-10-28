@@ -281,7 +281,7 @@ export default function WebLanding() {
             <Link key={f.title} href={f.href} className="mp-card-lift" style={{ display: "block", borderRadius: 22, overflow: "hidden", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 20px var(--shadow)", color: "inherit" }}>
               <div style={{ position: "relative", height: 186, overflow: "hidden", background: "radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--brass) 9%, transparent), transparent 70%)" }}>
                 {f.render()}
-                <span style={{ position: "absolute", top: 14, left: 14, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
+                <span className="mp-night" style={{ position: "absolute", top: 14, left: 14, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
               </div>
               <div style={{ padding: "22px 22px 24px" }}>
                 <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: "0 0 8px", color: "var(--fg)" }}>{f.title}</h3>
@@ -295,7 +295,7 @@ export default function WebLanding() {
 
       {/* ===== DRAG DASHBOARD ===== */}
       <section style={{ maxWidth: 1240, margin: "0 auto", padding: "96px 32px" }}>
-        <div style={{ borderRadius: 30, overflow: "hidden", background: "linear-gradient(160deg, var(--hero-plum), var(--card2))", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
+        <div className="mp-night" style={{ borderRadius: 30, overflow: "hidden", background: "linear-gradient(160deg, var(--hero-plum), var(--card2))", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
             {pStars.map((st, i) => <span key={i} style={st} />)}
           </div>
@@ -453,7 +453,7 @@ export default function WebLanding() {
 
       {/* ===== CTA BAND ===== */}
       <section style={{ maxWidth: 1240, margin: "0 auto 96px", padding: "0 32px" }}>
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 30, padding: "70px 48px", textAlign: "center", background: "linear-gradient(160deg, var(--hero-plum), #1a1426)", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)" }}>
+        <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 30, padding: "70px 48px", textAlign: "center", background: "linear-gradient(160deg, var(--hero-plum), #1a1426)", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {cStars.map((st, i) => <span key={i} style={st} />)}
           </div>

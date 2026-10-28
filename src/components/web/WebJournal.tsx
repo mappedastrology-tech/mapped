@@ -124,7 +124,7 @@ export default function WebJournal() {
           {/* MAIN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
             {/* compose */}
-            <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 12px 40px var(--shadow)", padding: "30px 32px 28px" }}>
+            <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 12px 40px var(--shadow)", padding: "30px 32px 28px" }}>
               <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
               <div style={{ position: "relative" }}>
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 12px" }}>Tonight&rsquo;s prompt · Scorpio Moon</p>

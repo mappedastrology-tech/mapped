@@ -699,12 +699,12 @@ export default function ProfilePageContent() {
                   <div key={`${r.kicker}-${r.mark}`} className="flex items-start gap-3"
                     style={{ borderRadius: 15, padding: "14px 16px", background: "var(--background-card)", border: "0.5px solid rgba(212,161,58,0.28)", borderLeft: "2.5px solid #d4a13a" }}>
                     <span className="flex items-center justify-center flex-shrink-0"
-                      style={{ width: 34, height: 34, borderRadius: "50%", fontFamily: "var(--font-ui)", fontSize: 15, color: "#d4a13a", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>
+                      style={{ width: 34, height: 34, borderRadius: "50%", fontFamily: "var(--font-ui)", fontSize: 15, color: "var(--pf-amber)", background: "rgba(212,161,58,0.12)", border: "1px solid rgba(212,161,58,0.35)" }}>
                       {r.mark}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-baseline gap-x-[7px]">
-                        <span className="text-[8.5px] font-bold uppercase" style={{ letterSpacing: "0.16em", color: "#d4a13a" }}>{r.kicker}</span>
+                        <span className="text-[8.5px] font-bold uppercase" style={{ letterSpacing: "0.16em", color: "var(--pf-amber)" }}>{r.kicker}</span>
                         {r.rarity && <span className="text-[8.5px]" style={{ color: "var(--foreground-faint)" }}>{r.rarity}</span>}
                       </div>
                       <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)" }}>{r.title}</p>
@@ -721,7 +721,7 @@ export default function ProfilePageContent() {
             <section style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)", padding: "18px 18px 16px" }}>
               <div className="flex items-center gap-[13px]">
                 <span className="flex items-center justify-center flex-shrink-0"
-                  style={{ width: 46, height: 46, borderRadius: "50%", fontFamily: "var(--font-display)", fontSize: 24, color: "#d4a13a", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-card)" }}>
+                  style={{ width: 46, height: 46, borderRadius: "50%", fontFamily: "var(--font-display)", fontSize: 24, color: "var(--pf-amber)", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-card)" }}>
                   {numerology.personalYear}
                 </span>
                 <div>
@@ -744,7 +744,7 @@ export default function ProfilePageContent() {
                   return (
                     <div key={n} className="flex-1 flex flex-col items-center gap-1.5">
                       <span className="w-full" style={{ height: 4, borderRadius: 99, background: cur ? "#d4a13a" : past ? "var(--brass)" : "var(--border-card)" }} />
-                      <span className="text-[9.5px]" style={{ color: cur ? "#d4a13a" : "var(--foreground-faint)", fontWeight: cur ? 700 : 400 }}>{n}</span>
+                      <span className="text-[9.5px]" style={{ color: cur ? "var(--pf-amber)" : "var(--foreground-faint)", fontWeight: cur ? 700 : 400 }}>{n}</span>
                     </div>
                   );
                 })}

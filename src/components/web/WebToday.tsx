@@ -209,7 +209,7 @@ export default function WebToday() {
         </div>
 
         {/* today's sky banner */}
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 82% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 12px 40px var(--shadow)", padding: "26px 30px", display: "flex", alignItems: "center", gap: 24, marginBottom: 22 }}>
+        <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 82% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 12px 40px var(--shadow)", padding: "26px 30px", display: "flex", alignItems: "center", gap: 24, marginBottom: 22 }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", width: 92, height: 92, flex: "0 0 auto" }}>
             <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />

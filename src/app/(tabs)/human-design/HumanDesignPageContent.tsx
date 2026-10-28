@@ -242,7 +242,7 @@ export default function HumanDesignPageContent() {
                 key={t}
                 onClick={() => { setPageTab(t); setOpenCenter(null); }}
                 className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
-                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "var(--on-brass)" : "var(--foreground-muted)" }}
               >
                 {t}
               </button>
@@ -262,14 +262,14 @@ export default function HumanDesignPageContent() {
           </div>
           <div className="flex flex-col gap-[9px] mb-2">
             <MechCard kicker="Signature" title={hd.signature} body={tc?.signatureDetail ?? ""} accent={isLight ? "#5d7d3c" : "#7ba055"} />
-            <MechCard kicker="Not-self theme" title={hd.notSelf} body={tc?.notSelfDetail ?? ""} accent="var(--hold)" />
+            <MechCard kicker="Not-self theme" title={hd.notSelf} body={tc?.notSelfDetail ?? ""} accent={isLight ? "var(--hold)" : "#cf7a5f"} />
             <MechCard kicker="Definition" title={hd.definitionName} body={definitionBlurb(hd.definition)} accent="var(--brass)" />
             <MechCard
               kicker="Incarnation cross"
               title={`${hd.incarnationCross.angle} Cross`}
               meta={`Gates ${hd.incarnationCross.gates.join(" / ")}`}
               body={crossBlurb(hd)}
-              accent={isLight ? "#9a7322" : "#d4a13a"}
+              accent={isLight ? "#7f5e19" : "#d4a13a"}
             />
           </div>
         </>
@@ -485,9 +485,9 @@ function GradientCard({ glyph, kicker, title, body, chips }: { glyph: string; ki
   return (
     <div className="rounded-[20px] p-5" style={{ background: "#342440", border: "0.5px solid rgba(201,169,97,0.16)" }}>
       <div className="flex items-center gap-[11px] mb-3">
-        <span className="text-[22px]" style={{ color: "var(--brass)", fontFamily: GLYPH_FONT }}>{glyph}</span>
+        <span className="text-[22px]" style={{ color: "var(--gold-on-dark)", fontFamily: GLYPH_FONT }}>{glyph}</span>
         <span>
-          <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--brass)" }}>{kicker}</span>
+          <span className="block text-[9px] tracking-[0.2em] uppercase font-bold" style={{ color: "var(--gold-on-dark)" }}>{kicker}</span>
           <span className="block mt-0.5" style={{ fontFamily: "var(--font-heading)", fontSize: 19, color: "#f0e6d2" }}>{title}</span>
         </span>
       </div>

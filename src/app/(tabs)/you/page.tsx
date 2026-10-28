@@ -1583,7 +1583,7 @@ export default function YouTab() {
                 key={tab.key}
                 onClick={() => setPageTab(tab.key)}
                 className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
-                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+                style={{ background: active ? "var(--brass)" : "transparent", color: active ? "var(--on-brass)" : "var(--foreground-muted)" }}
               >
                 {tab.label}
               </button>
@@ -1607,10 +1607,10 @@ export default function YouTab() {
       {!unknownTime && chartRuler && (
         <div className="rounded-xl px-4 py-4 mb-8" style={{ backgroundColor: "var(--plum)", border: "0.5px solid rgba(201, 169, 97, 0.2)" }}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg" style={{ fontFamily: "var(--font-heading)", color: "var(--brass)" }}>
+            <span className="text-lg" style={{ fontFamily: "var(--font-heading)", color: "var(--gold-on-dark)" }}>
               {PLANET_SYMBOLS[chartRuler.planet] || "?"}
             </span>
-            <span className="text-[9px] tracking-[0.25em] uppercase font-medium" style={{ color: "var(--brass)" }}>
+            <span className="text-[9px] tracking-[0.25em] uppercase font-medium" style={{ color: "var(--gold-on-dark)" }}>
               Your chart is ruled by {chartRuler.planet}
             </span>
             <InfoTip

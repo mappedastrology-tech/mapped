@@ -100,7 +100,7 @@ export default function WebLibrary() {
         </div>
 
         {/* ELEMENT GAME */}
-        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
+        <div className="mp-night" style={{ borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", padding: "34px 40px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
             <div>

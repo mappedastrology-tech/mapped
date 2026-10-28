@@ -1613,7 +1613,7 @@ export default function RitualPageContent() {
           <p className="text-[11px] uppercase tracking-[0.12em] font-bold" style={{ color: "var(--tag-green-text)" }}>
             🌾 Today&apos;s Almanac
           </p>
-          <span className="text-[11px] font-semibold" style={{ color: "var(--sage)" }}>
+          <span className="text-[11px] font-semibold" style={{ color: "var(--sage-strong)" }}>
             View full →
           </span>
         </div>

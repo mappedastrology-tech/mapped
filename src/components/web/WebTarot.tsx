@@ -166,7 +166,7 @@ export default function WebTarot() {
                 style={{
                   fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 600, padding: "9px 18px", borderRadius: 999, cursor: "pointer",
                   background: active ? "var(--brass)" : "rgba(255,255,255,0.06)",
-                  color: active ? "#1a1020" : "var(--fg2)",
+                  color: active ? "var(--btn-ink)" : "var(--fg2)",
                   border: `1px solid ${active ? "var(--brass)" : "var(--hair)"}`,
                 }}
               >
@@ -177,7 +177,7 @@ export default function WebTarot() {
         </div>
 
         {/* SPREAD TABLE */}
-        <div style={{ position: "relative", borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "radial-gradient(120% 90% at 50% 0%, #3a2233 0%, #0d0814 66%)", boxShadow: "0 20px 60px var(--shadow)", padding: "38px 40px 44px" }}>
+        <div className="mp-night" style={{ position: "relative", borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "radial-gradient(120% 90% at 50% 0%, #3a2233 0%, #0d0814 66%)", boxShadow: "0 20px 60px var(--shadow)", padding: "38px 40px 44px" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
             {/* deck */}

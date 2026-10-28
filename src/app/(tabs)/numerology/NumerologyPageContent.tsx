@@ -345,7 +345,7 @@ export default function NumerologyPageContent() {
                       key={t}
                       onClick={() => { setPageTab(t); setOpenCard(null); }}
                       className="flex-1 py-[11px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
-                      style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "var(--foreground-muted)" }}
+                      style={{ background: active ? "var(--brass)" : "transparent", color: active ? "var(--on-brass)" : "var(--foreground-muted)" }}
                     >
                       {t}
                     </button>
