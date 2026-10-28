@@ -14,6 +14,12 @@ interface CitySearchProps {
   onChange: (value: string) => void;
 }
 
+/**
+ * Query -> results, for this page load. Shared across mounts: the chart form,
+ * onboarding, account settings and maps all use this picker.
+ */
+const lookupCache = new Map<string, LocationResult[]>();
+
 export default function CitySearch({ onSelect, value, onChange }: CitySearchProps) {
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -50,19 +56,39 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
       return;
     }
 
+    // Answer from the session cache without a round trip. Typing a city name
+    // walks through its own prefixes and then back again on a correction, so
+    // the same handful of queries repeat constantly.
+    const key = value.trim().toLowerCase();
+    const remembered = lookupCache.get(key);
+    if (remembered) {
+      setResults(remembered);
+      setStatus(remembered.length > 0 ? "ok" : "empty");
+      setIsOpen(remembered.length > 0);
+      return;
+    }
+
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&addressdetails=1`,
-          { headers: { "User-Agent": "Mapped-Astrology-App" } }
-        );
-        if (!response.ok) throw new Error(`Geocoder returned ${response.status}`);
-        const data = await response.json();
-        setResults(data);
-        setStatus(data.length > 0 ? "ok" : "empty");
-        setIsOpen(data.length > 0);
-      } catch {
+        // Our own route, not the geocoder directly. A User-Agent set on a
+        // browser fetch is silently dropped, so the old call could not
+        // identify itself to a donated service that asks callers to; the
+        // server side can, and can cache across everyone.
+        const response = await fetch(`/api/geocode?q=${encodeURIComponent(value)}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => ({ places: [] }));
+        if (!response.ok) throw new Error(data?.error || `Lookup failed (${response.status})`);
+
+        const places = Array.isArray(data.places) ? data.places : [];
+        lookupCache.set(key, places);
+        setResults(places);
+        setStatus(places.length > 0 ? "ok" : "empty");
+        setIsOpen(places.length > 0);
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
         setResults([]);
         setStatus("error");
         setIsOpen(false);
@@ -71,7 +97,10 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
       }
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [value]);
 
   /**
@@ -161,10 +190,13 @@ export default function CitySearch({ onSelect, value, onChange }: CitySearchProp
         </div>
       )}
 
+      {/* Says what is true: the lookup is down, not their connection. This used
+          to tell people to check their wifi, which sent them to reboot a router
+          over a geocoder returning 429. */}
       {!isLoading && status === "error" && value.length >= 3 && (
         <p role="status" className="mt-2 text-xs text-terracotta">
-          Couldn&apos;t reach the city lookup. Check your connection and try again — or
-          keep typing to retry.
+          City search isn&apos;t responding right now. Keep typing to retry — it
+          usually comes back within a moment.
         </p>
       )}
 
