@@ -4,9 +4,11 @@
  * Asked once, before the first thing Dolly is told.
  *
  * Guideline 5.1.2(i): explicit permission before personal data goes to a
- * third party, and Apple applies it to AI providers by name. So this names
- * the company, lists what actually leaves — in the words a reader would use,
- * not ours — and will not accept a tap anywhere else as agreement.
+ * third party, including third-party AI. So this says plainly that an outside
+ * AI service is involved, names the company on the screen itself (in the small
+ * print, so the screen is about Dolly rather than her vendor), lists what
+ * actually leaves — in the words a reader would use, not ours — and will not
+ * accept a tap anywhere else as agreement.
  *
  * "Not now" is a real answer. It is recorded, the screen stops appearing, and
  * every part of Mapped that is not AI keeps working: chart, almanac, tarot,
@@ -62,13 +64,13 @@ export default function AiConsentScreen({
           className="mb-3"
           style={{ fontFamily: "var(--font-heading)", fontSize: 26, lineHeight: 1.2, color: "var(--foreground)" }}
         >
-          Dolly runs on {AI_PROVIDER_NAME}
+          Before Dolly reads your chart
         </h1>
 
         <p className="text-[14.5px] leading-[1.65] mb-5" style={{ color: "var(--foreground-secondary)" }}>
-          Dolly isn&rsquo;t a person, and she isn&rsquo;t run by us alone. To answer you, Mapped sends
-          your question and the parts of your chart it needs to {AI_PROVIDER_NAME}, another company.
-          We need your permission first.
+          Dolly knows your chart, remembers what you&rsquo;ve talked about, and reads your sky the way
+          an astrologer would. To answer you, Mapped uses an outside AI service, so your question and
+          the parts of your chart she needs are sent to it. We need your permission first.
         </p>
 
         <div
@@ -92,10 +94,7 @@ export default function AiConsentScreen({
         </div>
 
         <p className="text-[13px] leading-[1.6] mb-6" style={{ color: "var(--foreground-muted)" }}>
-          It is sent only when you ask for something — never in the background. We don&rsquo;t sell it,
-          and it isn&rsquo;t used to advertise to you. The{" "}
-          <Link href="/privacy" className="underline underline-offset-2">Privacy Policy</Link> has the
-          detail.
+          It is sent only when you ask for something — never in the background.
         </p>
 
         <div className="flex flex-col gap-2.5">
@@ -105,7 +104,7 @@ export default function AiConsentScreen({
             className="w-full rounded-full text-[15px] font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
             style={{ minHeight: 50, background: "var(--brass)", color: "var(--btn-primary-text)" }}
           >
-            {busy === "grant" ? "Saving…" : `I agree — send my data to ${AI_PROVIDER_NAME}`}
+            {busy === "grant" ? "Saving…" : "Allow Dolly"}
           </button>
           <button
             onClick={() => choose(false)}
@@ -129,6 +128,13 @@ export default function AiConsentScreen({
         )}
 
         <p className="text-[12px] leading-[1.6] mt-5 text-center" style={{ color: "var(--foreground-muted)" }}>
+          Our AI provider is {AI_PROVIDER_NAME}. We don&rsquo;t sell your data, and it isn&rsquo;t used to
+          advertise to you. The{" "}
+          <Link href="/privacy" className="underline underline-offset-2">Privacy Policy</Link> has the
+          detail.
+        </p>
+
+        <p className="text-[12px] leading-[1.6] mt-2 text-center" style={{ color: "var(--foreground-muted)" }}>
           Everything else in Mapped — your chart, the almanac, tarot, journal, maps and the
           library — works either way. You can change your mind in Settings.
         </p>
