@@ -3917,7 +3917,7 @@ export default function MapsTab() {
                   // Filter by LoY if toggle is active
                   let aspects = selfTransitData.transitAspects;
                   if (transitFilterLoY && loyPlanet) {
-                    aspects = aspects.filter(a => isLordOfYearTransit(a.transitPlanet, a.natalPlanet, loyPlanet));
+                    aspects = aspects.filter(a => isLordOfYearTransit(a, loyPlanet));
                   }
 
                   // Sort purely by intensity — most impactful first
@@ -3994,7 +3994,7 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                      {loyPlanet && isLordOfYearTransit(ta, loyPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
@@ -4115,7 +4115,7 @@ export default function MapsTab() {
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {loyPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, loyPlanet) && (
+                                      {loyPlanet && isLordOfYearTransit(ta, loyPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1 py-0.5 rounded">
                                           LoY
                                         </span>
@@ -5544,7 +5544,7 @@ export default function MapsTab() {
                                     </div>
                                     {/* Intensity badge */}
                                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                      {mapsLoY?.lordPlanet && isLordOfYearTransit(ta.transitPlanet, ta.natalPlanet, mapsLoY.lordPlanet) && (
+                                      {mapsLoY?.lordPlanet && isLordOfYearTransit(ta, mapsLoY.lordPlanet) && (
                                         <span className="text-[8px] uppercase tracking-wider font-bold text-lavender bg-lavender/10 px-1.5 py-0.5 rounded">
                                           Year Ruler
                                         </span>
