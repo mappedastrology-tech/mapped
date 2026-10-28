@@ -99,6 +99,22 @@ export function effectiveTier(
   return paid;
 }
 
+const TIER_RANK: Record<TierLevel, number> = { free: 0, mid: 1, max: 2 };
+
+/**
+ * The better of two tiers.
+ *
+ * Someone can hold a paid subscription and a promo at once, and whichever
+ * gives more is the one they get. Nothing may ever lower what a person is
+ * paying for: a Complete subscriber who also redeemed a Mapped+ code stays on
+ * Complete.
+ */
+export function higherTier(a: TierLevel | null | undefined, b: TierLevel | null | undefined): TierLevel {
+  const left = a ?? "free";
+  const right = b ?? "free";
+  return TIER_RANK[left] >= TIER_RANK[right] ? left : right;
+}
+
 /* ─── Feature definitions ─── */
 
 import { DAILY_AI_LIMITS, AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD, dailyLimit } from "@/lib/ai/dailyLimits";

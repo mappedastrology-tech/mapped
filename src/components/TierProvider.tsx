@@ -16,6 +16,7 @@ import {
   getLimits,
   USAGE_LIMITS,
   effectiveTier,
+  higherTier,
   trialDaysLeft,
 } from "@/lib/tier";
 import { getActivePromoTier } from "@/lib/promoCodes";
@@ -83,6 +84,13 @@ export function TierProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // A promo may RAISE the tier, never lower it. This used to return early
+      // with the promo tier, skipping effectiveTier entirely — so a paying
+      // Mapped Complete subscriber who also held any promo was shown Mapped+:
+      // no oracle decks, map capped at one person, and a paywall on a feature
+      // they were being billed for.
+      let promoTier: TierLevel | null = null;
+
       // Check for active promo-based tier (non-fatal — table may not exist)
       try {
         const { data: redemptions } = await supabase
@@ -90,12 +98,7 @@ export function TierProvider({ children }: { children: ReactNode }) {
           .select("*")
           .eq("user_id", userId);
         if (redemptions && redemptions.length > 0) {
-          const promoTier = getActivePromoTier(redemptions);
-          if (promoTier) {
-            setTier(promoTier);
-            setLoading(false);
-            return;
-          }
+          promoTier = getActivePromoTier(redemptions);
         }
       } catch { /* promo_redemptions table may not exist — skip */ }
 
@@ -103,7 +106,8 @@ export function TierProvider({ children }: { children: ReactNode }) {
       // column can only read as free) and layers the opening trial on top. The
       // AI routes resolve the tier through the same function, so what this
       // offers and what the server allows cannot drift apart.
-      setTier(effectiveTier(profile?.tier, profile?.created_at));
+      const paidTier = effectiveTier(profile?.tier, profile?.created_at);
+      setTier(higherTier(paidTier, promoTier));
       setTrialLeft(trialDaysLeft(profile?.created_at));
     } catch {
       setTier("free");
