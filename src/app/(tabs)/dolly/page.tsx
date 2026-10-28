@@ -13,7 +13,7 @@ import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
 import AiConsentScreen from "@/components/AiConsentScreen";
-import { readAiConsent, AI_PROVIDER_NAME, type AiConsentState } from "@/lib/aiConsent";
+import { readAiConsent, type AiConsentState } from "@/lib/aiConsent";
 import { incrementDollyUsage } from "@/lib/tier";
 import { getCachedLocation, fetchUserLocation } from "@/lib/userLocation";
 import DollyAvatar from "@/components/DollyAvatar";
@@ -1221,7 +1221,7 @@ export default function DollyTab() {
           Dolly is switched off
         </h1>
         <p className="text-[14px] leading-[1.6] max-w-xs" style={{ color: "var(--foreground-secondary)" }}>
-          You chose not to send your chart and messages to {AI_PROVIDER_NAME}. Everything else in
+          You chose not to send your chart and messages to an outside AI service. Everything else in
           Mapped still works.
         </p>
         <button

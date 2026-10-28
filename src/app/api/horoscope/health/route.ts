@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL, FALLBACK_MODEL } from "@/lib/aiModel";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -20,7 +21,7 @@ export const runtime = "nodejs";
  * Cheap (1 output token) and lightly rate-limited so it can't be abused.
  * Intended for the scheduled uptime monitor.
  */
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
   const ip = getClientIP(request);
   const { allowed } = await checkRateLimitDurable(`horoscope-health:${ip}`, 20, 60 * 60 * 1000);
@@ -54,3 +55,6 @@ export async function GET(request: NextRequest) {
     }
   }
 }
+
+export const GET = withCors(handleGET);
+export const OPTIONS = corsPreflight;

@@ -7,6 +7,7 @@ import { AYANAMSA_LABELS, jdFromDate, toSidereal } from "@/lib/astro/vedic/ayana
 import { getSunLongitude } from "@/lib/astro/currentSky";
 import { SIGN_NAMES } from "@/lib/astro/constants";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -278,7 +279,7 @@ async function setCachedHoroscope(userId: string, dateStr: string, response: obj
   } catch { /* best effort */ }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   // Require a signed-in user; derive their id from the verified token (never the body).
   const { getAuthedUserId } = await import("@/lib/apiAuth");
   const userId = await getAuthedUserId(request);
@@ -454,3 +455,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

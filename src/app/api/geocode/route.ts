@@ -25,6 +25,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimitDurable, getClientIP } from "@/lib/rateLimit";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 const UPSTREAM = "https://nominatim.openstreetmap.org/search";
@@ -77,7 +78,7 @@ function remember(key: string, places: Place[]): void {
   }
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") || "").trim();
 
@@ -138,3 +139,6 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withCors(handleGET);
+export const OPTIONS = corsPreflight;

@@ -30,6 +30,7 @@ import {
   type NotificationPreferences, type SentNotification,
 } from "@/lib/notifications/catalogue";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ function admin() {
 interface SubRow { user_id: string; endpoint: string; keys_p256dh: string; keys_auth: string }
 interface ProfileRow { id: string; notification_preferences: Partial<NotificationPreferences> | null; timezone: string | null }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const userId = await getAuthedUserId(request);
   if (!isAdmin(userId)) return NOT_FOUND();
 
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const userId = await getAuthedUserId(request);
   if (!userId || !isAdmin(userId)) return NOT_FOUND();
 
@@ -167,3 +168,7 @@ export async function POST(request: Request) {
     skipped,
   }, { status: broke ? 502 : 200 });
 }
+
+export const GET = withCors(handleGET);
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

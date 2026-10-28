@@ -10,6 +10,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { signInWithProvider } from "@/lib/socialSignIn";
 
 interface AuthModalProps {
   // Called after successful auth, with the user's ID
@@ -109,12 +110,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
     setError("");
     try {
       // Store chart data before redirecting (OAuth will navigate away)
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/verify`,
-        },
-      });
+      const { error } = await signInWithProvider(provider);
       if (error) throw error;
     } catch (err) {
       if (err instanceof Error) {

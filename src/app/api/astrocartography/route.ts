@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateAstrocartography } from "@/lib/astro/calculateAstrocartography";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /**
  * POST /api/astrocartography
  *
  * Calculates astrocartography lines for a birth chart.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const data = await request.json();
 
@@ -27,3 +28,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

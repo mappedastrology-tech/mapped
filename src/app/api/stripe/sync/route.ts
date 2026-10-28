@@ -29,6 +29,7 @@ import { createClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -68,7 +69,7 @@ function tierOf(sub: Stripe.Subscription): "mid" | "max" {
   return sub.metadata?.mapped_tier === "max" ? "max" : "mid";
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -209,3 +210,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not check your subscription." }, { status: 502 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

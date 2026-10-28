@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { FALLBACK_MODEL } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -19,7 +20,7 @@ interface Turn {
   content: string;
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const ctx = await getAuthedContext(request);
   if (!ctx) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   const { userId, supabase } = ctx;
@@ -94,3 +95,6 @@ Return ONLY the updated memory (bullets), no preamble.`;
     return new Response(JSON.stringify({ error: "Failed" }), { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

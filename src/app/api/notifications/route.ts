@@ -16,7 +16,8 @@
 
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+import { withCors, corsPreflight } from "@/lib/cors";
+async function handlePOST(request: Request) {
   try {
     // Authenticate. Fail closed: if CRON_SECRET isn't configured,
     // reject everything rather than leaving the endpoint open.
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
 }
 
 // GET for health check
-export async function GET() {
+async function handleGET() {
   return NextResponse.json({
     status: "ok",
     configured: !!(process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
@@ -157,3 +158,7 @@ export async function GET() {
       : undefined,
   });
 }
+
+export const POST = withCors(handlePOST);
+export const GET = withCors(handleGET);
+export const OPTIONS = corsPreflight;

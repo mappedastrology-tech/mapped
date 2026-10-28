@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateChart } from "@/lib/astro/calculateChart";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /**
  * POST /api/chart/calculate
  *
  * Calculates a full birth chart from birth data using astronomy-engine (pure JS).
  * Runs on Vercel Node.js serverless runtime — no native dependencies required.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const data = await request.json();
 
@@ -35,3 +36,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

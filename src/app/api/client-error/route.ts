@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -12,7 +13,7 @@ export const runtime = "nodejs";
  * Configure (optional) to enable Sentry forwarding:
  *   SENTRY_DSN = https://<key>@<host>/<projectId>
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
   const ip = getClientIP(request);
   const { allowed } = await checkRateLimitDurable(`client-error:${ip}`, 40, 60 * 60 * 1000);
@@ -72,3 +73,6 @@ async function forwardToSentry(body: Record<string, unknown>): Promise<void> {
     body: envelope,
   });
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

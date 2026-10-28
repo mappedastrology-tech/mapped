@@ -4,6 +4,7 @@ import { FALLBACK_MODEL } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
 import { dollyBody } from "@/lib/dollyReply";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -14,7 +15,7 @@ export const runtime = "nodejs";
  */
 interface Turn { role: "user" | "assistant"; content: string }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const ctx = await getAuthedContext(request);
   if (!ctx) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
@@ -75,3 +76,6 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ summary: "" }), { status: 200 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

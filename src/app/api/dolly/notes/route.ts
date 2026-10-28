@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 import { chartSystemContext } from "@/lib/astro/vedic/system";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -84,7 +85,7 @@ function buildContext(chart?: ChartData, transits?: TransitData): string {
   return lines.join("\n");
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const { getAuthedUserId } = await import("@/lib/apiAuth");
     const uid = await getAuthedUserId(request);
@@ -206,3 +207,6 @@ ${chartContext}`
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

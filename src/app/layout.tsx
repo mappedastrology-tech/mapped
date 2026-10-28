@@ -8,6 +8,7 @@ import ToastProvider from "@/components/Toast";
 import { TierProvider } from "@/components/TierProvider";
 import ErrorMonitorInit from "@/components/ErrorMonitorInit";
 import ApiBaseInit from "@/components/ApiBaseInit";
+import NativeAuthBridge from "@/components/NativeAuthBridge";
 
 // NOTE: We're using system fonts + CSS @import for Google Fonts
 // instead of next/font, because next/font downloads fonts at build time
@@ -118,6 +119,7 @@ export default function RootLayout({
         <ApiBaseInit />
         <ErrorMonitorInit />
         <AccountIsolation />
+        <NativeAuthBridge />
         <ThemeProvider>
           <ToastProvider>
             {/*

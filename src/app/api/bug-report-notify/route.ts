@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /**
  * POST /api/bug-report-notify
  *
@@ -14,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
  * If RESEND_API_KEY is unset, this no-ops gracefully so nothing breaks before
  * email is configured.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     // Rate limit so this can't be abused as an open email/spam relay.
     const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
@@ -79,3 +80,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 200 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;
