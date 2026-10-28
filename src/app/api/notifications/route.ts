@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 
 import { withCors, corsPreflight } from "@/lib/cors";
+import { sendPush } from "@/lib/push/send";
 async function handlePOST(request: Request) {
   try {
     // Authenticate. Fail closed: if CRON_SECRET isn't configured,
@@ -110,16 +111,8 @@ async function handlePOST(request: Request) {
     const staleEndpoints: string[] = [];
 
     for (const sub of targets) {
-      const pushSubscription = {
-        endpoint: sub.endpoint,
-        keys: {
-          p256dh: sub.keys_p256dh,
-          auth: sub.keys_auth,
-        },
-      };
-
       try {
-        await webpush.sendNotification(pushSubscription, payload);
+        await sendPush(webpush, sub, payload);
         sent++;
       } catch (err: unknown) {
         const statusCode = (err as { statusCode?: number })?.statusCode;

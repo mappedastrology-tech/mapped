@@ -31,6 +31,7 @@ import {
 } from "@/lib/notifications/catalogue";
 
 import { withCors, corsPreflight } from "@/lib/cors";
+import { sendPush } from "@/lib/push/send";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -136,7 +137,7 @@ async function handlePOST(request: Request) {
     let any = false;
     for (const s of byUser.get(id) ?? []) {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.keys_p256dh, auth: s.keys_auth } }, payload);
+        await sendPush(webpush, s, payload);
         devicesSent++;
         any = true;
       } catch (err) {

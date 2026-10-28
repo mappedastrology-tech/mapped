@@ -46,8 +46,16 @@ export default function NativeAuthBridge() {
         Browser.close().catch(() => { /* already closed */ });
         router.replace(signedIn ? "/auth/verify" : "/welcome?mode=signin");
       });
-      if (cancelled) handle.remove();
-      else remove = () => handle.remove();
+      // Tapping a notification opens the page it is about. The server puts the
+      // path in `url`, the same field the web service worker reads.
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      const tap = await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+        const url = (notification.data as { url?: unknown } | undefined)?.url;
+        if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//")) router.push(url);
+      });
+
+      if (cancelled) { handle.remove(); tap.remove(); }
+      else remove = () => { handle.remove(); tap.remove(); };
     })();
 
     return () => {
