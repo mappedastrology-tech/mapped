@@ -2272,7 +2272,7 @@ function AccountPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/verify`,
         },
       });
       if (error) throw error;
@@ -2292,7 +2292,7 @@ function AccountPage() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        redirectTo: `${window.location.origin}/auth/verify?type=recovery`,
       });
       if (error) throw error;
       setResetSent(true);
@@ -2362,7 +2362,7 @@ function AccountPage() {
     try {
       const { error } = await supabase.auth.updateUser(
         { email: newEmail },
-        { emailRedirectTo: `${window.location.origin}/auth/callback?type=email_change` }
+        { emailRedirectTo: `${window.location.origin}/auth/verify?type=email_change` }
       );
       if (error) throw error;
       // Supabase sends a confirmation email to the new address

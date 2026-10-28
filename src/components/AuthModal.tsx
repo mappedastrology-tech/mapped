@@ -112,7 +112,7 @@ export default function AuthModal({ onAuthenticated, defaultName }: AuthModalPro
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/verify`,
         },
       });
       if (error) throw error;
