@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useTheme } from "@/components/ThemeProvider";
 import { fmtDateRange, fmtExactDate, natalPointsLabel } from "@/lib/transitFormat";
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
@@ -2518,7 +2519,21 @@ export default function MapsTab() {
   const [selfTab, setSelfTab] = useState<"transits" | "synastry" | "solar">("transits");
 
   // Maps is an immersive night-sky experience — force dark while this tab is
-  // mounted (no light mode here). Restore the saved theme preference on leave.
+  // mounted (no light mode here), and put back whatever was there on leave.
+  //
+  // This used to read "mapped:theme" from storage and fall back to "light"
+  // when it was anything else. But that key holds a MODE, which is
+  // legitimately "auto" — and on a fresh install ThemeProvider applies a
+  // detected theme without writing anything at all. So a new user on a
+  // dark-mode phone, or anyone who chose Auto, got switched to light every
+  // time they left this tab, while ThemeProvider still believed it was dark
+  // and handed dark-mode inks to everything that asked.
+  //
+  // The provider already knows what it resolved; restore that.
+  const { theme: resolvedTheme } = useTheme();
+  const resolvedThemeRef = useRef(resolvedTheme);
+  resolvedThemeRef.current = resolvedTheme;
+
   useEffect(() => {
     const html = document.documentElement;
     const forceDark = () => { if (html.getAttribute("data-theme") !== "dark") html.setAttribute("data-theme", "dark"); };
@@ -2527,12 +2542,25 @@ export default function MapsTab() {
     obs.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
       obs.disconnect();
-      let pref: string | null = null;
-      try { pref = localStorage.getItem("mapped:theme"); } catch { /* ignore */ }
-      html.setAttribute("data-theme", pref === "dark" || pref === "light" ? pref : "light");
+      html.setAttribute("data-theme", resolvedThemeRef.current);
     };
   }, []);
   const [selfTransitData, setSelfTransitData] = useState<TransitData | null>(null);
+  /**
+   * The date selfTransitData was computed for, and the person overlapTransitData
+   * belongs to.
+   *
+   * Two different functions write selfTransitData — fetchBothTransits always
+   * for today, fetchSelfTransits for whatever the date wheel says — and neither
+   * recorded which. Set the wheel to 15 Nov, open "Between Us", come back, and
+   * the wheel still read 15 Nov over today's sky, because the tab only refetches
+   * when the data is absent. Likewise, switching the overlap dropdown mid-flight
+   * let the slower response land last, so the header named one person while the
+   * cards described another. The detail tab already solved this with
+   * transitPersonId; these are the same idea.
+   */
+  const [selfTransitDateLoaded, setSelfTransitDateLoaded] = useState<string | null>(null);
+  const [overlapTransitPersonId, setOverlapTransitPersonId] = useState<string | null>(null);
   const [selfTransitLoading, setSelfTransitLoading] = useState(false);
   const [transitFilterLoY, setTransitFilterLoY] = useState(false);
 
@@ -3293,7 +3321,7 @@ export default function MapsTab() {
           }),
         })
           .then(async (res) => {
-            if (res.ok) { setSelfTransitData(await res.json()); }
+            if (res.ok) { setSelfTransitData(await res.json()); setSelfTransitDateLoaded(today); }
             else { errors.push(`Your transits failed (${res.status})`); console.error("Self transit:", res.status, await res.text()); }
           })
           .catch((err) => { errors.push(`Your transits: ${err}`); console.error("Self transit error:", err); })
@@ -3314,7 +3342,7 @@ export default function MapsTab() {
           }),
         })
           .then(async (res) => {
-            if (res.ok) { setOverlapTransitData(await res.json()); }
+            if (res.ok) { setOverlapTransitData(await res.json()); setOverlapTransitPersonId(conn.id); }
             else { errors.push(`${conn.name} transits failed (${res.status})`); console.error("Overlap transit:", res.status, await res.text()); }
           })
           .catch((err) => { errors.push(`${conn.name} transits: ${err}`); console.error("Overlap transit error:", err); })
@@ -3348,7 +3376,7 @@ export default function MapsTab() {
           ...(userChart.zodiacSystem === "sidereal" ? { ayanamsa: userChart.ayanamsa || "lahiri" } : {}),
         }),
       });
-      if (res.ok) setSelfTransitData(await res.json());
+      if (res.ok) { setSelfTransitData(await res.json()); setSelfTransitDateLoaded(useDate); }
     } catch (err) { console.error("Self transit error:", err); }
     finally { setSelfTransitLoading(false); }
   }
@@ -3484,7 +3512,7 @@ export default function MapsTab() {
     type StoryCard = { icon: string; headline: string; body: string; advice: string; tone: "warm" | "tension" | "growth" | "neutral" };
     const storyCards: StoryCard[] = [];
 
-    if (selfTransitData && overlapTransitData && overlapPerson) {
+    if (selfTransitData && overlapTransitData && overlapPerson && overlapTransitPersonId === overlapPerson.id) {
       const yours = selfTransitData.transitAspects || [];
       const theirs = overlapTransitData.transitAspects || [];
 
@@ -3737,7 +3765,7 @@ export default function MapsTab() {
     return (
       <main className="flex-1 flex flex-col px-5 py-6 max-w-lg mx-auto w-full overflow-y-auto">
         <button
-          onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); }}
+          onClick={() => { setShowSelfView(false); setOverlapPersonId(null); setOverlapTransitData(null); setOverlapTransitPersonId(null); }}
           className="flex items-center gap-2 text-muted text-sm mb-4 active:text-secondary"
         >
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -3761,7 +3789,12 @@ export default function MapsTab() {
         {/* ═══ Tab Bar ═══ */}
         <div className="flex rounded-xl bg-card/45 border border-foreground/15 p-1 mb-6">
           <button
-            onClick={() => { setSelfTab("transits"); if (!selfTransitData && !selfTransitLoading) fetchSelfTransits(); }}
+            onClick={() => {
+              setSelfTab("transits");
+              // Refetch when what is loaded is not what the wheel is showing —
+              // the overlap view refills this state with today's sky.
+              if ((!selfTransitData || selfTransitDateLoaded !== selfTransitDate) && !selfTransitLoading) fetchSelfTransits();
+            }}
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               selfTab === "transits"
                 ? "bg-terracotta/15 text-terracotta border border-terracotta/20"
@@ -4378,7 +4411,7 @@ export default function MapsTab() {
                 aria-label="Select a person for comparison"
                 onChange={(e) => {
                   const id = e.target.value;
-                  if (!id) { setOverlapPersonId(null); setOverlapTransitData(null); return; }
+                  if (!id) { setOverlapPersonId(null); setOverlapTransitData(null); setOverlapTransitPersonId(null); return; }
                   setOverlapPersonId(id);
                   setOverlapTransitData(null);
                   setSelfTransitData(null);
@@ -4436,7 +4469,7 @@ export default function MapsTab() {
             )}
 
             {/* Relationship story */}
-            {overlapPerson && selfTransitData && overlapTransitData && !selfTransitLoading && !overlapTransitLoading && (
+            {overlapPerson && selfTransitData && overlapTransitData && overlapTransitPersonId === overlapPerson.id && !selfTransitLoading && !overlapTransitLoading && (
               <>
                 <div className="flex items-center justify-center gap-4 mb-8">
                   <div className="flex flex-col items-center">

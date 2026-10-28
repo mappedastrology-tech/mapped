@@ -148,7 +148,7 @@ function horizonEyebrow(category: string, tradition: string): string {
 export default function HomeTab() {
   const router = useRouter();
   const { gate, PaywallModal } = usePaywall();
-  const { tier } = useTier();
+  const { tier, loading: tierLoading } = useTier();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [hasChart, setHasChart] = useState(false);
@@ -535,7 +535,18 @@ export default function HomeTab() {
 
   // Fetch daily horoscope — simple state machine: idle → loading → done/error
   useEffect(() => {
-    if (!hasChart || horoscopeStatus !== "idle") return;
+    // Wait for the real tier before deciding which horoscope to build.
+    //
+    // useTier() starts at the literal "free" and only resolves after a
+    // profiles round trip. This effect used to run on that placeholder: it
+    // wrote the local fallback, marked the state "done", and only then checked
+    // the tier — so by the time the real one arrived the guard on the first
+    // line turned the re-run straight back around. Nothing ever reset the
+    // status to "idle", and because only the AI path writes the day's cache,
+    // nothing was cached either, so the same coin flip repeated on every cold
+    // start. Out of onboarding it was not even a coin flip: hasChart is set
+    // synchronously, so the race was lost every time.
+    if (!hasChart || tierLoading || horoscopeStatus !== "idle") return;
 
     // Check localStorage cache — horoscope persists for the whole day
     const todayKey = currentUserId ? `horoscope-v4-${currentUserId}-${todayLocal}` : `horoscope-v4-${todayLocal}`;
@@ -724,7 +735,7 @@ export default function HomeTab() {
 
     doFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasChart, horoscopeStatus, tier]);
+  }, [hasChart, horoscopeStatus, tier, tierLoading]);
 
 
   // Moon sign label (sidereal, from almanac data or celestial calendar)
