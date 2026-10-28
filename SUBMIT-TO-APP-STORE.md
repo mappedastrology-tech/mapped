@@ -109,8 +109,10 @@ to submit works.
 
 - App Store Connect privacy answers (the questionnaire about collected data).
   The manifest at `ios/App/App/PrivacyInfo.xcprivacy` has every answer in it
-  already: no tracking, and seven collected data types, all linked to the
-  account and all for app functionality.
+  already: no tracking, and eleven collected data types, all linked to the
+  account and all for app functionality. `APP-PRIVACY-ANSWERS.md` is the
+  authority if the two ever disagree — it lists all eleven with the table each
+  one comes from.
 - Screenshots at the required device sizes.
 - Store listing copy.
 - A bundled fallback list of major cities. Birth city is required to create a
