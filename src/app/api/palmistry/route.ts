@@ -8,6 +8,7 @@ import {
   type PalmReading,
 } from "@/lib/palmistry";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 // Node runtime: more reliable than edge for the Anthropic SDK and for the
 // larger (image) request bodies this route receives.
 export const runtime = "nodejs";
@@ -63,7 +64,7 @@ function extractJson(text: string): unknown {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const { getAuthedUserId } = await import("@/lib/apiAuth");
     const uid = await getAuthedUserId(req);
@@ -195,3 +196,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg, detail }, { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

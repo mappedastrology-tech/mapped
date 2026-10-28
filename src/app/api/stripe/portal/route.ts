@@ -13,7 +13,8 @@ import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { returnBaseUrl } from "@/lib/siteUrl";
 
-export async function POST(request: Request) {
+import { withCors, corsPreflight } from "@/lib/cors";
+async function handlePOST(request: Request) {
   try {
     // Authenticate the user via Supabase
     const authHeader = request.headers.get("authorization");
@@ -70,3 +71,6 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

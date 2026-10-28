@@ -17,7 +17,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validatePromoCode, getExpirationDate, describePromo, getHardcodedPromo, type PromoCode } from "@/lib/promoCodes";
 
-export async function POST(request: Request) {
+import { withCors, corsPreflight } from "@/lib/cors";
+async function handlePOST(request: Request) {
   try {
     // Get the user's auth token from the request
     const authHeader = request.headers.get("authorization");
@@ -198,3 +199,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Something went wrong." }, { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

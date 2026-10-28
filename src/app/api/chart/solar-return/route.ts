@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateSolarReturn } from "@/lib/astro/calculateSolarReturn";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /**
  * POST /api/chart/solar-return
  *
  * Calculates a solar return chart for a given year.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const data = await request.json();
 
@@ -27,3 +28,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

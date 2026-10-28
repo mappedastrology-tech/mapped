@@ -22,9 +22,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
-export async function DELETE(request: NextRequest) {
+async function handleDELETE(request: NextRequest) {
   try {
     // Get the user's auth token from the request
     const authHeader = request.headers.get("authorization");
@@ -153,3 +154,6 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export const DELETE = withCors(handleDELETE);
+export const OPTIONS = corsPreflight;

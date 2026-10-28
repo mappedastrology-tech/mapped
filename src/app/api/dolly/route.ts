@@ -7,6 +7,7 @@ import { cachedSystem, withCachedHistory } from "@/lib/ai/promptCache";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
 import { HOUSE_SYSTEM_LABELS } from "@/lib/astro/vedic/houses";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -288,7 +289,7 @@ Every key is optional; "{}" is a valid line. Never mention this line, never expl
 ## Chart Data
 The user's EXACT chart data, current transits, and connections are provided below. These are computed from real ephemeris data — trust them completely and use ONLY these placements.`;
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { getAuthedContext } = await import("@/lib/apiAuth");
   const authCtx = await getAuthedContext(request);
   if (!authCtx) {
@@ -597,3 +598,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

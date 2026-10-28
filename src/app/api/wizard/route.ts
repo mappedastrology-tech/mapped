@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 import { chartSystemContext } from "@/lib/astro/vedic/system";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -222,7 +223,7 @@ SAFETY — ALWAYS CHECK:
 
 // ─── Handler ───────────────────────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { getAuthedUserId } = await import("@/lib/apiAuth");
   const uid = await getAuthedUserId(request);
   if (!uid) {
@@ -401,3 +402,6 @@ Generate the ritual now. Follow the output format exactly.`;
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

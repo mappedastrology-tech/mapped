@@ -15,7 +15,8 @@ import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { STORE_DECK_BY_ID, resolveStripePrice } from "@/lib/deckStore";
 
-export async function POST(request: Request) {
+import { withCors, corsPreflight } from "@/lib/cors";
+async function handlePOST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -95,3 +96,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not start checkout" }, { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

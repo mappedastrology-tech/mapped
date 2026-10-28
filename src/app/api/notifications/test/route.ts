@@ -19,9 +19,10 @@
 import { NextResponse } from "next/server";
 import { getAuthedUserId } from "@/lib/apiAuth";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const userId = await getAuthedUserId(request);
   if (!userId) {
     return NextResponse.json({ ok: false, step: "auth", error: "Sign in first." }, { status: 401 });
@@ -110,3 +111,6 @@ export async function POST(request: Request) {
     results,
   }, { status: sent > 0 ? 200 : 502 });
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

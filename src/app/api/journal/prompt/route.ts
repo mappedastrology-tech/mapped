@@ -3,6 +3,7 @@ import { clampText, PROMPT_LIMITS } from "@/lib/ai/promptLimits";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -15,7 +16,7 @@ export const runtime = "nodejs";
 
 const anthropic = new Anthropic();
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const { getAuthedUserId } = await import("@/lib/apiAuth");
   const uid = await getAuthedUserId(req);
   if (!uid) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
@@ -125,3 +126,6 @@ Return ONLY the JSON object, no other text.`,
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

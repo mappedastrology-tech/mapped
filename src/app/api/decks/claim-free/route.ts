@@ -18,10 +18,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { STORE_DECK_BY_ID } from "@/lib/deckStore";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = "23505";
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -83,3 +84,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not claim the deck. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

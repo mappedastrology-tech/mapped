@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateTransits } from "@/lib/astro/calculateTransits";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 /**
  * POST /api/transits
  *
  * Calculates current planetary transits to a natal chart.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const data = await request.json();
 
@@ -27,3 +28,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

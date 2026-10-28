@@ -3,6 +3,7 @@ import { clampText, PROMPT_LIMITS } from "@/lib/ai/promptLimits";
 import Anthropic from "@anthropic-ai/sdk";
 import { createMessageResilient, CLAUDE_MODEL } from "@/lib/aiModel";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -23,7 +24,7 @@ interface ReflectRequest {
   chartSummary?: string;  // for new-year: summary of birth chart transits for the year
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const { getAuthedUserId } = await import("@/lib/apiAuth");
     const uid = await getAuthedUserId(req);
@@ -111,3 +112,6 @@ SAFETY: If the entries suggest the person may be in crisis — thoughts of suici
     return NextResponse.json({ error: "Failed to generate reflection" }, { status: 500 });
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;

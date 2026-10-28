@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL } from "@/lib/aiModel";
 
+import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
 
 /**
@@ -25,7 +26,7 @@ const SIGN_FULL: Record<string, string> = {
   Sag: "Sagittarius", Cap: "Capricorn", Aqu: "Aquarius", Pis: "Pisces",
 };
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   // Rate limit: 3 chart interpretations per hour per IP (anonymous pre-signup route).
   const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
   const ip = getClientIP(request);
@@ -130,3 +131,6 @@ Each interpretation should be 3-4 sentences. Remember: real life, not just trait
     );
   }
 }
+
+export const POST = withCors(handlePOST);
+export const OPTIONS = corsPreflight;
