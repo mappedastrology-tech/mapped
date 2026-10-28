@@ -908,12 +908,12 @@ function NotificationSettingsSection() {
   const [adminUser, setAdminUser] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setPermissionState(Notification.permission);
-    } else {
-      setPermissionState("unsupported");
-    }
-    import("@/lib/notifications").then(({ pushBlocker }) => setBlocker(pushBlocker()));
+    // Through lib/notifications rather than window.Notification, which does
+    // not exist inside the app — where iOS answers instead.
+    import("@/lib/notifications").then(async ({ pushBlocker, readPermissionState }) => {
+      setBlocker(pushBlocker());
+      setPermissionState(await readPermissionState());
+    });
 
     async function load() {
       // A failed read has to be distinguishable from a slow one, or the card
@@ -932,16 +932,15 @@ function NotificationSettingsSection() {
     // Permission granted on an earlier build could still mean NO stored
     // subscription — that was the silent failure. Re-register on every visit
     // (subscribing is idempotent) and say so if it still doesn't take.
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      import("@/lib/notifications").then(async ({ initPushNotifications }) => {
-        const r = await initPushNotifications();
-        if (!r.ok && r.reason === "not-configured") {
-          setTestState({ kind: "error", msg: "Notifications aren't configured on the server yet." });
-        } else if (!r.ok && r.reason === "save-failed") {
-          setTestState({ kind: "error", msg: "This device couldn't be linked to your account. Try again." });
-        }
-      });
-    }
+    import("@/lib/notifications").then(async ({ initPushNotifications, readPermissionState }) => {
+      if ((await readPermissionState()) !== "granted") return;
+      const r = await initPushNotifications();
+      if (!r.ok && r.reason === "not-configured") {
+        setTestState({ kind: "error", msg: "Notifications aren't configured on the server yet." });
+      } else if (!r.ok && r.reason === "save-failed") {
+        setTestState({ kind: "error", msg: "This device couldn't be linked to your account. Try again." });
+      }
+    });
   }, [reloadKey]);
 
   async function handleToggleNotifications() {
@@ -1113,7 +1112,7 @@ function NotificationSettingsSection() {
             <p className="text-muted text-[11px] mt-0.5">Blocked in browser settings</p>
           )}
           {blocker === "unsupported" && (
-            <p className="text-muted text-[11px] mt-0.5">This browser can&rsquo;t do notifications</p>
+            <p className="text-muted text-[11px] mt-0.5">Notifications aren&rsquo;t available on this device yet</p>
           )}
           {blocker === "not-configured" && (
             <p className="text-muted text-[11px] mt-0.5">Not switched on for this build yet</p>

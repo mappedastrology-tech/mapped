@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { returnBaseUrl } from "../src/lib/siteUrl";
+import { returnBaseUrl, returnUrl } from "../src/lib/siteUrl";
 
 /**
  * The money paths.
@@ -98,6 +98,18 @@ test("the app's internal origin is never used as a Stripe return URL", () => {
   }
 });
 
+test("checkout from the app returns through /open-app, so Safari hands back to the app", () => {
+  // Paying happens in Safari. Returning to the plain website would leave the
+  // person signed out on the site, with no way back to the app they paid from.
+  for (const origin of ["capacitor://localhost", "https://localhost"]) {
+    const url = new URL(returnUrl(origin, "/home?upgraded=true"));
+    assert.equal(url.pathname, "/open-app/");
+    assert.equal(url.searchParams.get("to"), "/home?upgraded=true");
+    assert.doesNotMatch(url.host, /localhost/);
+  }
+  assert.equal(returnUrl("https://mapped-astrology.netlify.app", "/account"), "https://mapped-astrology.netlify.app/account");
+});
+
 test("a real public origin is kept, so previews return to themselves", () => {
   assert.equal(returnBaseUrl("https://mapped-olive.vercel.app"), "https://mapped-olive.vercel.app");
   assert.equal(returnBaseUrl("https://deploy-preview-12--mapped.netlify.app"), "https://deploy-preview-12--mapped.netlify.app");
@@ -109,10 +121,14 @@ test("a missing, empty or malformed origin still yields a usable URL", () => {
   }
 });
 
-test("both Stripe routes build their return URLs through it", () => {
-  for (const file of ["src/app/api/stripe/checkout/route.ts", "src/app/api/stripe/portal/route.ts"]) {
+test("every Stripe route builds its return URLs through it", () => {
+  for (const file of [
+    "src/app/api/stripe/checkout/route.ts",
+    "src/app/api/stripe/portal/route.ts",
+    "src/app/api/stripe/checkout-deck/route.ts",
+  ]) {
     const src = read(file);
-    assert.match(src, /returnBaseUrl\(/, `${file} builds return URLs by hand`);
+    assert.match(src, /returnUrl\(/, `${file} builds return URLs by hand`);
     assert.doesNotMatch(
       strip(src),
       /headers\.get\("origin"\)\s*\|\|/,

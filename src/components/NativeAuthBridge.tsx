@@ -1,10 +1,14 @@
 "use client";
 
 /**
- * Catches the app being reopened at com.mappedastrology.app://auth/verify after
- * Google or Apple sign-in in the in-app browser, finishes the sign-in, and
- * hands over to /auth/verify — which saves any pending chart and routes on to
- * /home, exactly as it does on the web. See src/lib/socialSignIn.ts.
+ * Catches the app being reopened through its URL scheme:
+ *
+ * - com.mappedastrology.app://auth/verify after Google or Apple sign-in in the
+ *   in-app browser. Finishes the sign-in and hands over to /auth/verify, which
+ *   saves any pending chart and routes on to /home, exactly as on the web. See
+ *   src/lib/socialSignIn.ts.
+ * - com.mappedastrology.app://app/<path> from /open-app, after Stripe. Routes
+ *   to <path>; TierProvider re-syncs the subscription on resume.
  *
  * Renders nothing, and does nothing outside the native shell.
  */
@@ -29,12 +33,29 @@ export default function NativeAuthBridge() {
       ]);
       const handle = await App.addListener("appUrlOpen", async ({ url }) => {
         if (!url.startsWith(`${NATIVE_AUTH_SCHEME}://`)) return;
+
+        // com.mappedastrology.app://app/<path> — back from Stripe via /open-app.
+        const parsed = new URL(url);
+        if (parsed.hostname === "app") {
+          Browser.close().catch(() => { /* not open */ });
+          router.replace(`${parsed.pathname || "/home"}${parsed.search}`);
+          return;
+        }
+
         const signedIn = await completeNativeSignIn(url);
         Browser.close().catch(() => { /* already closed */ });
         router.replace(signedIn ? "/auth/verify" : "/welcome?mode=signin");
       });
-      if (cancelled) handle.remove();
-      else remove = () => handle.remove();
+      // Tapping a notification opens the page it is about. The server puts the
+      // path in `url`, the same field the web service worker reads.
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      const tap = await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+        const url = (notification.data as { url?: unknown } | undefined)?.url;
+        if (typeof url === "string" && url.startsWith("/") && !url.startsWith("//")) router.push(url);
+      });
+
+      if (cancelled) { handle.remove(); tap.remove(); }
+      else remove = () => { handle.remove(); tap.remove(); };
     })();
 
     return () => {

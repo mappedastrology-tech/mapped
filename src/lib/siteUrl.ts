@@ -46,3 +46,21 @@ export function returnBaseUrl(origin: string | null | undefined): string {
   if (origin && isReachablePublicly(origin)) return origin.replace(/\/$/, "");
   return FALLBACK.replace(/\/$/, "");
 }
+
+/** Origins the native apps serve from (see capacitor.config.ts). */
+const APP_ORIGINS = new Set(["capacitor://localhost", "https://localhost", "http://localhost"]);
+
+/**
+ * The absolute URL to send someone to after Stripe, for `path` in the app.
+ *
+ * From the website that is simply the page. From the native app it is the
+ * public /open-app page, which bounces Safari back into Mapped at `path` —
+ * otherwise someone pays in Safari and is left on the website, signed out,
+ * with no way back to the app they paid from.
+ */
+export function returnUrl(origin: string | null | undefined, path: string): string {
+  if (origin && APP_ORIGINS.has(origin)) {
+    return `${FALLBACK.replace(/\/$/, "")}/open-app/?to=${encodeURIComponent(path)}`;
+  }
+  return `${returnBaseUrl(origin)}${path}`;
+}

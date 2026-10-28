@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { returnBaseUrl } from "@/lib/siteUrl";
+import { returnUrl } from "@/lib/siteUrl";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 async function handlePOST(request: Request) {
@@ -63,7 +63,7 @@ async function handlePOST(request: Request) {
     // Build checkout session params
     // Not the raw Origin header: inside the app that is https://localhost,
     // and checkout now opens in the system browser, which cannot reach it.
-    const origin = returnBaseUrl(request.headers.get("origin"));
+    const back = (path: string) => returnUrl(request.headers.get("origin"), path);
     /**
      * Never sell a second subscription to somebody who already has one.
      *
@@ -95,7 +95,7 @@ async function handlePOST(request: Request) {
         try {
           const flow = await stripe.billingPortal.sessions.create({
             customer: profile.stripe_customer_id,
-            return_url: `${origin}/account`,
+            return_url: back("/account"),
             flow_data: {
               type: "subscription_update",
               subscription_update: { subscription: live.id },
@@ -113,7 +113,7 @@ async function handlePOST(request: Request) {
           console.error("[stripe] subscription_update flow unavailable:", err);
           const plain = await stripe.billingPortal.sessions.create({
             customer: profile.stripe_customer_id,
-            return_url: `${origin}/account`,
+            return_url: back("/account"),
           });
           return NextResponse.json({ url: plain.url, mode: "portal" });
         }
@@ -145,8 +145,8 @@ async function handlePOST(request: Request) {
       payment_method_types: ["card"] as const,
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
-      success_url: `${origin}/home?upgraded=true`,
-      cancel_url: `${origin}/home`,
+      success_url: back("/home?upgraded=true"),
+      cancel_url: back("/home"),
       subscription_data: {
         metadata: {
           supabase_user_id: user.id,

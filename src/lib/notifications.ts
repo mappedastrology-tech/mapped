@@ -24,6 +24,10 @@ export {
    ═══════════════════════════════════════════════════════ */
 
 import { supabase } from "@/lib/supabase";
+import {
+  APNS_PREFIX, isNativeIOS, isNativeWithoutPush, nativePermission, requestNativePermission,
+  registerForToken, rememberToken, rememberedToken, forgetToken,
+} from "@/lib/nativePush";
 
 export type PushPermissionState = "default" | "granted" | "denied" | "unsupported";
 
@@ -58,6 +62,9 @@ export type PushBlocker =
 
 export function pushBlocker(): PushBlocker {
   if (typeof window === "undefined") return "unsupported";
+  // Inside the app there is no web push, but iOS has its own (lib/nativePush).
+  if (isNativeIOS()) return "ok";
+  if (isNativeWithoutPush()) return "unsupported";
   if (!isPushSupported()) return "unsupported";
 
   const isIOS =
@@ -84,9 +91,19 @@ export function getPermissionState(): PushPermissionState {
 }
 
 /**
+ * The permission state on every platform. Async because the app has to ask
+ * iOS; on the web it is the same answer as getPermissionState().
+ */
+export async function readPermissionState(): Promise<PushPermissionState> {
+  if (isNativeIOS()) return nativePermission().catch(() => "default" as const);
+  return getPermissionState();
+}
+
+/**
  * Request notification permission from the user.
  */
 export async function requestPermission(): Promise<PushPermissionState> {
+  if (isNativeIOS()) return requestNativePermission();
   if (!isPushSupported()) return "unsupported";
   const result = await Notification.requestPermission();
   return result as PushPermissionState;
@@ -97,7 +114,7 @@ export async function requestPermission(): Promise<PushPermissionState> {
 let swRegistration: ServiceWorkerRegistration | null = null;
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!isPushSupported()) return null;
+  if (isNativeIOS() || !isPushSupported()) return null;
 
   try {
     const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
@@ -155,6 +172,8 @@ export interface SubscribeResult {
  * app has twenty accounts and one subscription.
  */
 export async function subscribeToPush(): Promise<SubscribeResult> {
+  if (isNativeIOS()) return subscribeNative();
+
   let reg = await getRegistration();
   if (!reg) {
     reg = await registerServiceWorker();
@@ -202,9 +221,31 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
   }
 }
 
-/**
- * Unsubscribe from push and remove from Supabase.
- */
+/** The app's half of subscribeToPush: an APNs token instead of a web endpoint. */
+async function subscribeNative(): Promise<SubscribeResult> {
+  try {
+    const token = await registerForToken();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return { ok: false, reason: "not-signed-in" };
+
+    const { error } = await supabase.from("push_subscriptions").upsert({
+      user_id: session.user.id,
+      endpoint: `${APNS_PREFIX}${token}`,
+      keys_p256dh: "",
+      keys_auth: "",
+      created_at: new Date().toISOString(),
+    }, { onConflict: "endpoint" });
+    if (error) return { ok: false, reason: "save-failed", detail: error.message };
+
+    rememberToken(token);
+    await saveTimezone();
+    return { ok: true };
+  } catch (err) {
+    console.error("[notifications] APNs registration failed:", err);
+    return { ok: false, reason: "subscribe-failed", detail: (err as Error)?.message };
+  }
+}
+
 /**
  * Store the browser's IANA timezone on the profile.
  *
@@ -225,6 +266,21 @@ export async function saveTimezone(): Promise<void> {
 }
 
 export async function unsubscribeFromPush(): Promise<void> {
+  if (isNativeIOS()) {
+    // Deleting the row is what stops the server sending. The token is not
+    // unregistered from APNs: it stays valid for the next person to sign in.
+    const token = rememberedToken();
+    if (token) {
+      try {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", `${APNS_PREFIX}${token}`);
+      } catch (err) {
+        console.error("[notifications] Unsubscribe failed:", err);
+      }
+      forgetToken();
+    }
+    return;
+  }
+
   const reg = await getRegistration();
   if (!reg) return;
 
@@ -270,6 +326,10 @@ export function showLocalNotification(title: string, body: string, url?: string)
  * Call on app load. If permission already granted, register SW and subscribe.
  */
 export async function initPushNotifications(): Promise<SubscribeResult> {
+  if (isNativeIOS()) {
+    if ((await readPermissionState()) !== "granted") return { ok: false, reason: "no-service-worker" };
+    return subscribeNative();
+  }
   if (!isPushSupported()) return { ok: false, reason: "no-service-worker" };
   if (Notification.permission !== "granted") return { ok: false, reason: "no-service-worker" };
   await registerServiceWorker();

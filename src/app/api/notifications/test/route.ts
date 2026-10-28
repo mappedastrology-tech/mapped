@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { getAuthedUserId } from "@/lib/apiAuth";
 
 import { withCors, corsPreflight } from "@/lib/cors";
+import { sendPush } from "@/lib/push/send";
 export const runtime = "nodejs";
 
 async function handlePOST(request: Request) {
@@ -81,10 +82,7 @@ async function handlePOST(request: Request) {
   const results = await Promise.all(
     subs.map(async (s) => {
       try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.keys_p256dh, auth: s.keys_auth } },
-          payload,
-        );
+        await sendPush(webpush, s, payload);
         return { ok: true, endpoint: s.endpoint.slice(0, 48) };
       } catch (err) {
         const e = err as { statusCode?: number; body?: string; message?: string };

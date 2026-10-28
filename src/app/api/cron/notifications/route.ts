@@ -41,6 +41,7 @@ import {
   stationsOn, ingressesOn, eclipseOn, eclipseSeasonOpensOn, solarReturnOn,
 } from "@/lib/notifications/skyEvents";
 
+import { sendPush } from "@/lib/push/send";
 /* ─── Types ─── */
 
 interface PushSubscriptionRow {
@@ -396,10 +397,7 @@ export async function GET(request: Request) {
     let deliveredToAny = false;
     for (const sub of userSubs) {
       try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth } },
-          payload,
-        );
+        await sendPush(webpush, sub, payload);
         deliveredToAny = true;
         sent++;
       } catch (err: unknown) {
