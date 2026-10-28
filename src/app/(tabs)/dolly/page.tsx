@@ -28,6 +28,7 @@ import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
+import { dollyChartFromRow } from "@/lib/dollyChart";
 
 /* ═══════════════════════════════════════════
    Types
@@ -309,17 +310,8 @@ export default function DollyTab() {
 
       if (chartData) {
         const system = chartSystemFromRow(chartData);
-        setChart({
-          bigThree: chartData.big_three,
-          planets: chartData.planets || [],
-          houses: chartData.houses || [],
-          specialPoints: chartData.special_points || [],
-          birthDate: chartData.birth_date,
-          birthTime: chartData.birth_time,
-          ascendant: chartData.ascendant || null,
-          midheaven: chartData.midheaven || null,
-          ...system,
-        });
+        // Shared with desktop (WebDolly) so the two cannot drift again.
+        setChart(dollyChartFromRow(chartData) as ChartContext);
         setUserName(chartData.name || "");
 
         // Fetch current transits
