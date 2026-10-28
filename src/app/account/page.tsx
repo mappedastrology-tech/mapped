@@ -11,6 +11,7 @@
 import { Suspense, useEffect, useState, useCallback, useRef, useId } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { signInWithProvider } from "@/lib/socialSignIn";
 import { authedFetch } from "@/lib/authedFetch";
 import { useTheme } from "@/components/ThemeProvider";
 import { useTier } from "@/components/TierProvider";
@@ -2269,12 +2270,7 @@ function AccountPage() {
   async function handleSocialLogin(provider: "google" | "apple") {
     setError("");
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/verify`,
-        },
-      });
+      const { error } = await signInWithProvider(provider);
       if (error) throw error;
     } catch (err) {
       if (err instanceof Error) {

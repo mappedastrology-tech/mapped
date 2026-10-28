@@ -20,6 +20,8 @@
 		"backgroundColor": "#0e0a14"
 	},
 	"packageClassList": [
+		"AppPlugin",
+		"CAPBrowserPlugin",
 		"KeyboardPlugin"
 	]
 }

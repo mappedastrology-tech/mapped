@@ -25,6 +25,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { signInWithProvider } from "@/lib/socialSignIn";
 import { TRIAL_DAYS } from "@/lib/tier";
 import { friendlyAuthError } from "@/lib/authErrors";
 
@@ -121,10 +122,7 @@ function WelcomePage() {
    */
   async function social(provider: "google" | "apple") {
     setError("");
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/verify` },
-    });
+    const { error: err } = await signInWithProvider(provider);
     if (err) setError(friendlyAuthError(err));
   }
 
