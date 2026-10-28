@@ -494,7 +494,9 @@ function generateThemes(
  * JSON carries the version; the Maps page auto-recalculates any connection
  * whose stored version is older, so users never see stale copy.
  */
-export const SYNASTRY_VERSION = 7;
+// 8: the Vertex was computed off the wrong formula, so every fated contact
+//    built on it was meaningless. Stored connections must recompute.
+export const SYNASTRY_VERSION = 8;
 
 export function calculateSynastry(
   chart1: ChartData,

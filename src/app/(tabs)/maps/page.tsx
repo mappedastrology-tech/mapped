@@ -151,6 +151,8 @@ interface UserChart {
   bigThree: { sun: string; moon: string; rising: string };
   birthDate?: string;
   birthTime?: string;
+  /** No birth time was given, so "12:00" is a placeholder and the angles are unknown. */
+  unknownTime?: boolean;
   /** Where the chart was cast — the first star on the places branch. */
   cityName?: string;
   latitude?: number;
@@ -3153,6 +3155,7 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: conn.birth_date,
           birthTime: conn.birth_time || "12:00",
+          unknownTime: !conn.birth_time,
           // last resort — user has no location set
           latitude: conn.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: conn.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -3371,6 +3374,7 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: userChart.birthDate,
           birthTime: userChart.birthTime || "12:00",
+          unknownTime: !!userChart.unknownTime || !userChart.birthTime,
           // last resort — user has no location set
           latitude: userChart.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: userChart.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -4217,7 +4221,12 @@ export default function MapsTab() {
                       {[
                         { label: "SR Sun", sign: selfSolarReturn.bigThree?.sun },
                         { label: "SR Moon", sign: selfSolarReturn.bigThree?.moon },
-                        { label: "SR Rising", sign: selfSolarReturn.bigThree?.rising },
+                        // Without a birth time the return instant is only known
+                        // to within 12 hours, which moves this Ascendant more
+                        // than a hundred degrees. Better absent than invented.
+                        ...(selfSolarReturn.bigThree?.rising
+                          ? [{ label: "SR Rising", sign: selfSolarReturn.bigThree.rising }]
+                          : []),
                       ].map((item) => (
                         <div key={item.label} className="flex-1 text-center py-2.5 rounded-xl border border-foreground/15 bg-card/40">
                           <p className="text-foreground text-sm font-medium">{item.sign}</p>
@@ -4232,11 +4241,19 @@ export default function MapsTab() {
                         type="solar"
                         name="My"
                         theme={yearSummary.title}
-                        subtitle={selfSolarReturn.bigThree ? `SR Sun ${selfSolarReturn.bigThree.sun} · SR Moon ${selfSolarReturn.bigThree.moon} · SR Rising ${selfSolarReturn.bigThree.rising}` : undefined}
+                        subtitle={selfSolarReturn.bigThree
+                          ? [
+                              `SR Sun ${selfSolarReturn.bigThree.sun}`,
+                              `SR Moon ${selfSolarReturn.bigThree.moon}`,
+                              ...(selfSolarReturn.bigThree.rising ? [`SR Rising ${selfSolarReturn.bigThree.rising}`] : []),
+                            ].join(" · ")
+                          : undefined}
                         highlights={[
                           { label: "SR Sun", value: selfSolarReturn.bigThree?.sun || "?" },
                           { label: "SR Moon", value: selfSolarReturn.bigThree?.moon || "?" },
-                          { label: "SR Rising", value: selfSolarReturn.bigThree?.rising || "?" },
+                          ...(selfSolarReturn.bigThree?.rising
+                            ? [{ label: "SR Rising", value: selfSolarReturn.bigThree.rising }]
+                            : []),
                         ]}
                       />
                       <ExportButton

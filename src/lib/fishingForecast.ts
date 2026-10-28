@@ -8,7 +8,7 @@
  * Tuned for Texas but designed for any US location.
  */
 
-import { getCurrentMoonSign } from "@/lib/astro/currentSky";
+import { getCurrentMoonSign, getMoonPhaseFraction } from "@/lib/astro/currentSky";
 
 // ─── INTERFACES ─────────────────────────────────────────────────────────────
 
@@ -125,19 +125,23 @@ export interface SpeciesTip {
 // ─── SOLUNAR CALCULATION ─────────────────────────────────────────────────────
 
 function getMoonTransit(date: Date): number {
-  const J2000 = new Date(2000, 0, 1).getTime();
-  const daysSince = (date.getTime() - J2000) / 86400000;
-  const synodicPeriod = 29.530588;
-  const phaseDay = (daysSince % synodicPeriod + synodicPeriod) % synodicPeriod;
-  const transitHour = (12 + (phaseDay * 0.8)) % 24;
-  return transitHour;
+  return (12 + (getMoonPhaseDay(date) * 0.8)) % 24;
 }
 
+/** Mean length of one lunation, in days. */
+const SYNODIC_PERIOD = 29.530588;
+
+/**
+ * Where the Moon is in its cycle, in days, from the ephemeris.
+ *
+ * This was a hand-rolled approximation anchored to `new Date(2000,0,1)` —
+ * local midnight, and roughly 5.1 days off the new moon nearest that date, so
+ * it reported the wrong phase every day of the year. bodyTiming.ts carried a
+ * byte-identical copy, and the Almanac screen showed both of them beside the
+ * correct value. Both are gone.
+ */
 function getMoonPhaseDay(date: Date): number {
-  const J2000 = new Date(2000, 0, 1).getTime();
-  const daysSince = (date.getTime() - J2000) / 86400000;
-  const synodicPeriod = 29.530588;
-  return (daysSince % synodicPeriod + synodicPeriod) % synodicPeriod;
+  return getMoonPhaseFraction(date) * SYNODIC_PERIOD;
 }
 
 function formatHour(h: number): string {

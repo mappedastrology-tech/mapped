@@ -42,6 +42,13 @@ interface SolarReturnInput {
   zodiacSystem?: "tropical" | "sidereal";
   ayanamsa?: string;
   houseSystem?: HouseSystem | string | null;
+  /**
+   * The natal birth time is unknown, so the return instant is only known to
+   * within the same +/-12h — which moves the solar-return Ascendant by well
+   * over a hundred degrees. calculateChart refuses to invent angles in this
+   * case; so does this.
+   */
+  unknownTime?: boolean;
 }
 
 // ---------- Helpers ----------
@@ -206,11 +213,17 @@ export function calculateSolarReturn(data: SolarReturnInput) {
     return { number: i + 1, sign: info.sign, signNum: info.signNum, position: info.position, absPosition: info.absPosition };
   });
   const ascInfo = posToSign(ascLon);
-  const ascendant = { sign: ascInfo.sign, signNum: ascInfo.signNum, position: ascInfo.position, absPosition: ascInfo.absPosition };
+  const ascendant = data.unknownTime
+    ? null
+    : { sign: ascInfo.sign, signNum: ascInfo.signNum, position: ascInfo.position, absPosition: ascInfo.absPosition };
 
-  // Assign house numbers to planets and special points
-  for (const p of [...planets, ...specialPoints]) {
-    p.house = houseSystem === "whole_sign" ? wholeSignHouse(p.absPosition, ascLon) : assignHouse(p.absPosition, houses);
+  // Assign house numbers to planets and special points. Skipped without a
+  // birth time, for the same reason the Ascendant is: a house number derived
+  // from a guessed angle reads as fact downstream.
+  if (!data.unknownTime) {
+    for (const p of [...planets, ...specialPoints]) {
+      p.house = houseSystem === "whole_sign" ? wholeSignHouse(p.absPosition, ascLon) : assignHouse(p.absPosition, houses);
+    }
   }
 
   // --- Midheaven ---
@@ -249,7 +262,7 @@ export function calculateSolarReturn(data: SolarReturnInput) {
   const bigThree = {
     sun: planets[0]?.sign || "",
     moon: planets[1]?.sign || "",
-    rising: ascendant.sign,
+    rising: ascendant?.sign ?? "",
   };
 
   const result: Record<string, unknown> = {
@@ -261,8 +274,9 @@ export function calculateSolarReturn(data: SolarReturnInput) {
     planets,
     specialPoints,
     ascendant,
-    midheaven,
-    houses,
+    midheaven: data.unknownTime ? null : midheaven,
+    houses: data.unknownTime ? [] : houses,
+    unknownTime: !!data.unknownTime,
     aspects,
     zodiacSystem,
     houseSystem,
