@@ -69,12 +69,39 @@ Bundle Resources**.
 
 ---
 
-## Then
+## Getting it onto Taylor's phone
+
+He wants the app on his iPhone. Worth being clear with him: the App Store
+listing only exists after Apple approves the app, which takes days. There are
+two faster routes, and neither is extra work.
+
+**Fastest — straight from Xcode.** Have him plug the iPhone into the Mac, trust
+the computer if prompted, then pick the phone from the device dropdown at the
+top of Xcode and press Run. The app installs directly. No upload, no review.
+
+Do this BEFORE archiving, and have him sign in. The auth-redirect bug that PR #1
+fixed was invisible on the web and only appeared inside the app bundle, so a
+real sign-in on a real phone is the check that matters.
+
+**TestFlight — the same build he submits.** Archive once, upload once; that
+build is both the TestFlight build and the submission candidate.
+
+## Archive and upload
 
 **Product → Archive**. When it finishes: **Distribute App → App Store Connect →
 Upload**.
 
 If the archive fails, read the actual Xcode error before guessing at a cause.
+
+Processing in App Store Connect takes 10–30 minutes. Then, under **TestFlight**,
+add Taylor as an **Internal Tester** — internal testers need no Beta App Review,
+so it appears in the TestFlight app on his phone within minutes. External
+testers do need a short review.
+
+Only once he is happy with the TestFlight build should he **Submit for Review**.
+The order is: archive → upload → TestFlight → try it → submit. TestFlight is not
+a detour before the App Store; it is where he finds out whether what he is about
+to submit works.
 
 ---
 
