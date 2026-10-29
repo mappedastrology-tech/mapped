@@ -203,6 +203,8 @@ export interface HdInput {
   birthTime: string; // HH:MM (local)
   latitude: number;
   longitude: number;
+  /** The chart's stored birth time zone; estimated from the coordinates when absent. */
+  timezone?: string | null;
 }
 
 export function computeHumanDesign(input: HdInput): HumanDesignProfile | null {
@@ -214,7 +216,7 @@ export function computeHumanDesign(input: HdInput): HumanDesignProfile | null {
   const day = Number(dm[3]);
   const decimalHour = Number(tm[1]) + Number(tm[2]) / 60;
 
-  const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day, decimalHour);
+  const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day, decimalHour, input.timezone);
   const jdBirth = julday(year, month, day, decimalHour - tzOffset);
   const jdDesign = findDesignJd(jdBirth);
 
