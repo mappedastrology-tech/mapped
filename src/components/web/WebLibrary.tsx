@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
+import { DOMAINS, getCoursesByDomain } from "@/lib/learn/registry";
 
 // U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const VS = "\uFE0E";
@@ -35,13 +36,22 @@ const BUCKETS: { el: El; name: string; icon: string; note: string; accent: strin
   { el: "air", name: "Air", icon: "○", note: "Mind, words, connection.", accent: "#7d9cc0" },
   { el: "water", name: "Water", icon: "▽", note: "Feeling, depth, tides.", accent: "#6f8fb0" },
 ];
+// Each card opens the library hub that actually holds it. These all linked to
+// "/library" — this same page — and the entry counts were the prototype's.
 const TOPICS = [
-  { glyph: "♈", title: "The Signs", desc: "All twelve, their elements, modes, rulers and the season each one belongs to.", count: "12 entries" },
-  { glyph: "⌂", title: "The Houses", desc: "The twelve stages of life a chart is divided into, from self to the collective.", count: "12 entries" },
-  { glyph: "☉", title: "The Planets", desc: "Sun through Pluto, plus the nodes and Chiron — what each one governs in you.", count: "13 entries" },
-  { glyph: "△", title: "Aspects", desc: "The angles planets make to one another, and the tension or ease they create.", count: "8 entries" },
-  { glyph: "☽", title: "Moon Phases", desc: "From new to full and back — what each phase asks of you and when to act.", count: "8 entries" },
-  { glyph: "☄", title: "Transits", desc: "How today’s sky touches your birth chart, and the timing behind the mood.", count: "20+ entries" },
+  { glyph: "♈", title: "The Signs", desc: "All twelve, their elements, modes, rulers and the season each one belongs to.", href: "/library/d/astrology", where: "Astrology" },
+  { glyph: "⌂", title: "The Houses", desc: "The twelve stages of life a chart is divided into, from self to the collective.", href: "/library/d/astrology", where: "Astrology" },
+  { glyph: "☉", title: "The Planets", desc: "Sun through Pluto, plus the nodes and Chiron — what each one governs in you.", href: "/library/d/astrology", where: "Astrology" },
+  { glyph: "△", title: "Aspects", desc: "The angles planets make to one another, and the tension or ease they create.", href: "/library/d/astrology", where: "Astrology" },
+  { glyph: "☽", title: "Moon Phases", desc: "From new to full and back — what each phase asks of you and when to act.", href: "/library/d/almanac", where: "Almanac & Moon" },
+  { glyph: "☄", title: "Transits", desc: "How today’s sky touches your birth chart, and the timing behind the mood.", href: "/library/d/astrology", where: "Astrology" },
+];
+
+// The rest of Learn that mobile reaches from Library Home — desktop had no way in.
+const PRACTICE = [
+  { title: "Your progress", desc: "Courses started, lessons finished, certificates earned.", href: "/library/progress" },
+  { title: "Review", desc: "A short session of cards from what you've learned.", href: "/library/review" },
+  { title: "Look it up", desc: "Search every card, sign, crystal, herb and oil.", href: "/library/reference" },
 ];
 
 function panelStars(seed: number, n = 26): React.CSSProperties[] {
@@ -183,11 +193,39 @@ export default function WebLibrary() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
             {TOPICS.map((t) => (
-              <Link key={t.title} href="/library" className="mp-card-lift" style={{ display: "block", borderRadius: 18, padding: "24px 24px 26px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)", color: "inherit" }}>
+              <Link key={t.title} href={t.href} className="mp-card-lift" style={{ display: "block", borderRadius: 18, padding: "24px 24px 26px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)", color: "inherit" }}>
                 <span style={{ display: "inline-flex", width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", fontSize: 22, color: "var(--brass)", background: "color-mix(in srgb, var(--brass) 14%, transparent)", marginBottom: 14 }}>{t.glyph + VS}</span>
                 <h3 style={{ fontFamily: "var(--deco)", fontSize: 23, fontWeight: 500, margin: "0 0 6px", color: "var(--fg)" }}>{t.title}</h3>
                 <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 12px", textWrap: "pretty" }}>{t.desc}</p>
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)" }}>{t.count}</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)" }}>In {t.where} →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* COURSES — every domain hub, with its courses and lessons inside */}
+        <div style={{ margin: "64px 0 20px" }}>
+          <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 40px" }}>
+            <h2 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 40, margin: "0 0 12px", color: "var(--fg)" }}>Courses</h2>
+            <p style={{ fontSize: 16, color: "var(--fg2)", margin: 0 }}>Self-paced lessons, from first steps to fluency.</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+            {DOMAINS.map((d) => {
+              const n = getCoursesByDomain(d.id).length;
+              return (
+                <Link key={d.id} href={`/library/d/${d.id}`} className="mp-card-lift" style={{ display: "block", borderRadius: 16, padding: "20px 20px 22px", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 16px var(--shadow)", color: "inherit" }}>
+                  <h3 style={{ fontFamily: "var(--deco)", fontSize: 20, fontWeight: 500, margin: "0 0 6px", color: "var(--fg)" }}>{d.title}</h3>
+                  <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--muted)", margin: "0 0 10px", textWrap: "pretty" }}>{d.blurb}</p>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, color: "var(--faint)" }}>{n} {n === 1 ? "course" : "courses"}</span>
+                </Link>
+              );
+            })}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 22 }}>
+            {PRACTICE.map((p) => (
+              <Link key={p.href} href={p.href} className="mp-card-lift" style={{ display: "block", borderRadius: 16, padding: "18px 20px", background: "var(--soft)", border: "1px solid var(--hair)", color: "inherit" }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "var(--fg)", margin: "0 0 4px" }}>{p.title} <span style={{ color: "var(--brass)" }}>→</span></p>
+                <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--muted)", margin: 0 }}>{p.desc}</p>
               </Link>
             ))}
           </div>
