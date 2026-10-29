@@ -14,43 +14,18 @@ import WebShell, { useWebTheme } from "./WebShell";
 import { supabase } from "@/lib/supabase";
 import { getTarotHistoryKey } from "@/lib/completionSync";
 import { ORACLE_DECKS } from "@/lib/oracleDecks";
+import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 
-type Card = [name: string, keyword: string, meaning: string];
-const DECK: Card[] = [
-  ["The Fool", "beginnings", "A leap of faith. Trust the open road even before you can see where it bends."],
-  ["The Magician", "manifestation", "You have every tool you need. Focus your will and begin — the raw materials are already in your hands."],
-  ["The High Priestess", "intuition", "The answer is beneath the surface. Go quiet and let what you already know rise up."],
-  ["The Empress", "abundance", "Nurture what is growing. Creativity, comfort, and care are yours to give and to receive."],
-  ["The Emperor", "structure", "Steady authority. Build the framework; discipline now buys freedom later."],
-  ["The Hierophant", "tradition", "Lean on what is tested. A mentor, a system, or an old wisdom has something to teach you."],
-  ["The Lovers", "union", "A meaningful choice about connection and values. Choose from the heart, with both eyes open."],
-  ["The Chariot", "drive", "Willpower harnessed. Hold the reins of opposing forces and press forward with focus."],
-  ["Strength", "courage", "Gentle power. You master the moment not by force but by patience and a steady heart."],
-  ["The Hermit", "reflection", "Withdraw to hear yourself. The light you seek is the one you carry inward."],
-  ["Wheel of Fortune", "change", "The cycle turns. What is down will rise; ride the momentum rather than resisting it."],
-  ["Justice", "balance", "Truth and consequence. A fair reckoning arrives — act with integrity and it favors you."],
-  ["The Hanged Man", "surrender", "A pause with purpose. Seeing things upside-down reveals the answer you kept missing."],
-  ["Death", "transformation", "An ending that clears the way. Let the old form fall so the new one can arrive."],
-  ["Temperance", "harmony", "Blend and moderate. The middle path, patiently walked, turns extremes into something whole."],
-  ["The Devil", "attachment", "Notice the chain you could simply set down. What feels binding may be a habit, not a fate."],
-  ["The Tower", "upheaval", "A sudden clearing of false ground. What collapses now was never built to last."],
-  ["The Star", "hope", "Renewal after a hard stretch. Trust the quiet that is returning; you are being replenished."],
-  ["The Moon", "mystery", "Not everything is as it seems. Move slowly through the fog and trust your instincts over your fears."],
-  ["The Sun", "vitality", "Warmth, clarity, and joy. Step into the light — this is a season to be seen and to celebrate."],
-  ["Judgement", "awakening", "A call you can finally answer. Rise to it; the past is settled and a truer chapter opens."],
-  ["The World", "completion", "A cycle fulfilled. Stand in the accomplishment, then step through into the next whole."],
-];
 const LABELS = ["Where you've been", "Where you are", "Where you're headed"];
-const BACK = "/tarot/classic/backside.webp";
-const cardImg = (ci: number) => `/tarot/classic/major-${ci}.webp`;
 
 // Unified card model so the classic tarot deck and the oracle decks share one
 // draw/render path.
 type UCard = { name: string; keyword: string; meaning: string; image: string };
 type WebDeck = { id: string; label: string; back: string; cards: UCard[] };
-const CLASSIC_CARDS: UCard[] = DECK.map((c, i) => ({ name: c[0], keyword: c[1], meaning: c[2], image: cardImg(i) }));
+// The full 78-card deck the mobile page draws from — majors and all four suits.
+const CLASSIC_CARDS: UCard[] = ALL_CARDS.map((c) => ({ name: c.name, keyword: c.uprightKeywords[0], meaning: c.uprightMeaning, image: getCardImagePath(c.id) ?? CARD_BACK_IMAGE }));
 const WEB_DECKS: WebDeck[] = [
-  { id: "classic", label: "Classic Tarot", back: BACK, cards: CLASSIC_CARDS },
+  { id: "classic", label: "Classic Tarot", back: CARD_BACK_IMAGE, cards: CLASSIC_CARDS },
   ...ORACLE_DECKS.map((d) => ({
     id: d.id,
     label: d.name,
@@ -191,7 +166,7 @@ export default function WebTarot() {
                 style={{
                   fontFamily: "var(--wbody)", fontSize: 12.5, fontWeight: 600, padding: "9px 18px", borderRadius: 999, cursor: "pointer",
                   background: active ? "var(--brass)" : "rgba(255,255,255,0.06)",
-                  color: active ? "#1a1020" : "var(--fg2)",
+                  color: active ? "var(--btn-ink)" : "var(--fg2)",
                   border: `1px solid ${active ? "var(--brass)" : "var(--hair)"}`,
                 }}
               >
@@ -202,7 +177,7 @@ export default function WebTarot() {
         </div>
 
         {/* SPREAD TABLE */}
-        <div style={{ position: "relative", borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "radial-gradient(120% 90% at 50% 0%, #3a2233 0%, #0d0814 66%)", boxShadow: "0 20px 60px var(--shadow)", padding: "38px 40px 44px" }}>
+        <div className="mp-night" style={{ position: "relative", borderRadius: 26, overflow: "hidden", border: "1px solid var(--hair)", background: "radial-gradient(120% 90% at 50% 0%, #3a2233 0%, #0d0814 66%)", boxShadow: "0 20px 60px var(--shadow)", padding: "38px 40px 44px" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
             {/* deck */}

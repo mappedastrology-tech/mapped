@@ -22,6 +22,7 @@ import {
   type CelestialEvent,
 } from "@/lib/celestialCalendar";
 import Image from "next/image";
+import { greetingFor, firstNameOf } from "@/lib/greeting";
 import { getDailyRituals, type ModalityPrefs } from "@/lib/rituals";
 import {
   RITUAL_CATALOG,
@@ -858,6 +859,26 @@ export default function RitualPageContent() {
     loadChart();
   }, []);
 
+  // The person's first name for the greeting — the account name first, as on
+  // Home, then the name on their saved chart. "Seeker" only when neither exists.
+  const [firstName, setFirstName] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        let name: string | null = firstNameOf(session.user.user_metadata?.name);
+        if (!name) {
+          const { data: chart } = await supabase.from("charts").select("name").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          name = firstNameOf(chart?.name);
+        }
+        if (!cancelled && name) setFirstName(name);
+      } catch { /* keep "Seeker" */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Map tool IDs to keywords that appear in ritual toolsNeeded arrays
   const toolKeywords: Record<string, string[]> = useMemo(() => ({
     "candles": ["candle"],
@@ -1075,10 +1096,7 @@ export default function RitualPageContent() {
     return `${weekday} · ${phaseWord} ${moonSign} MOON`;
   }, [today, energy.moonPhase.label, almanacMoonSign]);
 
-  const ritualGreeting = useMemo(() => {
-    const h = today.getHours();
-    return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  }, [today]);
+  const ritualGreeting = useMemo(() => greetingFor(today), [today]);
 
   // Quick, no-tools rituals for the "For right now" shelf.
   const quickRituals = useMemo(
@@ -1278,7 +1296,7 @@ export default function RitualPageContent() {
           {ritualGreeting},
         </p>
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 40, fontWeight: 400, letterSpacing: "0.04em", lineHeight: 1.05, margin: "0 0 10px", color: "var(--foreground)" }}>
-          Seeker <span style={{ fontFamily: "var(--font-script)", fontSize: 24, color: "var(--brass)" }}>☾</span>
+          {firstName ?? "Seeker"} <span style={{ fontFamily: "var(--font-script)", fontSize: 24, color: "var(--brass)" }}>☾</span>
         </h1>
         <p className="text-[14.5px] leading-[1.55]" style={{ color: "var(--foreground-secondary)" }}>
           Small rituals for whatever you&rsquo;re calling in — matched to tonight&rsquo;s moon.
@@ -1613,7 +1631,7 @@ export default function RitualPageContent() {
           <p className="text-[11px] uppercase tracking-[0.12em] font-bold" style={{ color: "var(--tag-green-text)" }}>
             🌾 Today&apos;s Almanac
           </p>
-          <span className="text-[11px] font-semibold" style={{ color: "var(--sage)" }}>
+          <span className="text-[11px] font-semibold" style={{ color: "var(--sage-strong)" }}>
             View full →
           </span>
         </div>

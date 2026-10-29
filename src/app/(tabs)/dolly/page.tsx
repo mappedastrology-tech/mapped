@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { greetingFor, firstNameOf, dayPart } from "@/lib/greeting";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
@@ -28,6 +29,7 @@ import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
 import { getMoonPhaseLabel, getCurrentMoonSign } from "@/lib/astro/currentSky";
 import { chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
+import { dollyChartFromRow } from "@/lib/dollyChart";
 
 /* ═══════════════════════════════════════════
    Types
@@ -309,17 +311,8 @@ export default function DollyTab() {
 
       if (chartData) {
         const system = chartSystemFromRow(chartData);
-        setChart({
-          bigThree: chartData.big_three,
-          planets: chartData.planets || [],
-          houses: chartData.houses || [],
-          specialPoints: chartData.special_points || [],
-          birthDate: chartData.birth_date,
-          birthTime: chartData.birth_time,
-          ascendant: chartData.ascendant || null,
-          midheaven: chartData.midheaven || null,
-          ...system,
-        });
+        // Shared with desktop (WebDolly) so the two cannot drift again.
+        setChart(dollyChartFromRow(chartData) as ChartContext);
         setUserName(chartData.name || "");
 
         // Fetch current transits
@@ -1471,8 +1464,8 @@ export default function DollyTab() {
   // ephemeris the almanac uses.
   const skyLine = (() => {
     const now = new Date();
-    const hour = now.getHours();
-    const when = hour < 12 ? "This morning" : hour < 18 ? "This afternoon" : "Tonight";
+    const part = dayPart(now);
+    const when = part === "morning" ? "This morning" : part === "afternoon" ? "This afternoon" : "Tonight";
     try {
       return `${when} · ${getMoonPhaseLabel(now)} in ${getCurrentMoonSign(now).full}`;
     } catch {
@@ -1659,9 +1652,7 @@ export default function DollyTab() {
                   style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 18, lineHeight: 1.45, color: "rgba(244,236,214,0.96)" }}
                 >
                   {(() => {
-                    const h = new Date().getHours();
-                    const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-                    return `${salutation}, ${userName ? userName.split(" ")[0] : "Seeker"}.`;
+                    return `${greetingFor()}, ${firstNameOf(userName) ?? "Seeker"}.`;
                   })()}
                 </p>
                 <p className="text-sm" style={{ lineHeight: 1.65, color: "rgba(240,230,210,0.9)" }}>

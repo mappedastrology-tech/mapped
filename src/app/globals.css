@@ -157,7 +157,7 @@
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
   --foreground-muted: #988b78;
-  --foreground-faint: #807460;
+  --foreground-faint: #978a76; /* was #807460: 3.41:1 on --background-card (#2a1f35), used for real copy (durations, captions, labels). Now 4.62 on the card, 5.79 on the page. */
   --foreground-ghost: #3d3428;
 
   /* Text on dark card backgrounds (light) */
@@ -220,7 +220,7 @@
   --tag-bg: rgba(201, 169, 97, 0.12);
   --tag-text: var(--brass);
   --tag-green-bg: rgba(45, 64, 41, 0.4);
-  --tag-green-text: var(--sage-light);
+  --tag-green-text: var(--sage-strong); /* sage-light measured 3.93:1 on --sage-bg and 3.54 on cards; sage-strong 5.35 / 5.41 */
 
   --btn-primary-bg: var(--brass);
   --btn-primary-text: #1a1420;
@@ -301,7 +301,7 @@
   --foreground: #e8dfc4;
   --foreground-secondary: #c4b8a0;
   --foreground-muted: #988b78;
-  --foreground-faint: #807460;
+  --foreground-faint: #978a76; /* see :root */
   --foreground-ghost: #3d3428;
 
   --brass: #c9a961;
@@ -356,7 +356,7 @@
   --tag-bg: rgba(201, 169, 97, 0.12);
   --tag-text: var(--brass);
   --tag-green-bg: rgba(45, 64, 41, 0.4);
-  --tag-green-text: var(--sage-light);
+  --tag-green-text: var(--sage-strong);
 
   --btn-primary-bg: var(--brass);
   --btn-primary-text: #1a1420;
@@ -1321,14 +1321,23 @@ input, select, textarea {
   --wbody: 'DM Sans', system-ui, sans-serif;
   --script: 'Le Jour Script', cursive;
 }
-.mp-web[data-theme="night"] {
+/* .mp-night: the plum panels (Today/Almanac heroes, the Journal prompt, the
+   Tarot table, the Library game, the Maps sky, the landing's dashboard and CTA)
+   are dark in BOTH themes, but their text read the page's theme tokens. In day
+   that put dark brass, dark --faint and dark --fg on plum: the Journal prompt's
+   label, placeholder, word count and typed text all measured 1.0–1.6:1, and
+   the landing's dashboard panel faded to cream under cream type. Marking a
+   panel .mp-night gives everything inside it the night tokens, so it reads the
+   same on either page. */
+.mp-web[data-theme="night"], .mp-web .mp-night {
   --bg:#0b0712; --bg2:#120c1b; --topbar:rgba(15,10,22,0.82); --card:#15101c; --card2:#1a1426;
   --fg:#e8dfc4; --fg2:#c4b8a0; --muted:#988b78;
   /* --faint was #7a6f5c: 4.04:1 on --bg and 3.79:1 on --card, below AA for
      the small text it is used for (footer links, the uppercase eyebrow
      labels, the disclaimer under Dolly's composer). Now 5.07 / 4.75. */
   --faint:#8b7f69;
-  --brass:#c9a961; --brass-hi:#e2c785; --terra:#b5654a; --go:#7ba055;
+  /* --terra was #b5654a: 3.72:1 as the Journal "prompt" chip text. Now 4.96. */
+  --brass:#c9a961; --brass-hi:#e2c785; --terra:#cf7a5f; --go:#7ba055;
   --hair:rgba(201,169,97,0.14); --line:rgba(255,255,255,0.06); --soft:rgba(255,255,255,0.035);
   --felt:url('/backgrounds/dark-felt.webp'); --felt-op:1; --hero-plum:#3a2233;
   --btn-ink:#1a1420; --shadow:rgba(0,0,0,0.5); --bubble-you:#3a2233;
@@ -1341,11 +1350,16 @@ input, select, textarea {
   /* --go was #5d7d3c: 4.11:1 on --card2 and 3.95:1 on --bg2 — it carries the
      "See plans" link and the status line, both small text. Now 5.47 / 4.79.
      The dark --go (#7ba055) already passes at 5.97:1. */
-  --brass:#9a7322; --brass-hi:#7d5c16; --terra:#a4502f; --go:#4e6832;
+  /* --brass was #9a7322: 4.09:1 on --card, 3.50 on --bg, 3.31 on --bg2, and
+     the cream label on a brass button 3.78. It carries every eyebrow label,
+     every "Open … →" link and the primary buttons in day. Now 5.63 / 4.82 /
+     4.56, button label 5.21. --brass-hi is the hover state, kept darker. */
+  --brass:#7f5e19; --brass-hi:#6b4e12; --terra:#a4502f; --go:#4e6832;
   --hair:rgba(150,115,55,0.24); --line:rgba(80,60,30,0.10); --soft:rgba(80,60,30,0.035);
   --felt:url('/backgrounds/parchment-bg.webp'); --felt-op:0.55; --hero-plum:#3a2036;
   --btn-ink:#f7efdc; --shadow:rgba(120,90,40,0.14); --bubble-you:#efe1c4;
 }
+.mp-web .mp-night { color: var(--fg); }
 .mp-web a { color: var(--brass); text-decoration: none; }
 .mp-web a:hover { color: var(--brass-hi); }
 
@@ -1448,7 +1462,8 @@ input, select, textarea {
   --pf-hair: rgba(150, 115, 55, 0.22);
   --pf-line: rgba(120, 92, 52, 0.16);
   --pf-soft: rgba(80, 60, 30, 0.05);
-  --pf-amber: #9a7322;
+  /* was #9a7322: 4.33:1 on the white card, for 8.5–9px labels. Now 5.97. */
+  --pf-amber: #7f5e19;
   --pf-glow: rgba(154, 115, 34, 0.14);
   --pf-plum: #2b2140;
   --pf-plum-fg: #f0e6d2;
@@ -1518,4 +1533,25 @@ input, select, textarea {
 .bg-ink.text-cream,
 .bg-ink .text-cream {
   color: var(--background);
+}
+
+/* Same failure, other pairing: `bg-terracotta text-white`. Terracotta is
+ * brass, which is a pale gold in the dark theme, so white on it measured
+ * 2.25:1 — every Palmistry primary ("Scan both hands", "Open camera",
+ * "Read my palm") and the chart error retry. --on-brass is the label colour
+ * defined for exactly this fill in each theme (8.01:1 dark). Account settings
+ * repoint terracotta to a deep plum fill, where white is right, so it is
+ * excluded. */
+.bg-terracotta.text-white {
+  color: var(--on-brass);
+}
+.acct-scope .bg-terracotta.text-white {
+  color: #fff;
+}
+
+/* A gold that reads on the always-dark plum panels in either theme. --brass
+ * cannot do this job: in light it is a dark gold (2.32:1 on --plum). 5.73:1
+ * on --plum, 6.34 on the Human Design plum cards. */
+:root {
+  --gold-on-dark: #c9a961;
 }

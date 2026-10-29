@@ -21,11 +21,21 @@ export default function CourseView({ courseId }: { courseId: string }) {
   const lessons = useMemo(() => (course ? courseLessons(course) : []), [course]);
   const completedSet = useMemo(() => new Set(progress?.completedLessonIds ?? []), [progress]);
 
+  // An unknown course id (an old or mistyped link). A static export can't send
+  // a 404 status for a client route, so the page says so plainly and offers
+  // the way back instead of a bare "— Course" header.
   if (!course) {
     return (
       <main className="min-h-screen lib-felt">
-        <LibraryHeader title="Course" />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This course couldn&rsquo;t be found.</p>
+        <LibraryHeader title="Course not found" />
+        <div className="max-w-lg mx-auto px-5 py-12 text-center">
+          <p className="text-[15px] leading-relaxed mb-5" style={{ color: "var(--foreground-secondary)" }}>
+            We couldn&rsquo;t find that course. It may have moved, or the link may be mistyped.
+          </p>
+          <Link href="/library" className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold" style={{ background: "var(--brass)", color: "var(--background)" }}>
+            Browse the library
+          </Link>
+        </div>
       </main>
     );
   }

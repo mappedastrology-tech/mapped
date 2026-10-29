@@ -12,6 +12,8 @@ import { getTodaySky, getComingUp } from "@/lib/almanacData";
 import { getSabianSymbolForDate } from "@/lib/sabianSymbols";
 import { getGoodForToday, getHoldOffToday } from "@/lib/almanacData";
 import { getOnThisDay } from "@/lib/onThisDay";
+import { moonSignTheme } from "./moonSignThemes";
+import { useSavedChart, type BigThree } from "./useSavedChart";
 
 const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -69,7 +71,7 @@ export function useLiveSky(): LiveSky | null {
         moonImg: `/moons/${MOON_FILE[s.moonPhase.phase] ?? "waxing-gibbous"}.webp`,
         illumination: s.moonPhase.illumination,
         moonSign: s.moonSign,
-        moonSignTheme: s.sunSignTheme,
+        moonSignTheme: moonSignTheme(s.moonSign),
         sunrise: s.sunrise,
         sunset: s.sunset,
         daylight: `${s.dayLengthHours}h ${s.dayLengthMinutes}m`,
@@ -91,21 +93,13 @@ export function useLiveSky(): LiveSky | null {
   return sky;
 }
 
-export interface BigThree { sun: string; moon: string; rising: string }
+export type { BigThree };
 
-/** The user's real Sun/Moon/rising from the chart the app cached, if present. */
+/**
+ * The user's real Sun/Moon/rising — from their saved chart (see useSavedChart),
+ * not just whatever this tab happened to cache in sessionStorage.
+ */
 export function useBigThree(): BigThree | null {
-  const [bt, setBt] = useState<BigThree | null>(null);
-  useEffect(() => {
-    try {
-      for (const key of ["chartResult", "mapped:chartData"]) {
-        const raw = sessionStorage.getItem(key);
-        if (!raw) continue;
-        const p = JSON.parse(raw);
-        const b = p?.bigThree || p?.big_three;
-        if (b?.sun && b?.moon && b?.rising) { setBt({ sun: b.sun, moon: b.moon, rising: b.rising }); return; }
-      }
-    } catch { /* ignore */ }
-  }, []);
-  return bt;
+  const chart = useSavedChart();
+  return chart.status === "ready" ? chart.bigThree : null;
 }

@@ -1,34 +1,29 @@
 # Deploying Mapped
 
-## Today: Vercel (current setup)
+## Today: Netlify
 
-Live site: https://mapped-olive.vercel.app
+Live site: https://mapped-astrology.netlify.app
 
-```bash
-cd ~/Documents/mapped
-npm run deploy
-```
+Netlify builds and deploys `main` on every merge, and builds a deploy preview
+for every pull request. There is nothing to run by hand.
 
-`npm run deploy` automatically runs the safety gate first (`npm run check` = ESLint + TypeScript). If either fails, the deploy is blocked — fix the errors, then deploy again. **Don't use `npx vercel --prod --force` directly; it skips the gate.**
+The old Vercel project (mapped-olive.vercel.app) is being retired in favour of
+Netlify. `vercel.json` is empty for now so its deploys succeed again; it becomes
+a permanent redirect to Netlify once the Stripe live webhook is confirmed to
+point at Netlify (Stripe does not follow redirects). Its production deploys had
+been failing since Sep 11 (the hourly cron is not allowed on Vercel's Hobby
+plan), so it was serving a seven-week-old build. Don't add anything back to it.
 
 Useful commands:
 
 ```bash
-npm run check      # run the gate without deploying
+npm run check      # the gate CI runs: ESLint + TypeScript
 npm run lint       # ESLint only (react-hooks rules catch crash bugs)
 npm run typecheck  # TypeScript only
 ```
 
-### Environment variables (set in Vercel dashboard → Project → Settings → Environment Variables)
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (sensitive)
-- `ANTHROPIC_API_KEY` (sensitive)
-
-### Cron
-
-`vercel.json` schedules `/api/cron/notifications` daily at 14:00 UTC. This is Vercel-specific — see the Netlify section for its replacement.
+The Stripe live webhook must point at
+`https://mapped-astrology.netlify.app/api/stripe/webhook`.
 
 ---
 

@@ -11,17 +11,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
-import { parseDollyReply } from "@/lib/dollyReply";
+import { parseDollyReply, dollyBody } from "@/lib/dollyReply";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import { STARTER_PROMPTS } from "@/lib/dollyStarters";
 import DollyAvatar from "@/components/DollyAvatar";
 import CrisisCard from "@/components/CrisisCard";
+import AiConsentScreen from "@/components/AiConsentScreen";
+import { readAiConsent, type AiConsentState } from "@/lib/aiConsent";
 import { useBigThree } from "./useLiveSky";
 import { authedFetch } from "@/lib/authedFetch";
 import { supabase } from "@/lib/supabase";
 import { gatherCrossFeatureContext } from "@/lib/dollyCrossFeature";
-import { chartSystemFromChart, chartSystemFromRow, transitParams } from "@/lib/astro/vedic/system";
+import { chartSystemFromChart, transitParams } from "@/lib/astro/vedic/system";
+import { dollyChartFromRow, type DollyChart } from "@/lib/dollyChart";
 
 // U+FE0E forces monochrome text (not color-emoji) rendering of zodiac glyphs.
 const SIGN_GLYPH: Record<string, string> = {
@@ -83,6 +86,28 @@ export default function WebDolly() {
   const userIdRef = useRef<string | null>(null);
   const connectionsRef = useRef<unknown[]>([]);
   const transitsRef = useRef<unknown>(null);
+  /**
+   * Settles when the effect below has finished loading the chart. sendMsg
+   * waits on it.
+   *
+   * This is the desktop half of "Dolly couldn't read my chart". The mobile
+   * tab shows a spinner until its chart has loaded, so nothing can be sent
+   * without one. This screen rendered the composer and the starter chips at
+   * once and sent whatever chartRef held at the moment of the tap — and on a
+   * fresh desktop tab that was nothing, because sessionStorage is per tab and
+   * nothing else on desktop puts a chart there. The request went out with
+   * `chart: null`, and Dolly said, truthfully, that she could not see it.
+   */
+  const contextReadyRef = useRef<Promise<void>>(Promise.resolve());
+  /** The loaded chart's Big Three, for the header — see `knows` below. */
+  const [chartBigThree, setChartBigThree] = useState<DollyChart["bigThree"] | null>(null);
+  /**
+   * The same consent gate as the mobile tab (see lib/aiConsent.ts). Desktop
+   * had none: someone who had never been asked typed a question, the server
+   * refused it with a 403, and they were told "I couldn't finish that answer".
+   */
+  const [aiConsent, setAiConsent] = useState<AiConsentState>("unknown");
+  const [consentChecked, setConsentChecked] = useState(false);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
   // Was an unconditional `scrollTop = scrollHeight` on every message change,
@@ -96,22 +121,27 @@ export default function WebDolly() {
   // even if they haven't opened those pages this session. Mirrors the mobile
   // Dolly tab so web users aren't told "I can't see your chart".
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        // Resolve the chart: sessionStorage first, else the saved chart in Supabase.
-        let chart: {
-          bigThree?: unknown; planets?: unknown[]; houses?: unknown[]; specialPoints?: unknown[];
-          birthDate?: string; birthTime?: string; ascendant?: unknown; midheaven?: unknown;
-          zodiacSystem?: string; ayanamsa?: string; houseSystem?: string; nodeType?: string;
-        } | null = null;
-        try { const s = sessionStorage.getItem("chartResult"); if (s) chart = JSON.parse(s); } catch { /* */ }
+    let alive = true;
+    readAiConsent()
+      .then((state) => { if (alive) setAiConsent(state); })
+      .finally(() => { if (alive) setConsentChecked(true); });
+    return () => { alive = false; };
+  }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    contextReadyRef.current = (async () => {
+      try {
         const { data: { session } } = await supabase.auth.getSession();
         const userId = session?.user?.id ?? null;
         userIdRef.current = userId;
 
-        if (!chart && userId) {
+        // The saved chart first, exactly as on mobile. sessionStorage used to
+        // win here, so any copy left in the tab was trusted over the
+        // account's own chart.
+        let chart: DollyChart | null = null;
+        let row: { latitude?: number | null; longitude?: number | null } | null = null;
+        if (userId) {
           const { data: c } = await supabase
             .from("charts")
             .select("*")
@@ -120,23 +150,22 @@ export default function WebDolly() {
             .limit(1)
             .single();
           if (c) {
-            chart = {
-              bigThree: c.big_three,
-              planets: c.planets || [],
-              houses: c.houses || [],
-              specialPoints: c.special_points || [],
-              birthDate: c.birth_date,
-              birthTime: c.birth_time,
-              ascendant: c.ascendant || null,
-              midheaven: c.midheaven || null,
-              ...chartSystemFromRow(c),
-            };
+            chart = dollyChartFromRow(c);
+            row = c;
             userNameRef.current = c.name || "";
             try { sessionStorage.setItem("chartResult", JSON.stringify(chart)); } catch { /* */ }
           }
         }
+        // Only when there is no saved chart: one built in this tab before
+        // signing up.
+        if (!chart) {
+          try { const s = sessionStorage.getItem("chartResult"); if (s) chart = JSON.parse(s); } catch { /* */ }
+        }
         if (cancelled) return;
-        if (chart) chartRef.current = chart;
+        if (chart) {
+          chartRef.current = chart;
+          setChartBigThree(chart.bigThree ?? null);
+        }
         if (!userId) return;
 
         // People in their life (connections) for relationship questions.
@@ -155,7 +184,7 @@ export default function WebDolly() {
 
         // Today's transits so timing answers are current, not stale.
         try {
-          const planets = (chart?.planets ?? []) as unknown[];
+          const planets = chart?.planets ?? [];
           if (planets.length) {
             const today = new Date().toISOString().split("T")[0];
             const res = await fetch("/api/transits", {
@@ -165,6 +194,9 @@ export default function WebDolly() {
                 natalPlanets: planets,
                 natalHouses: chart?.houses ?? [],
                 transitDate: today,
+                // Birth place, as mobile sends — houses for the transits.
+                latitude: row?.latitude ?? undefined,
+                longitude: row?.longitude ?? undefined,
                 // The chart's own zodiac — never assume tropical.
                 ...transitParams(chartSystemFromChart(chart)),
               }),
@@ -177,7 +209,11 @@ export default function WebDolly() {
     return () => { cancelled = true; };
   }, []);
 
-  const knows = bt ? `Knows: Sun ${SIGN_GLYPH[bt.sun] ?? ""} · Moon ${SIGN_GLYPH[bt.moon] ?? ""} · ${bt.rising} rising` : "Reading your sky";
+  // The chart this screen loaded, else whatever the tab had cached. useBigThree
+  // alone reads sessionStorage once at mount, so on a fresh tab the header
+  // said "Reading your sky" for good, even after the chart had arrived.
+  const big = chartBigThree ?? bt;
+  const knows = big ? `Knows: Sun ${SIGN_GLYPH[big.sun] ?? ""} · Moon ${SIGN_GLYPH[big.moon] ?? ""} · ${big.rising} rising` : "Reading your sky";
 
   const sendMsg = async (userText: string) => {
     if (typing) return;
@@ -201,16 +237,22 @@ export default function WebDolly() {
     // History is the conversation so far (before this turn). Notices and
     // support cards are the app talking, not the conversation — and a crisis
     // card has no text at all, which the API rejects as an empty turn.
+    // The greeting is the app's line, not a turn Dolly took; and replies go
+    // back without their meta line, as on mobile.
     const history = messages
-      .filter((m) => !m.notice && !m.crisis && m.text.trim())
-      .map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.text }));
+      .filter((m) => m !== GREET && !m.notice && !m.crisis && m.text.trim())
+      .map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.from === "dolly" ? dollyBody(m.text) : m.text }));
     if (!crisis) setMessages((m) => [...m, { from: "you", text: userText }]);
     setInput("");
     setTyping(true);
 
-    let chart: unknown = chartRef.current, transits: unknown = transitsRef.current;
-    try { const c = sessionStorage.getItem("chartResult"); if (c) chart = JSON.parse(c); } catch { /* */ }
-    try { const t = sessionStorage.getItem("mapped:transits"); if (t) transits = JSON.parse(t); } catch { /* */ }
+    // Wait for the chart rather than send without it — see contextReadyRef.
+    // The refs are read only after this. (They used to be overridden from
+    // sessionStorage here as well, and "mapped:transits" holds the bare
+    // aspect array, not the { transitDate, transitAspects } the route reads —
+    // so whenever it was present it replaced real transits with nothing.)
+    await contextReadyRef.current;
+    const chart = chartRef.current, transits = transitsRef.current;
     // Journal + latest tarot/oracle pull (same source as the mobile Dolly).
     const { journalContext, tarotContext } = gatherCrossFeatureContext(userIdRef.current);
 
@@ -235,6 +277,13 @@ export default function WebDolly() {
         // Policy and outage come with words worth showing; anything else is
         // ours to explain generically.
         const body = await res.json().catch(() => ({ error: "" }));
+        // No consent on record (or withdrawn elsewhere): ask, rather than fail.
+        // Not while a support card is up: swapping the screen would hide it.
+        if (res.status === 403 && body.code === "ai_consent_required") {
+          setTyping(false);
+          if (!crisis) setAiConsent("unknown");
+          return;
+        }
         if (res.status === 402 || res.status === 429 || res.status === 503) {
           setTyping(false);
           // A card is already on screen for this turn; a plan limit stacked
@@ -298,6 +347,41 @@ export default function WebDolly() {
     }
   };
   const send = () => { const t = input.trim(); if (t) sendMsg(t); };
+
+  /**
+   * Permission before the chat, as on mobile ((tabs)/dolly/page.tsx): a
+   * spinner while the read is in flight, a quiet off state for someone who
+   * said no, and the consent screen for someone who has not been asked.
+   */
+  if (aiConsent !== "granted") {
+    return (
+      <WebShell current="dolly" theme={theme} onToggleTheme={toggle} footerTagline="A guide who knows your chart.">
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "52px 32px 20px", display: "flex", flexDirection: "column", minHeight: 420 }}>
+          {aiConsent === "unknown" && !consentChecked ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="w-6 h-6 border-2 border-terracotta/30 border-t-terracotta rounded-full animate-spin" role="status" aria-label="Loading" />
+            </div>
+          ) : aiConsent === "declined" ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 12 }}>
+              <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 30, margin: 0, color: "var(--fg)" }}>Dolly is switched off</h1>
+              <p style={{ fontSize: 14.5, lineHeight: 1.6, maxWidth: 420, margin: 0, color: "var(--fg2)" }}>
+                You chose not to send your chart and messages to an outside AI service. Everything else in
+                Mapped still works.
+              </p>
+              <button
+                onClick={() => setAiConsent("unknown")}
+                style={{ marginTop: 6, padding: "12px 22px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, background: "var(--brass)", color: "var(--btn-ink)" }}
+              >
+                Read it again
+              </button>
+            </div>
+          ) : (
+            <AiConsentScreen onGranted={() => setAiConsent("granted")} onDeclined={() => setAiConsent("declined")} />
+          )}
+        </div>
+      </WebShell>
+    );
+  }
 
   return (
     <WebShell current="dolly" theme={theme} onToggleTheme={toggle} footerTagline="A guide who knows your chart.">

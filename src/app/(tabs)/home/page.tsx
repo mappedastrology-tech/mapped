@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSheetDismiss } from "@/lib/useSheetDismiss";
 import { supabase } from "@/lib/supabase";
+import { greetingFor } from "@/lib/greeting";
 import { buildFallbackHoroscope } from "@/lib/fallbackHoroscope";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -451,12 +452,7 @@ export default function HomeTab() {
     day: "numeric",
   });
 
-  const greeting =
-    today.getHours() < 12
-      ? "Good morning"
-      : today.getHours() < 17
-      ? "Good afternoon"
-      : "Good evening";
+  const greeting = greetingFor(today);
 
   useEffect(() => {
     async function loadUser() {
@@ -1272,7 +1268,7 @@ export default function HomeTab() {
                   key={d}
                   onClick={() => setPullDeck(d)}
                   className="flex-1 py-[9px] rounded-[9px] text-[10px] tracking-[0.22em] uppercase font-bold transition-colors"
-                  style={{ background: active ? "var(--brass)" : "transparent", color: active ? "#1a1230" : "rgba(240,230,210,0.55)" }}
+                  style={{ background: active ? "var(--brass)" : "transparent", color: active ? "var(--on-brass)" : "rgba(240,230,210,0.55)" }}
                 >
                   {d}
                 </button>
@@ -1324,7 +1320,7 @@ export default function HomeTab() {
                 <Link
                   href="/tarot?store=1"
                   className="inline-flex items-center justify-center mt-4 px-6 py-3 rounded-full text-[13px] font-bold active:scale-[0.98] transition-transform"
-                  style={{ background: "var(--brass)", color: "#1a1230", minHeight: 44 }}
+                  style={{ background: "var(--brass)", color: "var(--on-brass)", minHeight: 44 }}
                 >
                   Choose your free deck
                 </Link>

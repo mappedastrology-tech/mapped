@@ -5,16 +5,27 @@
 /**
  * WebToday — the signed-in "Today" dashboard (design_handoff_mapped_web "Daily").
  * Greeting + today's-sky banner + a live drag-to-reorder widget grid whose
- * order persists to localStorage['mapped:web-daily']. Content mirrors the
- * prototype's sample data (bind to the real almanac/chart backend later).
+ * order persists to localStorage['mapped:web-daily'].
+ *
+ * Every value here is the signed-in person's own: their saved chart, their
+ * personal day, their journal streak, today's real Moon. This page used to
+ * ship the design prototype's sample data ("Sun Cancer · Moon Pisces · Leo
+ * rising", "Personal Day 7", "7-day streak") and showed it to real accounts
+ * whenever the live value hadn't arrived. While a value is loading the card
+ * says so; when it doesn't exist (no chart, no birth date) the card says that
+ * and points to where to fix it. Never a sample value.
  */
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
-import { useLiveSky, useBigThree } from "./useLiveSky";
+import { useLiveSky } from "./useLiveSky";
+import { useSavedChart } from "./useSavedChart";
+import { useJournalEntries } from "./useJournalEntries";
 import { ALL_CARDS, getCardImagePath, CARD_BACK_IMAGE } from "@/lib/tarot";
 import { getCardSalt, mixDailySeed } from "@/lib/dailyCardSeed";
+import { computeNumerology } from "@/lib/numerology";
+import { greetingFor } from "@/lib/greeting";
 
 type Key = "sky" | "chart" | "tarot" | "ritual" | "journal" | "numbers";
 const DEFAULT: Key[] = ["sky", "chart", "tarot", "ritual", "journal", "numbers"];
@@ -31,20 +42,32 @@ type BodyPart =
   | { kind: "big"; big: string }
   | { kind: "tag2"; tag2: string };
 
-const W: Record<Key, { glyph: string; tag: string; title: string; href: string; cta: string; body: BodyPart[] }> = {
-  sky: { glyph: "☽", tag: "Almanac", title: "Today's Sky", href: "/almanac", cta: "Open almanac",
-    body: [{ kind: "text", text: "Waxing Gibbous in Scorpio, 73% lit. The Moon turns attention inward — honest, private, deep." }, { kind: "chips", chips: ["Sunrise 5:58", "Sunset 8:31", "V/C 2:32 pm"] }] },
-  chart: { glyph: "☉", tag: "Your Chart", title: "Birth Chart", href: "/maps", cta: "View chart",
-    body: [{ kind: "text", text: "Sun Cancer · Moon Pisces · Leo rising. Transiting Mars is lighting your 10th house of direction all week." }, { kind: "rows", rows: [["Sun", "Cancer 10°"], ["Moon", "Pisces 24°"], ["Rising", "Leo 2°"]] }] },
-  tarot: { glyph: "✧", tag: "Daily Draw", title: "Today's Card", href: "/tarot", cta: "Draw more",
-    body: [{ kind: "card", src: "/tarot/classic/major-17.webp", name: "The Star", kw: "hope · renewal" }] },
-  ritual: { glyph: "☾", tag: "Ritual", title: "Evening Reset", href: "/journal", cta: "Begin ritual",
-    body: [{ kind: "text", text: "A three-minute breath practice tuned to tonight’s Scorpio Moon. Set one thing down before the week turns." }, { kind: "tag2", tag2: "3 min · breathwork" }] },
-  journal: { glyph: "✎", tag: "Journal", title: "Today's Prompt", href: "/journal", cta: "Write entry",
-    body: [{ kind: "quote", quote: "Where are you carrying tension you could gently set down before the week turns?" }, { kind: "tag2", tag2: "7-day streak" }] },
-  numbers: { glyph: "✡", tag: "Numerology", title: "Personal Day 7", href: "/numerology", cta: "Learn more",
-    body: [{ kind: "text", text: "A reflective, inward number. Step back before you decide — the answer is already forming quietly." }, { kind: "big", big: "7" }] },
+// The fixed frame of each card. Bodies are built from live data in liveBody().
+const W: Record<Key, { glyph: string; tag: string; title: string; href: string; cta: string }> = {
+  sky: { glyph: "☽", tag: "Almanac", title: "Today's Sky", href: "/almanac", cta: "Open almanac" },
+  chart: { glyph: "☉", tag: "Your Chart", title: "Birth Chart", href: "/you", cta: "View chart" },
+  tarot: { glyph: "✧", tag: "Daily Draw", title: "Today's Card", href: "/tarot", cta: "Draw more" },
+  ritual: { glyph: "☾", tag: "Ritual", title: "Tonight's Ritual", href: "/learn", cta: "Open rituals" },
+  journal: { glyph: "✎", tag: "Journal", title: "Today's Prompt", href: "/journal", cta: "Write entry" },
+  numbers: { glyph: "✡", tag: "Numerology", title: "Personal Day", href: "/numerology", cta: "Learn more" },
 };
+
+const JOURNAL_PROMPT = "Where are you carrying tension you could gently set down before the week turns?";
+
+/** A line on each personal-day number (1–9) — the tone of the day, not a forecast. */
+const PERSONAL_DAY_NOTE: Record<number, string> = {
+  1: "A day for beginnings. Start the thing, take the first step, decide for yourself.",
+  2: "A day for patience and partnership. Listen more than you push.",
+  3: "A day for expression. Say it, make it, share it with someone.",
+  4: "A day for steady work. Small, solid steps on something that lasts.",
+  5: "A day for change and movement. Leave room for the unexpected.",
+  6: "A day for care — home, family, the people who lean on you, and yourself.",
+  7: "A reflective, inward day. Step back before you decide.",
+  8: "A day for follow-through. Handle the practical, own your decisions.",
+  9: "A day for endings and letting go. Clear something out to make room.",
+};
+
+const loadingText = (text: string): BodyPart[] => [{ kind: "text", text }];
 
 function BodyNode({ parts }: { parts: BodyPart[] }) {
   return (
@@ -123,8 +146,7 @@ export default function WebToday() {
     } catch { /* ignore */ }
     const now = new Date();
     setDateLabel(now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }));
-    const h = now.getHours();
-    setGreeting(h < 12 ? "good morning," : h < 18 ? "good afternoon," : "good evening,");
+    setGreeting(`${greetingFor(now).toLowerCase()},`);
   }, []);
 
   const save = (o: Key[]) => { try { localStorage.setItem("mapped:web-daily", JSON.stringify(o)); } catch { /* ignore */ } };
@@ -142,9 +164,21 @@ export default function WebToday() {
   const resetDash = () => { setOrder(DEFAULT.slice()); setDragKey(null); setOverKey(null); save(DEFAULT.slice()); };
   const stars = useMemo(() => bannerStars(48221), []);
 
-  // Live sky + chart (falls back to the sample copy until computed client-side)
+  // Live sky, the saved chart, and the journal — each with its own loading state.
   const sky = useLiveSky();
-  const bt = useBigThree();
+  const chart = useSavedChart();
+  const journal = useJournalEntries();
+
+  // Personal day from the saved chart's birth date (same calculation as the
+  // Numerology page). null while loading or when there is no birth date.
+  const personalDay = useMemo(() => {
+    if (chart.status !== "ready" || !chart.birthDate) return null;
+    try {
+      return computeNumerology(chart.chartName, chart.birthDate)?.personalDay ?? null;
+    } catch {
+      return null;
+    }
+  }, [chart]);
 
   // Real daily tarot card — per (account, day) via the salted seed, replacing
   // the hardcoded sample ("The Star" for everyone).
@@ -163,32 +197,61 @@ export default function WebToday() {
     })();
     return () => { cancelled = true; };
   }, []);
-  const bannerEyebrow = sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Waxing Gibbous · 73% · Moon in Scorpio";
-  const bannerTitle = sky ? `The Moon in ${sky.moonSign}` : "Depth over noise today";
+  const bannerEyebrow = sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Today's sky";
+  const bannerTitle = sky ? `The Moon in ${sky.moonSign}` : "Reading the sky…";
   const bannerBody = sky
     ? `${sky.moonSignTheme}${sky.vocStart ? ` Void of course after ${sky.vocStart} — let new plans settle until tomorrow.` : ""}`
-    : "A day that rewards focus, honesty, and finishing what you started. Void of course after 2:32 pm — let new plans settle until tomorrow.";
-  const bannerMoon = sky?.moonImg ?? "/moons/waxing-gibbous.webp";
+    : "";
+  const bannerMoon = sky?.moonImg ?? null;
 
-  // Per-widget live overrides for the dashboard cards
+  // Card bodies, built from live data only.
   const liveBody = (key: Key): BodyPart[] => {
-    if (key === "sky" && sky) {
-      return [
-        { kind: "text", text: `${sky.moonLabel} in ${sky.moonSign}, ${sky.illumination}% lit. ${sky.moonSignTheme}` },
-        { kind: "chips", chips: [`Sunrise ${sky.sunrise}`, `Sunset ${sky.sunset}`, ...(sky.vocStart ? [`V/C ${sky.vocStart}`] : [])] },
-      ];
+    switch (key) {
+      case "sky":
+        if (!sky) return loadingText("Reading today's sky…");
+        return [
+          { kind: "text", text: `${sky.moonLabel} in ${sky.moonSign}, ${sky.illumination}% lit. ${sky.moonSignTheme}` },
+          { kind: "chips", chips: [`Sunrise ${sky.sunrise}`, `Sunset ${sky.sunset}`, ...(sky.vocStart ? [`V/C ${sky.vocStart}`] : [])] },
+        ];
+      case "chart": {
+        if (chart.status === "loading") return loadingText("Loading your chart…");
+        if (chart.status === "none") return loadingText("No birth chart saved yet. Add your birth details to see your placements here.");
+        const bt = chart.bigThree;
+        if (!bt) return loadingText("Your chart is saved — open it to see your placements.");
+        return [
+          { kind: "text", text: `Sun in ${bt.sun}, Moon in ${bt.moon}, ${bt.rising} rising — your core placements.` },
+          { kind: "rows", rows: [["Sun", bt.sun], ["Moon", bt.moon], ["Rising", bt.rising]] },
+        ];
+      }
+      case "tarot":
+        if (!dailyCard) return loadingText("Drawing today's card…");
+        return [{ kind: "card", src: dailyCard.src, name: dailyCard.name, kw: dailyCard.kw }];
+      case "ritual":
+        return [
+          { kind: "text", text: sky
+            ? `A few quiet minutes for tonight's Moon in ${sky.moonSign}. Set one thing down before the day ends.`
+            : "A few quiet minutes before the day ends. Set one thing down." },
+          { kind: "tag2", tag2: "a few minutes" },
+        ];
+      case "journal":
+        return [
+          { kind: "quote", quote: JOURNAL_PROMPT },
+          ...(journal.streak > 0 ? [{ kind: "tag2" as const, tag2: `${journal.streak}-day streak` }] : []),
+        ];
+      case "numbers":
+        if (chart.status === "loading") return loadingText("Working out today's number…");
+        if (personalDay == null) return loadingText("Add your birth date to see your personal day number.");
+        return [
+          { kind: "text", text: PERSONAL_DAY_NOTE[personalDay] ?? "" },
+          { kind: "big", big: String(personalDay) },
+        ];
     }
-    if (key === "chart" && bt) {
-      return [
-        { kind: "text", text: `Sun in ${bt.sun}, Moon in ${bt.moon}, ${bt.rising} rising — your core placements.` },
-        { kind: "rows", rows: [["Sun", bt.sun], ["Moon", bt.moon], ["Rising", bt.rising]] },
-      ];
-    }
-    if (key === "tarot" && dailyCard) {
-      return [{ kind: "card", src: dailyCard.src, name: dailyCard.name, kw: dailyCard.kw }];
-    }
-    return W[key].body;
   };
+  const cardTitle = (key: Key) => (key === "numbers" && personalDay != null ? `Personal Day ${personalDay}` : W[key].title);
+  // No chart yet: the chart card's link goes where one gets made.
+  const cardLink = (key: Key) => (key === "chart" && chart.status === "none"
+    ? { href: "/chart/new", cta: "Create your chart" }
+    : { href: W[key].href, cta: W[key].cta });
 
   return (
     <WebShell current="today" theme={theme} onToggleTheme={toggle} footerTagline="Your day, arranged the way you read it.">
@@ -209,12 +272,12 @@ export default function WebToday() {
         </div>
 
         {/* today's sky banner */}
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 82% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 12px 40px var(--shadow)", padding: "26px 30px", display: "flex", alignItems: "center", gap: 24, marginBottom: 22 }}>
+        <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 82% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 12px 40px var(--shadow)", padding: "26px 30px", display: "flex", alignItems: "center", gap: 24, marginBottom: 22 }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative", width: 92, height: 92, flex: "0 0 auto" }}>
             <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bannerMoon} alt={sky?.moonLabel ?? "Moon"} style={{ position: "relative", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
+            {/* No image until the real phase is known — not a guessed one. */}
+            {bannerMoon && <img src={bannerMoon} alt={sky?.moonLabel ?? "Moon"} style={{ position: "relative", width: 92, height: 92, objectFit: "contain", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />}
           </div>
           <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "0 0 5px" }}>{bannerEyebrow}</p>
@@ -245,12 +308,12 @@ export default function WebToday() {
                   <span style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, background: "color-mix(in srgb, var(--brass) 15%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{w.glyph + VS}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 2px" }}>{w.tag}</p>
-                    <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 600, color: "var(--fg)", margin: 0, lineHeight: 1.1 }}>{w.title}</p>
+                    <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 600, color: "var(--fg)", margin: 0, lineHeight: 1.1 }}>{cardTitle(key)}</p>
                   </div>
                   <span style={{ color: "var(--faint)", fontSize: 17, lineHeight: 1 }}>⠿</span>
                 </div>
                 <BodyNode parts={liveBody(key)} />
-                <Link href={w.href} style={{ marginTop: "auto", paddingTop: 14, fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, color: "var(--brass)" }}>{w.cta} →</Link>
+                <Link href={cardLink(key).href} style={{ marginTop: "auto", paddingTop: 14, fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, color: "var(--brass)" }}>{cardLink(key).cta} →</Link>
               </div>
             );
           })}

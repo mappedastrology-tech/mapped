@@ -310,7 +310,7 @@ const PHASE_RITUALS: Record<MoonPhaseInfo["phase"], PhaseRitualData> = {
         "Cancel or postpone one unnecessary thing today — a meeting that could be an email, an errand that can wait, a social obligation you're dreading. Guard your energy. The waning crescent is the exhale before the next inhale, and exhales need space.",
         {
           candle: "If you light a candle at all tonight, make it deep indigo and sit in near-darkness with it. Or skip the candle entirely — the waning crescent asks for stillness and shadow, not illumination.",
-          oils: "Draw a warm bath and add myrrh or sandalwood oil, or diffuse them in your bedroom before sleep. These are oils of spiritual completion — they signal to your nervous system that the cycle is closing and it's safe to rest.",
+          oils: "Draw a warm bath and add myrrh or sandalwood oil, or diffuse them in your bedroom before sleep. These are oils of spiritual completion — a scent to mark that the cycle is closing and it's time to rest.",
           colors: "Wear soft, dark things — deep indigo, black, dark purple. Cocoon energy. You are the caterpillar right now, not the butterfly. That's not failure, it's preparation.",
         },
       ],

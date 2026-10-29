@@ -33,6 +33,11 @@ export default function BugReportButton({ liftAboveComposer = false }: { liftAbo
         top of it or on top of the thread. (Anywhere higher is inside the
         scrolling thread, where it would cover whatever happens to scroll under
         it — on Dolly, the tappable follow-up chips.)
+
+        On lg+ there is no bottom tab bar, so it drops to the corner. Every page
+        under the tabs layout ends with enough bottom padding (layout pb-24 /
+        lg:pb-20, the web footer, AiConsentScreen) that its last line scrolls
+        clear of this button instead of sitting underneath it.
       */}
       <button
         type="button"
@@ -40,7 +45,7 @@ export default function BugReportButton({ liftAboveComposer = false }: { liftAbo
         onClick={() => setOpen(true)}
         aria-label="Report a bug"
         title="Report a bug"
-        className={`fixed ${liftAboveComposer ? "bottom-[108px]" : "bottom-24"} left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
+        className={`fixed ${liftAboveComposer ? "bottom-[108px]" : "bottom-24 lg:bottom-6"} left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
                    border border-foreground/10 bg-surface/80 text-muted shadow-sm backdrop-blur-sm
                    hover:text-terracotta hover:border-terracotta/30 active:scale-95 transition-all`}
       >

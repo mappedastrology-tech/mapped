@@ -13,6 +13,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
 import { TIERS, TRIAL_DAYS } from "@/lib/tier";
+import { useTonightMoon } from "./useTonightMoon";
+// This page is only shown signed out, so links into the app carry a return
+// path through /welcome rather than bouncing back here (lib/returnPath).
+import { signedOutHref } from "@/lib/returnPath";
 
 // ─── Static content ─────────────────────────────────────────────────────────
 
@@ -186,6 +190,7 @@ function panelStars(seed: number, n = 24): React.CSSProperties[] {
 
 export default function WebLanding() {
   const { theme, toggle } = useWebTheme();
+  const moon = useTonightMoon();
 
   // Drag-to-reorder dashboard
   const [order, setOrder] = useState<WidgetKey[]>(DEFAULT_ORDER);
@@ -248,15 +253,18 @@ export default function WebLanding() {
           <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: "48%", transform: "translate(-50%,-50%)", width: 440, height: 440, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in srgb, var(--brass) 30%, transparent), transparent 62%)" }} />
           <img
               width={600}
-              height={600} src="/moons/waxing-gibbous.webp" alt="The moon tonight" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 360, height: 360, objectFit: "contain", filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.5))", animation: "mp-floaty 9s ease-in-out infinite" }} />
+              height={600} src={moon?.img ?? "/moons/full-moon.webp"} alt={moon ? `Tonight's moon, ${moon.label.toLowerCase()}` : "The moon"} style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 360, height: 360, objectFit: "contain", filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.5))", animation: "mp-floaty 9s ease-in-out infinite" }} />
           <img
               width={864}
               height={1440} src="/images/parchment-stars-pair.webp" alt="" aria-hidden="true" style={{ position: "absolute", right: 6, top: 14, width: 120, opacity: 0.9, animation: "mp-floaty 7s ease-in-out infinite", filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))" }} />
-          <div style={{ position: "absolute", left: 0, bottom: 24, padding: "16px 20px", borderRadius: 18, background: "color-mix(in srgb, var(--card) 88%, transparent)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", boxShadow: "0 10px 30px var(--shadow)", maxWidth: 230 }}>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 5px" }}>Tonight</p>
-            <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, margin: "0 0 4px", color: "var(--fg)" }}>Waxing Gibbous · 73%</p>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", margin: 0 }}>Moon in Scorpio — depth over noise.</p>
-          </div>
+          {/* Tonight's real Moon, computed in the browser (useTonightMoon). */}
+          {moon && (
+            <div style={{ position: "absolute", left: 0, bottom: 24, padding: "16px 20px", borderRadius: 18, background: "color-mix(in srgb, var(--card) 88%, transparent)", backdropFilter: "blur(8px)", border: "1px solid var(--hair)", boxShadow: "0 10px 30px var(--shadow)", maxWidth: 230 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 5px" }}>Tonight</p>
+              <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, margin: "0 0 4px", color: "var(--fg)" }}>{moon.label} · {moon.illumination}%</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, lineHeight: 1.5, color: "var(--muted)", margin: 0 }}>Moon in {moon.sign}.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -278,10 +286,10 @@ export default function WebLanding() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 22 }}>
           {FEATURES.map((f) => (
-            <Link key={f.title} href={f.href} className="mp-card-lift" style={{ display: "block", borderRadius: 22, overflow: "hidden", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 20px var(--shadow)", color: "inherit" }}>
+            <Link key={f.title} href={signedOutHref(f.href)} className="mp-card-lift" style={{ display: "block", borderRadius: 22, overflow: "hidden", background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 20px var(--shadow)", color: "inherit" }}>
               <div style={{ position: "relative", height: 186, overflow: "hidden", background: "radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--brass) 9%, transparent), transparent 70%)" }}>
                 {f.render()}
-                <span style={{ position: "absolute", top: 14, left: 14, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
+                <span className="mp-night" style={{ position: "absolute", top: 14, left: 14, fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", padding: "6px 11px", borderRadius: 999, background: "rgba(11,7,18,0.5)", backdropFilter: "blur(6px)" }}>{f.tag}</span>
               </div>
               <div style={{ padding: "22px 22px 24px" }}>
                 <h3 style={{ fontFamily: "var(--deco)", fontSize: 24, fontWeight: 500, margin: "0 0 8px", color: "var(--fg)" }}>{f.title}</h3>
@@ -295,7 +303,7 @@ export default function WebLanding() {
 
       {/* ===== DRAG DASHBOARD ===== */}
       <section style={{ maxWidth: 1240, margin: "0 auto", padding: "96px 32px" }}>
-        <div style={{ borderRadius: 30, overflow: "hidden", background: "linear-gradient(160deg, var(--hero-plum), var(--card2))", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
+        <div className="mp-night" style={{ borderRadius: 30, overflow: "hidden", background: "linear-gradient(160deg, var(--hero-plum), var(--card2))", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)", position: "relative" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
             {pStars.map((st, i) => <span key={i} style={st} />)}
           </div>
@@ -306,7 +314,7 @@ export default function WebLanding() {
               <p style={{ fontSize: 15.5, lineHeight: 1.6, color: "rgba(240,231,208,0.82)", margin: 0 }}>Grab any card and drop it where it belongs. Mapped remembers the order you like — the sky the way <em>you</em> read it.</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <Link href="/home" style={{ fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Open your Today page →</Link>
+              <Link href={signedOutHref("/home")} style={{ fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Open your Today page →</Link>
               <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "rgba(240,231,208,0.6)", display: "flex", alignItems: "center", gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" /></svg>
                 drag to reorder
@@ -453,7 +461,7 @@ export default function WebLanding() {
 
       {/* ===== CTA BAND ===== */}
       <section style={{ maxWidth: 1240, margin: "0 auto 96px", padding: "0 32px" }}>
-        <div style={{ position: "relative", overflow: "hidden", borderRadius: 30, padding: "70px 48px", textAlign: "center", background: "linear-gradient(160deg, var(--hero-plum), #1a1426)", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)" }}>
+        <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 30, padding: "70px 48px", textAlign: "center", background: "linear-gradient(160deg, var(--hero-plum), #1a1426)", border: "1px solid var(--hair)", boxShadow: "0 20px 60px var(--shadow)" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {cStars.map((st, i) => <span key={i} style={st} />)}
           </div>

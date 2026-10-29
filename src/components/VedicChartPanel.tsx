@@ -176,7 +176,7 @@ export default function VedicChartPanel({ vedic, now: nowProp }: { vedic: VedicD
               onClick={() => setDivision(d)}
               aria-pressed={division === d}
               className="flex-1 py-[9px] rounded-[10px] text-[10px] tracking-[0.1em] uppercase font-bold transition-colors"
-              style={{ background: division === d ? "var(--brass)" : "transparent", color: division === d ? "#1a1230" : "var(--foreground-muted)" }}
+              style={{ background: division === d ? "var(--brass)" : "transparent", color: division === d ? "var(--on-brass)" : "var(--foreground-muted)" }}
             >
               {d === "D1" ? "Rasi" : "Navamsa"}
             </button>

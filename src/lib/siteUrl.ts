@@ -19,7 +19,7 @@
  * now.
  */
 
-const FALLBACK = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-olive.vercel.app";
+const FALLBACK = process.env.NEXT_PUBLIC_SITE_URL || "https://mapped-astrology.netlify.app";
 
 /** Hosts that exist only inside the app or a dev machine. */
 function isReachablePublicly(origin: string): boolean {

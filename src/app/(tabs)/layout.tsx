@@ -24,6 +24,7 @@ import { BirthTimeProvider } from "@/components/BirthTimeProvider";
 import { supabase } from "@/lib/supabase";
 import { ensureAccountIsolation } from "@/lib/accountIsolation";
 import { isInstalledApp } from "@/lib/isNativeApp";
+import { signedOutHref } from "@/lib/returnPath";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import WebToday from "@/components/web/WebToday";
 import WebAlmanac from "@/components/web/WebAlmanac";
@@ -86,9 +87,11 @@ export default function TabsLayout({
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) {
-        // Not signed in. Inside the app that means the sign-in screen; the
-        // marketing page is only for someone browsing the website.
-        router.replace(isInstalledApp() ? "/welcome" : "/");
+        // Not signed in: the sign-in screen. On the website it carries the page
+        // they asked for, so signing in lands them there — this used to send
+        // web visitors to "/", which from the landing page looked like every
+        // link was broken (see lib/returnPath).
+        router.replace(isInstalledApp() ? "/welcome" : signedOutHref(pathname));
         return;
       }
       // Before anything renders for this account, make sure nothing cached on
@@ -114,6 +117,8 @@ export default function TabsLayout({
       // Can't reach Supabase — let them through
       setReady(true);
     });
+    // Once per mount, on purpose: the gate must not re-run on every tab change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   useEffect(() => {
@@ -175,7 +180,9 @@ export default function TabsLayout({
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 <TopBar />
-                <div className="pb-4 lg:pb-10">
+                {/* Bottom padding clears the floating bug-report button,
+                    so the last line of every page can scroll out from under it. */}
+                <div className="pb-24 lg:pb-20">
                   {children}
                 </div>
               </div>

@@ -14,6 +14,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
+import { signedOutHref } from "@/lib/returnPath";
+import { useTonightMoon } from "./useTonightMoon";
 
 export type WebNavKey =
   | "home" | "today" | "almanac" | "maps" | "library" | "journal" | "tarot" | "dolly";
@@ -174,8 +176,10 @@ export default function WebShell({
         <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 32px", height: 76, display: "flex", alignItems: "center", gap: 28 }}>
           <Wordmark />
           <nav style={{ display: "flex", alignItems: "center", gap: 26, marginLeft: 14, flex: 1 }}>
+            {/* Signed out (the marketing page), app routes go via /welcome
+                with a return path instead of bouncing back to "/". */}
             {NAV.map((n) => (
-              <Link key={n.key} href={n.href} className="mp-nav-link" style={{ fontSize: 14.5, fontWeight: 500, color: n.key === current ? "var(--fg)" : "var(--fg2)" }}>
+              <Link key={n.key} href={variant === "marketing" ? signedOutHref(n.href) : n.href} className="mp-nav-link" style={{ fontSize: 14.5, fontWeight: 500, color: n.key === current ? "var(--fg)" : "var(--fg2)" }}>
                 {n.label}
               </Link>
             ))}
@@ -215,10 +219,14 @@ const FOOT_COLS = [
   // at the section that actually explains what Mapped is. "Help" goes to the
   // same address as Contact rather than to Dolly, which is a paid feature a
   // signed-out visitor cannot reach and would not be help anyway.
-  { head: "Company", links: [ { label: "About", href: "/#features" }, { label: "The app", href: "/home" }, { label: "Help", href: `mailto:${SUPPORT_EMAIL}` }, { label: "Log in", href: "/onboarding" } ] },
+  // "Log in" went to /onboarding, which is sign-up; it matches the header now.
+  { head: "Company", links: [ { label: "About", href: "/#features" }, { label: "The app", href: "/home" }, { label: "Help", href: `mailto:${SUPPORT_EMAIL}` }, { label: "Log in", href: "/welcome?mode=signin" } ] },
 ];
 
 function FullFooter() {
+  // "Made under a waxing gibbous moon" was printed whatever the Moon was doing.
+  const moon = useTonightMoon();
+  const phaseWords = moon ? moon.label.replace(/ Moon$/, "").toLowerCase() : null;
   return (
     <footer style={{ position: "relative", zIndex: 10, borderTop: "1px solid var(--hair)", background: "var(--bg2)" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "60px 32px 30px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 36 }}>
@@ -239,14 +247,14 @@ function FullFooter() {
               {fc.links.map((l) => (
                 l.href.startsWith("mailto:")
                   ? <a key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</a>
-                  : <Link key={l.label} href={l.href} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</Link>
+                  : <Link key={l.label} href={signedOutHref(l.href)} style={{ fontSize: 13.5, color: "var(--fg2)" }}>{l.label}</Link>
               ))}
             </div>
           </div>
         ))}
       </div>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "22px 32px", borderTop: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. Made under a waxing gibbous moon.</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped.{phaseWords ? ` Made under a ${phaseWords} moon.` : ""}</span>
         <div style={{ display: "flex", gap: 22 }}>
           <Link href="/privacy" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Privacy</Link>
           <Link href="/terms" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Terms</Link>
@@ -270,7 +278,9 @@ function FullFooter() {
 export function CompactFooter({ tagline = "Read the sky, then trust yourself." }: { tagline?: string }) {
   return (
     <footer style={{ position: "relative", zIndex: 10, borderTop: "1px solid var(--hair)", background: "var(--bg2)" }}>
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      {/* The extra bottom padding keeps this line above the floating
+          bug-report button (bottom-left, lg:bottom-6) on signed-in pages. */}
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px 80px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. {tagline}</span>
         <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>← Back to home</Link>
       </div>

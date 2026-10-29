@@ -99,8 +99,24 @@ test("desktop Maps shows an empty sky, not eight invented people", () => {
   const src = read("src/components/web/WebMaps.tsx");
   assert.doesNotMatch(strip(src), /SAMPLE_PEOPLE/, "the invented cast is back");
   assert.doesNotMatch(strip(src), /Maya|Priya|Jonah|Rosa|Nadia/, "invented people are still in the file");
-  assert.match(src, /live\?\.people \?\? \[\]/);
-  assert.match(src, /Your sky is still empty/, "there is no empty state");
+  // A signed-in account with nobody on its map starts empty, and never picks
+  // up this device's signed-out list.
+  const page = read("src/app/(tabs)/maps/page.tsx");
+  assert.match(page, /Signed-in user has no connections yet[^\n]*\n\s*setConnections\(\[\]\)/);
+});
+
+test("desktop Maps can add and edit people", () => {
+  // The desktop screen was a separate picture of the map with no add or edit
+  // at all. It now shows the phone's Maps tab, which owns both.
+  const src = strip(read("src/components/web/WebMaps.tsx"));
+  assert.match(src, /import MapsTab from "@\/app\/\(tabs\)\/maps\/page"/);
+  assert.match(src, /<MapsTab \/>/);
+  assert.doesNotMatch(src, /useConstellation/, "desktop has its own read of your people again");
+  // Maps forces the app dark, so a day shell around it is dark ink on cream.
+  assert.match(src, /theme="night"/, "the desktop map can render in the day shell again");
+  const page = read("src/app/(tabs)/maps/page.tsx");
+  assert.match(page, /const handleAddPerson = useCallback/);
+  assert.match(page, /const handleEditPerson = useCallback/);
 });
 
 /* ─── A link sent to a phone opens the app, not the website ─── */

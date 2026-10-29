@@ -32,7 +32,7 @@ dashboard. Re-add any of them later as a catalog entry once it has cards.)
    (or set env vars STRIPE_PRICE_DECK_STITCHED_ANIMAL / STRIPE_PRICE_DECK_BIRD).
    Until then the live ids are "" and live sales are safely refused.
 2. Dashboard (live mode) → Developers → Webhooks → Add endpoint
-   `https://mapped-olive.vercel.app/api/stripe/webhook` with events
+   `https://mapped-astrology.netlify.app/api/stripe/webhook` with events
    `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted` — live mode currently has NO webhook, which
    also blocks live subscription fulfillment. Then set live STRIPE_SECRET_KEY +
