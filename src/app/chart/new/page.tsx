@@ -332,8 +332,9 @@ function NewChart() {
 
           {unknownTime && (
             <p className="text-xs text-amber/50 mt-1 pl-6">
-              We&apos;ll use 12:00 PM as a default. Your Rising sign and house placements
-              may be approximate.
+              Without a time, your rising sign, houses, and angles can&apos;t be
+              calculated, so we&apos;ll leave them out. If the Moon changed signs that
+              day, we&apos;ll show both possibilities. You can add your time later.
             </p>
           )}
         </div>

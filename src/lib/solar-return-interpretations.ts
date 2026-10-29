@@ -47,7 +47,7 @@ export const SR_MOON_SIGN: Record<string, { theme: string; description: string }
   },
   Sco: {
     theme: "Emotional transformation",
-    description: "Nothing stays on the surface this year. Your emotional life goes deep — obsessions, revelations, power dynamics, and truth-telling all intensify. You may experience emotional purging: letting go of relationships, patterns, or beliefs that no longer serve you. It's uncomfortable. It's also exactly what you need.",
+    description: "Nothing stays on the surface this year. Your emotional life goes deep — obsessions, revelations, power dynamics, and truth-telling all intensify. You may feel ready to let go of patterns or beliefs that no longer serve you. It can be uncomfortable, and it can also be clarifying.",
   },
   Sag: {
     theme: "Emotional expansion",
@@ -63,7 +63,7 @@ export const SR_MOON_SIGN: Record<string, { theme: string; description: string }
   },
   Pis: {
     theme: "Emotional dissolution",
-    description: "Boundaries between you and the world thin out this year. You absorb everything — other people's moods, collective anxieties, beauty, suffering. Creativity and spirituality become emotional lifelines. The challenge is staying grounded when everything feels overwhelming. The gift is a compassion so deep it can heal old wounds you thought were permanent.",
+    description: "Boundaries between you and the world thin out this year. You absorb everything — other people's moods, collective anxieties, beauty, suffering. Creativity and spirituality become emotional lifelines. The challenge is staying grounded when everything feels overwhelming. The gift is a compassion deep enough to soften old hurts.",
   },
 };
 
@@ -78,7 +78,7 @@ export const SR_RISING_SIGN: Record<string, { theme: string; description: string
   },
   Tau: {
     theme: "A year of building",
-    description: "This year moves slowly and deliberately. You're focused on creating something tangible — financial stability, a home, a body you feel good in. Others see you as grounded and reliable. Patience is the superpower; rushing is the enemy.",
+    description: "This year moves slowly and deliberately. You're focused on creating something tangible — stability, a home, a daily life you feel good in. Others see you as grounded and reliable. Patience is the superpower; rushing is the enemy.",
   },
   Gem: {
     theme: "A year of connections",
@@ -86,7 +86,7 @@ export const SR_RISING_SIGN: Record<string, { theme: string; description: string
   },
   Can: {
     theme: "A year of nesting",
-    description: "Home and emotional security define this year. You're drawn inward — toward family, roots, and creating a safe space. Others see you as nurturing but guarded. Major life changes often happen in the private sphere: moves, family dynamics, inner healing.",
+    description: "Home and emotional security define this year. You're drawn inward — toward family, roots, and creating a safe space. Others see you as nurturing but guarded. The private sphere is where this year's work happens: home, family dynamics, inner healing.",
   },
   Leo: {
     theme: "A year of visibility",
@@ -118,7 +118,7 @@ export const SR_RISING_SIGN: Record<string, { theme: string; description: string
   },
   Pis: {
     theme: "A year of surrender",
-    description: "This year has a dreamy, spiritual quality. You're more intuitive, more creative, and more emotionally permeable. Others see you as gentle and otherworldly. The lesson is letting go of control — the best things this year come from trusting the current, not fighting it.",
+    description: "This year has a dreamy, spiritual quality. You're more intuitive, more creative, and more emotionally permeable. Others see you as gentle and otherworldly. The lesson is letting go of control — this year asks you to notice where trusting the current serves you better than fighting it.",
   },
 };
 
@@ -133,7 +133,7 @@ export const SR_SUN_HOUSE: Record<number, { area: string; description: string }>
   },
   2: {
     area: "Money & values",
-    description: "Financial matters and self-worth take center stage. You're rethinking what you value, what you're willing to work for, and what kind of security you need. Income may fluctuate. The real lesson is internal: knowing your own worth.",
+    description: "Self-worth and what you value take center stage. You're rethinking what you're willing to work for and what kind of security you need. The real lesson is internal: knowing your own worth.",
   },
   3: {
     area: "Communication & learning",
@@ -149,23 +149,23 @@ export const SR_SUN_HOUSE: Record<number, { area: string; description: string }>
   },
   6: {
     area: "Health & daily life",
-    description: "The mundane matters this year: health, routines, work habits, pets, and daily rituals all demand attention. You may start a new health regimen, change jobs, or restructure your day-to-day life. Small improvements compound into major transformation.",
+    description: "The everyday matters this year: routines, work habits, pets, and daily rituals all ask for attention. Restructuring your day-to-day is the theme. Small improvements add up.",
   },
   7: {
     area: "Partnerships",
-    description: "Relationships are everything this year. Marriage, business partnerships, close friendships, or even open enemies — the mirror of other people shows you who you are. Commitments get made or broken. You can't avoid the other person in the room.",
+    description: "Relationships are in the foreground this year. Partners, collaborators, close friends, even rivals — the mirror of other people shows you who you are. What you want from commitment gets clearer.",
   },
   8: {
     area: "Transformation & shared resources",
-    description: "This is a year of deep change. Themes include other people's money (inheritance, debts, investments), intimacy, power dynamics, and psychological transformation. Something ends so something better can begin. Trust the process.",
+    description: "This is a year of depth. Themes include what you share with others, trust, intimacy, power dynamics, and psychological change. Notice what you're ready to let go of, and what you want to make room for.",
   },
   9: {
     area: "Expansion & meaning",
-    description: "Your world gets bigger. Travel, higher education, publishing, legal matters, or spiritual seeking pull you toward growth. You're questioning your beliefs and searching for something that feels true. The year rewards bold thinking.",
+    description: "Your world gets bigger. Travel, higher education, publishing, or spiritual seeking pull you toward growth. You're questioning your beliefs and searching for something that feels true. The year rewards bold thinking.",
   },
   10: {
     area: "Career & public life",
-    description: "Your professional life and public reputation are in the spotlight. Promotions, career changes, or increased visibility are all possible. People in authority notice you. This is a year for ambition — what you build now echoes for years.",
+    description: "Your professional life and public reputation are in the spotlight. Ambition, visibility, and your relationship with authority are the themes. This is a year to think about what you want to build.",
   },
   11: {
     area: "Community & future vision",
@@ -173,7 +173,7 @@ export const SR_SUN_HOUSE: Record<number, { area: string; description: string }>
   },
   12: {
     area: "Rest & inner work",
-    description: "This is a quieter, more introspective year. Solitude, spirituality, therapy, rest, and letting go are the themes. It can feel like a retreat from the world — and that's exactly the point. What you process internally this year prepares you for the major new cycle beginning next year.",
+    description: "This is a quieter, more introspective year. Solitude, spirituality, therapy, rest, and letting go are the themes. It can feel like a retreat from the world — and that's exactly the point. What you process internally this year is groundwork for whatever you start next.",
   },
 };
 
@@ -183,11 +183,11 @@ export const SR_SUN_HOUSE: Record<number, { area: string; description: string }>
 
 export const SR_MOON_HOUSE: Record<number, string> = {
   1: "Emotions are on the surface and visible to others. Your feelings directly shape your actions and how people perceive you.",
-  2: "Emotional security is tied to finances and material stability. Comfort spending may increase. Self-worth fluctuates with your bank account.",
+  2: "Emotional security feels tied to material stability. Notice what you reach for when you need comfort, and whether it actually helps.",
   3: "You process feelings through words — journaling, texting, talking it out. Emotional connections with siblings or neighbors intensify.",
   4: "Home is where the heart is, literally. Family matters, living situations, and childhood patterns dominate your emotional landscape.",
   5: "Your heart opens through creativity, romance, and play. Emotional fulfillment comes from self-expression and joy, not obligation.",
-  6: "Emotions manifest physically — stress shows up in the body. Healing comes through better routines, health habits, and meaningful daily work.",
+  6: "Your feelings show up in your daily rhythms. Routines, small acts of care, and meaningful daily work help you settle.",
   7: "Your emotional state is deeply intertwined with your partner or closest relationships. You can't process feelings in isolation this year.",
   8: "Intense emotional experiences around intimacy, loss, or transformation. Feelings go deep and don't stay hidden. Catharsis is available if you're willing.",
   9: "Emotional growth through travel, education, or expanding your worldview. You feel most alive when you're learning or exploring.",
@@ -201,61 +201,64 @@ export const SR_MOON_HOUSE: Record<number, string> = {
 // ═══════════════════════════════════════════
 
 export const SR_PLANET_HOUSE_HIGHLIGHTS: Record<string, Record<number, string>> = {
+  // Written as themes to notice, never as events. A solar return describes the
+  // texture of a year; it does not say what will happen in it, and nothing here
+  // forecasts money, health, legal or relationship outcomes.
   Venus: {
-    1: "You're more attractive and magnetic this year. Love and beauty are personal themes.",
-    2: "Money flows more easily. Luxury spending increases. Financial gifts or windfalls possible.",
-    3: "Sweet, harmonious communications. Writing becomes more beautiful. Sibling bonds warm up.",
-    4: "Home becomes beautiful and comfortable. Family harmony increases. Decorating or moving to a nicer place.",
-    5: "One of the best placements for romance and creative expression. Love affairs, artistic breakthroughs, fun.",
-    6: "Work becomes more pleasant. You may find a job you actually enjoy. Health improves through pleasure, not punishment.",
-    7: "Strong indicator for new relationships or deepening existing ones. Partnership is blessed this year.",
-    8: "Intense romantic or financial connections. Shared resources increase. Intimacy deepens.",
-    9: "Love through travel or education. You may fall for someone from a different background or culture.",
-    10: "Career benefits from charm and social skills. Public image improves. Professional relationships sweeten.",
-    11: "Friendships bring joy. Social life expands. You attract people who share your values.",
-    12: "Secret romances or private pleasures. Beauty in solitude. Artistic inspiration from the subconscious.",
+    1: "Beauty and pleasure feel personal this year. You may find it easier to like yourself, and others may notice.",
+    2: "Your relationship with comfort and what you value comes into focus. Notice what actually makes you feel secure.",
+    3: "Sweeter conversations. Writing and everyday exchanges can feel warmer. Sibling bonds may soften.",
+    4: "Home asks to be made lovely. Family warmth, a room you finally make yours, a softer private life.",
+    5: "Creative and romantic energy runs high. A year to make things for the joy of it and let yourself play.",
+    6: "Daily life can get kinder. Looking for pleasure in your routines instead of punishment is the theme.",
+    7: "Partnership is in the foreground. What you want from the people closest to you gets easier to say.",
+    8: "Closeness goes deeper. Trust, what you share, and what you're willing to let someone see are the themes.",
+    9: "Love of the faraway: travel, study, or people from a different background or culture may draw you in.",
+    10: "Charm and diplomacy become part of how you work. How you're seen in public may soften.",
+    11: "Friendships are a source of joy. You may find yourself among people who share your values.",
+    12: "Private pleasures and quiet beauty. Inspiration that comes from solitude and the inner world.",
   },
   Mars: {
-    1: "High energy, assertiveness, and physical vitality. You're more competitive and direct.",
-    2: "Aggressive pursuit of money and resources. Financial drive is high but so is impulsive spending.",
-    3: "Sharp words, quick mind, argumentative streak. Watch for communication conflicts with siblings or neighbors.",
-    4: "Home life is active or contentious. DIY projects, family conflicts, or moving are all possible.",
-    5: "Passionate creative energy and intense romantic pursuits. Competition in hobbies. Driven to perform.",
-    6: "Hard work and high energy for daily tasks. Watch for stress-related health issues. Exercise is essential.",
-    7: "Conflict or passion in partnerships. Relationships are dynamic but potentially combative.",
-    8: "Power struggles over shared resources. Sexual intensity increases. Transformation through crisis.",
-    9: "Driven to travel, study, or fight for beliefs. Legal battles possible. Adventures with an edge.",
-    10: "Ambitious career drive. You're pushing hard for professional goals. Authority conflicts possible.",
-    11: "Active in groups and causes. You lead social movements or clash with friends over ideals.",
-    12: "Hidden anger or frustration surfacing. Energy for spiritual work. Watch for self-sabotage.",
+    1: "Energy, directness, and a competitive streak sit close to the surface. Notice where you want to push.",
+    2: "Drive around resources and self-worth. Ambition is high, and so can be the urge to act on impulse.",
+    3: "A quick mind and sharp words. Conversations with siblings or neighbors may carry more heat than usual.",
+    4: "Home life feels active. Projects around the house, or friction at home that's asking to be addressed.",
+    5: "Creative fire and passionate pursuits. Competitive hobbies, a drive to perform, a hunger to make things.",
+    6: "Lots of energy for daily tasks. Pacing yourself is the theme, so the drive doesn't tip into burnout.",
+    7: "Relationships feel dynamic. Passion and disagreement can sit side by side; how you handle friction matters.",
+    8: "Intensity around closeness and what you share. Old patterns around power may ask to be looked at.",
+    9: "Driven to travel, study, or stand up for what you believe. Adventures with an edge.",
+    10: "Ambition runs hot. You're pushing for professional goals, and friction with authority may surface.",
+    11: "Energy for groups and causes. You may lead something, or find your ideals rubbing against a friend's.",
+    12: "Frustration that's been kept quiet may surface. Energy for inner and spiritual work. Notice self-sabotage.",
   },
   Saturn: {
-    1: "A serious year of self-discipline and responsibility. You may look or feel older. Growth through restriction.",
-    2: "Financial tightening or restructuring. Building long-term financial security. Less is more.",
-    3: "Serious study, difficult conversations, or communication blocks that eventually teach clarity.",
-    4: "Home responsibilities increase. Family obligations weigh heavy. Building a lasting foundation.",
-    5: "Creative blocks that eventually produce your most disciplined work. Romance has a serious tone.",
-    6: "Health requires attention and discipline. Work demands increase. Building better systems.",
-    7: "Relationships tested by commitment, responsibility, or distance. Partnerships that survive grow stronger.",
-    8: "Confronting fear, debt, or psychological patterns. Tough but transformative inner work.",
-    9: "Structured learning, delayed travel plans, or testing of beliefs. Wisdom comes through limitation.",
-    10: "Peak career responsibility. Professional recognition possible, but the work is demanding.",
-    11: "Social circle narrows to who matters most. Community responsibilities increase. Quality over quantity.",
-    12: "Solitude and inner work are necessary, not optional. Confronting old fears. Spiritual discipline.",
+    1: "A serious year of self-discipline and responsibility. You may feel more grown-up. Growth through limits.",
+    2: "A year for getting honest about what security means to you. Building slowly. Less can be more.",
+    3: "Serious study, or harder conversations that teach you to say things clearly.",
+    4: "Home responsibilities may feel heavier. Family obligations ask for attention. Building a steadier base.",
+    5: "Creative blocks that can become your most disciplined work. Romance may take on a more serious tone.",
+    6: "Your routines ask for structure. Work feels demanding; building better systems is the theme.",
+    7: "Commitment, responsibility, and distance are themes in close relationships. What you want long-term gets clearer.",
+    8: "Facing fears and old psychological patterns. Tough, honest inner work.",
+    9: "Structured learning, slower travel plans, beliefs put to the test. Wisdom through limitation.",
+    10: "Career responsibility is in focus. The work is demanding, and what you build is yours.",
+    11: "Your social circle may narrow to who matters most. Community responsibilities. Quality over quantity.",
+    12: "Solitude and inner work feel necessary, not optional. Facing old fears. Spiritual discipline.",
   },
   Jupiter: {
-    1: "Luck, optimism, and expansion in your personal life. Weight gain possible. Confidence soars.",
-    2: "Financial abundance or opportunity. Good year for raises, investments, and valuing yourself more.",
-    3: "Mental expansion, successful communications, lucky short trips. Learning comes easily.",
-    4: "Home life expands — bigger house, growing family, or increased domestic happiness.",
-    5: "Wonderful for creativity, romance, children, and fun. One of the luckiest placements for joy.",
-    6: "Health improves. Work opportunities expand. Lucky with pets. Daily life gets more enjoyable.",
-    7: "Partnerships bring abundance and growth. Great year for marriage, business deals, or meeting someone significant.",
-    8: "Windfalls through others — inheritance, investments, insurance. Emotional healing. Transformative growth.",
-    9: "The luckiest house for Jupiter. Travel, education, publishing, and spiritual expansion all favored.",
-    10: "Career breakthrough or promotion. Public recognition. Professional luck and expansion.",
-    11: "Social circle grows. New friends who change your life. Wishes come true through community.",
-    12: "Protection from hidden enemies. Spiritual growth. Good fortune that arrives quietly or privately.",
+    1: "Optimism and expansion in your personal life. Confidence can grow. A year to take up a little more room.",
+    2: "A generous year for how you value yourself. Notice where you're ready to ask for what you're worth.",
+    3: "Mental expansion, easier conversations, short trips that feel good. Learning comes easily.",
+    4: "Home life wants more room: more space, more people around the table, or simply more ease at home.",
+    5: "Wonderful for creativity, play, and joy. One of the most generous placements for having fun.",
+    6: "Daily life can get more enjoyable. Work that feels like growth, and good company with animals.",
+    7: "Partnership is a place of growth. Generosity between you and the people you're closest to is the theme.",
+    8: "Growth through trust and depth. Emotional healing, and honest conversations about what's shared.",
+    9: "Jupiter's favorite house. Travel, study, publishing, and spiritual seeking all feel expansive.",
+    10: "Professional growth and visibility are themes. A year to aim a little higher at work.",
+    11: "Your social circle may grow. New friendships, and hopes you can share with your community.",
+    12: "Quiet grace. Spiritual growth, and good things that arrive privately rather than loudly.",
   },
 };
 
