@@ -5,8 +5,16 @@
 /**
  * WebAlmanac — the day in depth (design_handoff_mapped_web "Almanac").
  * Plum hero, good-for / hold-off columns, an "Explore the day" 2×2 grid, and a
- * sticky sidebar (coming up · born-on-this-day · email capture). Content mirrors
- * the prototype's sample data (bind to the real almanac backend later).
+ * sticky sidebar (coming up · panchang · born-on-this-day).
+ *
+ * Everything is computed for today from the same libraries the mobile almanac
+ * uses. This page used to fall back to the design prototype's sample day (July
+ * 1, a Scorpio Moon, "planting 8/10", Antares) until the live values arrived,
+ * and kept some of it for good. Now a section shows a short loading line, or
+ * is left out when there is nothing real to put in it.
+ *
+ * Known gap: sunrise/sunset come from getTodaySky without coordinates, so they
+ * are for the library's default location, not the viewer's (useLiveSky).
  */
 
 import Link from "next/link";
@@ -16,6 +24,9 @@ import WebShell, { useWebTheme } from "./WebShell";
 import HappeningNow from "@/components/almanac/HappeningNow";
 import { useLiveSky } from "./useLiveSky";
 import { getOnThisDay } from "@/lib/onThisDay";
+import { getMoonPhase } from "@/lib/celestialCalendar";
+import { getPlantingCalendar } from "@/lib/gardeningAlmanac";
+import { getUniversalBiteForecast } from "@/lib/fishingForecast";
 
 const VS = "\uFE0E";
 
@@ -24,37 +35,12 @@ const SIGN_GLYPH: Record<string, string> = {
   Libra: "\u264E", Scorpio: "\u264F", Sagittarius: "\u2650", Capricorn: "\u2651", Aquarius: "\u2652", Pisces: "\u2653",
 };
 
-const SUN_TIMES = [ { label: "Sunrise", val: "5:58" }, { label: "Sunset", val: "8:31" }, { label: "Daylight", val: "14h 33m" } ];
-const GOOD_FOR = [
-  { activity: "Deep conversations", reason: "The Scorpio Moon wants truth, not small talk. Words land deeper today." },
-  { activity: "Research & investigation", reason: "Scorpio is the sign of what’s hidden. Follow a question past the obvious answer." },
-  { activity: "Financial planning", reason: "Scorpio rules shared resources. Clear-eyed for budgets and debts — just don’t sign yet." },
-  { activity: "Decluttering & releasing", reason: "The waxing-to-full arc makes this a strong day to clear what you’ve outgrown." },
-  { activity: "Intimacy & repair", reason: "Emotional honesty comes easier now — a tender window to mend a rift." },
-];
-const HOLD_OFF = [
-  { activity: "Big launches", reason: "With the Moon void this afternoon, fresh starts tend not to stick. Wait a day." },
-  { activity: "Signing contracts", reason: "Void windows are traditionally poor for agreements — details get revised." },
-  { activity: "Impulse purchases", reason: "Scorpio intensity plus a void Moon is a recipe for buyer’s remorse." },
-];
-const EXPLORE = [
-  { glyph: "⚘", title: "In the garden", sub: "Strong planting day · 8/10", body: "The waxing gibbous Moon pulls energy into the leaves — ideal for above-ground, leafy crops. Water at dusk; hold heavy pruning until the Moon wanes." },
-  { glyph: "♒", title: "On the water", sub: "Fishing good · best at dusk", body: "A water sign favors the bite. Major window 7:40–9:10 pm around moonrise; a minor window at dawn. Slow presentations near structure." },
-  { glyph: "⚕", title: "In your body", sub: "Rest, replenish, reset", body: "A Scorpio Moon turns attention inward. Lean into long baths, early nights, and slow nourishing food; hold intense training for later in the week." },
-  { glyph: "★", title: "Visible tonight", sub: "Antares · Saturn · the core", body: "Antares glows red just below the Moon after sunset. Saturn clears the east near midnight; the Milky Way core rises in the south after 11 pm." },
-];
-const UPCOMING = [
-  { day: "9", mon: "Jul", title: "Full Moon in Capricorn", sub: "A culmination — what you tend now ripens." },
-  { day: "12", mon: "Jul", title: "Mercury enters Leo", sub: "Bolder, warmer, more expressive words." },
-  { day: "15", mon: "Jul", title: "Mars trine Jupiter", sub: "A lucky push for ambitious effort." },
-];
-// Sample "Born on this day" sidebar rows (design fallback until the live sky resolves).
-const BIRTHDAYS = [
-  { initials: "PD", name: "Princess Diana", note: "Princess of Wales", year: "1961" },
-  { initials: "DH", name: "Debbie Harry", note: "Singer, Blondie", year: "1945" },
-  { initials: "DA", name: "Dan Aykroyd", note: "Actor & comedian", year: "1952" },
-  { initials: "ME", name: "Missy Elliott", note: "Rapper & producer", year: "1971" },
-];
+const LOADING = "Reading today’s sky…";
+
+/** The zone the mobile almanac saved on this device, else its own default. */
+function savedGardenZone(): string {
+  try { return localStorage.getItem("mapped:garden-zone") || "8b"; } catch { return "8b"; }
+}
 
 /** Short per-item reason for the live good-for list, from the day's Moon sign + phase. */
 function liveGoodReason(moonSign: string, moonLabel: string, i: number): string {
@@ -115,19 +101,40 @@ export default function WebAlmanac() {
 
   const sunTimes = sky
     ? [{ label: "Sunrise", val: sky.sunrise }, { label: "Sunset", val: sky.sunset }, { label: "Daylight", val: sky.daylight }]
-    : SUN_TIMES;
+    : [{ label: "Sunrise", val: "—" }, { label: "Sunset", val: "—" }, { label: "Daylight", val: "—" }];
   const goodCol = sky
     ? { sub: sky.goodFor.why, items: sky.goodFor.activities.map((a, i) => ({ activity: a, reason: liveGoodReason(sky.moonSign, sky.moonLabel, i) })) }
-    : { sub: "Timed to the Moon's sign & phase.", items: GOOD_FOR };
+    : { sub: LOADING, items: [] };
   const holdCol = sky
     ? { sub: sky.holdOff.reason, items: sky.holdOff.activities.map((a, i) => ({ activity: a, reason: liveHoldReason(sky.moonSign, sky.moonLabel, i) })) }
-    : { sub: "The void Moon asks for patience.", items: HOLD_OFF };
-  const comingUp = sky && sky.comingUp.length > 0
-    ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: upcomingSub(u.title) }))
-    : UPCOMING;
+    : { sub: LOADING, items: [] };
+  const comingUp = sky ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: upcomingSub(u.title) })) : [];
 
-  // "Born on this day" — extract birth entries from the on-this-day archive;
-  // keep the design's sample rows until live births are available.
+  // "Explore the day" — only what the mobile almanac actually computes: the
+  // planting verdict (lib/gardeningAlmanac) and the solunar bite windows
+  // (lib/fishingForecast). The old "In your body" and "Visible tonight" cards
+  // were fixed text with nothing behind them, so they are gone.
+  const explore = useMemo(() => {
+    if (!sky) return [];
+    const cards: { glyph: string; title: string; sub: string; body: string }[] = [];
+    try {
+      const phase = getMoonPhase(sky.date).phase;
+      const cal = getPlantingCalendar(sky.date, sky.moonSign, phase, undefined, savedGardenZone());
+      const v = cal.todayVerdict;
+      cards.push({ glyph: "⚘", title: "In the garden", sub: `${v.crop} · ${v.score}/10 · zone ${cal.zone}`, body: v.bestFor });
+    } catch { /* leave the card out */ }
+    try {
+      const bite = getUniversalBiteForecast(sky.date);
+      const windows = bite.biteWindows.slice(0, 2).map((w) => `${w.type === "major" ? "Major" : "Minor"} ${w.start}–${w.end} (${w.label.toLowerCase()})`);
+      if (windows.length > 0) {
+        cards.push({ glyph: "♒", title: "On the water", sub: `${bite.moonPhaseLabel} · Moon in ${bite.moonSign}`, body: `Solunar bite windows today: ${windows.join("; ")}.` });
+      }
+    } catch { /* leave the card out */ }
+    return cards;
+  }, [sky]);
+
+  // "Born on this day" — birth entries from the on-this-day archive. The card
+  // is left out when there are none, rather than showing somebody else's day.
   const liveBirths = useMemo(() => {
     if (!sky) return [];
     return getOnThisDay(sky.date)
@@ -142,7 +149,7 @@ export default function WebAlmanac() {
   }, [sky]);
   const born = sky && liveBirths.length > 0
     ? { head: `Born on ${sky.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })} · ${sky.sabian.sign} ${(SIGN_GLYPH[sky.sabian.sign] ?? "") + VS}`, rows: liveBirths }
-    : { head: `Born on July 1 · Cancer ${"♋" + VS}`, rows: BIRTHDAYS };
+    : null;
 
   return (
     <WebShell current="almanac" theme={theme} onToggleTheme={toggle} footerTagline="Read the sky, then trust yourself.">
@@ -159,10 +166,10 @@ export default function WebAlmanac() {
         <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 26, border: "1px solid var(--hair)", background: "radial-gradient(120% 100% at 78% 0%, #3a2233 0%, #17111f 62%)", boxShadow: "0 20px 60px var(--shadow)", padding: "46px 48px", display: "grid", gridTemplateColumns: "1fr auto", gap: 40, alignItems: "center" }}>
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
           <div style={{ position: "relative" }}>
-            <p style={{ fontFamily: "var(--script)", fontSize: 32, color: "var(--brass-hi)", margin: "0 0 2px" }}>{sky?.weekday ?? "Wednesday"}</p>
-            <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 52, letterSpacing: "0.02em", lineHeight: 1, margin: "0 0 8px", color: "#f3ecd8" }}>{sky?.longDate ?? "July 1, 2026"}</h1>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "14px 0 8px" }}>{sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : "Waxing Gibbous · 73% · Moon in Scorpio"}</p>
-            <p style={{ fontSize: 17, lineHeight: 1.6, color: "#cdc1a8", margin: "0 0 24px", maxWidth: 440, textWrap: "pretty" }}>{sky?.moonSignTheme ?? "Depth over noise. A day that rewards focus, honesty, and finishing what you started — the Moon pulls attention inward and asks for the real thing."}</p>
+            <p style={{ fontFamily: "var(--script)", fontSize: 32, color: "var(--brass-hi)", margin: "0 0 2px" }}>{sky?.weekday ?? " "}</p>
+            <h1 style={{ fontFamily: "var(--deco)", fontWeight: 400, fontSize: 52, letterSpacing: "0.02em", lineHeight: 1, margin: "0 0 8px", color: "#f3ecd8" }}>{sky?.longDate ?? "Today"}</h1>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 700, color: "#d8c285", margin: "14px 0 8px" }}>{sky ? `${sky.moonLabel} · ${sky.illumination}% · Moon in ${sky.moonSign}` : LOADING}</p>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: "#cdc1a8", margin: "0 0 24px", maxWidth: 440, textWrap: "pretty" }}>{sky?.moonSignTheme ?? " "}</p>
             <div style={{ display: "flex", maxWidth: 420, borderTop: "0.5px solid rgba(201,169,97,0.24)", paddingTop: 18 }}>
               {sunTimes.map((t, i) => (
                 <div key={i} style={{ flex: 1, textAlign: "center", borderRight: i < 2 ? "0.5px solid rgba(201,169,97,0.18)" : "none" }}>
@@ -174,15 +181,15 @@ export default function WebAlmanac() {
           </div>
           <div style={{ position: "relative", width: 250, height: 250 }}>
             <div style={{ position: "absolute", inset: -20, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,223,196,0.28), transparent 66%)" }} />
-            <img src={sky?.moonImg ?? "/moons/waxing-gibbous.webp"} alt={sky?.moonLabel ?? "Moon tonight"} style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />
+            {sky && <img src={sky.moonImg} alt={sky.moonLabel} style={{ position: "relative", width: 250, height: 250, objectFit: "contain", filter: "drop-shadow(0 16px 40px rgba(0,0,0,0.5))", animation: "mp-floaty 8s ease-in-out infinite" }} />}
           </div>
         </div>
 
         {/* V/C — only when the Moon is actually void of course today */}
-        {(!sky || sky.vocStart) && (
+        {sky?.vocStart && (
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 14, padding: "13px 18px", borderRadius: 14, background: "color-mix(in srgb, var(--terra) 9%, var(--card))", border: "1px solid color-mix(in srgb, var(--terra) 22%, transparent)" }}>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 6, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}>V/C</span>
-            <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from {sky?.vocStart ?? "2:32 pm"} — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
+            <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from {sky.vocStart} — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
           </div>
         )}
 
@@ -192,9 +199,9 @@ export default function WebAlmanac() {
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             {/* Sabian */}
             <div style={{ ...card, padding: "30px 32px" }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s Sabian symbol` : "Cancer 10° · Today’s Sabian symbol"}</p>
-              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>“{sky?.sabian.symbol ?? "A large diamond in the first stages of the cutting process."}”</p>
-              <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky?.sabian.keynote ?? "Latent worth, not yet revealed. What looks rough today is being shaped into something brilliant — patience is the craft."}</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s Sabian symbol` : "Today’s Sabian symbol"}</p>
+              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>{sky ? `“${sky.sabian.symbol}”` : LOADING}</p>
+              {sky && <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky.sabian.keynote}</p>}
             </div>
 
             {/* good / hold */}
@@ -217,11 +224,11 @@ export default function WebAlmanac() {
               ))}
             </div>
 
-            {/* explore */}
-            <div>
+            {/* explore — only the cards that could be computed */}
+            {explore.length > 0 && <div>
               <h2 style={{ fontFamily: "var(--deco)", fontSize: 30, fontWeight: 400, margin: "6px 0 18px", color: "var(--fg)" }}>Explore the day</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-                {EXPLORE.map((e) => (
+                {explore.map((e) => (
                   <div key={e.title} style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: "24px 24px 26px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                       <span style={{ width: 38, height: 38, borderRadius: 10, background: "color-mix(in srgb, var(--brass) 14%, transparent)", border: "1px solid var(--hair)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brass)", fontSize: 19 }}>{e.glyph + VS}</span>
@@ -234,7 +241,7 @@ export default function WebAlmanac() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* SIDEBAR */}
@@ -242,6 +249,9 @@ export default function WebAlmanac() {
             <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 16px" }}>Coming up</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {comingUp.length === 0 && (
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)", margin: 0 }}>{sky ? "Nothing marked in the next few days." : LOADING}</p>
+                )}
                 {comingUp.map((u, i) => (
                   <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <span style={{ flex: "0 0 auto", width: 42, textAlign: "center" }}>
@@ -261,7 +271,7 @@ export default function WebAlmanac() {
                 ? <PanchangGrid at={panchangAt} tone="web" />
                 : <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: 0 }}>Panchang today</p>}
             </div>
-            <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
+            {born && <div style={{ ...card, boxShadow: "0 4px 16px var(--shadow)", padding: 24 }}>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 4px" }}>{born.head}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
                 {born.rows.map((b, i) => (
@@ -275,12 +285,9 @@ export default function WebAlmanac() {
                   </div>
                 ))}
               </div>
-            </div>
-            <div style={{ padding: "26px 24px", borderRadius: 18, background: "linear-gradient(160deg, var(--card2), var(--card))", border: "1px solid var(--brass)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 18%, var(--shadow))" }}>
-              <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, color: "var(--fg)", margin: "0 0 8px" }}>Get the day, every morning</p>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 16px" }}>Your personal almanac, timed to your chart and delivered before coffee.</p>
-              <Link href="/onboarding" style={{ display: "block", textAlign: "center", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Start free</Link>
-            </div>
+            </div>}
+            {/* No sign-up card: this page only renders for a signed-in person
+                (the (tabs) layout sends everyone else to /welcome). */}
           </aside>
         </div>
 

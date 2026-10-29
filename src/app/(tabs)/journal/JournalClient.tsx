@@ -51,6 +51,7 @@ import {
 import { shareReadingAsImage } from "@/lib/shareCard";
 import { MOOD_PALETTE } from "@/lib/feedback";
 import CrisisCard from "@/components/CrisisCard";
+import { journalStreak } from "@/lib/journalStreak";
 
 type View = "home" | "compose" | "entry" | "patterns" | "all";
 
@@ -1307,11 +1308,9 @@ function JournalPage() {
     return `${TYPE_COLOR[t]} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
   }).join(", ");
 
-  // streak — consecutive days with an entry ending today (or yesterday)
-  let streak = 0;
-  { const cur = new Date(nowD);
-    if (!feed.some((f) => sameDay(f.date, cur))) cur.setDate(cur.getDate() - 1);
-    while (feed.some((f) => sameDay(f.date, cur))) { streak++; cur.setDate(cur.getDate() - 1); } }
+  // streak — consecutive days with an entry ending today (or yesterday).
+  // Shared with the desktop Journal and Today pages (lib/journalStreak).
+  const streak = journalStreak(feed.map((f) => f.date), nowD);
 
   // Encouraging banner counts "bright" days in the current month.
   const monthCount = feed.filter((f) => f.date.getFullYear() === nowD.getFullYear() && f.date.getMonth() === nowD.getMonth()).length;

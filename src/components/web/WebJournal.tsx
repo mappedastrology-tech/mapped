@@ -4,22 +4,23 @@
  * WebJournal — private reflections (design_handoff_mapped_web "Journal").
  * A compose card bound to today's sky-timed prompt with a live word count; the
  * draft autosaves to localStorage['mapped:web-journal-draft'] on every
- * keystroke, and "Save entry" prepends to the feed (persisted to
- * localStorage['mapped:web-journal-entries']).
+ * keystroke, and "Save entry" writes through lib/journal (localStorage plus the
+ * Supabase backup), exactly like the mobile Journal.
+ *
+ * The feed, the streak and the Moon in the prompt header are the signed-in
+ * person's own. This page used to show three invented sample entries to any
+ * account with none, a hardcoded "7" day streak and "Scorpio Moon" every
+ * night; an empty journal now says it is empty.
  */
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import WebShell, { useWebTheme } from "./WebShell";
-import { getLocalEntries, addEntry, autoTag, type JournalEntry } from "@/lib/journal";
+import { addEntry, autoTag, type JournalEntry } from "@/lib/journal";
 import { getMoonPhase } from "@/lib/celestialCalendar";
+import { useJournalEntries } from "./useJournalEntries";
+import { useLiveSky } from "./useLiveSky";
 
-type Entry = { day: string; mon: string; tag: string; moon: string; text: string };
-const SEED: Entry[] = [
-  { day: "20", mon: "Jun", tag: "ritual", moon: "Waning · Gemini", text: "By the third breath my shoulders had already dropped. What I’m ready to set down is the sense that I have to earn rest before I’m allowed to take it." },
-  { day: "19", mon: "Jun", tag: "tarot", moon: "Waning · Taurus", text: "The Star, reversed. It asked me where I stopped trusting the process — and I knew the answer before I finished writing the question." },
-  { day: "16", mon: "Jun", tag: "prompt", moon: "New · Gemini", text: "Where did I feel most at home today? In the ten quiet minutes before anyone else woke up, kettle going, the sky still grey." },
-];
+type Entry = { key: string; day: string; mon: string; tag: string; moon: string; text: string };
 const PROMPTS = [
   "What did today ask of you that you didn’t expect?",
   "Name one thing you’re quietly proud of this week.",
@@ -46,16 +47,16 @@ function panelStars(seed: number, n = 18): React.CSSProperties[] {
 }
 
 const PROMPT_TEXT = "Where are you carrying tension you could gently set down before the week turns?";
-const streak = 7;
 
 /** Map a real JournalEntry to the feed's display shape. */
-function toDisplay(e: JournalEntry): Entry {
+function toDisplay(e: JournalEntry, i: number): Entry {
   const dt = e.date ? new Date(`${e.date}T12:00:00`) : new Date(e.created_at);
   const valid = !isNaN(dt.getTime());
   const d = valid ? dt : new Date();
   let moon = "";
   try { moon = getMoonPhase(d).label; } catch { /* ignore */ }
   return {
+    key: e.id || `entry-${i}`,
     day: String(d.getDate()),
     mon: MONS[d.getMonth()],
     tag: e.prompt_id ? "prompt" : "note",
@@ -67,14 +68,14 @@ function toDisplay(e: JournalEntry): Entry {
 export default function WebJournal() {
   const { theme, toggle } = useWebTheme();
   const [draft, setDraft] = useState("");
-  const [real, setReal] = useState<JournalEntry[]>([]);
   const [justSaved, setJustSaved] = useState(false);
   const stars = useMemo(() => panelStars(33113), []);
+  const journal = useJournalEntries();
+  const sky = useLiveSky();
 
   useEffect(() => {
     try {
       const d = localStorage.getItem("mapped:web-journal-draft"); if (d) setDraft(d);
-      setReal(getLocalEntries());
     } catch { /* ignore */ }
   }, []);
 
@@ -100,16 +101,15 @@ export default function WebJournal() {
       updated_at: now.toISOString(),
     };
     addEntry(entry);
-    setReal((prev) => [entry, ...prev]);
+    journal.refresh();
     setDraft(""); setJustSaved(true);
     try { localStorage.setItem("mapped:web-journal-draft", ""); } catch { /* */ }
   };
 
   const wordCount = (draft.trim().match(/\S+/g) || []).length;
-  // Real entries when the user has any; otherwise the sample reflections so the
-  // feed isn't empty on a fresh account.
-  const entries = real.length > 0 ? real.map(toDisplay) : SEED;
-  const streakDots = Array.from({ length: 7 }, (_, i) => i < 6);
+  const entries = journal.entries.map(toDisplay);
+  const streak = journal.streak;
+  const streakDots = Array.from({ length: 7 }, (_, i) => i < Math.min(streak, 7));
 
   return (
     <WebShell current="journal" theme={theme} onToggleTheme={toggle} footerTagline="Your words, kept in rhythm with the sky.">
@@ -127,7 +127,7 @@ export default function WebJournal() {
             <div className="mp-night" style={{ position: "relative", overflow: "hidden", borderRadius: 22, border: "1px solid var(--hair)", background: "linear-gradient(165deg, #3a2233, var(--card))", boxShadow: "0 12px 40px var(--shadow)", padding: "30px 32px 28px" }}>
               <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{stars.map((st, i) => <span key={i} style={st} />)}</div>
               <div style={{ position: "relative" }}>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 12px" }}>Tonight&rsquo;s prompt · Scorpio Moon</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass-hi)", margin: "0 0 12px" }}>{sky ? `Tonight’s prompt · Moon in ${sky.moonSign}` : "Tonight’s prompt"}</p>
                 <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 25, lineHeight: 1.4, color: "#f3ecd8", margin: "0 0 22px", textWrap: "pretty" }}>“Where are you carrying tension you could gently set down before the week turns?”</p>
                 <textarea
                   className="mp-ta"
@@ -147,11 +147,16 @@ export default function WebJournal() {
             <div>
               <h2 style={{ fontFamily: "var(--deco)", fontSize: 28, fontWeight: 400, margin: "8px 0 18px", color: "var(--fg)" }}>Your reflections</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {entries.length === 0 && (
+                  <p style={{ padding: "22px 24px", borderRadius: 16, background: "var(--card)", border: "1px dashed var(--hair)", fontSize: 15, lineHeight: 1.7, color: "var(--muted)", margin: 0 }}>
+                    {journal.loading ? "Loading your reflections…" : "Nothing here yet. Your first entry will appear here once you save it."}
+                  </p>
+                )}
                 {entries.map((e, i) => {
                   const ts = TAG_STYLE[e.tag] || TAG_STYLE.note;
-                  const isNewest = i === 0 && real.length > 0 && justSaved;
+                  const isNewest = i === 0 && justSaved;
                   return (
-                    <div key={i} style={{ padding: "22px 24px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 14px var(--shadow)", animation: isNewest ? "mp-pop .3s ease" : undefined }}>
+                    <div key={e.key} style={{ padding: "22px 24px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "0 4px 14px var(--shadow)", animation: isNewest ? "mp-pop .3s ease" : undefined }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                         <span style={{ width: 38, textAlign: "center", flex: "0 0 auto" }}>
                           <span style={{ display: "block", fontFamily: "var(--deco)", fontSize: 20, fontWeight: 600, lineHeight: 1, color: "var(--brass)" }}>{e.day}</span>
@@ -186,11 +191,6 @@ export default function WebJournal() {
                   <p key={i} style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--fg2)", margin: 0, paddingBottom: 10, borderBottom: "0.5px solid var(--line)", textWrap: "pretty" }}>{p}</p>
                 ))}
               </div>
-            </div>
-            <div style={{ padding: "26px 24px", borderRadius: 18, background: "linear-gradient(160deg, var(--card2), var(--card))", border: "1px solid var(--brass)", boxShadow: "0 8px 26px color-mix(in srgb, var(--brass) 18%, var(--shadow))" }}>
-              <p style={{ fontFamily: "var(--deco)", fontSize: 19, fontWeight: 500, color: "var(--fg)", margin: "0 0 8px" }}>Keep every reflection</p>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 16px" }}>Sync your journal across the app and web, private and encrypted.</p>
-              <Link href="/onboarding" style={{ display: "block", textAlign: "center", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 999, background: "var(--brass)", color: "var(--btn-ink)" }}>Start free</Link>
             </div>
           </aside>
         </div>

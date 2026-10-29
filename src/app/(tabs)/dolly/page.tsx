@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { greetingFor, firstNameOf } from "@/lib/greeting";
+import { greetingFor, firstNameOf, dayPart } from "@/lib/greeting";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
@@ -1464,8 +1464,8 @@ export default function DollyTab() {
   // ephemeris the almanac uses.
   const skyLine = (() => {
     const now = new Date();
-    const hour = now.getHours();
-    const when = hour < 12 ? "This morning" : hour < 18 ? "This afternoon" : "Tonight";
+    const part = dayPart(now);
+    const when = part === "morning" ? "This morning" : part === "afternoon" ? "This afternoon" : "Tonight";
     try {
       return `${when} · ${getMoonPhaseLabel(now)} in ${getCurrentMoonSign(now).full}`;
     } catch {
