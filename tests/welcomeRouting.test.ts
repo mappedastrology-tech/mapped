@@ -59,8 +59,12 @@ test("the app's signed-out routes never send people to the marketing page", () =
   const root = readFileSync("src/app/page.tsx", "utf8");
   assert.match(root, /isInstalledApp\(\) \|\| onAPhone\(\)\) \{?\s*(\/\/[^\n]*\n\s*)*/);
   assert.match(root, /router\.replace\("\/welcome"\)/);
+  // The tabs gate: the app goes to /welcome; the website now goes to /welcome
+  // too, carrying the page that was asked for (lib/returnPath) — it used to go
+  // to "/", which from the landing page made every app link look dead.
   const tabs = readFileSync("src/app/(tabs)/layout.tsx", "utf8");
-  assert.match(tabs, /router\.replace\(isInstalledApp\(\) \? "\/welcome" : "\/"\)/);
+  assert.match(tabs, /router\.replace\(isInstalledApp\(\) \? "\/welcome" : signedOutHref\(pathname\)\)/);
+  assert.doesNotMatch(tabs, /router\.replace\([^)]*"\/"\)/);
 });
 
 test("a laptop still gets the landing page", () => {
