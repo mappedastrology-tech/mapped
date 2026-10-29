@@ -5,10 +5,21 @@
  * Placidus house calculations from standard astronomical formulas.
  *
  * Accuracy: sub-arcminute for all planets, sufficient for astrology.
+ *
+ * Conventions (checked against Swiss Ephemeris 2.10 in tests/ephemerisAccuracy):
+ * - Planets: apparent geocentric, true ecliptic and equinox of date.
+ * - Chiron: Swiss Ephemeris table, 1801–2200 only (chironEphemeris.ts).
+ * - Nodes and Lilith: MEAN (true node is swapped in by calculateChart).
+ * - Houses: Placidus; Porphyry inside the polar circles (flagged).
+ *   Angles use apparent sidereal time and true obliquity.
+ * - Vertex: always the western point.
+ * - Retrograde: sign of the instantaneous speed; `stationary` within about a
+ *   day of an exact station (STATION_WINDOW_DAYS).
+ * - Longitudes are truncated, never rounded, to 0.01° (see posToSign).
  */
 
 import * as Astronomy from "astronomy-engine";
-import { getChironLongitude } from "./chironEphemeris";
+import { getChironLongitude, getChironData, chironAvailable } from "./chironEphemeris";
 
 // ─── Planet name mapping ───
 export const PLANETS = {
@@ -72,12 +83,13 @@ export function jdToDateStr(jd: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/** Convert Julian Day to a Date object. */
+/**
+ * Convert Julian Day to a Date object, to the millisecond. (Rounding to the
+ * minute here moved the Moon by up to 0.004° and made sub-minute speed
+ * differences meaningless.) Same proleptic Gregorian calendar as julday.
+ */
 function jdToDate(jd: number): Date {
-  const { year, month, day, hour } = revjul(jd);
-  const h = Math.floor(hour);
-  const m = Math.round((hour - h) * 60);
-  return new Date(Date.UTC(year, month - 1, day, h, m));
+  return new Date((jd - 2440587.5) * 86400000);
 }
 
 /** Convert a Date to Astronomy.FlexibleDateTime (AstroTime). */
@@ -136,7 +148,29 @@ export function getPlanetLongitude(jd: number, planetKey: string): number {
 }
 
 /**
- * Get full planet data: longitude and retrograde status.
+ * A body is `stationary` when it is within about this many days of an exact
+ * station (direct or retrograde): |speed| < |acceleration| × window, i.e. at
+ * its present rate of change its speed is less than a day from zero (or was
+ * zero less than a day ago). One rule for every body, so Mercury and Pluto
+ * get the same ±1-day window — a fixed speed threshold gave Mercury hours and
+ * Mars days. The `retrograde` flag is unaffected: it is still the sign of the
+ * speed, so a stationary body is also direct or retrograde.
+ */
+export const STATION_WINDOW_DAYS = 1;
+
+function isStationary(speed: number, accel: number): boolean {
+  return Math.abs(speed) < Math.abs(accel) * STATION_WINDOW_DAYS;
+}
+
+/** Half-width of the central difference used for speed: 1 hour. */
+const SPEED_STEP = 1 / 24;
+
+/**
+ * Get full planet data: longitude, instantaneous speed, retrograde status.
+ *
+ * Speed is a central difference over ±1 hour — the speed AT the moment, not
+ * the average over the following day. (A 1-day forward difference called the
+ * wrong direction for about 2% of charts, all within a day of a station.)
  */
 export function getPlanetData(jd: number, planetKey: string): {
   longitude: number;
@@ -144,36 +178,39 @@ export function getPlanetData(jd: number, planetKey: string): {
   distance: number;
   longitudeSpeed: number;
   retrograde: boolean;
+  stationary: boolean;
 } {
   if (planetKey === "Chiron" || planetKey === "chiron") {
-    const lon = getChironLongitude(jd);
-    const lon2 = getChironLongitude(jd + 1);
-    const speed = ((lon2 - lon + 540) % 360) - 180;
-    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: speed, retrograde: speed < 0 };
+    const { longitude, speed, accel } = getChironData(jd);
+    return {
+      longitude, latitude: 0, distance: 0, longitudeSpeed: speed,
+      retrograde: speed < 0, stationary: isStationary(speed, accel),
+    };
   }
   if (planetKey === "NorthNode" || planetKey === "North Node") {
     const lon = getMeanNodeLongitude(jd);
-    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: -0.053, retrograde: true };
+    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: -0.053, retrograde: true, stationary: false };
   }
   if (planetKey === "Lilith" || planetKey === "Black Moon Lilith") {
     const lon = getMeanLilithLongitude(jd);
     const lon2 = getMeanLilithLongitude(jd + 1);
     const speed = ((lon2 - lon + 540) % 360) - 180;
-    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: speed, retrograde: false };
+    return { longitude: lon, latitude: 0, distance: 0, longitudeSpeed: speed, retrograde: false, stationary: false };
   }
 
   const body = ASTRO_BODIES[planetKey];
   if (!body && body !== 0) {
-    return { longitude: 0, latitude: 0, distance: 0, longitudeSpeed: 0, retrograde: false };
+    return { longitude: 0, latitude: 0, distance: 0, longitudeSpeed: 0, retrograde: false, stationary: false };
   }
 
-  const time = jdToAstroTime(jd);
-  const lon = getGeoEclipticLongitude(body, time);
-
-  // Calculate speed by comparing position 1 day later
-  const time2 = jdToAstroTime(jd + 1);
-  const lon2 = getGeoEclipticLongitude(body, time2);
-  let speed = ((lon2 - lon + 540) % 360) - 180; // handle wrap-around
+  const lon = getGeoEclipticLongitude(body, jdToAstroTime(jd));
+  const before = getGeoEclipticLongitude(body, jdToAstroTime(jd - SPEED_STEP));
+  const after = getGeoEclipticLongitude(body, jdToAstroTime(jd + SPEED_STEP));
+  // Signed steps with wrap-around handled, then degrees per day (and per day²)
+  const back = ((lon - before + 540) % 360) - 180;
+  const fwd = ((after - lon + 540) % 360) - 180;
+  const speed = (back + fwd) / (2 * SPEED_STEP);
+  const accel = (fwd - back) / (SPEED_STEP * SPEED_STEP);
 
   return {
     longitude: lon,
@@ -181,6 +218,8 @@ export function getPlanetData(jd: number, planetKey: string): {
     distance: 0,
     longitudeSpeed: speed,
     retrograde: speed < 0,
+    // Sun and Moon never station
+    stationary: body !== Astronomy.Body.Sun && body !== Astronomy.Body.Moon && isStationary(speed, accel),
   };
 }
 
@@ -202,7 +241,7 @@ function getMeanLilithLongitude(jd: number): number {
   // Black Moon Lilith = lunar APOGEE = perigee + 180°
   let lon = perigee + 180;
   lon = ((lon % 360) + 360) % 360;
-  return Math.round(lon * 100) / 100;
+  return lon;
 }
 
 // ─── Mean Lunar Node ───
@@ -218,35 +257,31 @@ function getMeanNodeLongitude(jd: number): number {
     + T * T * T / 467441.0
     - T * T * T * T / 60616000.0;
   omega = ((omega % 360) + 360) % 360;
-  return Math.round(omega * 100) / 100;
+  return omega;
 }
 
 // ─── Chiron ───
-// Chiron longitude is now imported from ./chironEphemeris.ts
-// (correction-enhanced Keplerian model calibrated against known positions)
+// Chiron comes from ./chironEphemeris.ts (an interpolated Swiss Ephemeris table).
 
 // ─── Placidus House System ───
 
-/** Calculate obliquity of the ecliptic. */
+/**
+ * TRUE obliquity of the ecliptic (mean obliquity + nutation in obliquity), as
+ * Swiss Ephemeris uses for houses. The planets from astronomy-engine are on
+ * the true ecliptic of date, so the angles must be too.
+ */
 function getObliquity(jd: number): number {
-  const T = (jd - 2451545.0) / 36525.0;
-  // IAU formula
-  return 23.4392911 - 0.0130042 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
+  return Astronomy.e_tilt(Astronomy.MakeTime(jdToDate(jd))).tobl;
 }
 
-/** Greenwich Mean Sidereal Time in degrees. */
-function gmst(jd: number): number {
-  const T = (jd - 2451545.0) / 36525.0;
-  let theta = 280.46061837
-    + 360.98564736629 * (jd - 2451545.0)
-    + 0.000387933 * T * T
-    - T * T * T / 38710000.0;
-  return ((theta % 360) + 360) % 360;
-}
-
-/** Local Sidereal Time in degrees. */
+/**
+ * Local APPARENT Sidereal Time in degrees (Greenwich apparent sidereal time,
+ * which includes the equation of the equinoxes, plus east longitude). Mean
+ * sidereal time put the angles up to ~0.005° off in RAMC — up to a degree on
+ * the Ascendant near the polar circles.
+ */
 function lst(jd: number, longitude: number): number {
-  return ((gmst(jd) + longitude) % 360 + 360) % 360;
+  return ((Astronomy.SiderealTime(jdToDate(jd)) * 15 + longitude) % 360 + 360) % 360;
 }
 
 /**
@@ -371,8 +406,44 @@ function calcPlacidusCusp(
   return ((lambda % 360) + 360) % 360;
 }
 
+/** Signed difference a − b, normalised to (−180, 180]. */
+function difdeg(a: number, b: number): number {
+  const d = (((a - b) % 360) + 360) % 360;
+  return d > 180 ? d - 360 : d;
+}
+
+/** True when an ecliptic degree is east of the meridian (hour angle 180–360°). */
+function isEastOfMeridian(lambda: number, ramc: number, obliquity: number): boolean {
+  const ra = Math.atan2(Math.sin(lambda * DEG) * Math.cos(obliquity * DEG), Math.cos(lambda * DEG)) * RAD;
+  return Math.sin((ramc - ra) * DEG) < 0;
+}
+
+/**
+ * Porphyry cusp: each quadrant between the angles trisected in longitude.
+ * Swiss Ephemeris falls back to this where Placidus is undefined.
+ */
+function porphyryCusp(cuspNum: number, asc: number, mc: number): number {
+  const ic = (mc + 180) % 360;
+  const upper = ((asc - mc) % 360 + 360) % 360; // MC → ASC (houses 10–12)
+  const lower = ((ic - asc) % 360 + 360) % 360; // ASC → IC (houses 1–3)
+  switch (cuspNum) {
+    case 11: return (mc + upper / 3) % 360;
+    case 12: return (mc + (2 * upper) / 3) % 360;
+    case 2: return (asc + lower / 3) % 360;
+    case 3: return (asc + (2 * lower) / 3) % 360;
+    default: return 0;
+  }
+}
+
 /**
  * Calculate house cusps and angles using Placidus system.
+ *
+ * Placidus is undefined inside the polar circles (|latitude| > 90° − ε, about
+ * 66.56°): some ecliptic degrees never rise or set there, so their semi-arcs
+ * cannot be trisected. Inside them — the Swiss Ephemeris convention — the
+ * cusps fall back to Porphyry, and the result says so
+ * (`houseSystemUsed: "porphyry"`, `polarFallback: true`) so the UI can tell
+ * the user their houses are not Placidus.
  */
 export function getHouses(
   jd: number,
@@ -384,20 +455,32 @@ export function getHouses(
   mc: number;
   armc: number;
   vertex: number;
+  houseSystemUsed: "placidus" | "porphyry";
+  polarFallback: boolean;
 } {
   const ramc = lst(jd, longitude); // RAMC = Local Sidereal Time
   const obliquity = getObliquity(jd);
+  const polar = Math.abs(latitude) > 90 - obliquity;
 
-  const ascendant = calcAscendant(ramc, obliquity, latitude);
+  let ascendant = calcAscendant(ramc, obliquity, latitude);
   const mc = calcMC(ramc, obliquity);
+  // Inside the polar circle the horizon formula can return the WESTERN
+  // horizon point (the setting degree). The Ascendant is the degree rising in
+  // the east, so take the opposite point when that happens.
+  if (polar && !isEastOfMeridian(ascendant, ramc, obliquity)) {
+    ascendant = (ascendant + 180) % 360;
+  }
   const ic = (mc + 180) % 360;
   const dsc = (ascendant + 180) % 360;
 
-  // Calculate intermediate cusps using Placidus
-  const cusp11 = calcPlacidusCusp(11, ramc, obliquity, latitude);
-  const cusp12 = calcPlacidusCusp(12, ramc, obliquity, latitude);
-  const cusp2 = calcPlacidusCusp(2, ramc, obliquity, latitude);
-  const cusp3 = calcPlacidusCusp(3, ramc, obliquity, latitude);
+  // Intermediate cusps: Placidus, or Porphyry inside the polar circle
+  const cusp = (n: number) => polar
+    ? porphyryCusp(n, ascendant, mc)
+    : calcPlacidusCusp(n, ramc, obliquity, latitude);
+  const cusp11 = cusp(11);
+  const cusp12 = cusp(12);
+  const cusp2 = cusp(2);
+  const cusp3 = cusp(3);
 
   // Opposite cusps
   const cusp5 = (cusp11 + 180) % 360;
@@ -418,7 +501,7 @@ export function getHouses(
     mc,         // House 10 (MC)
     cusp11,     // House 11
     cusp12,     // House 12
-  ].map(c => Math.round(((c % 360 + 360) % 360) * 100) / 100);
+  ].map(trunc2);
 
   /**
    * Vertex — the ecliptic point on the WESTERN prime vertical (azimuth 270).
@@ -431,21 +514,38 @@ export function getHouses(
    * 270.00 exactly.
    */
   const coLat = 90 - latitude;
-  const vertex = calcAscendant(ramc + 180, obliquity, coLat);
+  let vertex = calcAscendant(ramc + 180, obliquity, coLat);
+  // Between the tropics that formula sometimes returns the anti-Vertex (the
+  // eastern point). The Vertex is always on the WESTERN half of the wheel
+  // (Swiss Ephemeris rule): if it lies on the MC→ASC→IC side, flip it.
+  if (Math.abs(latitude) < obliquity && difdeg(vertex, mc) > 0) {
+    vertex = (vertex + 180) % 360;
+  }
 
   return {
     cusps,
     ascendant: cusps[0],
     mc: cusps[9],
     armc: Math.round(ramc * 100) / 100,
-    vertex: Math.round(((vertex % 360 + 360) % 360) * 100) / 100,
+    vertex: trunc2(vertex),
+    houseSystemUsed: polar ? "porphyry" : "placidus",
+    polarFallback: polar,
   };
+}
+
+/**
+ * Truncate a longitude to 0.01° (0–359.99). Truncation, not rounding, matches
+ * posToSign: rounding 59.996° up to 60.00 would move a body still in Taurus
+ * into Gemini.
+ */
+function trunc2(lon: number): number {
+  return ((Math.floor(lon * 100 + 1e-6) % 36000 + 36000) % 36000) / 100;
 }
 
 /**
  * Calculate all planet positions for a given moment.
  *
- * Longitudes are rounded to 0.01° for storage/display unless `precise` is set.
+ * Longitudes are truncated to 0.01° for storage/display unless `precise` is set.
  * Pass precise for anything derived from the Moon's exact degree (nakshatra
  * fraction, Vimshottari dasha): the Moon covers 0.01° in about a minute.
  */
@@ -459,8 +559,9 @@ export function getAllPlanetPositions(jd: number, precise = false) {
     const data = getPlanetData(jd, name);
     return {
       name,
-      longitude: precise ? data.longitude : Math.round(data.longitude * 100) / 100,
+      longitude: precise ? data.longitude : trunc2(data.longitude),
       retrograde: data.retrograde,
+      stationary: data.stationary,
     };
   });
 }
@@ -474,26 +575,33 @@ export function getSpecialPoints(jd: number) {
   const southNodeLon = (northNode.longitude + 180) % 360;
   const lilith = getPlanetData(jd, "Lilith");
 
-  return [
+  const points = [
     {
       name: "Chiron" as const,
-      longitude: Math.round(chiron.longitude * 100) / 100,
+      longitude: trunc2(chiron.longitude),
       retrograde: chiron.retrograde,
+      stationary: chiron.stationary,
     },
     {
       name: "North Node" as const,
-      longitude: Math.round(northNode.longitude * 100) / 100,
+      longitude: trunc2(northNode.longitude),
       retrograde: northNode.retrograde,
+      stationary: false,
     },
     {
       name: "South Node" as const,
-      longitude: Math.round(southNodeLon * 100) / 100,
+      longitude: trunc2(southNodeLon),
       retrograde: true,
+      stationary: false,
     },
     {
       name: "Lilith" as const,
-      longitude: Math.round(lilith.longitude * 100) / 100,
+      longitude: trunc2(lilith.longitude),
       retrograde: false,
+      stationary: false,
     },
   ];
+  // Chiron is only known 1801–2200 (see chironEphemeris.ts); outside that,
+  // leave it out rather than invent a position.
+  return chironAvailable(jd) ? points : points.filter((p) => p.name !== "Chiron");
 }

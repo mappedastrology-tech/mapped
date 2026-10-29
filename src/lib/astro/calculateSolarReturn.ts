@@ -5,7 +5,7 @@
  * natal degree each year — essentially your astrological birthday chart.
  * It maps themes for the year ahead.
  *
- * Uses Swiss Ephemeris for planet positions and binary search for the
+ * Uses astronomy-engine (via ephemeris.ts) for planet positions and binary search for the
  * exact Sun-return moment.
  */
 

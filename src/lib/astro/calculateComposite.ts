@@ -66,6 +66,51 @@ interface CompositeAspect {
   orbit: number;
 }
 
+// ---------- Houses ----------
+
+/**
+ * Composite house cusps that always form a wheel in order.
+ *
+ * Taking each cusp's shorter-arc midpoint on its own breaks whenever the two
+ * charts' cusps are more than 180° apart for some houses but not others: one
+ * cusp lands on the far side and the wheel comes out of order (e.g. 198°,
+ * 226°, 77°…). Instead the composite MC is the NEAR midpoint of the two MCs
+ * (the usual convention), and every other cusp is the midpoint taken on the
+ * same side: both wheels are unrolled counter-clockwise from their MC, the
+ * second shifted by 360° if needed so the MCs are within 180°, and averaged
+ * house by house. An average of two increasing sequences is increasing, so the
+ * cusps stay in order, span exactly 360°, and opposite cusps stay opposite.
+ */
+function compositeCusps(houses1: HouseData[], houses2: HouseData[]): HouseData[] {
+  const byNum1 = new Map(houses1.map((h) => [h.number, h.absPosition]));
+  const byNum2 = new Map(houses2.map((h) => [h.number, h.absPosition]));
+  // House numbers in wheel order starting at the MC: 10, 11, 12, 1, … 9.
+  const order = Array.from({ length: 12 }, (_, i) => ((9 + i) % 12) + 1);
+  if (!order.every((n) => byNum1.has(n) && byNum2.has(n))) return [];
+
+  const unroll = (byNum: Map<number, number>) => {
+    const out: number[] = [];
+    for (const n of order) {
+      const pos = byNum.get(n)!;
+      if (out.length === 0) out.push(pos);
+      else {
+        const prev = out[out.length - 1];
+        out.push(prev + ((((pos - prev) % 360) + 360) % 360));
+      }
+    }
+    return out;
+  };
+  const a = unroll(byNum1);
+  const b = unroll(byNum2);
+  const shift = a[0] - b[0] > 180 ? 360 : b[0] - a[0] > 180 ? -360 : 0;
+
+  const result = order.map((number, i) => {
+    const mid = ((((a[i] + b[i] + shift) / 2) % 360) + 360) % 360;
+    return { number, ...posToSign(mid) };
+  });
+  return result.sort((x, y) => x.number - y.number);
+}
+
 // ---------- Main export ----------
 
 export function calculateComposite(data: CompositeInput) {
@@ -97,22 +142,7 @@ export function calculateComposite(data: CompositeInput) {
   }
 
   // -- Composite houses --
-  const houses1 = new Map((chart1.houses || []).map((h) => [h.number, h]));
-  const houses2 = new Map((chart2.houses || []).map((h) => [h.number, h]));
-
-  const compositeHouses: HouseData[] = [];
-  for (let num = 1; num <= 12; num++) {
-    const h1 = houses1.get(num);
-    const h2 = houses2.get(num);
-    if (h1 && h2) {
-      const mid = midpoint(h1.absPosition, h2.absPosition);
-      const info = posToSign(mid);
-      compositeHouses.push({
-        number: num,
-        ...info,
-      });
-    }
-  }
+  const compositeHouses = compositeCusps(chart1.houses || [], chart2.houses || []);
 
   // -- Assign houses to planets --
   if (compositeHouses.length > 0) {
@@ -170,7 +200,11 @@ export function calculateComposite(data: CompositeInput) {
   }
 
   // -- Aspects between composite planets --
-  const allBodies = [...compositePlanets, ...compositeSpecial];
+  // The South Node is always exactly opposite the North Node, so every aspect
+  // to it restates one to the North Node (conjunct SN = opposite NN), and
+  // "North Node opposition South Node, orb 0" is not an aspect at all. Aspect
+  // the North Node only.
+  const allBodies = [...compositePlanets, ...compositeSpecial].filter((b) => b.name !== "South Node");
   const aspects: CompositeAspect[] = [];
   for (let i = 0; i < allBodies.length; i++) {
     for (let j = i + 1; j < allBodies.length; j++) {
