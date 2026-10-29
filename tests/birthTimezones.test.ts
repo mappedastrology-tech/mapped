@@ -131,13 +131,21 @@ const fmt = (p: { sign: string; position: number } | null) =>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const chart = (c: Record<string, unknown>): any => calculateChart({ name: "", ...c } as never);
 
+// The engine agrees with Swiss to within 0.02°, and stored positions are
+// truncated to 0.01° (so nothing ever reads "30°"), so a reference minute can
+// land one arcminute low. Compare within 1.5′ rather than to the exact minute.
+function near(p: { sign: string; position: number }, sign: string, deg: number, min: number) {
+  assert.equal(p.sign, sign, fmt(p) ?? "");
+  assert.ok(Math.abs(p.position - (deg + min / 60)) <= 1.5 / 60, `${fmt(p)} vs ${sign} ${deg}°${min}′`);
+}
+
 test("reference charts land on the Swiss Ephemeris angles", () => {
   const einstein = chart({ birthDate: "1879-03-14", birthTime: "11:30", latitude: 48.4011, longitude: 9.9876, timezone: "Europe/Berlin" });
-  assert.equal(fmt(einstein.ascendant), "Can 11°38′");
-  assert.equal(fmt(einstein.midheaven), "Pis 12°50′");
+  near(einstein.ascendant, "Can", 11, 38);
+  near(einstein.midheaven, "Pis", 12, 50);
 
   const obama = chart({ birthDate: "1961-08-04", birthTime: "19:24", latitude: 21.3069, longitude: -157.8583, timezone: "Pacific/Honolulu" });
-  assert.equal(fmt(obama.ascendant), "Aqu 18°03′");
+  near(obama.ascendant, "Aqu", 18, 3);
 
   // Iceland was UTC−1 until 1968; the runtime's own data says GMT.
   const bjork = chart({ birthDate: "1965-11-21", birthTime: "07:50", latitude: 64.1466, longitude: -21.9426, timezone: "Atlantic/Reykjavik" });
