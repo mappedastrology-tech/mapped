@@ -22,6 +22,17 @@ const nextConfig: NextConfig = isAppBuild
       // for deep paths like /library/tarot-foundations.
       trailingSlash: true,
     }
-  : {};
+  : {
+      // geo-tz (birthplace → IANA zone, lib/astro/geoTimezone) reads its
+      // boundary data from node_modules/geo-tz/data at runtime via __dirname.
+      // Kept out of the bundle so that path resolves, and the data files are
+      // traced into the routes that use it.
+      serverExternalPackages: ["geo-tz"],
+      outputFileTracingIncludes: {
+        "/api/timezone": ["./node_modules/geo-tz/data/timezones.geojson.*"],
+        "/api/chart/calculate": ["./node_modules/geo-tz/data/timezones.geojson.*"],
+        "/api/chart/solar-return": ["./node_modules/geo-tz/data/timezones.geojson.*"],
+      },
+    };
 
 export default nextConfig;

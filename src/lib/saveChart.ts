@@ -20,7 +20,8 @@ interface ChartData {
   cityName?: string;
   latitude: number;
   longitude: number;
-  timezone?: string;
+  /** The birthplace's IANA zone (or a user override); null when it could not be resolved. */
+  timezone?: string | null;
   zodiacSystem?: string;
   ayanamsa?: string;
   houseSystem?: string;
