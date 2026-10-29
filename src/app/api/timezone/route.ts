@@ -19,8 +19,12 @@ async function handleGET(request: NextRequest) {
   if (!timezone) {
     return NextResponse.json({ error: "lat and lng must be valid coordinates" }, { status: 400 });
   }
-  // Zone boundaries move rarely; a day of caching is safe.
-  return NextResponse.json({ timezone }, { headers: { "Cache-Control": "public, max-age=86400" } });
+  // Zone boundaries move rarely, so the browser may keep this for a day — but
+  // only the browser. Netlify's CDN keys cached responses without lat/lng, so a
+  // shared cache served the first answer (Phoenix) to Seoul and Amsterdam.
+  return NextResponse.json({ timezone }, {
+    headers: { "Cache-Control": "private, max-age=86400", "Netlify-CDN-Cache-Control": "no-store" },
+  });
 }
 
 export const GET = withCors(handleGET);
