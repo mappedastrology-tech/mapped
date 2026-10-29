@@ -31,6 +31,8 @@ import { STORE_DECKS, formatPrice } from "@/lib/deckStore";
 import { claimFreeDeck } from "@/lib/freeDeck";
 import DeckStack from "@/components/tarot/DeckStack";
 import { friendlyAuthError } from "@/lib/authErrors";
+import { signInWithProvider } from "@/lib/socialSignIn";
+import { AppleIcon, GoogleIcon } from "@/components/SocialIcons";
 
 /**
  * Eleven, not ten: the account ask is its own screen now (step 4).
@@ -355,7 +357,7 @@ export default function OnboardingPage() {
       const missing =
         !name.trim() ? { msg: "Please add your name.", id: "signup-name" }
         : !birthDate ? { msg: "Please add your birth date.", id: "signup-birthdate" }
-        : timePrecision === null ? { msg: "Please say how sure you are of your birth time \u2014 exact, a rough idea, or you don\u2019t know.", id: "signup-birthtime" }
+        : timePrecision === null ? { msg: "Please say how sure you are of your birth time \u2014 exact, a rough idea, or you don\u2019t know.", id: "signup-birthtime-precision" }
         : timePrecision !== "unknown" && !birthTime ? { msg: "Please add your birth time, or choose \u201cDon\u2019t know\u201d.", id: "signup-birthtime" }
         : { msg: "Please choose your birth city from the list of suggestions.", id: "signup-city" };
       setError(missing.msg);
@@ -405,6 +407,21 @@ export default function OnboardingPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  /**
+   * Step 4, with Apple or Google instead of email. Keeps the chart where
+   * /auth/verify looks for it, then hands off to the provider (an in-app
+   * browser sheet inside the native app — see lib/socialSignIn).
+   */
+  async function social(provider: "google" | "apple") {
+    setError("");
+    try {
+      const result = sessionStorage.getItem("chartResult") || (chartData ? JSON.stringify(chartData) : null);
+      if (result) sessionStorage.setItem("chartResult", result);
+    } catch { /* the step restore still has mapped:chartData */ }
+    const { error: err } = await signInWithProvider(provider);
+    if (err) setError(friendlyAuthError(err));
   }
 
   /**
@@ -940,7 +957,7 @@ export default function OnboardingPage() {
                         type="button"
                         role="radio"
                         aria-checked={timePrecision === key}
-                        id={key === "exact" ? "signup-birthtime" : undefined}
+                        id={key === "exact" ? "signup-birthtime-precision" : undefined}
                         onClick={() => {
                           setTimePrecision(key);
                           setUnknownTime(key === "unknown");
@@ -1214,7 +1231,8 @@ export default function OnboardingPage() {
                 Your chart&rsquo;s built. Make an account and it&rsquo;s here whenever you open Mapped.
               </p>
               <p className="text-muted text-[11px] mb-5 leading-relaxed">
-                Your first {TRIAL_DAYS} days include everything, Dolly and all &mdash; no card, no charge.
+                {/* One string, so the number and "days" can never run together. */}
+                {`Your first ${TRIAL_DAYS} days include everything, Dolly and all — no card, no charge.`}
               </p>
 
               <div className="flex flex-col gap-3">
@@ -1231,7 +1249,37 @@ export default function OnboardingPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="h-px bg-foreground/12 my-1" />
+                    {/*
+                      Apple and Google, the same as the sign-in screen. Through
+                      signInWithProvider, so the native app keeps its in-app
+                      browser sheet. The chart is already in sessionStorage;
+                      /auth/verify saves it on the way back, and the step
+                      restore brings them back here signed in.
+                      Apple first — the iOS convention, and Guideline 4.8.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => social("apple")}
+                      className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-card border border-foreground/15 text-foreground text-sm font-medium active:scale-[0.98] transition-all"
+                      style={{ minHeight: 44 }}
+                    >
+                      <AppleIcon />
+                      Continue with Apple
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => social("google")}
+                      className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-card border border-foreground/15 text-foreground text-sm font-medium active:scale-[0.98] transition-all"
+                      style={{ minHeight: 44 }}
+                    >
+                      <GoogleIcon />
+                      Continue with Google
+                    </button>
+                    <div className="flex items-center gap-3 my-1">
+                      <div className="flex-1 h-px bg-foreground/12" />
+                      <span className="text-muted text-xs">or with email</span>
+                      <div className="flex-1 h-px bg-foreground/12" />
+                    </div>
                     <div className="flex flex-col gap-2">
                       <label className={labelClass}>Create your account</label>
                       <input
