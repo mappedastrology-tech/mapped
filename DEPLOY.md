@@ -7,8 +7,10 @@ Live site: https://mapped-astrology.netlify.app
 Netlify builds and deploys `main` on every merge, and builds a deploy preview
 for every pull request. There is nothing to run by hand.
 
-The old Vercel project (mapped-olive.vercel.app) only redirects to Netlify now —
-`vercel.json` holds that redirect and nothing else. Its production deploys had
+The old Vercel project (mapped-olive.vercel.app) is being retired in favour of
+Netlify. `vercel.json` is empty for now so its deploys succeed again; it becomes
+a permanent redirect to Netlify once the Stripe live webhook is confirmed to
+point at Netlify (Stripe does not follow redirects). Its production deploys had
 been failing since Sep 11 (the hourly cron is not allowed on Vercel's Hobby
 plan), so it was serving a seven-week-old build. Don't add anything back to it.
 

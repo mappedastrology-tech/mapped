@@ -1,9 +1,1 @@
-{
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "destination": "https://mapped-astrology.netlify.app/$1",
-      "permanent": true
-    }
-  ]
-}
+{}
