@@ -44,12 +44,12 @@ INSERT INTO kb_dignities (planet, sign, dignity_type, summary, what_it_means) VA
  'Information moves through you like electricity. You learn by talking, asking, and linking ideas. You''re the person who always has the perfect word or the interesting fact. Your mind is your greatest tool.'),
 
 ('Mercury', 'Virgo', 'domicile',
- 'Mercury rules Virgo too. But here it''s precise, analytical, and detail-oriented. Your mind works like a fine instrument—nothing gets past you.',
+ 'Mercury rules Virgo too—and is exalted here as well, the only planet whose exaltation falls in a sign it rules. Here it''s precise, analytical, and detail-oriented. Your mind works like a fine instrument—nothing gets past you.',
  'You notice what everyone else misses. You think in systems and processes. Your communication is clear and practical. You''re the person who actually reads the fine print and catches the error.'),
 
-('Mercury', 'Aquarius', 'exalted',
- 'Mercury is exalted in Aquarius. Your thinking is original, future-oriented, and unbound by convention. You see patterns others won''t see for years.',
- 'Your mind works differently and that''s your strength. You think in systems, innovations, and possibilities. You''re not interested in how things have always been done—you want to know how they could be.'),
+-- Mercury's exaltation is Virgo (Ptolemy, and every traditional dignity table).
+-- An earlier version of this file listed Aquarius; kb_dignities is unique on
+-- (planet, sign), so the exaltation is carried in the Virgo row above.
 
 ('Mercury', 'Sagittarius', 'detriment',
  'Mercury is in detriment in Sagittarius. Your mind thinks big—so big that details feel like obstacles. You see the forest but trip over every tree.',

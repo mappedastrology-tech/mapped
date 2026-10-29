@@ -1864,14 +1864,14 @@ export default function AlmanacPageContent() {
           </div>
         )}
 
-        {/* ━━━ SABIAN SYMBOL — today's image ━━━ */}
+        {/* ━━━ DEGREE IMAGE — today's image (written for Mapped; not the Sabian set) ━━━ */}
         <div
           className="px-[22px] py-[22px]"
           style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
         >
           <p className="text-[10px] uppercase font-bold mb-3" style={{ letterSpacing: "0.14em", color: "var(--brass)" }}>
             {sabianSymbol.sign} {sabianSymbol.degree}&deg; · Today&apos;s image
-            <InfoTip text="The Sabian Symbol for today's Sun degree. Each of the 360 degrees of the zodiac has a symbolic image, channeled in 1925. Think of it as a daily meditation image based on where the Sun actually is." />
+            <InfoTip text="An image for today's Sun degree, written for Mapped. The idea of an image for each of the zodiac's 360 degrees comes from the Sabian Symbols tradition; these images are our own. Think of it as a daily reflection based on where the Sun actually is." />
           </p>
           <p
             className="text-[19px] mb-3"

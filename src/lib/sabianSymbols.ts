@@ -1,16 +1,25 @@
 /**
- * Sabian Symbols — 360 degree-based symbolic images for each degree of the zodiac.
- * Originally channeled by Marc Edmund Jones and Elsie Wheeler in 1925,
- * later revised by Dane Rudhyar. Each degree (1-30) of each sign has a unique symbol.
+ * Degree images — 360 short images, one for each degree of the zodiac, written
+ * for Mapped.
  *
- * Used in the almanac to show the Sabian symbol for the current Sun degree.
+ * These are NOT the Sabian Symbols. The idea of an image per degree comes from
+ * that tradition (Marc Edmund Jones and Elsie Wheeler, 1925; later Dane
+ * Rudhyar), but every image and keynote in this file is original Mapped writing.
+ * This file used to credit them to Jones and Wheeler, which put words in their
+ * mouths; the screens now call them "degree images, written for Mapped".
+ * If the authentic 1925 set is ever wanted, source it from a primary text —
+ * do not edit these toward it from memory.
+ *
+ * Function and type names keep "Sabian" only to avoid churn in callers.
+ *
+ * Used in the almanac to show the image for the current Sun degree.
  */
 
 export interface SabianSymbol {
   degree: number;       // 1-30 within the sign
   sign: string;
   symbol: string;       // the image/phrase
-  keynote: string;      // Rudhyar-style one-line interpretation
+  keynote: string;      // one-line reflection, written for Mapped
 }
 
 // Full 360 symbols organized by sign, degree 1-30

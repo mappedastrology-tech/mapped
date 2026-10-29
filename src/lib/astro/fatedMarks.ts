@@ -92,7 +92,7 @@ export const CATEGORY_LABEL: Record<FatedCategory, string> = {
 };
 
 export const CATEGORY_KEYWORDS: Record<FatedCategory, string[]> = {
-  destiny: ["fated meeting", "growth direction", "pulled forward"],
+  destiny: ["significant meeting", "growth direction", "pulled forward"],
   karmic: ["past-life familiarity", "old patterns", "unfinished business"],
   binding: ["duty", "commitment", "time-tested"],
   soulmate: ["soul-deep", "transformation", "intense"],
@@ -169,7 +169,7 @@ const SN_DYNAMIC: Record<string, string> = {
   Pluto: "an old, deep entanglement resurfacing — powerful and unfinished, pulling toward repeating rather than releasing.",
   Chiron: "an old shared ache, a wound that feels older than this meeting — tender, and ripe for healing if you don't pick the scab.",
   Lilith: "a wild, familiar pull toward old, untamed versions of yourselves — magnetic, and worth examining before you follow it.",
-  Vertex: "the distinct sense of resuming something already begun — fated and familiar, not to be mistaken for finished.",
+  Vertex: "the distinct sense of resuming something already begun — familiar, and not to be mistaken for finished.",
 };
 
 function snDynamic(other: string): string {
@@ -286,9 +286,9 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       return `Their ${other} ${HARD_VERB[aspect]} your North Node — their ${themeOf(other)} challenges the direction you're growing. Growth through tension: this bond moves you forward by testing you.`;
     }
     if (other === "Sun") {
-      if (isCity) return "This city's identity aligns with your soul's growth direction. Living here pulls you toward who you're meant to become — it's not a coincidence you ended up in this place.";
+      if (isCity) return "This city's identity aligns with your growth direction. Living here can pull you toward who you're becoming — notice what this place draws out of you.";
       if (isFamily) return "Their Sun lights up your growth direction. This family member models something your soul is trying to learn in this lifetime.";
-      return "Their Sun lights up your soul's growth direction. This person feels like they're pulling you toward your destiny.";
+      return "Their Sun lights up your growth direction. This person can feel like they're pulling you toward your future.";
     }
     if (other === "Moon") {
       if (isCity) return "The emotional rhythm of this city nurtures the direction you're growing toward. The way this place makes you feel is part of your evolution.";
@@ -307,23 +307,23 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       return "Their Mars activates your North Node — this person motivates you toward your life's purpose, sometimes through friction.";
     }
     if (other === "Saturn") {
-      if (isCity) return "Saturn and the North Node between you and this city — you have karmic lessons to learn in this place. The city's structures and limitations are teaching you something you can't learn anywhere else.";
-      return "Saturn and the North Node together — this is a karmic contract. You're here to teach each other something neither of you can learn alone.";
+      if (isCity) return "Saturn and the North Node between you and this city — this place can feel like a teacher. Its structures and limits carry a lesson worth taking seriously.";
+      return "Saturn and the North Node together — this bond can feel like a serious lesson. Astrologers read it as two people who can teach each other about responsibility and growth.";
     }
     if (other === "Pluto") {
-      if (isCity) return "Pluto on your North Node from this city's chart is a soul-level tie to this place. Living here transforms you in the direction of your destiny, whether comfortable or not.";
-      if (isFamily) return "Pluto on the North Node is a soul-level family bond. This person transforms you in the direction of your destiny, whether comfortable or not.";
-      return "Pluto on the North Node is a soul-level bond. This person transforms you in the direction of your destiny, whether you want it or not.";
+      if (isCity) return "Pluto on your North Node from this city's chart is a deep tie to this place. Living here can change you in the direction you're growing, not always comfortably.";
+      if (isFamily) return "Pluto on the North Node is a deep family bond. This person can change you in the direction you're growing, not always comfortably.";
+      return "Pluto on the North Node is a deep bond. This person can change you in the direction you're growing, not always comfortably. You still get to choose what you take from it.";
     }
-    if (isCity) return `The city's ${other} connects to your North Node — this place is linked to your soul's growth direction. There's a reason you're drawn here.`;
+    if (isCity) return `The city's ${other} connects to your North Node — this place is linked to your growth direction. Notice what draws you here.`;
     const nnVariants: Record<string, string> = {
       Mercury: "Their Mercury connects to your North Node — conversations with them keep steering you toward your future. They put language to where you're headed.",
-      Jupiter: "Their Jupiter expands your North Node — they open doors in exactly the direction you're meant to grow. Luck seems to follow this connection.",
-      Uranus: "Their Uranus electrifies your North Node — they disrupt you in the direction of your destiny. Growth around this person tends to arrive suddenly.",
+      Jupiter: "Their Jupiter expands your North Node — they encourage you in the direction you're growing. This connection tends to feel generous.",
+      Uranus: "Their Uranus electrifies your North Node — they shake you loose in the direction you're growing. Growth around this person can feel sudden.",
       Neptune: "Their Neptune touches your North Node — they dissolve the practical excuses between you and your path. They inspire rather than instruct.",
       Chiron: "Their Chiron meets your North Node — their own healing journey shows you something about where you're going. Their scars are a map you can use.",
       Lilith: "Their Lilith provokes your North Node — they awaken an untamed part of you that your growth actually requires. Uncomfortable, and useful.",
-      Vertex: "Their Vertex meets your North Node — the meeting itself feels arranged, and it points exactly where you're meant to grow.",
+      Vertex: "Their Vertex meets your North Node — the meeting itself can feel uncanny, and it points toward where you're growing.",
     };
     return nnVariants[other] ?? `Their ${other} connects to your North Node — this person is linked to your soul's growth direction in this lifetime.`;
   }
@@ -338,7 +338,7 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     if (SOFT_ASPECTS.has(aspect)) return `Your ${other} flows with their North Node — your ${themeOf(other)} supports the direction they're growing. You make their evolution feel more possible just by being yourself.`;
     if (HARD_ASPECTS.has(aspect)) return `Your ${other} ${HARD_VERB[aspect]} their North Node — your ${themeOf(other)} challenges the direction they're growing; you push each other's evolution. The tension is part of the point.`;
     if (isFamily) return `Your ${other} sits on their North Node — your ${themeOf(other)} models something this family member's soul is trying to learn. You're part of their growth direction.`;
-    return `Your ${other} sits on their North Node — your ${themeOf(other)} points exactly where they're trying to grow. To them, you feel like part of the plan.`;
+    return `Your ${other} sits on their North Node — your ${themeOf(other)} points toward where they're trying to grow. To them, you may feel like encouragement.`;
   }
 
   // ── Your South Node ──
@@ -370,27 +370,27 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     const strong = aspect === "conjunction" || aspect === "opposition";
 
     const VERTEX_PAIR: Record<string, string> = {
-      Sun: `${subj} lands on ${vtx} — the kind of meeting that feels arranged in advance. Something shifts on contact; you sense purpose before you have reasons.`,
-      Moon: `${subj} meets ${vtx} — instant emotional recognition, like the encounter was always going to happen. Comfort that arrives faster than it should.`,
-      Mercury: `${subj} hits ${vtx} — a conversation that reroutes you. From the first exchange it feels significant, as if you were meant to hear exactly this.`,
-      Venus: `${subj} touches ${vtx} — fated attraction. The pull is immediate and a little uncanny, the sense that this meeting was always on the map.`,
-      Mars: `${subj} activates ${vtx} — a charged, destined spark. It lights a fire that wasn't chosen; the encounter feels propelled by something larger.`,
-      Jupiter: `${subj} expands ${vtx} — a lucky, opportune meeting. A door opens at exactly the right moment, and the timing feels arranged.`,
-      Saturn: `${subj} anchors ${vtx} — a fated meeting that asks for commitment. Serious, lasting, and weighted with an obligation neither of you quite chose.`,
-      Uranus: `${subj} strikes ${vtx} — a sudden, out-of-the-blue meeting that changes your trajectory. Unexpected, electric, and oddly inevitable.`,
-      Neptune: `${subj} veils ${vtx} — a dreamlike, fated pull. The encounter feels enchanted, hard to see clearly, and impossible to dismiss.`,
-      Pluto: `${subj} seizes ${vtx} — a destined meeting with real gravity. Transformation arrives whether you're ready or not; neither of you leaves unchanged.`,
-      Vertex: "Your Vertices meet — your fated axes line up. However you came together, it carries the unmistakable feeling of an appointment kept.",
+      Sun: `${subj} lands on ${vtx} — the kind of meeting that can feel significant from the start. Something shifts on contact; you may sense purpose before you have reasons.`,
+      Moon: `${subj} meets ${vtx} — instant emotional recognition, like you've known each other longer than you have. Comfort that arrives faster than expected.`,
+      Mercury: `${subj} hits ${vtx} — a conversation that reroutes you. From the first exchange it can feel significant, as if it came at just the right moment.`,
+      Venus: `${subj} touches ${vtx} — a strong attraction. The pull is immediate and a little uncanny.`,
+      Mars: `${subj} activates ${vtx} — a charged spark. It lights a fire quickly; the encounter can feel bigger than the two of you.`,
+      Jupiter: `${subj} expands ${vtx} — an opportune-feeling meeting. A door seems to open at the right moment.`,
+      Saturn: `${subj} anchors ${vtx} — a meeting with a serious tone. It carries a sense of responsibility, and asks what each of you is willing to commit to.`,
+      Uranus: `${subj} strikes ${vtx} — a sudden, out-of-the-blue meeting that can shake up your sense of direction. Unexpected and electric.`,
+      Neptune: `${subj} veils ${vtx} — a dreamlike pull. The encounter feels enchanted and hard to see clearly, which is a reason to look twice.`,
+      Pluto: `${subj} seizes ${vtx} — a meeting with real gravity. It can stir deep change, and it asks you both to stay honest about power.`,
+      Vertex: "Your Vertices meet — the axes astrologers associate with significant meetings line up. However you came together, it can feel like more than coincidence.",
     };
     // Platonic: keep the Venus contact about values/closeness, not attraction.
-    if (isPlatonic) VERTEX_PAIR.Venus = `${subj} touches ${vtx} — a fated pull. The connection is immediate and a little uncanny, the sense that this meeting was always on the map.`;
+    if (isPlatonic) VERTEX_PAIR.Venus = `${subj} touches ${vtx} — a strong pull. The connection is immediate and a little uncanny.`;
 
     if (strong) {
-      return VERTEX_PAIR[other] ?? `${subj} contacts ${vtx} — a meeting that carries the signature of fate. It feels purposeful rather than accidental.`;
+      return VERTEX_PAIR[other] ?? `${subj} contacts ${vtx} — a meeting that can feel purposeful rather than accidental.`;
     }
     // Soft/hard aspects to the Vertex are weaker but still flavored by direction.
-    if (HARD_ASPECTS.has(aspect)) return `${subj} ${HARD_VERB[aspect]} ${vtx} — a fated pull with friction. The meeting matters, but it arrives crosswise, asking for adjustment.`;
-    return `${subj} aspects ${vtx} — a quieter thread of fate. The connection feels meant, even if it announces itself softly.`;
+    if (HARD_ASPECTS.has(aspect)) return `${subj} ${HARD_VERB[aspect]} ${vtx} — a significant pull with friction. The meeting matters, but it arrives crosswise, asking for adjustment.`;
+    return `${subj} aspects ${vtx} — a quieter thread. The connection can feel meaningful, even if it announces itself softly.`;
   }
 
   // ── Chiron (the wound) ──
@@ -418,7 +418,7 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       Saturn: "Their Saturn steadies your Chiron — slow, patient healing. They don't try to fix you; they stay. That's the medicine.",
       Uranus: "Their Uranus aspects your Chiron — they break your patterns around an old wound. Their unconventional take frees something you'd resigned yourself to.",
       Neptune: "Their Neptune aspects your Chiron — their compassion softens the edges of an old hurt. Around them it's easier to forgive, including yourself.",
-      Pluto: "Their Pluto aspects your Chiron — deep surgery. This connection goes for the root of an old wound rather than managing symptoms.",
+      Pluto: "Their Pluto aspects your Chiron — deep work. This connection goes for the root of an old wound rather than its surface.",
       Lilith: "Their Lilith aspects your Chiron — they press exactly where you were shamed for being too much. It stings, then it frees something.",
     };
     return chironVariants[other] ?? `Their ${other} aspects your Chiron — this person can help you heal something you've been carrying for a long time, if you let them.`;
@@ -441,15 +441,15 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       Sun: "Saturn settles onto a sense of self — respect and real weight, with the shadow of feeling measured or judged. It's the contact that makes you both grow up.",
       Moon: "Saturn meets the emotional life — genuine security and steadiness, with an occasional chill or sense of holding back. Comfort here has to be earned.",
       Mercury: "Saturn gives weight to how you think and talk — serious, considered, sometimes critical. You take each other's words seriously, for better and worse.",
-      Venus: "the classic commitment contact — Saturn makes the affection durable and proven over time. It can feel like duty, but it's the kind of love that lasts.",
+      Venus: "the classic commitment contact — Saturn gives the affection weight and patience. It can feel like duty; the question is whether it also feels like care.",
       Mars: "Saturn brakes the drive — discipline and staying power at best, a foot on the other's gas pedal at worst. The work is patience over frustration.",
       Jupiter: "the brake meets the accelerator — one of you expands, the other contains, and together you find a realistic middle. Patience versus optimism, ongoing.",
       Saturn: "you're built on the same timeline — same sense of duty, same fears, same definition of serious. Deep structural alignment, with the risk of reinforcing each other's limits.",
       Uranus: "structure meets the wildcard — Saturn wants the rules, the other wants to break them. This is the long negotiation between safety and freedom.",
       Neptune: "Saturn gives form to the dreamy and formless — at best it makes ideals real, at worst it brings doubt to something that was beautifully vague.",
-      Pluto: "Saturn and Pluto together — control, endurance, and slow transformation. This bond doesn't do casual, and it's hard to walk away from.",
+      Pluto: "Saturn and Pluto together — control, endurance, and slow transformation. This bond doesn't do casual; notice where endurance starts to look like control.",
       Lilith: "Saturn meets the untamed — friction between control and what refuses to be controlled. It can repress, or it can give wild things lasting shape.",
-      Vertex: "Saturn anchors a fated point — the meeting carries duty and longevity, the sense of a commitment written before you arrived.",
+      Vertex: "Saturn anchors the Vertex — the meeting carries a sense of duty and staying power, and asks what you each actually want to commit to.",
     };
     const frag = SATURN_PAIR[other] ?? "Saturn lends weight, structure, and a sense of duty — not the easiest contact, but a steadying, lasting one.";
     if (isCity) {
@@ -474,19 +474,19 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       Sun: "power meets identity — magnetic and a little dangerous, empowering and overpowering at once. Used consciously it transforms; used unconsciously it controls.",
       Moon: "an emotional depth charge — intimacy and intensity, with the occasional power struggle over closeness. Nothing here stays surface-level.",
       Mercury: "conversations that go deep or not at all — words carry weight and a probing edge, and you read each other's subtext. Few small-talk moments.",
-      Venus: "obsessive, magnetic attraction — love that consumes and possesses in equal measure. It transforms how you both understand desire, and rarely lets go cleanly.",
-      Mars: "raw power and drive — tremendous force when you're aligned, open warfare when you're not. Passion and conflict share a wire here.",
+      Venus: "intense, magnetic attraction — it can transform how you both understand desire. Notice if intensity starts to look like possession.",
+      Mars: "raw power and drive — tremendous force when you're aligned, real conflict when you're not. Passion and conflict share a wire here.",
       Jupiter: "all-or-nothing growth — together you go big, dig deep, and change on a large scale. The shadow is excess with no off switch.",
       Saturn: "control, endurance, and slow transformation — a heavy, enduring bond that doesn't do casual.",
-      Lilith: "the deep and the untamed combined — primal, magnetic, and not entirely safe. Shadow-work territory.",
-      Vertex: "a destined meeting with gravity — Pluto pulls a fated point into deep transformation. You don't leave this one as you arrived.",
+      Lilith: "the deep and the untamed combined — primal and magnetic, and worth handling with care. Shadow-work territory.",
+      Vertex: "a meeting with gravity — Pluto pulls the Vertex into deep change. It can leave a lasting mark.",
     };
     // Platonic: keep Pluto's intensity about depth/loyalty/power, not romance.
     if (isPlatonic) {
-      PLUTO_PAIR.Venus = "intense, all-consuming closeness — devotion that runs deep and a little possessive. It transforms you both, and rarely lets go cleanly.";
+      PLUTO_PAIR.Venus = "intense closeness — devotion that runs deep. It can transform you both; notice if closeness starts to feel like control.";
       PLUTO_PAIR.Moon = "an emotional depth charge — deep closeness and intensity, with the occasional power struggle over how close to get. Nothing here stays surface-level.";
-      PLUTO_PAIR.Mars = "raw power and drive — tremendous force when you're aligned, open warfare when you're not. Intensity and conflict share a wire here.";
-      PLUTO_PAIR.Lilith = "the deep and the untamed combined — powerful, provocative, and not entirely safe. Shadow-work territory.";
+      PLUTO_PAIR.Mars = "raw power and drive — tremendous force when you're aligned, real conflict when you're not. Intensity and conflict share a wire here.";
+      PLUTO_PAIR.Lilith = "the deep and the untamed combined — powerful and provocative, and worth handling with care. Shadow-work territory.";
     }
     const frag = PLUTO_PAIR[other] ?? "deep, transformative power working below the surface — you mostly notice the change after it's done.";
     if (isCity) {
@@ -529,7 +529,7 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
       Moon: `${subj} stirs ${lil} — reaching the feelings kept underground. Intimate and intense, with a pull toward the taboo.`,
       Mercury: `${subj} speaks to ${lil} — saying the things others won't, and it's thrilling. Conversations go where polite ones don't.`,
       Venus: `${subj} meets ${lil} — potent, forbidden-feeling attraction. Desire here is uninhibited and not especially interested in respectability.`,
-      Mars: `${subj} seizes ${lil} — raw, primal heat. This is the contact that turns attraction into something almost compulsive.`,
+      Mars: `${subj} seizes ${lil} — raw, primal heat. Notice whether the pull feels chosen.`,
       Jupiter: `${subj} amplifies ${lil} — permission to want more, louder. Expansive and a little excessive, it encourages the untamed side.`,
       Uranus: `${subj} electrifies ${lil} — sudden, rule-breaking attraction. It frees the wild part fast, and not always comfortably.`,
       Neptune: `${subj} dissolves into ${lil} — a hazy, bewitching pull. Hard to define and harder to resist, with a fantasy-like charge.`,
@@ -537,6 +537,6 @@ function getFatedReason(p1Name: string, p2Name: string, aspect: string, context:
     return LILITH_PAIR[other] ?? `${subj} contacts ${lil} — awakening the untamed, taboo side. Magnetic, uncomfortable, and worth examining.`;
   }
 
-  if (isCity) return "This contact carries a fated quality — your connection to this place has a purposeful, karmic dimension.";
-  return "This contact carries a fated quality — it may not be comfortable, but it's purposeful.";
+  if (isCity) return "This is a contact astrologers read as significant — notice what this place stirs in you.";
+  return "This is a contact astrologers read as significant. It may not be comfortable, and it's worth paying attention to.";
 }

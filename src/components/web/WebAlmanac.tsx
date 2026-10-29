@@ -190,11 +190,11 @@ export default function WebAlmanac() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, marginTop: 36, alignItems: "start" }}>
           {/* MAIN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            {/* Sabian */}
+            {/* Degree image (written for Mapped; not the Sabian set) */}
             <div style={{ ...card, padding: "30px 32px" }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s Sabian symbol` : "Cancer 10° · Today’s Sabian symbol"}</p>
-              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>“{sky?.sabian.symbol ?? "A large diamond in the first stages of the cutting process."}”</p>
-              <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky?.sabian.keynote ?? "Latent worth, not yet revealed. What looks rough today is being shaped into something brilliant — patience is the craft."}</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s degree image` : "Cancer 10° · Today’s degree image"}</p>
+              <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>“{sky?.sabian.symbol ?? "A rough stone is tumbled smooth over many patient weeks"}”</p>
+              <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky?.sabian.keynote ?? "Transformation happens slowly for those with patience"}</p>
             </div>
 
             {/* good / hold */}

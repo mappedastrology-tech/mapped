@@ -4,6 +4,8 @@
  * Pure computation — no external dependencies.
  */
 
+import { TRADITIONAL_RULER } from "./rulerships";
+
 // ─── Input Types ───────────────────────────────────────────────────────────────
 
 export interface Planet {
@@ -89,7 +91,8 @@ export interface ChartAnalysis {
   patterns: ChartPattern[];
   criticalDegrees: CriticalDegree[];
   dignities: PlanetDignity[];
-  sect: { isDayChart: boolean; sectLight: string; benefic: string; malefic: string };
+  /** null when the Sun has no house (birth time unknown): sect cannot be known. */
+  sect: { isDayChart: boolean; sectLight: string; benefic: string; malefic: string } | null;
   moonPhase: { phase: string; angle: number; description: string };
   hemispheres: { above: number; below: number; east: number; west: number; emphasis: string };
   elementBalance: { fire: number; earth: number; air: number; water: number; dominant: string; lacking: string | null };
@@ -165,21 +168,18 @@ const FALL: Record<string, string> = {
   Saturn: 'Ari',
 };
 
-/** Sign ruler lookup: given a sign abbreviation, which planet rules it */
-const SIGN_RULER: Record<string, string> = {
-  Ari: 'Mars',
-  Tau: 'Venus',
-  Gem: 'Mercury',
-  Can: 'Moon',
-  Leo: 'Sun',
-  Vir: 'Mercury',
-  Lib: 'Venus',
-  Sco: 'Mars',
-  Sag: 'Jupiter',
-  Cap: 'Saturn',
-  Aqu: 'Saturn',
-  Pis: 'Jupiter',
-};
+/**
+ * Sign ruler lookup for dispositorship. A dispositor chain needs ONE planet per
+ * sign, so it uses the traditional ruler from the shared table (lib/rulerships.ts).
+ */
+const SIGN_RULER = TRADITIONAL_RULER;
+
+/**
+ * Combustion is a traditional condition of the planets that can be hidden by the
+ * Sun's glare. Uranus, Neptune and Pluto were never visible to the tradition that
+ * defined it, and Chiron and the nodes are not planets in that sense.
+ */
+const COMBUSTIBLE = new Set(['Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']);
 
 const PERSONAL_PLANETS = ['Mercury', 'Venus', 'Mars'];
 
@@ -526,27 +526,22 @@ function detectCriticalDegrees(planets: Planet[]): CriticalDegree[] {
       results.push({ planet: p.name, type: 'zero-degree', position: pos, sign });
     }
 
-    // Critical degrees by mode
+    // Critical degrees by mode. A planet is "at 13°" when it is in the 13th
+    // degree, 13°00'–13°59' — the windows the copy names (cardinal 0°, 13°, 26°;
+    // fixed 8–9°, 21–22°; mutable 4°, 17°). These used to be ±1° around each
+    // value, which flagged planets at 12° and 14° as "at 13°".
+    const deg = Math.floor(pos);
     if (modality === 'cardinal') {
-      const criticals = [0, 13, 26];
-      for (const cd of criticals) {
-        if (Math.abs(pos - cd) <= 1.0) {
-          results.push({ planet: p.name, type: 'critical-cardinal', position: pos, sign });
-          break;
-        }
+      if ([0, 13, 26].includes(deg)) {
+        results.push({ planet: p.name, type: 'critical-cardinal', position: pos, sign });
       }
     } else if (modality === 'fixed') {
-      // 8-9° and 21-22°
-      if ((pos >= 7.0 && pos <= 10.0) || (pos >= 20.0 && pos <= 23.0)) {
+      if ([8, 9, 21, 22].includes(deg)) {
         results.push({ planet: p.name, type: 'critical-fixed', position: pos, sign });
       }
     } else if (modality === 'mutable') {
-      const criticals = [4, 17];
-      for (const cd of criticals) {
-        if (Math.abs(pos - cd) <= 1.0) {
-          results.push({ planet: p.name, type: 'critical-mutable', position: pos, sign });
-          break;
-        }
+      if ([4, 17].includes(deg)) {
+        results.push({ planet: p.name, type: 'critical-mutable', position: pos, sign });
       }
     }
   }
@@ -562,7 +557,7 @@ function detectCombustPlanets(planets: Planet[]): CombustStatus[] {
   if (!sun) return results;
 
   for (const p of planets) {
-    if (p.name === 'Sun') continue;
+    if (!COMBUSTIBLE.has(p.name)) continue;
 
     let diff = Math.abs(p.absPosition - sun.absPosition);
     if (diff > 180) diff = 360 - diff;
@@ -610,8 +605,14 @@ function computeSect(planets: Planet[]): ChartAnalysis['sect'] {
   const sun = planets.find(p => p.name === 'Sun');
   const sunHouse = sun ? houseToNum(sun.house) : null;
 
+  // No house for the Sun means no birth time, and sect is entirely a question
+  // of whether the Sun was above the horizon. This used to fall through to
+  // "night" and tell every unknown-time user, as fact, that they were born after
+  // sunset. Say nothing instead (rulers.ts getSectLight does the same).
+  if (sunHouse === null) return null;
+
   // Houses 7-12 are above the horizon
-  const isDayChart = sunHouse !== null && sunHouse >= 7 && sunHouse <= 12;
+  const isDayChart = sunHouse >= 7 && sunHouse <= 12;
 
   return {
     isDayChart,

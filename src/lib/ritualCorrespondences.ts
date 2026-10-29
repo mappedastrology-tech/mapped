@@ -166,7 +166,9 @@ export const DAYS_OF_WEEK: DayCorrespondence[] = [
     day: "Wednesday",
     planet: "Mercury",
     colors: ["Yellow", "orange", "multi-colored"],
-    metal: "Aluminum",
+    // Traditional correspondence is quicksilver (the metal mercury). It is toxic,
+    // so the label says "symbolic only" and no ritual suggests handling it.
+    metal: "Quicksilver (symbolic only — mercury is toxic; never handle it)",
     stones: ["Citrine", "agate", "fluorite", "opal"],
     herbs: ["Lavender", "peppermint", "dill", "fennel"],
     oils: ["Peppermint", "lavender", "eucalyptus"],

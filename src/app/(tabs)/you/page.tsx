@@ -26,6 +26,7 @@ import { calculateChart } from "@/lib/astro/calculateChart";
 import { getMeanLilithData } from "@/lib/astro/lilithClient";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
+import { moonSignRange } from "@/lib/astro/moonRange";
 import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearInfo } from "@/lib/rulers";
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
 import { analyzeChart, type ChartAnalysis } from "@/lib/chartAnalysis";
@@ -1412,6 +1413,23 @@ export default function YouTab() {
     return analyzeChart(planetsForAnalysis, housesForAnalysis, chartData.aspects, allPoints, mhAbsPos);
   }, [chartData, lilithFallback]);
 
+  // Unknown birth time: the Moon can change sign during the day, so check both
+  // ends of the birth date rather than trusting the placeholder-time Moon.
+  const moonRange = useMemo(() => {
+    if (!chartData?.unknownTime) return null;
+    try {
+      return moonSignRange({
+        birthDate: chartData.birthDate,
+        latitude: chartData.latitude,
+        longitude: chartData.longitude,
+        zodiacSystem: chartData.system?.zodiacSystem,
+        ayanamsa: chartData.system?.ayanamsa,
+      });
+    } catch {
+      return null;
+    }
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
@@ -1459,8 +1477,7 @@ export default function YouTab() {
           {name.split(" ")[0]}
         </h1>
         <p className="text-[11.5px] mt-2" style={{ color: "var(--foreground-muted)" }}>
-          {chartData.birthDate} · {chartData.birthTime}
-          {unknownTime && " (approx)"}
+          {chartData.birthDate} · {unknownTime ? "Time unknown" : chartData.birthTime}
           {chartData.cityName ? ` · ${chartData.cityName}` : ""}
         </p>
         {chartData.system && (
@@ -1535,8 +1552,15 @@ export default function YouTab() {
         >
           <p className="text-[11px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
             Your birth time is unknown, so your rising sign, houses, and angles
-            (like the Midheaven) can&apos;t be calculated accurately — they&apos;re hidden
-            here. Your Sun, Moon, and planetary signs are still accurate.
+            (like the Midheaven) can&apos;t be calculated — they&apos;re hidden here.
+            {moonRange?.changesSign
+              ? <> The Moon changed signs on the day you were born, so your Moon is in{" "}
+                  {SIGN_FULL[moonRange.start] || moonRange.start} or {SIGN_FULL[moonRange.end] || moonRange.end}.
+                  Your birth time decides which.</>
+              : moonRange
+                ? <> Your Moon stayed in {SIGN_FULL[moonRange.start] || moonRange.start} all day, so that&apos;s certain.</>
+                : <> The Moon changes sign every two to three days, so on some birth dates its sign depends on the time.</>}
+            {" "}Your Sun and other planetary signs hold unless one changed sign that day, which is rare.
           </p>
           <button
             onClick={() => router.push("/chart/new?edit=true")}
