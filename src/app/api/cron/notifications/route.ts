@@ -40,6 +40,7 @@ import {
 import {
   stationsOn, ingressesOn, eclipseOn, eclipseSeasonOpensOn, solarReturnOn,
 } from "@/lib/notifications/skyEvents";
+import { apparentLongitude, clockIn, hourIn, ymdIn } from "@/lib/astro/skyCalendar";
 
 import { sendPush } from "@/lib/push/send";
 /* ─── Types ─── */
@@ -80,7 +81,10 @@ export interface Candidate {
  * not the server's. A missing or unrecognised timezone falls back to UTC rather
  * than throwing: a notification an hour or two off is better than none.
  */
-export function localNow(now: Date, timezone: string | null): { date: Date; hour: number; ymd: string } {
+export function localNow(
+  now: Date,
+  timezone: string | null,
+): { date: Date; hour: number; ymd: string; timeZone: string } {
   const read = (tz: string) =>
     new Intl.DateTimeFormat("en-CA", {
       timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
@@ -88,20 +92,24 @@ export function localNow(now: Date, timezone: string | null): { date: Date; hour
     }).formatToParts(now);
 
   let parts: Intl.DateTimeFormatPart[];
+  let timeZone = timezone || "UTC";
   try {
-    parts = read(timezone || "UTC");
+    parts = read(timeZone);
   } catch {
-    parts = read("UTC");
+    timeZone = "UTC";
+    parts = read(timeZone);
   }
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "0";
   const y = Number(get("year")), m = Number(get("month")), d = Number(get("day"));
   const hour = Number(get("hour")) % 24;
   return {
-    // A Date built from their local parts, so getMonth()/getDate() on it answer
-    // "what day is it where they are" — which is what every event helper asks.
+    // Their calendar date, carried in the Date's local fields. It is a LABEL,
+    // not an instant: on its own it says nothing about where their midnight
+    // falls, so it always travels with `timeZone` into the sky helpers.
     date: new Date(y, m - 1, d, 12),
     hour,
     ymd: `${get("year")}-${get("month")}-${get("day")}`,
+    timeZone,
   };
 }
 
@@ -111,11 +119,19 @@ function getPrefs(profile: ProfileRow | undefined): NotificationPreferences {
 
 /* ─── What is true for this person today ─── */
 
+/**
+ * `localDay` names the person's calendar date (in its local fields, as
+ * localNow() builds it) and `timeZone` says whose midnight bounds it. Every sky
+ * helper gets the zone: without it they measure the day from the SERVER's
+ * midnight, which on a UTC host files any event between 00:00 and ~05:00 UTC
+ * on the wrong day for everyone in the Americas.
+ */
 export function candidatesFor(
   localDay: Date,
   prefs: NotificationPreferences,
   chart: ChartRow | undefined,
   learning: { atRisk: boolean; streak: number } | undefined,
+  timeZone?: string | null,
 ): Candidate[] {
   const out: Candidate[] = [];
   const push = (c: Candidate) => { if (prefs[c.category] === true) out.push(c); };
@@ -123,7 +139,7 @@ export function candidatesFor(
 
   /* Job 01 — the sky did something */
 
-  const moon = getTodaysMoonEvent(localDay);
+  const moon = getTodaysMoonEvent(localDay, timeZone);
   if (moon?.isPeak) {
     if (moon.kind === "full") {
       // The named moon is the better title where the month has one: "The
@@ -137,7 +153,7 @@ export function candidatesFor(
     }
   }
 
-  const eclipse = eclipseOn(localDay);
+  const eclipse = eclipseOn(localDay, timeZone);
   if (eclipse) {
     push({
       category: "eclipses",
@@ -145,7 +161,7 @@ export function candidatesFor(
     });
   }
 
-  const season = eclipseSeasonOpensOn(localDay);
+  const season = eclipseSeasonOpensOn(localDay, timeZone);
   if (season) {
     push({
       category: "eclipse_season",
@@ -156,7 +172,7 @@ export function candidatesFor(
     });
   }
 
-  for (const st of stationsOn(localDay)) {
+  for (const st of stationsOn(localDay, timeZone)) {
     const variant = st.direction === "direct" && !st.retrogradeSince
       ? "direct-undated"
       : st.direction;
@@ -164,14 +180,14 @@ export function candidatesFor(
       planet: st.planet,
       house: houseOf(chart, st.longitude),
     };
-    if (st.retrogradeSince) slots.month = monthName(st.retrogradeSince);
+    if (st.retrogradeSince) slots.month = monthName(st.retrogradeSince, timeZone);
     push({
       category: "retrograde_stations",
       ...renderCopy(copyFor("retrograde_stations", variant), slots),
     });
   }
 
-  for (const ing of ingressesOn(localDay)) {
+  for (const ing of ingressesOn(localDay, timeZone)) {
     push({
       category: "major_ingresses",
       ...renderCopy(copyFor("major_ingresses", "default"), {
@@ -200,12 +216,12 @@ export function candidatesFor(
 
     const natalSun = chart.planets?.find((p) => p.name === "Sun");
     if (natalSun) {
-      const at = solarReturnOn(localDay, natalSun.absPosition);
+      const at = solarReturnOn(localDay, natalSun.absPosition, timeZone);
       if (at) {
         push({
           category: "solar_return",
-          ...renderCopy(copyFor("solar_return", "default"), { time: clockTime(at) }),
-          atHour: at.getHours(),
+          ...renderCopy(copyFor("solar_return", "default"), { time: clockIn(at, timeZone) }),
+          atHour: hourIn(at, timeZone),
         });
       }
     }
@@ -265,23 +281,17 @@ export function houseOf(chart: ChartRow | undefined, longitude: number): string 
 
 /** The sign axis an eclipse falls across — the Sun's sign and its opposite. */
 function eclipseAxis(at: Date): string {
-  const i = Math.floor((sunLongitudeApprox(at) % 360) / 30) % 12;
+  // The real Sun, not a linear approximation: the old one was "good to a
+  // degree or two", which is exactly enough to name the wrong axis for an
+  // eclipse near a cusp.
+  const i = Math.floor(apparentLongitude("Sun", at) / 30) % 12;
   return `${SIGNS[i]}/${SIGNS[(i + 6) % 12]}`;
 }
 
-/** Good to a degree or two, which is all a sign name needs. */
-function sunLongitudeApprox(at: Date): number {
-  const start = Date.UTC(at.getUTCFullYear(), 2, 20);        // ~0 Aries
-  const days = (at.getTime() - start) / 86400000;
-  return ((days * (360 / 365.2422)) % 360 + 360) % 360;
-}
-
-function monthName(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "long" });
-}
-
-function clockTime(d: Date): string {
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+/** The month, as the person's own calendar names it. */
+function monthName(d: Date, timeZone?: string | null): string {
+  const { y, m } = ymdIn(d, timeZone);
+  return new Date(y, m, 15).toLocaleDateString("en-US", { month: "long" });
 }
 
 /* ─── Handler ─── */
@@ -373,7 +383,7 @@ export async function GET(request: Request) {
     const log = logByUser.get(userId) ?? [];
 
     const { streak, atRisk } = computeStreak(activeByUser.get(userId) ?? new Set<string>(), now);
-    const candidates = candidatesFor(local.date, prefs, chartMap.get(userId), { streak, atRisk });
+    const candidates = candidatesFor(local.date, prefs, chartMap.get(userId), { streak, atRisk }, local.timeZone);
     if (candidates.length === 0) { skipped++; continue; }
 
     // Is it their hour? An event with a moment of its own keeps it; everything

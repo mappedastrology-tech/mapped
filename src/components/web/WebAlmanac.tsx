@@ -28,14 +28,14 @@ const SUN_TIMES = [ { label: "Sunrise", val: "5:58" }, { label: "Sunset", val: "
 const GOOD_FOR = [
   { activity: "Deep conversations", reason: "The Scorpio Moon wants truth, not small talk. Words land deeper today." },
   { activity: "Research & investigation", reason: "Scorpio is the sign of what’s hidden. Follow a question past the obvious answer." },
-  { activity: "Financial planning", reason: "Scorpio rules shared resources. Clear-eyed for budgets and debts — just don’t sign yet." },
+  { activity: "Journaling", reason: "Scorpio turns attention inward. A good day to write down what you’ve been circling." },
   { activity: "Decluttering & releasing", reason: "The waxing-to-full arc makes this a strong day to clear what you’ve outgrown." },
   { activity: "Intimacy & repair", reason: "Emotional honesty comes easier now — a tender window to mend a rift." },
 ];
 const HOLD_OFF = [
   { activity: "Big launches", reason: "With the Moon void this afternoon, fresh starts tend not to stick. Wait a day." },
-  { activity: "Signing contracts", reason: "Void windows are traditionally poor for agreements — details get revised." },
-  { activity: "Impulse purchases", reason: "Scorpio intensity plus a void Moon is a recipe for buyer’s remorse." },
+  { activity: "Surface-level networking", reason: "Scorpio prefers depth to small talk." },
+  { activity: "Overfilling your calendar", reason: "A void Moon is traditionally a pause — leave some room." },
 ];
 const EXPLORE = [
   { glyph: "⚘", title: "In the garden", sub: "Strong planting day · 8/10", body: "The waxing gibbous Moon pulls energy into the leaves — ideal for above-ground, leafy crops. Water at dusk; hold heavy pruning until the Moon wanes." },
@@ -179,10 +179,11 @@ export default function WebAlmanac() {
         </div>
 
         {/* V/C — only when the Moon is actually void of course today */}
-        {(!sky || sky.vocStart) && (
+        {/* (It used to render while loading too, with a made-up "2:32 pm".) */}
+        {sky?.vocSummary && (
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 14, padding: "13px 18px", borderRadius: 14, background: "color-mix(in srgb, var(--terra) 9%, var(--card))", border: "1px solid color-mix(in srgb, var(--terra) 22%, transparent)" }}>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 6, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}>V/C</span>
-            <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from {sky?.vocStart ?? "2:32 pm"} — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
+            <span style={{ fontSize: 14, color: "var(--fg2)" }}>{sky.vocSummary} — traditionally a pause before it enters {sky.vocNextSign}.</span>
           </div>
         )}
 
