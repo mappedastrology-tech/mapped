@@ -26,6 +26,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { signInWithProvider } from "@/lib/socialSignIn";
+import { safeNext } from "@/lib/returnPath";
 import { TRIAL_DAYS } from "@/lib/tier";
 import { friendlyAuthError } from "@/lib/authErrors";
 
@@ -69,6 +70,8 @@ function WelcomePage() {
   const params = useSearchParams();
   const [checking, setChecking] = useState(true);
   const [view, setView] = useState<View>(params.get("mode") === "signin" ? "signin" : "choose");
+  // Where they were headed before being asked to sign in (lib/returnPath).
+  const next = safeNext(params.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,11 +83,11 @@ function WelcomePage() {
   useEffect(() => {
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        if (session?.user) router.replace("/home");
+        if (session?.user) router.replace(next);
         else setChecking(false);
       })
       .catch(() => setChecking(false));
-  }, [router]);
+  }, [router, next]);
 
   function createChart() {
     try { localStorage.setItem(ONBOARDING_STEP_KEY, "1"); } catch { /* starts at the greeting instead */ }
@@ -100,8 +103,8 @@ function WelcomePage() {
       if (err) throw err;
       if (data.user) {
         // The tab layout sends anyone who never finished onboarding back into
-        // it, so /home is the right target for everyone.
-        router.replace("/home");
+        // it, so /home (or the page they were headed to) is right for everyone.
+        router.replace(next);
         return;
       }
     } catch (err) {
