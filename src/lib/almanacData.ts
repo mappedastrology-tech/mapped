@@ -38,10 +38,16 @@ export interface TodaySky {
 }
 
 export interface VoidOfCourseMoonWindow {
-  start: string;   // time string like "2:15 PM"
-  end: string;     // time string like "6:42 PM"
-  duration: string; // e.g. "4h 27m"
-  note: string;     // brief guidance
+  start: string;    // local clock, "2:15 PM" — or "yesterday 9:40 PM" if it began before today
+  end: string;      // local clock, "6:42 PM" — or "1:05 AM tomorrow" if it runs past midnight
+  duration: string; // whole period, e.g. "4h 27m"
+  summary: string;  // "Moon void of course from 2:15 PM to 6:42 PM"
+  note: string;     // what it is, as tradition — never an instruction
+  startAt: Date;    // the last exact aspect
+  endAt: Date;      // the ingress
+  sign: string;     // sign the Moon is void in
+  nextSign: string;
+  lastAspect: { planet: string; aspect: string } | null;
 }
 
 export interface GoodForItem {
@@ -96,7 +102,12 @@ const SIGN_ELEMENTS: Record<string, "fire" | "water" | "earth" | "air"> = {
 };
 
 // Moon sign now uses astronomy-engine for accuracy (see currentSky.ts)
-import { getCurrentMoonSign, getMoonLongitude } from "@/lib/astro/currentSky";
+import { getCurrentMoonSign, getSeasonDates, getSunLongitude } from "@/lib/astro/currentSky";
+import {
+  voidOfCourseBetween, localDayWindow, clockIn, calendarDayIn,
+  stationsBetween, ingressesBetween, eclipsesBetween, retrogradeAt, retrogradePeriodsBetween,
+} from "@/lib/astro/skyCalendar";
+import * as Astronomy from "astronomy-engine";
 
 // ─── MOON SIGN ACTIVITIES (curated per specification) ─────────────────────────
 
@@ -113,17 +124,17 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
   ],
   Taurus: [
     { activity: "Starting a skincare routine", icon: "🧴" },
-    { activity: "Making a big purchase you've researched", icon: "💎" },
+    { activity: "Rearranging a room so it feels better", icon: "🛋️" },
     { activity: "Hosting a gathering", icon: "🍽️" },
     { activity: "Planting something", icon: "🌱" },
     { activity: "Cooking a slow, comforting meal", icon: "🍲" },
-    { activity: "Reviewing your budget or savings", icon: "💰" },
+    { activity: "Tending a houseplant or herb pot", icon: "🪴" },
     { activity: "Spending unhurried time in nature", icon: "🌳" },
     { activity: "Savoring a small, sensory luxury", icon: "🕯️" },
   ],
   Gemini: [
     { activity: "Going on a first date", icon: "💬" },
-    { activity: "Signing contracts or agreements", icon: "📝" },
+    { activity: "Writing a letter you've been meaning to send", icon: "📝" },
     { activity: "Starting a creative writing project", icon: "✍️" },
     { activity: "Reaching out to someone you've lost touch with", icon: "📱" },
     { activity: "Brainstorming or mind-mapping ideas", icon: "💡" },
@@ -155,7 +166,7 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
     { activity: "Starting a health routine", icon: "🥗" },
     { activity: "Organizing your space or schedule", icon: "📋" },
     { activity: "Deep cleaning and decluttering", icon: "✨" },
-    { activity: "Scheduling a dental or doctor appointment", icon: "🩺" },
+    { activity: "Sorting a drawer you've been avoiding", icon: "🗄️" },
     { activity: "Tidying up your digital files", icon: "💻" },
     { activity: "Meal prepping for the week", icon: "🍱" },
     { activity: "Making a detailed to-do list", icon: "✅" },
@@ -175,8 +186,8 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
     { activity: "Quitting a bad habit", icon: "🔥" },
     { activity: "Doing shadow work or therapy", icon: "🪞" },
     { activity: "Having a deep conversation", icon: "🌊" },
-    { activity: "Scheduling surgery or procedures", icon: "⚕️" },
-    { activity: "Reviewing debts, taxes, or investments", icon: "💳" },
+    { activity: "Journaling about what you're ready to release", icon: "🖋️" },
+    { activity: "Clearing out an old inbox or folder", icon: "🗃️" },
     { activity: "Decluttering with ruthless honesty", icon: "🗑️" },
     { activity: "Researching something all the way down", icon: "🔎" },
     { activity: "Setting a firm boundary", icon: "🛑" },
@@ -194,7 +205,7 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
   Capricorn: [
     { activity: "Making a career move", icon: "📈" },
     { activity: "Submitting a job application", icon: "💼" },
-    { activity: "Financial planning", icon: "🏦" },
+    { activity: "Mapping out a long-term goal", icon: "🗺️" },
     { activity: "Committing to something long-term", icon: "🪨" },
     { activity: "Updating your resume or portfolio", icon: "📁" },
     { activity: "Building a system that saves future time", icon: "⚙️" },
@@ -215,7 +226,7 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
     { activity: "Spiritual practice or meditation", icon: "🧘" },
     { activity: "Dream journaling", icon: "🌙" },
     { activity: "Making art", icon: "🎨" },
-    { activity: "Healing work — yours or someone else's", icon: "💜" },
+    { activity: "Gentle care — for yourself or someone else", icon: "💜" },
     { activity: "Listening to music with full attention", icon: "🎶" },
     { activity: "Taking a long bath or a swim", icon: "🛁" },
     { activity: "Writing poetry or free-form journaling", icon: "🖋️" },
@@ -437,35 +448,95 @@ function getDayOfSeason(date: Date, season: ZodiacSeason): number {
 }
 
 /**
- * Generate a plausible void-of-course moon window.
- * VOC occurs when the moon makes its last major aspect before leaving a sign.
- * We approximate this by placing a window near sign transitions.
+ * The void-of-course Moon touching this local day, computed.
+ *
+ * This used to be invented: past 25.5° of a sign it declared the Moon void and
+ * made up a start time and duration from a seeded random number, so the
+ * almanac, the sky line and the desktop screen all showed windows that did not
+ * exist (and missed the real ones, which often begin early in the sign's last
+ * day or two). Now it is the real period: from the Moon's last exact Ptolemaic
+ * aspect to Sun–Pluto (modern convention — see skyCalendar.ts) until it enters
+ * the next sign.
+ *
+ * A day can occasionally touch two periods; the first is returned, since that
+ * is the one in force when the day begins.
  */
-function getVoidOfCourseMoon(date: Date): VoidOfCourseMoonWindow | null {
-  // Use astronomy-engine to get the moon's position within its current sign
-  const moonLon = getMoonLongitude(date);
-  const degreeInSign = ((moonLon % 30) + 30) % 30; // 0-30 degrees within sign
-  const fractionOfSign = degreeInSign / 30;
+export function getVoidOfCourseMoon(date: Date, timeZone?: string | null): VoidOfCourseMoonWindow | null {
+  const { start: dayStart, end: dayEnd } = localDayWindow(date, timeZone);
+  const voc = voidOfCourseBetween(dayStart, dayEnd)[0];
+  if (!voc) return null;
 
-  // VOC window happens in the last ~15% of a sign transit
-  if (fractionOfSign < 0.85) return null;
-
-  // Generate a plausible window using the date as seed
-  const seed = dayOfYear(date) + date.getFullYear();
-  const rand = seededRandom(seed);
-
-  const startHour = 9 + Math.floor(rand * 10); // between 9 AM and 7 PM
-  const durationMinutes = 90 + Math.floor(seededRandom(seed + 1) * 240); // 1.5h to 5.5h
-  const endHour = startHour + durationMinutes / 60;
-
-  const durationH = Math.floor(durationMinutes / 60);
-  const durationM = durationMinutes % 60;
+  const startedEarlier = voc.start < dayStart;
+  const endsLater = voc.end >= dayEnd;
+  const start = `${startedEarlier ? "yesterday " : ""}${clockIn(voc.start, timeZone)}`;
+  const end = `${clockIn(voc.end, timeZone)}${endsLater ? " tomorrow" : ""}`;
+  const minutes = Math.round((voc.end.getTime() - voc.start.getTime()) / 60000);
+  const summary = startedEarlier
+    ? `Moon void of course until ${end}`
+    : `Moon void of course from ${start} to ${end}`;
 
   return {
-    start: formatTime(startHour),
-    end: formatTime(Math.min(endHour, 23.99)),
-    duration: `${durationH}h ${durationM}m`,
-    note: "Routine tasks are fine, but avoid starting anything brand-new or signing important documents during this window.",
+    start,
+    end,
+    duration: `${Math.floor(minutes / 60)}h ${minutes % 60}m`,
+    summary,
+    startAt: voc.start,
+    endAt: voc.end,
+    sign: voc.sign,
+    nextSign: voc.nextSign,
+    lastAspect: voc.lastAspect,
+    note: `The Moon has made its last aspect in ${voc.sign}${voc.lastAspect ? ` (a ${voc.lastAspect.aspect} to ${voc.lastAspect.planet})` : ""} and drifts until it enters ${voc.nextSign}. Tradition treats this as a pause — a time associated with routine and reflection more than with fresh starts.`,
+  };
+}
+
+export interface MercuryStatus {
+  state: "retrograde" | "pre-shadow" | "post-shadow" | "direct";
+  label: string;
+  description: string;
+}
+
+function shortDate(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/**
+ * Where Mercury is in its retrograde cycle on this local day, from the station
+ * search: retrograde between the stations; shadow from the day it first
+ * reaches the degree it will station direct on, to the day it regains the
+ * degree it stationed retrograde on. Reflection only — no scheduling advice.
+ */
+export function mercuryStatus(date: Date, timeZone?: string | null): MercuryStatus {
+  const { start, end } = localDayWindow(date, timeZone);
+  const noon = new Date((start.getTime() + end.getTime()) / 2);
+  const rx = retrogradeAt("Mercury", noon);
+  if (rx) {
+    return {
+      state: "retrograde",
+      label: "Mercury retrograde",
+      description: `Mercury is retrograde in ${rx.endSign === rx.startSign ? rx.startSign : `${rx.startSign} and ${rx.endSign}`} until ${shortDate(calendarDayIn(rx.end, timeZone))}. Astrology associates this stretch with review — rereading, revisiting, reconnecting.`,
+    };
+  }
+  const near = retrogradePeriodsBetween("Mercury", new Date(noon.getTime() - 40 * 86400000), new Date(noon.getTime() + 40 * 86400000));
+  const post = near.find((p) => p.end <= noon && noon < p.shadowEnd);
+  if (post) {
+    return {
+      state: "post-shadow",
+      label: "Mercury post-shadow",
+      description: `Mercury is direct again and retracing the ground it covered while retrograde, until ${shortDate(calendarDayIn(post.shadowEnd, timeZone))}.`,
+    };
+  }
+  const pre = near.find((p) => p.shadowStart <= noon && noon < p.start);
+  if (pre) {
+    return {
+      state: "pre-shadow",
+      label: "Mercury pre-shadow",
+      description: `Mercury is crossing the degrees it will retrace when it stations retrograde on ${shortDate(calendarDayIn(pre.start, timeZone))}.`,
+    };
+  }
+  return {
+    state: "direct",
+    label: "Mercury direct",
+    description: "Mercury moves forward through its sign — in astrology, a straightforward stretch for thinking and talking things through.",
   };
 }
 
@@ -527,7 +598,7 @@ const SIGN_THEMES: Record<string, string> = {
   Gemini: "communication, curiosity, and social connection",
   Cancer: "nurturing, home, emotional bonds, and self-care",
   Leo: "self-expression, creativity, confidence, and celebration",
-  Virgo: "health, organization, attention to detail, and service",
+  Virgo: "routine, organization, attention to detail, and service",
   Libra: "beauty, partnership, balance, and aesthetic decisions",
   Scorpio: "transformation, depth, letting go, and honest confrontation",
   Sagittarius: "expansion, adventure, learning, and big-picture thinking",
@@ -544,7 +615,15 @@ export function getGoodForToday(date: Date): GoodForResult {
   const moonSign = getMoonSign(date);
   const moonPhase = getMoonPhase(date);
 
-  const signActivities = MOON_SIGN_ACTIVITIES[moonSign] || MOON_SIGN_ACTIVITIES["Aries"];
+  // While Mercury is retrograde, don't recommend the launch-and-commit items:
+  // the same screen (and Home) describes the period as one for review, and
+  // "good for starting a new project" beside "expect plans to shift" is the
+  // app contradicting itself.
+  const mercuryRx = mercuryStatus(date).state === "retrograde";
+  const allActivities = MOON_SIGN_ACTIVITIES[moonSign] || MOON_SIGN_ACTIVITIES["Aries"];
+  const signActivities = mercuryRx
+    ? allActivities.filter((a) => !MERCURY_RX_HOLD.has(normalizeActivity(a.activity)))
+    : allActivities;
 
   // Pick 3 sign activities based on date seed (deterministic).
   // Each item gets its own seeded key (seed × index) so the full 8-item pool
@@ -559,17 +638,31 @@ export function getGoodForToday(date: Date): GoodForResult {
 
   // Add one waxing or waning bonus
   const isWaxing = moonPhase.phase.startsWith("waxing") || moonPhase.phase === "new" || moonPhase.phase === "first-quarter";
-  const bonus = isWaxing ? WAXING_BONUS : WANING_BONUS;
+  const bonus = isWaxing && !mercuryRx ? WAXING_BONUS : WANING_BONUS;
   const bonusPick = bonus[Math.floor(seededRandom(seed + 99) * bonus.length)];
 
   const phaseDescriptor = isWaxing ? "The waxing phase supports growth and beginnings." : "The waning phase supports completion and release.";
   const signTheme = SIGN_THEMES[moonSign] || "balanced energy";
+  const mercuryNote = mercuryRx ? " Mercury is retrograde, so the list leans toward review over launches." : "";
 
   return {
     activities: [...picked, bonusPick],
-    why: `The moon in ${moonSign} favors ${signTheme}. ${phaseDescriptor}`,
+    why: `The moon in ${moonSign} favors ${signTheme}. ${phaseDescriptor}${mercuryNote}`,
   };
 }
+
+/** Launch-and-commit items held back from "good for" while Mercury is retrograde. */
+const MERCURY_RX_HOLD = new Set([
+  "starting a new project",
+  "making the bold decision you ve been circling",
+  "booking or starting travel",
+  "making a career move",
+  "submitting a job application",
+  "committing to something long term",
+  "sharing your work publicly",
+  "trying something totally new",
+  "starting a home improvement",
+].map(normalizeActivity));
 
 // ─── MOON SIGN "SKIP TODAY" ACTIVITIES ──────────────────────────────────────
 
@@ -582,7 +675,7 @@ const MOON_SIGN_SKIP: Record<string, GoodForItem[]> = {
   Taurus: [
     { activity: "Rushing a big decision", icon: "⚡" },
     { activity: "Drastic changes to routine", icon: "🔄" },
-    { activity: "Impulse purchases", icon: "💸" },
+    { activity: "Overfilling your calendar", icon: "📅" },
   ],
   Gemini: [
     { activity: "Committing to long-term plans", icon: "📋" },
@@ -620,7 +713,7 @@ const MOON_SIGN_SKIP: Record<string, GoodForItem[]> = {
     { activity: "Playing it safe when you should leap", icon: "🦘" },
   ],
   Capricorn: [
-    { activity: "Spontaneous splurges", icon: "💳" },
+    { activity: "Cutting corners on something that matters", icon: "✂️" },
     { activity: "Emotional vulnerability with strangers", icon: "😢" },
     { activity: "Quitting something impulsively", icon: "🚪" },
   ],
@@ -630,7 +723,7 @@ const MOON_SIGN_SKIP: Record<string, GoodForItem[]> = {
     { activity: "Rigid scheduling", icon: "📅" },
   ],
   Pisces: [
-    { activity: "Major financial decisions", icon: "💰" },
+    { activity: "Overloading a to-do list", icon: "📋" },
     { activity: "Confrontation", icon: "⚔️" },
     { activity: "Anything requiring sharp logic", icon: "🧮" },
   ],
@@ -814,26 +907,34 @@ export function getComingUp(date: Date): ComingUpEvent[] {
     events.push({ date: nextNew.date, label: nextNew.label });
   }
 
-  // Equinoxes and solstices
-  const astronomicalEvents = [
-    { date: new Date(year, 2, 20), label: "Spring Equinox" },
-    { date: new Date(year, 5, 21), label: "Summer Solstice" },
-    { date: new Date(year, 8, 22), label: "Autumn Equinox" },
-    { date: new Date(year, 11, 21), label: "Winter Solstice" },
-  ];
-
-  // Next zodiac season ingress
-  const currentSeason = getCurrentZodiacSeason(date);
-  const currentIndex = ZODIAC_SEASONS.findIndex((s) => s.sign === currentSeason.sign);
-  const nextSeasonIndex = (currentIndex + 1) % 12;
-  const nextSeason = ZODIAC_SEASONS[nextSeasonIndex];
-  let ingressYear = year;
-  let ingressDate = new Date(ingressYear, nextSeason.startMonth - 1, nextSeason.startDay);
-  if (ingressDate.getTime() < date.getTime()) {
-    ingressYear++;
-    ingressDate = new Date(ingressYear, nextSeason.startMonth - 1, nextSeason.startDay);
+  // Equinoxes and solstices — the real instants, this year's and next year's,
+  // on the reader's calendar. (These were fixed at 20/21/22/21 of the month.)
+  const astronomicalEvents: ComingUpEvent[] = [];
+  for (const y of [year, year + 1]) {
+    const s = getSeasonDates(y);
+    astronomicalEvents.push(
+      { date: calendarDayIn(s.springEquinox), label: "Spring Equinox" },
+      { date: calendarDayIn(s.summerSolstice), label: "Summer Solstice" },
+      { date: calendarDayIn(s.autumnEquinox), label: "Autumn Equinox" },
+      { date: calendarDayIn(s.winterSolstice), label: "Winter Solstice" },
+    );
   }
-  events.push({ date: ingressDate, label: `${nextSeason.sign} Season begins` });
+
+  // Next zodiac season: the instant the Sun reaches the next 30° boundary.
+  // (The fixed start dates in ZODIAC_SEASONS are a day out in many years.)
+  const nextBoundary = (Math.floor(getSunLongitude(date) / 30) + 1) * 30 % 360;
+  const ingress = Astronomy.SearchSunLongitude(nextBoundary, date, 40);
+  if (ingress) {
+    const nextSeason = ZODIAC_SEASONS.find((s) => s.sign === ZODIAC_SIGNS[nextBoundary / 30]) ?? getCurrentZodiacSeason(date);
+    events.push({ date: calendarDayIn(ingress.date), label: `${nextSeason.sign} Season begins` });
+  }
+
+  // The next eclipse and the next Mercury station within 90 days — computed.
+  const horizon = new Date(date.getTime() + 90 * 86400000);
+  const nextEclipse = eclipsesBetween(date, horizon)[0];
+  if (nextEclipse) events.push({ date: calendarDayIn(nextEclipse.at), label: `${nextEclipse.label} in ${nextEclipse.sign}` });
+  const nextMercury = stationsBetween(date, horizon).find((s) => s.planet === "Mercury");
+  if (nextMercury) events.push({ date: calendarDayIn(nextMercury.at), label: `Mercury stations ${nextMercury.direction}` });
 
   // Meteor showers (approximate peak dates, using the current or next year)
   const meteorShowers = [
@@ -857,15 +958,10 @@ export function getComingUp(date: Date): ComingUpEvent[] {
   }
 
   // Add upcoming equinoxes/solstices within 90 days
+  const todayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   for (const ae of astronomicalEvents) {
-    let eventDate = ae.date;
-    if (eventDate.getTime() < date.getTime()) {
-      eventDate = new Date(year + 1, ae.date.getMonth(), ae.date.getDate());
-    }
-    const daysUntil = (eventDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysUntil <= 90) {
-      events.push({ date: eventDate, label: ae.label });
-    }
+    const daysUntil = (ae.date.getTime() - todayStart) / (1000 * 60 * 60 * 24);
+    if (daysUntil >= 0 && daysUntil <= 90) events.push(ae);
   }
 
   // Sort by date, deduplicate, take top 5
@@ -955,16 +1051,16 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "tackling the hardest task first": "action",
   // Taurus
   "starting a skincare routine": "patience",
-  "making a big purchase you ve researched": "planning",
+  "rearranging a room so it feels better": "creativity",
   "hosting a gathering": "communication",
   "planting something": "patience",
   "cooking a slow comforting meal": "patience",
-  "reviewing your budget or savings": "planning",
+  "tending a houseplant or herb pot": "patience",
   "spending unhurried time in nature": "patience",
   "savoring a small sensory luxury": "patience",
   // Gemini
   "going on a first date": "communication",
-  "signing contracts or agreements": "planning",
+  "writing a letter you ve been meaning to send": "communication",
   "starting a creative writing project": "creativity",
   "reaching out to someone you ve lost touch with": "communication",
   "brainstorming or mind mapping ideas": "creativity",
@@ -993,7 +1089,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "starting a health routine": "patience",
   "organizing your space or schedule": "planning",
   "deep cleaning and decluttering": "planning",
-  "scheduling a dental or doctor appointment": "planning",
+  "sorting a drawer you ve been avoiding": "planning",
   "tidying up your digital files": "planning",
   "meal prepping for the week": "planning",
   "making a detailed to do list": "planning",
@@ -1010,8 +1106,8 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "quitting a bad habit": "action",
   "doing shadow work or therapy": "patience",
   "having a deep conversation": "communication",
-  "scheduling surgery or procedures": "planning",
-  "reviewing debts taxes or investments": "planning",
+  "journaling about what you re ready to release": "patience",
+  "clearing out an old inbox or folder": "planning",
   "decluttering with ruthless honesty": "planning",
   "researching something all the way down": "planning",
   "setting a firm boundary": "communication",
@@ -1027,7 +1123,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   // Capricorn
   "making a career move": "planning",
   "submitting a job application": "planning",
-  "financial planning": "planning",
+  "mapping out a long term goal": "planning",
   "committing to something long term": "planning",
   "updating your resume or portfolio": "planning",
   "building a system that saves future time": "planning",
@@ -1046,7 +1142,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "spiritual practice or meditation": "patience",
   "dream journaling": "creativity",
   "making art": "creativity",
-  "healing work yours or someone else s": "patience",
+  "gentle care for yourself or someone else": "patience",
   "listening to music with full attention": "patience",
   "taking a long bath or a swim": "patience",
   "writing poetry or free form journaling": "creativity",
@@ -1062,7 +1158,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "passive aggressive texts": "communication",
   "rushing a big decision": "action",
   "drastic changes to routine": "action",
-  "impulse purchases": "planning",
+  "overfilling your calendar": "planning",
   "committing to long term plans": "planning",
   "deep emotional processing": "patience",
   "solo work that needs deep focus": "planning",
@@ -1084,13 +1180,13 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "micromanaging": "planning",
   "routine paperwork": "planning",
   "playing it safe when you should leap": "action",
-  "spontaneous splurges": "planning",
+  "cutting corners on something that matters": "action",
   "emotional vulnerability with strangers": "communication",
   "quitting something impulsively": "action",
   "following the crowd": "communication",
   "emotionally loaded conversations": "communication",
   "rigid scheduling": "planning",
-  "major financial decisions": "planning",
+  "overloading a to do list": "planning",
   "confrontation": "communication",
   "anything requiring sharp logic": "planning",
   "starting anything you want to last": "action",
@@ -1182,17 +1278,17 @@ export function getActivityDetail(
     timing: `Exact at ${formatTime(12 + seededRandom(seed + 11) * 6)}`,
   });
 
-  // 3. Mercury status factor
-  const mercuryRetro = seededRandom(seed + 20) > 0.8; // ~20% chance of retrograde shadow
+  // 3. Mercury status factor — from the station search. (This was a coin flip:
+  // "~20% chance of retrograde shadow", whatever Mercury was actually doing.)
+  const mercury = mercuryStatus(date);
+  const mercuryRetro = mercury.state !== "direct";
   const mercWeight = mercuryRetro
     ? (type === "good" ? -0.8 : 1.2)
     : (type === "good" ? 1.0 + seededRandom(seed + 22) * 0.8 : -(0.5 + seededRandom(seed + 22) * 0.6));
 
   factors.push({
-    label: mercuryRetro ? "Mercury in retrograde shadow" : "Mercury direct",
-    description: mercuryRetro
-      ? "Mercury is approaching its retrograde zone. Communication and plans benefit from extra review."
-      : "Mercury moves clearly through its sign, supporting clear thinking and effective communication.",
+    label: mercury.label,
+    description: mercury.description,
     weight: Math.round(mercWeight * 10) / 10,
     icon: mercuryRetro ? "retrograde" : "planet",
   });
@@ -1251,9 +1347,11 @@ export function getActivityDetail(
   }
 
   // ── History note ──
-  const historyBaseScore = 5 + seededRandom(seed + 70) * 4;
-  const historyPercent = 10 + Math.floor(seededRandom(seed + 71) * 25);
-  const historyNote = `On days with similar configurations, you have rated your ${category} ${historyBaseScore.toFixed(1)} on average — ${historyPercent}% ${type === "good" ? "higher" : "lower"} than your baseline.`;
+  // There is no rating history behind this. It used to print invented numbers
+  // ("you have rated your planning 7.4 on average — 23% higher than your
+  // baseline") as if they were the person's own data. Null until real ratings
+  // exist to summarise.
+  const historyNote: string | null = null;
 
   return {
     activity,
@@ -1496,7 +1594,7 @@ const BASE_CATEGORIES: CategoryDefinition[] = [
     id: "communication",
     name: "Communication",
     domain: "Base",
-    description: "Contracts, emails, hard conversations, launches",
+    description: "Emails, hard conversations, launches",
     isBase: true,
     factors: [
       { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Gemini", "Virgo", "Aquarius", "Libra"], unfavorableSigns: ["Pisces", "Sagittarius"] },
@@ -1517,22 +1615,10 @@ const BASE_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "money",
-    name: "Money",
-    domain: "Base",
-    description: "Negotiations, purchases, debt, investing",
-    isBase: true,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 0.7, favorableSigns: ["Taurus", "Capricorn", "Virgo"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.8, favorableSigns: ["Sagittarius", "Pisces", "Cancer", "Taurus"], unfavorableSigns: ["Gemini", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Taurus", "Capricorn", "Cancer"], unfavorableSigns: ["Leo", "Sagittarius"] },
-    ],
-  },
-  {
     id: "body",
     name: "Body",
     domain: "Base",
-    description: "Haircuts, procedures, starting routines, workouts",
+    description: "Haircuts, starting routines, workouts",
     isBase: true,
     factors: [
       { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Aries", "Leo", "Sagittarius", "Virgo"], unfavorableSigns: ["Pisces", "Cancer"] },
@@ -1669,9 +1755,9 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
       { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Aquarius", "Libra", "Gemini"], unfavorableSigns: ["Scorpio", "Capricorn"] },
     ],
   },
-  // Body & Health domain
+  // Body domain
   {
-    id: "haircuts", name: "Haircuts", domain: "Body & Health", description: "Cuts, color, bang trims, big changes", isBase: false,
+    id: "haircuts", name: "Haircuts", domain: "Body", description: "Cuts, color, bang trims, big changes", isBase: false,
     factors: [
       { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Leo", "Virgo", "Libra"], unfavorableSigns: ["Scorpio", "Pisces", "Cancer"] },
       { name: "Mars alignment", planet: "mars", weight: 0.5, favorableSigns: ["Aries", "Leo"], unfavorableSigns: ["Cancer", "Pisces"] },
@@ -1679,31 +1765,7 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "dental-work", name: "Dental work", domain: "Body & Health", description: "Cleanings, fillings, extractions", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Virgo", "Capricorn", "Taurus"], unfavorableSigns: ["Aries", "Gemini"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.6, favorableSigns: ["Capricorn", "Virgo"], unfavorableSigns: ["Aries", "Leo"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.4, favorableSigns: ["Capricorn", "Virgo"], unfavorableSigns: ["Aries", "Cancer"] },
-    ],
-  },
-  {
-    id: "surgery", name: "Surgery", domain: "Body & Health", description: "Scheduled procedures, operations", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Virgo", "Capricorn", "Scorpio"], unfavorableSigns: ["Leo", "Aries", "Gemini"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.8, favorableSigns: ["Scorpio", "Capricorn", "Virgo"], unfavorableSigns: ["Aries", "Leo", "Cancer"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.5, favorableSigns: ["Capricorn", "Scorpio"], unfavorableSigns: ["Cancer", "Leo"] },
-    ],
-  },
-  {
-    id: "starting-medication", name: "Starting medication", domain: "Body & Health", description: "New prescriptions, supplements, protocols", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Virgo", "Scorpio", "Capricorn"], unfavorableSigns: ["Sagittarius", "Gemini"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.6, favorableSigns: ["Capricorn", "Virgo", "Scorpio"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Phase factor", planet: "moon", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "starting-workouts", name: "Starting workouts", domain: "Body & Health", description: "New gym plans, running programs, classes", isBase: false,
+    id: "starting-workouts", name: "Starting workouts", domain: "Body", description: "New gym plans, running programs, classes", isBase: false,
     factors: [
       { name: "Mars alignment", planet: "mars", weight: 1.0, favorableSigns: ["Aries", "Leo", "Sagittarius", "Scorpio"], unfavorableSigns: ["Taurus", "Cancer", "Pisces"] },
       { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Aries", "Leo", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer", "Taurus"] },
@@ -1711,7 +1773,7 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "tattoo-appointments", name: "Tattoo appointments", domain: "Body & Health", description: "Ink, piercings, body modifications", isBase: false,
+    id: "tattoo-appointments", name: "Tattoo appointments", domain: "Body", description: "Ink, piercings, body modifications", isBase: false,
     factors: [
       { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Leo", "Scorpio", "Aries"], unfavorableSigns: ["Pisces", "Cancer", "Virgo"] },
       { name: "Mars alignment", planet: "mars", weight: 0.7, favorableSigns: ["Aries", "Scorpio", "Leo"], unfavorableSigns: ["Libra", "Pisces"] },
@@ -1725,14 +1787,6 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
       { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Cancer", "Taurus", "Virgo"], unfavorableSigns: ["Aries", "Sagittarius", "Gemini"] },
       { name: "Mercury condition", planet: "mercury", weight: 0.7, favorableSigns: ["Virgo", "Taurus", "Cancer"], unfavorableSigns: ["Sagittarius", "Pisces"] },
       { name: "Saturn alignment", planet: "saturn", weight: 0.5, favorableSigns: ["Capricorn", "Taurus", "Cancer"], unfavorableSigns: ["Aries", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "signing-leases", name: "Signing leases", domain: "Home", description: "Rental agreements, contracts, commitments", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Virgo", "Gemini", "Capricorn"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Taurus", "Virgo"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Taurus", "Cancer", "Capricorn"], unfavorableSigns: ["Gemini", "Sagittarius"] },
     ],
   },
   {
@@ -1752,68 +1806,11 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "buying-property", name: "Buying property", domain: "Home", description: "Real estate, offers, closings", isBase: false,
-    factors: [
-      { name: "Saturn alignment", planet: "saturn", weight: 0.9, favorableSigns: ["Capricorn", "Taurus", "Cancer"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.7, favorableSigns: ["Cancer", "Taurus", "Pisces"], unfavorableSigns: ["Gemini", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Taurus", "Cancer", "Capricorn"], unfavorableSigns: ["Gemini", "Sagittarius"] },
-    ],
-  },
-  {
     id: "planting", name: "Planting", domain: "Home", description: "Garden starts, seeds, transplants", isBase: false,
     factors: [
       { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Cancer", "Scorpio", "Pisces", "Taurus"], unfavorableSigns: ["Aries", "Leo", "Gemini"] },
       { name: "Phase factor", planet: "moon", weight: 0.8, favorableSigns: [], unfavorableSigns: [] },
       { name: "Venus condition", planet: "venus", weight: 0.3, favorableSigns: ["Taurus", "Cancer", "Virgo"], unfavorableSigns: ["Aries", "Gemini"] },
-    ],
-  },
-  // Money domain
-  {
-    id: "negotiating-salary", name: "Negotiating salary", domain: "Money", description: "Raises, offers, compensation talks", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Capricorn", "Libra", "Gemini"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.7, favorableSigns: ["Sagittarius", "Taurus", "Leo"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.5, favorableSigns: ["Aries", "Capricorn", "Scorpio"], unfavorableSigns: ["Libra", "Pisces"] },
-    ],
-  },
-  {
-    id: "big-purchases", name: "Big purchases", domain: "Money", description: "Cars, electronics, furniture, luxury items", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 0.9, favorableSigns: ["Taurus", "Libra", "Capricorn"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.6, favorableSigns: ["Taurus", "Cancer", "Sagittarius"], unfavorableSigns: ["Virgo", "Gemini"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Taurus", "Capricorn", "Libra"], unfavorableSigns: ["Aries", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "paying-off-debt", name: "Paying off debt", domain: "Money", description: "Eliminating balances, consolidation", isBase: false,
-    factors: [
-      { name: "Saturn alignment", planet: "saturn", weight: 0.9, favorableSigns: ["Capricorn", "Virgo", "Scorpio"], unfavorableSigns: ["Sagittarius", "Leo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.6, favorableSigns: ["Capricorn", "Scorpio", "Virgo"], unfavorableSigns: ["Leo", "Sagittarius"] },
-      { name: "Phase factor", planet: "saturn", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "investing", name: "Investing", domain: "Money", description: "Stocks, retirement, portfolios", isBase: false,
-    factors: [
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.9, favorableSigns: ["Sagittarius", "Pisces", "Taurus", "Cancer"], unfavorableSigns: ["Gemini", "Virgo"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Taurus", "Virgo"], unfavorableSigns: ["Aries", "Leo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Taurus", "Capricorn", "Scorpio"], unfavorableSigns: ["Aries", "Gemini"] },
-    ],
-  },
-  {
-    id: "starting-a-business", name: "Starting a business", domain: "Money", description: "LLCs, side hustles, launches", isBase: false,
-    factors: [
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.8, favorableSigns: ["Sagittarius", "Leo", "Aries", "Aquarius"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.7, favorableSigns: ["Gemini", "Virgo", "Aquarius"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Leo", "Capricorn"], unfavorableSigns: ["Libra", "Cancer"] },
-    ],
-  },
-  {
-    id: "applying-for-loans", name: "Applying for loans", domain: "Money", description: "Mortgages, personal loans, credit", isBase: false,
-    factors: [
-      { name: "Saturn alignment", planet: "saturn", weight: 0.9, favorableSigns: ["Capricorn", "Virgo", "Taurus"], unfavorableSigns: ["Sagittarius", "Aries"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.7, favorableSigns: ["Virgo", "Capricorn", "Gemini"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.5, favorableSigns: ["Cancer", "Taurus", "Pisces"], unfavorableSigns: ["Gemini", "Virgo"] },
     ],
   },
   // Creative domain
@@ -1891,7 +1888,7 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "international-travel", name: "International travel", domain: "Travel", description: "Overseas flights, border crossings, visas", isBase: false,
+    id: "international-travel", name: "International travel", domain: "Travel", description: "Overseas trips, long journeys, new places", isBase: false,
     factors: [
       { name: "Jupiter alignment", planet: "jupiter", weight: 0.9, favorableSigns: ["Sagittarius", "Pisces", "Aquarius"], unfavorableSigns: ["Virgo", "Capricorn"] },
       { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Sagittarius", "Gemini", "Aquarius"], unfavorableSigns: ["Pisces", "Virgo"] },
@@ -1899,14 +1896,6 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   // Inner Work domain
-  {
-    id: "therapy-sessions", name: "Therapy sessions", domain: "Inner Work", description: "Sessions, intake appointments, EMDR", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Scorpio", "Pisces", "Cancer", "Virgo"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.6, favorableSigns: ["Scorpio", "Virgo", "Pisces"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.4, favorableSigns: ["Capricorn", "Scorpio"], unfavorableSigns: ["Aries", "Leo"] },
-    ],
-  },
   {
     id: "journaling", name: "Journaling", domain: "Inner Work", description: "Morning pages, reflection, processing", isBase: false,
     factors: [
@@ -1957,7 +1946,7 @@ const EXPANDED_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: "breaking-habits", name: "Breaking habits", domain: "Recovery", description: "Quitting patterns, cold turkey, tapering", isBase: false,
+    id: "breaking-habits", name: "Breaking habits", domain: "Recovery", description: "Letting go of patterns and routines", isBase: false,
     factors: [
       { name: "Mars alignment", planet: "mars", weight: 0.8, favorableSigns: ["Scorpio", "Aries", "Capricorn"], unfavorableSigns: ["Taurus", "Cancer", "Pisces"] },
       { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Scorpio", "Aquarius"], unfavorableSigns: ["Cancer", "Leo"] },
@@ -1992,6 +1981,29 @@ export function getCategoryDefinitions(): CategoryDefinition[] {
   return [...BASE_CATEGORIES, ...EXPANDED_CATEGORIES];
 }
 
+/**
+ * Topics the almanac never scores by the sky: medical care, medication,
+ * procedures and screenings, therapy appointments, money decisions
+ * (investing, loans, debt, big purchases), and legal or contractual ones.
+ * A real decision with real consequences does not get made by a transit.
+ *
+ * The built-in categories for these were removed; this also catches a
+ * removed category still saved in someone's list, and the same topics typed
+ * in as a custom category.
+ */
+const UNSCORED_TOPIC = new RegExp([
+  "surg", "operation", "procedur", "medic", "prescri", "pill", "dose", "dental", "dentist", "teeth", "tooth",
+  "doctor", "clinic", "hospital", "screening", "mammogram", "biopsy", "vaccin", "treatment", "therap",
+  "chemo", "diagnos", "health", "iud", "ivf", "fertility", "pregnan", "abortion",
+  "money", "invest", "stock", "crypto", "loan", "mortgage", "debt", "credit", "financ", "budget",
+  "salary", "purchase", "buying", "buy-", "property", "real-estate", "tax", "retire", "business",
+  "contract", "lease", "signing", "legal", "lawyer", "lawsuit", "court", "divorce", "visa", "immigra",
+].join("|"));
+
+export function isUnscoredTopic(categoryId: string): boolean {
+  return UNSCORED_TOPIC.test(categoryId.toLowerCase());
+}
+
 // ─── KEYWORD → FACTOR INFERENCE FOR CUSTOM CATEGORIES ─────────────────────
 
 interface InferredFactor extends CategoryFactor {
@@ -2024,9 +2036,9 @@ const KEYWORD_FACTORS: { keywords: string[]; factor: InferredFactor }[] = [
     keywords: ["rest", "sleep", "nap", "relax", "meditat", "heal", "recovery", "spa", "bath", "journal", "reflect", "quiet", "calm"],
     factor: { name: "Moon receptivity", planet: "moon", weight: 0.7, favorableSigns: ["Cancer", "Pisces", "Taurus"], unfavorableSigns: ["Aries", "Gemini", "Sagittarius"], phasePreference: "waning" },
   },
-  // Money / career / business
+  // Career / business (money, investing, loans and contracts are never scored — see isUnscoredTopic)
   {
-    keywords: ["money", "invest", "save", "budget", "business", "sell", "buy", "trade", "finance", "income", "profit", "deal", "contract", "negotiate"],
+    keywords: ["client", "brand", "pitch", "negotiate"],
     factor: { name: "Jupiter abundance", planet: "jupiter", weight: 0.5, favorableSigns: ["Sagittarius", "Pisces", "Cancer", "Taurus"], unfavorableSigns: ["Gemini", "Virgo"], phasePreference: "waxing" },
   },
   // Love / romance / relationships
@@ -2087,6 +2099,14 @@ export function scoreCategoryForDate(categoryId: string, date: Date, sky: TodayS
   const allDefs = getCategoryDefinitions();
   const def = allDefs.find(d => d.id === categoryId);
 
+  // Belt and braces: the screen filters these out, but a stored or custom
+  // category must never come back with a day score.
+  if (!def && isUnscoredTopic(categoryId)) return { score: 5, topFactor: "Not scored by the sky" };
+
+  // Mercury factors used to read only the Moon's sign, so "Communication"
+  // could top the list mid-retrograde while Home said "expect plans to shift".
+  const mercuryRx = mercuryStatus(date).state === "retrograde";
+
   if (!def) {
     // Custom category: infer astrological factors from keywords in the ID
     const inferredFactors = inferFactorsFromKeywords(categoryId);
@@ -2117,6 +2137,7 @@ export function scoreCategoryForDate(categoryId: string, date: Date, sky: TodayS
         if (planetDayIdx !== undefined && planetDayIdx === dayOfWeekIdx) {
           subScore += 1.5;
         }
+        if (mercuryRx && factor.planet === "mercury") subScore -= 1.5;
         if (factor.phasePreference === "waxing" && isWaxing) subScore += 0.8;
         else if (factor.phasePreference === "waning" && !isWaxing) subScore += 0.8;
         if (hasVoc) subScore -= 0.5;
@@ -2178,11 +2199,12 @@ export function scoreCategoryForDate(categoryId: string, date: Date, sky: TodayS
     if (planetDayIdx !== undefined && planetDayIdx === dayOfWeekIdx) {
       subScore += 1.5;
     }
+    if (mercuryRx && factor.planet === "mercury") subScore -= 1.5;
 
     // Phase alignment for "Phase factor" type factors
     if (factor.name.toLowerCase().includes("phase")) {
       // Determine if this category benefits from waxing or waning
-      const waningCategories = ["rest", "deep-cleaning", "paying-off-debt", "breaking-habits", "finishing-projects", "shadow-work"];
+      const waningCategories = ["rest", "deep-cleaning", "breaking-habits", "finishing-projects", "shadow-work"];
       const prefersWaning = waningCategories.includes(def.id);
 
       if (prefersWaning) {
@@ -2194,8 +2216,8 @@ export function scoreCategoryForDate(categoryId: string, date: Date, sky: TodayS
 
     // VOC penalty for action-oriented categories
     if (hasVoc) {
-      const actionCategories = ["communication", "launches", "negotiation", "first-dates", "signing-leases",
-        "starting-a-business", "dtr-conversations", "starting-trips", "starting-workouts",
+      const actionCategories = ["communication", "launches", "negotiation", "first-dates",
+        "dtr-conversations", "starting-trips", "starting-workouts",
         "starting-projects", "starting-habits", "job-searching"];
       if (actionCategories.includes(def.id)) {
         subScore -= 1.0;
@@ -2252,31 +2274,93 @@ interface PlanetaryEvent {
 }
 
 /**
- * Hardcoded major 2026 planetary events.
- * Verified against ephemeris data from astro-seek.com, cafeastrology.com, almanac.com.
- * JS months are 0-indexed: 0=Jan, 1=Feb, ... 11=Dec
+ * The year's major sky events, computed: stations of Mercury–Saturn, sign
+ * changes of Mars–Pluto, and eclipses, each on the reader's calendar day.
+ *
+ * This replaced a hand-typed MAJOR_EVENTS_2026 table — which went silent on
+ * 1 January 2027, dated Mars into Leo by a US evening, and told people to
+ * "avoid signing contracts", "sign and send anything important before Sunday"
+ * and not to "start new financial agreements". The copy below is reflection
+ * only: a real decision does not get made by a transit.
  */
-const MAJOR_EVENTS_2026: PlanetaryEvent[] = [
-  // Mercury retrograde 1: Feb 26 – Mar 20 (Pisces)
-  { date: new Date(2026, 1, 26), planet: "Mercury", type: "station", headline: "Mercury stations retrograde", body: "Mercury stations retrograde in Pisces. Communication gets foggy. Back up devices, avoid signing contracts, and double-check travel plans.", eventTag: "EVENT", advice: "Avoid new contracts after station" },
-  { date: new Date(2026, 2, 20), planet: "Mercury", type: "station", headline: "Mercury stations direct", body: "Mercury returns direct in Pisces. Clarity returns. Projects delayed since late February can move forward.", eventTag: "EVENT", advice: "Green light for signing and launching" },
-  // Mercury retrograde 2: Jun 29 – Jul 23 (Cancer)
-  { date: new Date(2026, 5, 29), planet: "Mercury", type: "station", headline: "Mercury stations retrograde", body: "Mercury stations retrograde in Cancer. Family conversations and home plans may need revisiting. Emotional communication gets tangled.", eventTag: "EVENT", advice: "Sign and send anything important before Sunday" },
-  { date: new Date(2026, 6, 23), planet: "Mercury", type: "station", headline: "Mercury stations direct", body: "Mercury returns direct in Cancer. Emotional clarity returns. Revisited family conversations can resolve.", eventTag: "EVENT", advice: "Revisit and finalize delayed plans" },
-  // Mercury retrograde 3: Oct 24 – Nov 13 (Scorpio)
-  { date: new Date(2026, 9, 24), planet: "Mercury", type: "station", headline: "Mercury stations retrograde", body: "Mercury stations retrograde in Scorpio. Deep conversations resurface. Secrets may come to light. Don't start new financial agreements.", eventTag: "EVENT", advice: "Pause on new commitments" },
-  { date: new Date(2026, 10, 13), planet: "Mercury", type: "station", headline: "Mercury stations direct", body: "Mercury returns direct in Scorpio. Research and investigation pay off. Good for finalizing what was uncovered.", eventTag: "EVENT", advice: "Resume detailed work and editing" },
-  // Venus retrograde: Oct 3 – Nov 14 (Scorpio to Libra)
-  { date: new Date(2026, 9, 3), planet: "Venus", type: "station", headline: "Venus stations retrograde", body: "Venus retrograde in Scorpio. Past relationships may resurface. Self-worth, intimacy, and shared resources under review.", eventTag: "EVENT", advice: "Reflect on what you truly value" },
-  { date: new Date(2026, 10, 14), planet: "Venus", type: "station", headline: "Venus stations direct", body: "Venus returns direct in Libra. Love and creativity flowing again. Good for art, beauty, and partnership decisions.", eventTag: "EVENT", advice: "Re-engage with creative pursuits" },
-  // Mars enters Leo: Sep 27
-  { date: new Date(2026, 8, 27), planet: "Mars", type: "ingress", headline: "Mars enters Leo", body: "Mars fires up in Leo. Bold action, creative courage, and dramatic energy. Chase what excites you.", eventTag: "SHIFT", advice: "Channel energy into creative projects" },
-  // Jupiter leaves Cancer: Jun 30 (Jupiter has been in Cancer since Jun 9, 2025)
-  { date: new Date(2026, 5, 30), planet: "Jupiter", type: "ingress", headline: "Jupiter leaves Cancer", body: "Jupiter wraps up its time in Cancer — a year of expansion through nurturing, home, and emotional growth. A major chapter closes.", eventTag: "SHIFT", advice: "Harvest what you've built at home" },
-  // Saturn retrograde: Jul 26 – Dec 10 (Aries)
-  { date: new Date(2026, 6, 26), planet: "Saturn", type: "station", headline: "Saturn stations retrograde", body: "Saturn retrogrades in Aries. Structure and discipline turn inward. Review commitments and boundaries.", eventTag: "EVENT", advice: "Reassess long-term commitments" },
-  { date: new Date(2026, 11, 10), planet: "Saturn", type: "station", headline: "Saturn stations direct", body: "Saturn returns direct in Aries. External structures solidify. Time to build on what was reviewed.", eventTag: "EVENT", advice: "Commit to refined plans" },
-];
+const STATION_COPY: Record<string, Record<"retrograde" | "direct", { body: string; advice: string }>> = {
+  Mercury: {
+    retrograde: { body: "Communication, plans and travel are traditionally read as asking for a second draft.", advice: "A season associated with review — reread, revisit, reconnect" },
+    direct: { body: "The tradition reads this as clarity returning to what was revisited.", advice: "What did the review turn up?" },
+  },
+  Venus: {
+    retrograde: { body: "Love and values turn inward. Past relationships and old feelings may resurface.", advice: "Reflect on what you truly value" },
+    direct: { body: "Love and creativity are traditionally read as flowing outward again.", advice: "Re-engage with creative pursuits" },
+  },
+  Mars: {
+    retrograde: { body: "Drive turns inward. Tradition reads this as a time for rethinking strategy rather than forcing momentum.", advice: "Notice where you've been pushing" },
+    direct: { body: "Momentum is traditionally read as returning after a long pause.", advice: "Notice what you're ready to move on" },
+  },
+  Jupiter: {
+    retrograde: { body: "Growth and belief turn reflective. A time to revisit the bigger vision.", advice: "Revisit what you're growing toward" },
+    direct: { body: "Expansion is traditionally read as moving outward again.", advice: "Notice what wants to grow" },
+  },
+  Saturn: {
+    retrograde: { body: "Structure and responsibility turn inward for review.", advice: "Reflect on your long-term commitments" },
+    direct: { body: "Structures are traditionally read as firming up after review.", advice: "Notice what the review clarified" },
+  },
+};
+
+const INGRESS_COPY: Record<string, string> = {
+  Mars: "Drive and courage take on a new sign's colour for about six weeks.",
+  Jupiter: "A roughly year-long chapter of growth changes sign.",
+  Saturn: "A roughly three-year chapter of structure and responsibility changes sign.",
+  Uranus: "A roughly seven-year chapter of change and disruption changes sign.",
+  Neptune: "A generational chapter of dreams and dissolving changes sign.",
+  Pluto: "A generational chapter of power and transformation changes sign.",
+};
+
+const majorEventCache = new Map<number, PlanetaryEvent[]>();
+
+function majorEventsForYear(year: number): PlanetaryEvent[] {
+  const hit = majorEventCache.get(year);
+  if (hit) return hit;
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+  const out: PlanetaryEvent[] = [];
+
+  for (const s of stationsBetween(start, end)) {
+    const copy = STATION_COPY[s.planet]?.[s.direction];
+    if (!copy) continue;   // Uranus–Pluto stations are too frequent and too slow to headline
+    const verb = s.direction === "retrograde" ? "stations retrograde" : "stations direct";
+    out.push({
+      date: calendarDayIn(s.at), planet: s.planet, type: "station",
+      headline: `${s.planet} ${verb}`,
+      body: `${s.planet} ${verb} in ${s.sign}. ${copy.body}`,
+      eventTag: "EVENT", advice: copy.advice,
+    });
+  }
+  for (const g of ingressesBetween(start, end)) {
+    out.push({
+      date: calendarDayIn(g.at), planet: g.planet, type: "ingress",
+      headline: `${g.planet} ${g.retrograde ? "re-enters" : "enters"} ${g.sign}`,
+      body: `${g.planet} ${g.retrograde ? "slips back into" : "enters"} ${g.sign}. ${INGRESS_COPY[g.planet] ?? ""}`.trim(),
+      eventTag: "SHIFT", advice: `${g.planet} in ${g.sign}`,
+    });
+  }
+  for (const e of eclipsesBetween(start, end)) {
+    out.push({
+      date: calendarDayIn(e.at), planet: e.kind === "solar" ? "Sun" : "Moon", type: "eclipse",
+      headline: `${e.label} in ${e.sign}`,
+      body: `${e.label} in ${e.sign}. ${e.kind === "solar" ? "Traditionally read as a reset — a new moon turned up." : "Traditionally read as illumination — a full moon turned up."}`,
+      eventTag: "ECLIPSE", advice: e.kind === "solar" ? "What do you want to begin?" : "What is asking to be seen?",
+    });
+  }
+  out.sort((a, b) => a.date.getTime() - b.date.getTime());
+  majorEventCache.set(year, out);
+  return out;
+}
+
+/** Major events from the year before to the year after `d` — enough for any week or month grid. */
+function majorEventsNear(d: Date): PlanetaryEvent[] {
+  const y = d.getFullYear();
+  return [...majorEventsForYear(y - 1), ...majorEventsForYear(y), ...majorEventsForYear(y + 1)];
+}
 
 /** Moon phase emoji based on phase string */
 function moonPhaseEmoji(phase: string): string {
@@ -2364,7 +2448,7 @@ export function getWeekData(anchorDate: Date): WeekData {
 
   // Find any major event in this week
   let weekEvent: PlanetaryEvent | null = null;
-  for (const evt of MAJOR_EVENTS_2026) {
+  for (const evt of majorEventsNear(sunday)) {
     const evtDate = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
     const diff = (evtDate.getTime() - sunday.getTime()) / 86400000;
     if (diff >= 0 && diff < 7) {
@@ -2469,7 +2553,7 @@ export function getWeekData(anchorDate: Date): WeekData {
     }
     if (isEventDay && weekEvent?.type === "station" && weekEvent.planet === "Mercury") {
       scoreFactors.push({
-        label: `Mercury stations retrograde`,
+        label: weekEvent.headline,
         effect: "drag",
         detail: `${weekEvent.advice || "Communication and logistics may need extra care."}`,
       });
@@ -2645,7 +2729,7 @@ function buildWeekMoments(days: WeekDaySummary[], sunday: Date): AlmanacMoment[]
   const fmt = (d: Date) => `${monthShort[d.getMonth()]} ${d.getDate()}`;
 
   // Major events in the week
-  for (const evt of MAJOR_EVENTS_2026) {
+  for (const evt of majorEventsNear(sunday)) {
     const evtDate = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
     const diff = (evtDate.getTime() - sunday.getTime()) / 86400000;
     if (diff >= 0 && diff < 7) {
@@ -2760,7 +2844,7 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
         };
         if (favorablePairs[planetRuler]?.includes(moonSign)) dayScore += 2.0;
         // Check for challenging events
-        for (const evt of MAJOR_EVENTS_2026) {
+        for (const evt of majorEventsNear(cellDate)) {
           const evtD = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
           if (evtD.toDateString() === cellDate.toDateString() && evt.type === "station" && evt.planet === "Mercury") {
             dayScore -= 2.5;
@@ -2782,7 +2866,7 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
       // Check for events on this day
       let hasEvent = false;
       let eventDotColor: "amber" | "red" | "neutral" | undefined;
-      for (const evt of MAJOR_EVENTS_2026) {
+      for (const evt of majorEventsNear(cellDate)) {
         const evtD = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
         if (evtD.toDateString() === cellDate.toDateString()) {
           hasEvent = true;
@@ -2835,7 +2919,7 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
 
   // Gather events for this month
   const events: MonthEvent[] = [];
-  for (const evt of MAJOR_EVENTS_2026) {
+  for (const evt of majorEventsForYear(year)) {
     if (evt.date.getMonth() === month && evt.date.getFullYear() === year) {
       events.push({
         date: evt.date,

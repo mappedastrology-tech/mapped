@@ -41,6 +41,9 @@ export interface LiveSky {
   sunset: string;
   daylight: string;       // "14h 33m"
   vocStart: string | null;
+  /** "Moon void of course from 2:15 PM to 6:42 PM" — computed, null when not void today. */
+  vocSummary: string | null;
+  vocNextSign: string | null;
   sabian: { sign: string; degree: number; symbol: string; keynote: string };
   goodFor: { why: string; activities: string[] };
   holdOff: { reason: string; activities: string[] };
@@ -71,6 +74,8 @@ export function useLiveSky(): LiveSky | null {
         sunset: s.sunset,
         daylight: `${s.dayLengthHours}h ${s.dayLengthMinutes}m`,
         vocStart: s.voidOfCourseMoon?.start ?? null,
+        vocSummary: s.voidOfCourseMoon?.summary ?? null,
+        vocNextSign: s.voidOfCourseMoon?.nextSign ?? null,
         sabian: sab,
         goodFor: { why: good.why, activities: good.activities.map((a) => a.activity) },
         holdOff: { reason: hold.reason, activities: hold.items.map((a) => a.activity) },

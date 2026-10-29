@@ -148,37 +148,94 @@ test("a whole year stays inside the budget", () => {
   assert.ok(total >= 40 && total <= 110, `${total} notification days a year is outside the intended range`);
 });
 
-test("the sky events are the ones that actually happened in 2026", () => {
-  // Cross-checked against published retrograde periods: Mercury turns back on
-  // 26 Feb, 29 Jun and 24 Oct 2026, and Venus on 3 Oct.
-  const stations: string[] = [];
-  const start = new Date(2026, 0, 1);
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
-    for (const s of stationsOn(d)) {
-      stations.push(`${d.getMonth() + 1}/${d.getDate()} ${s.planet} ${s.direction}`);
-    }
+/** Every calendar day of a year, as the app's "day" shape (local fields). */
+function daysOf(year: number): Date[] {
+  const out: Date[] = [];
+  for (let d = new Date(year, 0, 1); d.getFullYear() === year; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    out.push(d);
   }
-  assert.ok(stations.includes("2/26 Mercury retrograde"), stations.join(", "));
-  assert.ok(stations.includes("6/29 Mercury retrograde"));
-  assert.ok(stations.includes("10/24 Mercury retrograde"));
-  assert.ok(stations.includes("10/3 Venus retrograde"));
-  // Mercury alone stations six to eight times a year; this must not be empty,
-  // which is exactly what happened when the longitude was heliocentric.
-  assert.ok(stations.length >= 14, `only ${stations.length} stations in a year`);
+  return out;
+}
+const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+
+// These pass an explicit zone, so they hold on any machine — run the suite
+// with TZ=UTC, TZ=Asia/Tokyo and TZ=America/Chicago and they must all agree.
+
+test("the sky events are the ones that actually happened in 2026, on each reader's day", () => {
+  // Swiss Ephemeris: Mercury stations retrograde 26 Feb 06:48, 29 Jun 17:35
+  // and 24 Oct 07:12 UT; Venus 3 Oct 07:15 UT; Venus stations direct
+  // 14 Nov 00:27 UT — which is still the evening of 13 Nov in Chicago.
+  const stationsIn = (tz: string) => {
+    const out: string[] = [];
+    for (const d of daysOf(2026)) for (const s of stationsOn(d, tz)) out.push(`${md(d)} ${s.planet} ${s.direction}`);
+    return out;
+  };
+  for (const tz of ["UTC", "America/Chicago"]) {
+    const stations = stationsIn(tz);
+    assert.ok(stations.includes("2/26 Mercury retrograde"), `${tz}: ${stations.join(", ")}`);
+    assert.ok(stations.includes("6/29 Mercury retrograde"), tz);
+    assert.ok(stations.includes("10/24 Mercury retrograde"), tz);
+    assert.ok(stations.includes("10/3 Venus retrograde"), tz);
+    // Mercury alone stations six times a year; this must not be empty, which
+    // is exactly what happened when the longitude was heliocentric.
+    assert.ok(stations.length >= 14, `only ${stations.length} stations in a year`);
+  }
+  assert.ok(stationsIn("UTC").includes("11/14 Venus direct"));
+  assert.ok(stationsIn("America/Chicago").includes("11/13 Venus direct"));
 });
 
 test("the four 2026 eclipses land on their real days, and open two seasons", () => {
-  const eclipses: string[] = [], seasons: string[] = [];
-  const start = new Date(2026, 0, 1);
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
-    const e = eclipseOn(d);
-    if (e) eclipses.push(`${d.getMonth() + 1}/${d.getDate()} ${e.kind}`);
-    if (eclipseSeasonOpensOn(d)) seasons.push(`${d.getMonth() + 1}/${d.getDate()}`);
-  }
-  assert.deepEqual(eclipses, ["2/17 solar", "3/3 lunar", "8/12 solar", "8/28 lunar"]);
-  assert.equal(seasons.length, 2, `seasons: ${seasons.join(", ")}`);
+  // Swiss Ephemeris: 17 Feb 12:12 UT annular solar, 3 Mar 11:34 total lunar,
+  // 12 Aug 17:46 total solar, 28 Aug 04:13 partial lunar. The last is the
+  // evening of 27 Aug in Chicago, and a UTC server used to push it on the 28th.
+  const run = (tz: string) => {
+    const eclipses: string[] = [], seasons: string[] = [];
+    for (const d of daysOf(2026)) {
+      const e = eclipseOn(d, tz);
+      if (e) eclipses.push(`${md(d)} ${e.kind}`);
+      if (eclipseSeasonOpensOn(d, tz)) seasons.push(md(d));
+    }
+    return { eclipses, seasons };
+  };
+  const utc = run("UTC");
+  assert.deepEqual(utc.eclipses, ["2/17 solar", "3/3 lunar", "8/12 solar", "8/28 lunar"]);
+  assert.equal(utc.seasons.length, 2, `seasons: ${utc.seasons.join(", ")}`);
+  const chicago = run("America/Chicago");
+  assert.deepEqual(chicago.eclipses, ["2/17 solar", "3/3 lunar", "8/12 solar", "8/27 lunar"]);
+  assert.equal(chicago.seasons.length, 2);
+});
+
+test("the eclipse types are the real ones, not swapped", () => {
+  const types = (year: number) => daysOf(year)
+    .map((d) => eclipseOn(d, "UTC"))
+    .filter((e): e is NonNullable<typeof e> => !!e)
+    .map((e) => `${e.at.toISOString().slice(0, 16)} ${e.label}`);
+  assert.deepEqual(types(2026), [
+    "2026-02-17T12:11 Annular Solar Eclipse",
+    "2026-03-03T11:33 Total Lunar Eclipse",
+    "2026-08-12T17:45 Total Solar Eclipse",
+    "2026-08-28T04:12 Partial Lunar Eclipse",
+  ]);
+  assert.deepEqual(types(2027), [
+    "2027-02-06T15:59 Annular Solar Eclipse",
+    "2027-02-20T23:12 Penumbral Lunar Eclipse",
+    "2027-07-18T16:02 Penumbral Lunar Eclipse",
+    "2027-08-02T10:06 Total Solar Eclipse",
+    "2027-08-17T07:13 Penumbral Lunar Eclipse",
+  ]);
+});
+
+test("the sender asks about the person's day, not the server's", () => {
+  // 28 Aug 2026, 04:13 UTC lunar eclipse. A Chicago user's "today" for it is
+  // 27 Aug; candidatesFor must find it there and not on the 28th.
+  const prefs: NotificationPreferences = { ...DEFAULT_PREFERENCES, eclipses: true };
+  const cats = (d: Date, tz: string) => candidatesFor(d, prefs, CHART, undefined, tz).map((c) => c.category);
+  assert.ok(cats(new Date(2026, 7, 27, 12), "America/Chicago").includes("eclipses"));
+  assert.ok(!cats(new Date(2026, 7, 28, 12), "America/Chicago").includes("eclipses"));
+  assert.ok(cats(new Date(2026, 7, 28, 12), "UTC").includes("eclipses"));
+  // localNow hands the resolved zone through with the date.
+  assert.equal(localNow(new Date(Date.UTC(2026, 7, 28, 4)), "America/Chicago").timeZone, "America/Chicago");
+  assert.equal(localNow(new Date(Date.UTC(2026, 7, 28, 4)), "Not/AZone").timeZone, "UTC");
 });
 
 test("only the slow planets are announced changing sign", () => {
@@ -191,6 +248,18 @@ test("only the slow planets are announced changing sign", () => {
     }
   }
   assert.ok(count <= 8, `${count} ingresses a year is too many to be the slow ones`);
+});
+
+test("a late-December birthday still gets its solar return", () => {
+  // Natal Sun at 8° Capricorn (~29 Dec). The search used to start on
+  // 20 Dec of the previous year, return LAST year's instant, and never fire.
+  const at = solarReturnInstant(278, 2026);
+  assert.equal(at.getUTCFullYear(), 2026);
+  assert.equal(at.getUTCMonth(), 11);
+  const day = new Date(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate(), 12);
+  const prefs: NotificationPreferences = { ...DEFAULT_PREFERENCES, solar_return: true };
+  const chart = { ...CHART, planets: [{ name: "Sun", sign: "Capricorn", absPosition: 278 }] };
+  assert.ok(candidatesFor(day, prefs, chart, undefined, "UTC").some((c) => c.category === "solar_return"));
 });
 
 test("a solar return is one moment a year, exact to the minute", () => {
