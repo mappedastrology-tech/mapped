@@ -20,6 +20,7 @@
 import { supabase } from "./supabase";
 import { calculateChart } from "./astro/calculateChart";
 import { chartCalcParams, chartSystemFromRow, type ChartSystem } from "./astro/vedic/system";
+import { isResolvedZone } from "./astro/birthTimezone";
 
 interface PgError { code?: string; message?: string }
 
@@ -81,6 +82,7 @@ interface BirthRow {
   latitude?: number | null;
   longitude?: number | null;
   city_name?: string | null;
+  timezone?: string | null;
   synastry?: Record<string, unknown> | null;
 }
 
@@ -96,6 +98,7 @@ function recalc(row: BirthRow, sys: ChartSystem): any | null {
       latitude: row.latitude,
       longitude: row.longitude,
       cityName: row.city_name || undefined,
+      timezone: row.timezone ?? null,
       ...chartCalcParams(sys),
     });
   } catch {
@@ -107,6 +110,8 @@ function recalc(row: BirthRow, sys: ChartSystem): any | null {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function chartColumns(c: any) {
   return {
+    // Only a resolved zone is written; an estimate (null) never overwrites one.
+    ...(c.timezone ? { timezone: c.timezone } : {}),
     big_three: c.bigThree,
     planets: c.planets,
     houses: c.houses,
@@ -155,7 +160,7 @@ export async function applyChartSystem(userId: string, sys: ChartSystem): Promis
   // Only the birth-data columns are needed to recalculate.
   const { data: charts } = await supabase
     .from("charts")
-    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name")
+    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name, timezone")
     .eq("user_id", userId);
   for (const row of (charts || []) as BirthRow[]) {
     const c = recalc(row, sys);
@@ -172,7 +177,7 @@ export async function applyChartSystem(userId: string, sys: ChartSystem): Promis
   // they have to be in the same system.
   const { data: conns } = await supabase
     .from("connections")
-    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name, synastry")
+    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name, timezone, synastry")
     .eq("user_id", userId);
   for (const row of (conns || []) as BirthRow[]) {
     const c = recalc(row, sys);
@@ -190,6 +195,80 @@ export async function applyChartSystem(userId: string, sys: ChartSystem): Promis
 
   clearCachedChartCopies(userId);
   return result;
+}
+
+/**
+ * The birthplace's real IANA zone, from /api/timezone (geo-tz needs the
+ * server's boundary data). Null when the API cannot be reached — offline, or
+ * the app without a connection — and the caller keeps the estimate it has,
+ * which the chart page labels as an estimate.
+ */
+export async function fetchBirthTimezone(lat: number, lng: number, timeoutMs = 8000): Promise<string | null> {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`/api/timezone?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`, ctrl ? { signal: ctrl.signal } : undefined);
+    if (!res.ok) return null;
+    const body = await res.json();
+    return isResolvedZone(body?.timezone) ? body.timezone : null;
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * Set the zone the user's birth time is read in, and rebuild their chart on
+ * it — the resolved zone for a chart saved before zones were stored, or the
+ * user's own correction ("UTC-05:00", "LMT", another IANA zone).
+ *
+ * Like a birth-time change this moves the Ascendant and every house, so the
+ * connections' stored synastry is marked stale the same way, and the cached
+ * copies of the old chart are dropped.
+ */
+export async function applyBirthTimezone(userId: string, timezone: string): Promise<SyncResult> {
+  const result: SyncResult = { charts: 0, connections: 0, failed: 0 };
+  if (!isResolvedZone(timezone)) throw new Error("That isn't a time zone we recognise.");
+
+  const sys = chartSystemFromRow(await loadChartSystemPreference(userId));
+  const { required, optional } = systemColumns(sys);
+
+  const { data: charts } = await supabase
+    .from("charts")
+    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name, timezone")
+    .eq("user_id", userId);
+  for (const row of (charts || []) as BirthRow[]) {
+    const c = recalc({ ...row, timezone }, sys);
+    if (!c) { result.failed++; continue; }
+    const err = await writeWithOptionalColumns(
+      (payload) => supabase.from("charts").update(payload).eq("id", row.id),
+      { ...chartColumns(c), timezone, ...required },
+      { ...optional, ascendant: c.ascendant || null },
+    );
+    if (err) result.failed++; else result.charts++;
+  }
+
+  await markSynastryStale(userId, result);
+  clearCachedChartCopies(userId);
+  return result;
+}
+
+/** Stored synastry was computed against the user's old chart; reuse the Maps page's stale path. */
+async function markSynastryStale(userId: string, result: SyncResult) {
+  const { data: conns } = await supabase
+    .from("connections")
+    .select("id, synastry")
+    .eq("user_id", userId)
+    .not("synastry", "is", null);
+  for (const row of (conns || []) as { id: string; synastry: Record<string, unknown> | null }[]) {
+    if (!row.synastry) continue;
+    const { error } = await supabase
+      .from("connections")
+      .update({ synastry: { ...row.synastry, version: 0 } })
+      .eq("id", row.id);
+    if (error) result.failed++; else result.connections++;
+  }
 }
 
 /**
@@ -218,7 +297,7 @@ export async function applyBirthTime(userId: string, birthTime: string | null): 
 
   const { data: charts } = await supabase
     .from("charts")
-    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name")
+    .select("id, name, birth_date, birth_time, unknown_time, latitude, longitude, city_name, timezone")
     .eq("user_id", userId);
 
   // charts.birth_time is NOT NULL, and the rows written by onboarding record an

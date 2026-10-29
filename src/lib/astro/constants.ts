@@ -54,15 +54,23 @@ export function findAspect(
   return null;
 }
 
-/** Convert absolute position (0-360) to sign info. */
+/**
+ * Convert absolute position (0-360) to sign info.
+ *
+ * TRUNCATES to 0.01° first and derives every field from that one value, so
+ * they always agree and the sign is the one the body is really in: 59.996°
+ * is 29.99° Taurus (it has not reached Gemini), never "30.00° Taurus" as
+ * rounding produced. position is always 0–29.99, absPosition 0–359.99. (The
+ * 1e-6 absorbs float noise such as 59.99999999999 for an exact 60.)
+ */
 export function posToSign(absPos: number) {
-  const signNum = Math.floor(absPos / 30) % 12;
-  const position = absPos % 30;
+  const hundredths = ((Math.floor(absPos * 100 + 1e-6) % 36000) + 36000) % 36000;
+  const signNum = Math.floor(hundredths / 3000);
   return {
     sign: SIGN_NAMES[signNum],
     signNum,
-    position: Math.round(position * 100) / 100,
-    absPosition: Math.round(absPos * 100) / 100,
+    position: (hundredths % 3000) / 100,
+    absPosition: hundredths / 100,
   };
 }
 
@@ -75,7 +83,10 @@ export function applySidereal(absPosition: number, ayanamsaOffset: number) {
   return posToSign(siderealPos);
 }
 
-/** Midpoint of two zodiac positions (shorter arc). */
+/**
+ * Midpoint of two zodiac positions (shorter arc), unrounded — posToSign does
+ * the one rounding, so a midpoint at 59.996° stays in Taurus.
+ */
 export function midpoint(pos1: number, pos2: number): number {
   const diff = ((pos2 - pos1) % 360 + 360) % 360;
   let mid: number;
@@ -84,7 +95,7 @@ export function midpoint(pos1: number, pos2: number): number {
   } else {
     mid = (pos1 + diff / 2) % 360;
   }
-  return Math.round(mid * 100) / 100;
+  return mid;
 }
 
 /** Determine which house a planet falls in based on house cusp positions. */

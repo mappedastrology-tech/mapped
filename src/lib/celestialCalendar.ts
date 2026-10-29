@@ -1,14 +1,29 @@
 /**
  * Celestial Calendar — multi-cultural astronomical & astrological date system.
  *
- * Moon phases, zodiac seasons, and nakshatras use astronomy-engine for
- * sub-arcminute accuracy. Cultural & festival dates are approximate.
+ * Moon phases, zodiac seasons, nakshatras, eclipses, retrogrades and the
+ * solar-term festivals are computed with astronomy-engine for any year.
+ * Festivals on a lunisolar calendar that depends on local observance (the
+ * Hindu tithi calendar, Islamic moon sighting, the Tibetan calendar) are taken
+ * from a table of verified dates, and are shown ONLY for the years in that
+ * table — a missing festival is better than last year's date.
  */
 
+import * as Astronomy from "astronomy-engine";
+import {
+  eclipsesBetween,
+  eclipseNear,
+  retrogradePeriodsBetween,
+  calendarDayIn,
+  isOnDay,
+  localDayWindow,
+  type SkyEclipse,
+} from "@/lib/astro/skyCalendar";
 import {
   getMoonPhaseFraction,
   getMoonIllumination,
   getMoonLongitude,
+  getSunLongitude,
   getCurrentMoonSign,
   getCurrentSunSign,
   getSeasonDates,
@@ -448,7 +463,7 @@ export const PLANETARY_DAY_CONTEXT: Record<string, PlanetaryDayContext> = {
     colorMeaning: "Green and yellow are Mercury's colors — green for growth of ideas, yellow for mental brightness. These colors stimulate the nervous system gently and support alert, curious thinking without overstimulation.",
     vedicName: "Budhavāra (बुधवार) — from Budha, meaning Mercury/wisdom",
     bodyPart: "Nervous system, hands, and lungs — your communication pathways",
-    doToday: ["Write (anything — emails, journals, creative work)", "Study and learn new things", "Have important conversations", "Network and connect people", "Sign contracts or make deals"],
+    doToday: ["Write (anything — emails, journals, creative work)", "Study and learn new things", "Have important conversations", "Network and connect people", "Send the message you've been drafting"],
     avoidToday: ["Zoning out on passive content", "Avoiding communication", "Making decisions without gathering information first"],
     howToUseColor: "Wear green or yellow — emerald green for grounded intellect, bright yellow for mental clarity. Mercury energy is quick and light, so these colors should feel fresh rather than heavy.",
   },
@@ -466,7 +481,7 @@ export const PLANETARY_DAY_CONTEXT: Record<string, PlanetaryDayContext> = {
     colorMeaning: "Green and pink are Venus's colors — green for growth in relationships and abundance, pink for tenderness and heart-opening. White and pastels also work. Venus energy is soft, receptive, and aesthetically refined.",
     vedicName: "Shukravāra (शुक्रवार) — from Shukra, meaning Venus/brightness",
     bodyPart: "Kidneys, skin, and reproductive system — your pleasure and balance centers",
-    doToday: ["Self-care rituals", "Dates and quality time with loved ones", "Art, music, and creative expression", "Buy something beautiful", "Eat slowly and with full attention"],
+    doToday: ["Self-care rituals", "Dates and quality time with loved ones", "Art, music, and creative expression", "Bring something beautiful into your space", "Eat slowly and with full attention"],
     avoidToday: ["Denying yourself pleasure", "Purely transactional interactions", "Ignoring aesthetics (how you look, how your space looks)"],
     howToUseColor: "Wear green, pink, white, or soft pastels. Floral patterns are very Venus. The goal is to feel beautiful and soft — Venus rewards you for slowing down and appreciating sensory experience.",
   },
@@ -493,7 +508,7 @@ export interface NakshatraInfo {
 
 // 27 Nakshatras (lunar mansions) — core of Vedic astrology
 export const NAKSHATRAS: NakshatraInfo[] = [
-  { name: "Ashwini", deity: "Ashwini Kumaras", quality: "Swift", element: "fire", brief: "Healing, speed, fresh starts. The divine physicians ride through — good for beginning treatments or launching something fast." },
+  { name: "Ashwini", deity: "Ashwini Kumaras", quality: "Swift", element: "fire", brief: "Healing, speed, fresh starts. The divine physicians ride through — a star traditionally linked with swiftness and new beginnings." },
   { name: "Bharani", deity: "Yama", quality: "Creative", element: "earth", brief: "Birth, death, transformation. A potent time for letting go of what no longer serves and welcoming what's emerging." },
   { name: "Krittika", deity: "Agni", quality: "Purifying", element: "fire", brief: "Fire of purification. Burns away the unnecessary. Good for cutting cords, cleansing spaces, or speaking hard truths." },
   { name: "Rohini", deity: "Brahma", quality: "Nurturing", element: "earth", brief: "Fertility, beauty, growth. The most creative and lush nakshatra. Ideal for planting seeds — literal or metaphorical." },
@@ -515,8 +530,8 @@ export const NAKSHATRAS: NakshatraInfo[] = [
   { name: "Purva Ashadha", deity: "Apas", quality: "Invincible", element: "water", brief: "Unstoppable momentum. Once you begin under this star, you will not be defeated. Good for declarations and commitments." },
   { name: "Uttara Ashadha", deity: "Vishvadevas", quality: "Universal", element: "earth", brief: "Ultimate victory through patience. The slow, steady win. Good for long-term strategy and ethical stands." },
   { name: "Shravana", deity: "Vishnu", quality: "Listening", element: "air", brief: "Deep listening and learning. The universe has something to tell you — be still and pay attention." },
-  { name: "Dhanishtha", deity: "Vasus", quality: "Rhythmic", element: "earth", brief: "Wealth, music, and rhythm. Good for financial moves, creative expression through sound, and finding your groove." },
-  { name: "Shatabhisha", deity: "Varuna", quality: "Healing", element: "air", brief: "The hundred healers. Solitude and healing are favored. Good for retreating, cleansing, and alternative medicine." },
+  { name: "Dhanishtha", deity: "Vasus", quality: "Rhythmic", element: "earth", brief: "Wealth, music, and rhythm. Traditionally linked with abundance; a day for creative expression through sound and finding your groove." },
+  { name: "Shatabhisha", deity: "Varuna", quality: "Healing", element: "air", brief: "The hundred healers. Solitude and healing are favored. Traditionally a star of retreat, quiet and restoration." },
   { name: "Purva Bhadrapada", deity: "Aja Ekapada", quality: "Intense", element: "fire", brief: "Intense spiritual fire. Good for bold spiritual practices and breaking through limitations, but can feel extreme." },
   { name: "Uttara Bhadrapada", deity: "Ahir Budhnya", quality: "Deep", element: "water", brief: "The deep ocean serpent. Profound wisdom emerges from stillness. Meditation and spiritual practice are deeply supported." },
   { name: "Revati", deity: "Pushan", quality: "Gentle", element: "earth", brief: "The final nakshatra — completion, safe journeys, and gentle endings. Good for wrapping up projects and saying goodbye with grace." },
@@ -534,9 +549,25 @@ export interface AlmanacPhaseEntry {
   almanac: AlmanacInfo;
 }
 
+/**
+ * Which days of the 29.53-day cycle a phase covers, derived from the same
+ * eighth-of-a-cycle bins getMoonPhase() classifies with: each named phase is
+ * centred on its exact moment (first quarter ~day 7.4, full ~14.8, last
+ * quarter ~22.1), so the label matches what the moon card shows that day.
+ * These used to be typed by hand and put the full moon on days 11–15, three
+ * days early.
+ */
+const SYNODIC_DAYS = 29.53;
+function phaseDays(index: number): string {
+  const width = SYNODIC_DAYS / 8;
+  const from = Math.round(((index - 0.5) * width + SYNODIC_DAYS) % SYNODIC_DAYS);
+  const to = Math.round((index + 0.5) * width);
+  return index === 0 ? `Days ${from}–${to} (around day 0)` : `Days ${from}–${to}`;
+}
+
 export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
   {
-    phase: "new", label: "New Moon", emoji: "🌑", daysInCycle: "Day 0–1",
+    phase: "new", label: "New Moon", emoji: "🌑", daysInCycle: phaseDays(0),
     energy: "Plant seeds of intention. This is the most powerful time for setting new goals, starting fresh, and dreaming into existence.",
     almanac: {
       gardening: "The best time to plant above-ground crops with seeds that produce their yield outside the fruit — lettuce, spinach, celery, grains. The gravitational pull draws water up, encouraging strong leaf growth.",
@@ -551,11 +582,10 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
         { name: "Black Candle Meditation", description: "Light a black candle (for new beginnings/void energy). Sit in silence for 5–10 minutes. Focus on the space between — the pause before the next breath." },
       ],
       lifeTips: [
-        { category: "Baby & Kids", icon: "👶", tip: "Best time to start potty training — new habits take root under the new moon. Also favored for weaning and introducing new foods to babies. Children tend to sleep deeper around the new moon." },
+        { category: "Baby & Kids", icon: "👶", tip: "Best time to start potty training — new habits take root under the new moon. Children tend to sleep deeper around the new moon." },
         { category: "Hair & Beauty", icon: "💇", tip: "Cut hair now if you want it to grow back faster and thicker. The waxing energy ahead will encourage strong growth. Good time to start a new skincare routine." },
-        { category: "Health", icon: "🩺", tip: "Start a new diet, exercise program, or health regimen. The body is most receptive to change at the new moon. Schedule dental cleanings — bleeding is lighter. Good time to begin a cleanse or detox." },
-        { category: "Home", icon: "🏠", tip: "Start renovations, paint rooms, move into a new home. Begin deep cleaning projects. Set mouse traps — they're most effective during the new moon. Sign new leases or close on property." },
-        { category: "Money", icon: "💰", tip: "Open new accounts, start investment plans, launch businesses. The new moon favors financial beginnings. Write out your financial goals for the month." },
+        { category: "Rest & Body", icon: "🌿", tip: "Almanac tradition treats the new moon as a beginning — a natural moment to notice which small habit you'd like to start. Gentle beats ambitious." },
+        { category: "Home", icon: "🏠", tip: "Start renovations, paint rooms, move into a new home. Begin deep cleaning projects. Set mouse traps — they're most effective during the new moon." },
         { category: "Relationships", icon: "💕", tip: "Ask someone out, have the DTR talk, propose. New moon energy supports new chapters in relationships. Also a good time to set boundaries — new rules for a new cycle." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Start ferments and sourdough starters — the rising energy helps cultures grow. Bake bread (the yeast rises better). Not ideal for canning or preserving." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Fishing is slower around new and full moons in traditional almanac wisdom. Fish feed less. Better to prep gear and plan your next trip." },
@@ -563,7 +593,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "waxing-crescent", label: "Waxing Crescent", emoji: "🌒", daysInCycle: "Days 1–4",
+    phase: "waxing-crescent", label: "Waxing Crescent", emoji: "🌒", daysInCycle: phaseDays(1),
     energy: "Take the first small step. Your intentions from the new moon need action now — even tiny ones count.",
     almanac: {
       gardening: "Strong leaf growth continues. Good for planting above-ground annuals, especially those with outside seeds. The increasing moonlight stimulates growth.",
@@ -579,9 +609,8 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
       lifeTips: [
         { category: "Baby & Kids", icon: "👶", tip: "Good days for introducing new skills — stacking blocks, first words, potty training if you started at the new moon. Momentum is building. Kids may be more curious and willing to try new things." },
         { category: "Hair & Beauty", icon: "💇", tip: "Hair grows back quickly if cut now. Great time for coloring — it absorbs better with the rising energy. Start new beauty routines. Nails grow faster too." },
-        { category: "Health", icon: "🩺", tip: "Body absorbs nutrients more efficiently. Good for starting supplements or vitamins. Begin physical therapy or rehab programs — the body wants to build now." },
+        { category: "Rest & Body", icon: "🌿", tip: "Folk tradition says what you begin under a waxing crescent keeps growing. Notice whether the new habit from the new moon is still with you." },
         { category: "Home", icon: "🏠", tip: "Build, add, and expand. Good time for additions, new furniture, or organizing systems you want to grow into. Plant indoor herbs." },
-        { category: "Money", icon: "💰", tip: "Follow up on applications, pitches, and proposals you sent at the new moon. Momentum is building. Good for networking and planting seeds with potential clients." },
         { category: "Relationships", icon: "💕", tip: "Good time for second and third dates. Connections planted at the new moon are beginning to take shape. Send the follow-up text." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Ferments are bubbling. Feed your sourdough starter. Good for making stocks and broths — flavors develop with the rising energy." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Fish begin feeding more actively as the moon waxes. Good for freshwater fishing, especially in the morning hours." },
@@ -589,7 +618,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "first-quarter", label: "First Quarter", emoji: "🌓", daysInCycle: "Days 4–7",
+    phase: "first-quarter", label: "First Quarter", emoji: "🌓", daysInCycle: phaseDays(2),
     energy: "Make decisions and push through resistance. Challenges that arise are testing your commitment to what you started.",
     almanac: {
       gardening: "The increasing light and strong gravitational pull make this the best time for planting above-ground crops that have seeds inside the fruit — tomatoes, peppers, squash, beans.",
@@ -605,9 +634,8 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
       lifeTips: [
         { category: "Baby & Kids", icon: "👶", tip: "Toddlers may be extra strong-willed — the quarter moon brings a \"push\" energy. Don't start battles you can't win. Channel their determination into challenges: obstacle courses, new puzzles." },
         { category: "Hair & Beauty", icon: "💇", tip: "Best days for perms, chemical treatments, and anything you want to hold shape. Hair is strong and resilient right now." },
-        { category: "Health", icon: "🩺", tip: "Peak time for physical challenges — run farther, lift heavier, push harder. The body can handle more. Schedule surgeries if possible — the body is resilient and heals with momentum." },
-        { category: "Home", icon: "🏠", tip: "Make decisions about the house you've been putting off. This phase rewards commitment. Good for signing contracts, hiring contractors, and making purchases you've been debating." },
-        { category: "Money", icon: "💰", tip: "Decision time. If you've been going back and forth on an investment or big purchase, this is the phase to commit or walk away. Half-measures won't work." },
+        { category: "Rest & Body", icon: "🌿", tip: "Old almanacs call the first quarter a strong, pushing time. Some people like it for a harder workout; listen to what your body says." },
+        { category: "Home", icon: "🏠", tip: "Make decisions about the house you've been putting off. This phase rewards commitment. Good for settling on the paint color or the layout you keep circling." },
         { category: "Relationships", icon: "💕", tip: "Challenges may surface in relationships. Don't avoid them — the quarter moon rewards honesty. If it survives this phase, it's real." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Good for baking pies and anything with fruit fillings — the fruiting energy of this phase extends to the kitchen. Make jams (but don't can them yet)." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Great fishing days. Fish are actively feeding. Best results fishing at dawn and dusk when the tides are shifting." },
@@ -615,7 +643,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "waxing-gibbous", label: "Waxing Gibbous", emoji: "🌔", daysInCycle: "Days 7–11",
+    phase: "waxing-gibbous", label: "Waxing Gibbous", emoji: "🌔", daysInCycle: phaseDays(3),
     energy: "Fine-tune and adjust. You can see what's working and what isn't. Edit, revise, and prepare for the culmination.",
     almanac: {
       gardening: "Moonlight is strong and sap is high. Good for transplanting and encouraging established plants. Not ideal for starting new plantings.",
@@ -631,9 +659,8 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
       lifeTips: [
         { category: "Baby & Kids", icon: "👶", tip: "Review what's working in your routines. Adjust nap times, feeding schedules, or bedtime routines — the gibbous phase rewards fine-tuning over starting new. Babies may be extra alert." },
         { category: "Hair & Beauty", icon: "💇", tip: "Touch-ups, trims, and maintenance. Not the best for dramatic changes — save those for new or full moon. Good for deep conditioning treatments and masks." },
-        { category: "Health", icon: "🩺", tip: "Review your health goals. What's working? What needs adjusting? Good for follow-up appointments, getting test results, and adjusting medications with your doctor." },
+        { category: "Rest & Body", icon: "🌿", tip: "The almost-full moon is traditionally a time to refine. Notice what is working in your routines and what feels like effort for its own sake." },
         { category: "Home", icon: "🏠", tip: "Finish projects, patch holes, touch up paint. Tighten loose handles. Fix the squeaky door. This is the handyman phase — maintenance over renovation." },
-        { category: "Money", icon: "💰", tip: "Review your budget and spending from the month so far. Adjust, don't overhaul. Good for reconciling accounts and spotting areas of waste." },
         { category: "Relationships", icon: "💕", tip: "Check in with your people. How are things actually going? The almost-full moon illuminates what you've been ignoring. Address small issues before they become big ones." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Good for slow-cooking and developing flavors over time. Stews, braises, and curries hit different during this phase. Let things simmer." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Night fishing is excellent — the bright gibbous moon illuminates the water and fish are active at night." },
@@ -641,7 +668,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "full", label: "Full Moon", emoji: "🌕", daysInCycle: "Days 11–15",
+    phase: "full", label: "Full Moon", emoji: "🌕", daysInCycle: phaseDays(4),
     energy: "Celebrate, release, and let go. What no longer serves you becomes obvious under the full moon's light.",
     almanac: {
       gardening: "Root crops thrive now — the full moon's gravity pulls moisture down into the soil. Plant carrots, beets, potatoes, turnips, and onions. Also the best time for harvesting above-ground crops at peak ripeness.",
@@ -656,11 +683,10 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
         { name: "Forgiveness Practice", description: "Name someone (including yourself) you need to forgive. You don't have to feel it fully yet — just say it: 'I am willing to forgive.' The full moon makes space for release." },
       ],
       lifeTips: [
-        { category: "Baby & Kids", icon: "👶", tip: "Babies and toddlers may sleep less — many parents notice restlessness around the full moon. Keep bedtime routines extra consistent. Good time for potty training breakthroughs — what's \"full\" often empties. Birth rates spike around full moons (yes, really)." },
+        { category: "Baby & Kids", icon: "👶", tip: "Babies and toddlers may sleep less — many parents notice restlessness around the full moon. Keep bedtime routines extra consistent. Good time for potty training breakthroughs — what's \"full\" often empties." },
         { category: "Hair & Beauty", icon: "💇", tip: "Cut hair now if you want it to stay the same length longer — the full moon slows regrowth. Best time for haircuts if you like your current length. Skin may be more sensitive — go gentle on treatments." },
-        { category: "Health", icon: "🩺", tip: "Avoid surgery if possible — bleeding tends to be heavier around the full moon (ER nurses and surgeons have noted this for centuries). Emotions run high. Stay hydrated. Not the best time for dental extractions." },
+        { category: "Rest & Body", icon: "🌿", tip: "Many people say they sleep more lightly around the full moon. Tradition calls it a time when feelings run high — a good night for an early, quiet bedtime." },
         { category: "Home", icon: "🏠", tip: "Harvest your herbs and dry them. Make tinctures and infusions — the full moon charges water and plants with peak energy. Set out water in moonlight (\"moon water\") for cleaning and cooking. Deep clean your fridge — toss what's expired." },
-        { category: "Money", icon: "💰", tip: "Culmination energy — projects you've been building reach their peak. Launch, publish, or reveal what you've been working on. Not the best time to start something new. Cash in on investments rather than making them." },
         { category: "Relationships", icon: "💕", tip: "Emotions are amplified. Everything you've been feeling comes to the surface. Good for breakthroughs, hard conversations, and cathartic honesty. Not ideal for making big relationship decisions — wait a few days." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Peak flavor for harvesting herbs and vegetables. Cook a feast. Bake with full moon energy. Traditional almanac says: make wine and beer during the full moon — fermentation is strongest." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Full moon fishing is hit-or-miss — some swear by it, others say fish feed all night and aren't hungry by day. Try night fishing with the moonlight." },
@@ -668,7 +694,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "waning-gibbous", label: "Waning Gibbous", emoji: "🌖", daysInCycle: "Days 15–18",
+    phase: "waning-gibbous", label: "Waning Gibbous", emoji: "🌖", daysInCycle: phaseDays(5),
     energy: "Share what you've learned and give back. This is a generous, reflective phase for teaching and mentoring.",
     almanac: {
       gardening: "The decreasing light signals plants to focus energy on roots. Good for planting root crops, bulbs, and perennials. The best phase for harvesting and preserving.",
@@ -683,10 +709,9 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
       ],
       lifeTips: [
         { category: "Baby & Kids", icon: "👶", tip: "Good phase for breaking bad habits — thumb-sucking, pacifier dependence, night waking. The waning energy supports letting go. Read extra bedtime stories — the sharing energy is strong." },
-        { category: "Hair & Beauty", icon: "💇", tip: "Hair removal lasts longer in the waning moon — wax, shave, or laser now for slower regrowth. Good time for facials and extractions." },
-        { category: "Health", icon: "🩺", tip: "The body starts to release and detox naturally. Good for cleanses, colonics, and anything that clears what's built up. Schedule follow-up appointments." },
+        { category: "Hair & Beauty", icon: "💇", tip: "Hair removal lasts longer in the waning moon — wax, shave, or laser now for slower regrowth. Good time for facials." },
+        { category: "Rest & Body", icon: "🌿", tip: "The waning moon is traditionally associated with release. A good evening for a long bath, a stretch, or simply doing less." },
         { category: "Home", icon: "🏠", tip: "Preserve, can, and stock up. Good time for canning fruits, making preserves, and stocking the pantry. Organize closets — the energy supports sorting and storing." },
-        { category: "Money", icon: "💰", tip: "Pay off debts, close old accounts, and tie up financial loose ends. The waning moon supports finishing rather than starting." },
         { category: "Relationships", icon: "💕", tip: "Share what the full moon revealed. Have the follow-up conversation. This is the integration phase — process what came up and teach each other what you learned." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Best canning and preserving days of the lunar cycle. Make pickles, jams, and ferments meant for long storage. Dry herbs and flowers. Smoke meats." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Excellent fishing. Fish are hungry and active. The decreasing moonlight brings them closer to the surface during the day." },
@@ -694,7 +719,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "last-quarter", label: "Last Quarter", emoji: "🌗", daysInCycle: "Days 18–22",
+    phase: "last-quarter", label: "Last Quarter", emoji: "🌗", daysInCycle: phaseDays(6),
     energy: "Let go of grudges, habits, and clutter. Clear out what's blocking you before the next cycle begins.",
     almanac: {
       gardening: "A rest phase for the garden. Reduced moonlight and gravitational pull make this ideal for maintenance tasks rather than planting. Focus on pulling weeds, turning compost, and clearing spent crops.",
@@ -709,10 +734,9 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
       ],
       lifeTips: [
         { category: "Baby & Kids", icon: "👶", tip: "Good time to end sleep associations, stop co-sleeping, or drop a feeding. The releasing energy supports \"goodbye\" transitions. Let kids practice independence — they may surprise you." },
-        { category: "Hair & Beauty", icon: "💇", tip: "Best time to wax or do laser hair removal — slowest regrowth. Cut hair only if you want it to grow back very slowly. Good for mole or skin tag removal." },
-        { category: "Health", icon: "🩺", tip: "Surgery is best timed in the waning moon (less bleeding, better healing). Good for tooth extractions, getting moles removed, and any procedure meant to take something away. Quit smoking, quit sugar — the release energy helps." },
+        { category: "Hair & Beauty", icon: "💇", tip: "Best time to wax or do laser hair removal — slowest regrowth. Cut hair only if you want it to grow back very slowly." },
+        { category: "Rest & Body", icon: "🌿", tip: "Tradition links the last quarter with letting go. If there's a habit you've been meaning to set down, this is the phase the old almanacs associate with it." },
         { category: "Home", icon: "🏠", tip: "Demolition and tear-down energy. Rip out old carpet, tear down wallpaper, remove dead trees. Pest control is most effective now. Clear gutters and drains." },
-        { category: "Money", icon: "💰", tip: "Cut expenses, cancel subscriptions you don't use, and audit your spending. The quarter moon is decisive — if it's not serving you, cut it." },
         { category: "Relationships", icon: "💕", tip: "End what needs ending. Break up, set firm boundaries, or release resentments you've been carrying. Do it with love but do it clearly." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Good for making beef jerky and dried foods. The drying, contracting energy preserves well. Clean out the fridge and pantry — toss what's past its prime." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Fishing slows as the moon wanes toward darkness. Good for catch-and-release practice. Better days for hunting than fishing." },
@@ -720,7 +744,7 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
     },
   },
   {
-    phase: "waning-crescent", label: "Waning Crescent", emoji: "🌘", daysInCycle: "Days 22–29",
+    phase: "waning-crescent", label: "Waning Crescent", emoji: "🌘", daysInCycle: phaseDays(7),
     energy: "Rest, reflect, and surrender. The old cycle is ending. Sleep more, journal, dream. The new moon is coming.",
     almanac: {
       gardening: "The garden rests. This is a fallow phase — don't plant, don't push. Clean tools, plan your next cycle's garden, and let the soil be.",
@@ -735,11 +759,10 @@ export const FULL_ALMANAC: AlmanacPhaseEntry[] = [
         { name: "Stillness Practice", description: "Sit in a dark or dimly lit room for 10 minutes. No intention, no mantra, no visualization. Just be. The waning crescent asks nothing of you except presence." },
       ],
       lifeTips: [
-        { category: "Baby & Kids", icon: "👶", tip: "Babies sleep the deepest in the dark moon phase. Don't introduce new foods or routines right now — wait for the new moon. Let kids rest, daydream, and play without structure." },
+        { category: "Baby & Kids", icon: "👶", tip: "Babies sleep the deepest in the dark moon phase. Let kids rest, daydream, and play without structure." },
         { category: "Hair & Beauty", icon: "💇", tip: "Avoid haircuts unless you want very slow regrowth. Good for deep rest and recovery treatments — overnight masks, oil treatments, and long baths. Your body is in restore mode." },
-        { category: "Health", icon: "🩺", tip: "Rest is medicine right now. Sleep in. Don't push hard at the gym. This is the recovery and integration phase. Good for therapy, journaling, and processing. Immune system may be slightly lower — take extra care." },
+        { category: "Rest & Body", icon: "🌿", tip: "The dark of the moon is the almanac's rest phase. Sleep in if you can, go easy at the gym, and give yourself room to process." },
         { category: "Home", icon: "🏠", tip: "Don't start projects. Finish loose ends, put tools away, and prepare your space for the new cycle. Clean and organize — not from anxiety, but from completion. Sage or open windows to clear stale energy." },
-        { category: "Money", icon: "💰", tip: "Reflect on the month's finances. Don't make big moves — plan them for the upcoming new moon. Review, reconcile, and rest." },
         { category: "Relationships", icon: "💕", tip: "Be gentle with yourself and others. Low energy is not low love. Spend quiet time together. Don't force important conversations — they'll land better after the new moon." },
         { category: "Cooking & Preserving", icon: "🫙", tip: "Simple, nourishing food. Soups, broths, warm drinks. Don't attempt elaborate recipes — keep it gentle. Use up what's in the fridge rather than buying new." },
         { category: "Fishing & Outdoors", icon: "🎣", tip: "Quietest fishing of the cycle. Good for solitary nature walks, birdwatching, and being outside without an agenda." },
@@ -827,12 +850,19 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   const events: CelestialEvent[] = [];
 
   // ── ASTRONOMICAL / WESTERN ──
-  // Equinoxes & Solstices (approximate)
+  // Equinoxes & solstices: the exact instant, read as the reader's calendar day.
+  // (They used to be fixed at 20 Mar / 21 Jun / 22 Sep / 21 Dec, which is a day
+  // out in many years and in many places.)
+  const seasons = getSeasonDates(year);
+  const springEq = calendarDayIn(seasons.springEquinox);
+  const summerSol = calendarDayIn(seasons.summerSolstice);
+  const autumnEq = calendarDayIn(seasons.autumnEquinox);
+  const winterSol = calendarDayIn(seasons.winterSolstice);
   events.push(
-    { id: `spring-eq-${year}`, name: "Spring Equinox", date: new Date(year, 2, 20), tradition: "astronomical", category: "solar", description: "Day and night are equal. Light begins to overtake darkness. Celebrated as Ostara (Celtic), Nowruz (Persian), Holi (Hindu), and the astrological new year.", ritualHint: "Balance ritual — equal parts letting go and welcoming in", element: "air" },
-    { id: `summer-sol-${year}`, name: "Summer Solstice", date: new Date(year, 5, 21), tradition: "astronomical", category: "solar", description: "The longest day. Peak of solar energy. Celebrated as Litha (Celtic), Midsommar (Nordic), and honored in countless indigenous sun ceremonies.", ritualHint: "Celebrate your fullest expression. Soak in sunlight and joy.", element: "fire" },
-    { id: `autumn-eq-${year}`, name: "Autumn Equinox", date: new Date(year, 8, 22), tradition: "astronomical", category: "solar", description: "Balance returns. Day equals night again before darkness grows. Celebrated as Mabon (Celtic), Chuseok (Korean harvest), and the start of many harvest festivals worldwide.", ritualHint: "Gratitude harvest — name everything that grew this year", element: "earth" },
-    { id: `winter-sol-${year}`, name: "Winter Solstice", date: new Date(year, 11, 21), tradition: "astronomical", category: "solar", description: "The longest night. The turning point where light returns. Celebrated as Yule (Celtic/Norse), Dongzhi (Chinese), Inti Raymi (Incan), and Shab-e Yalda (Persian).", ritualHint: "Light a candle in the darkness. What inner light carries you through?", element: "water" },
+    { id: `spring-eq-${year}`, name: "Spring Equinox", date: springEq, tradition: "astronomical", category: "solar", description: "Day and night are equal. Light begins to overtake darkness. Celebrated as Ostara (Celtic), Nowruz (Persian), Holi (Hindu), and the astrological new year.", ritualHint: "Balance ritual — equal parts letting go and welcoming in", element: "air" },
+    { id: `summer-sol-${year}`, name: "Summer Solstice", date: summerSol, tradition: "astronomical", category: "solar", description: "The longest day. Peak of solar energy. Celebrated as Litha (Celtic), Midsommar (Nordic), and honored in countless indigenous sun ceremonies.", ritualHint: "Celebrate your fullest expression. Soak in sunlight and joy.", element: "fire" },
+    { id: `autumn-eq-${year}`, name: "Autumn Equinox", date: autumnEq, tradition: "astronomical", category: "solar", description: "Balance returns. Day equals night again before darkness grows. Celebrated as Mabon (Celtic), Chuseok (Korean harvest), and the start of many harvest festivals worldwide.", ritualHint: "Gratitude harvest — name everything that grew this year", element: "earth" },
+    { id: `winter-sol-${year}`, name: "Winter Solstice", date: winterSol, tradition: "astronomical", category: "solar", description: "The longest night. The turning point where light returns. Celebrated as Yule (Celtic/Norse), Dongzhi (Chinese), Inti Raymi (Incan), and Shab-e Yalda (Persian).", ritualHint: "Light a candle in the darkness. What inner light carries you through?", element: "water" },
   );
 
   // ── CELTIC WHEEL OF THE YEAR ──
@@ -843,33 +873,46 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
     { id: `samhain-${year}`, name: "Samhain", date: new Date(year, 9, 31), tradition: "celtic", category: "festival", description: "The Celtic new year. The veil between living and dead is thinnest. Ancestor energy is strong. This is the root of Halloween.", ritualHint: "Set a place at the table for those who've passed. Light a candle for your ancestors.", element: "spirit" },
   );
 
+  // Festivals whose date comes from the verified table: pushed only for the
+  // years the table covers.
+  const pushKnown = (...xs: (Omit<CelestialEvent, "date"> & { date: Date | null })[]) => {
+    for (const x of xs) if (x.date) events.push({ ...x, date: x.date });
+  };
+
   // ── VEDIC / HINDU ──
-  // These are approximate — actual dates follow the Hindu lunisolar calendar
-  events.push(
-    { id: `makar-sankranti-${year}`, name: "Makar Sankranti", date: new Date(year, 0, 14), tradition: "vedic", category: "solar", description: "The sun enters Capricorn (Makara). One of the few Hindu festivals tied to the solar calendar. Marks the end of winter solstice and the beginning of longer days. Celebrated with kite flying and bonfires.", ritualHint: "Let something old fly away — write it on paper and release it. Face the sun.", element: "fire" },
-    { id: `maha-shivaratri-${year}`, name: "Maha Shivaratri", date: new Date(year, 1, 15), tradition: "vedic", category: "festival", description: "The great night of Shiva. A night of deep meditation and stillness. The darkest night before the new moon in Phalguna. Shiva represents the cosmic destroyer — making space for what's new.", ritualHint: "Stay up late in meditation or quiet reflection. Fast if it feels right. Welcome the void.", element: "spirit" },
-    { id: `holi-${year}`, name: "Holi", date: new Date(year, 2, 3), tradition: "vedic", category: "festival", description: "Festival of colors and the triumph of good over evil. Celebrates the arrival of spring, forgiveness, and new beginnings. Holika's bonfire burns away the old.", ritualHint: "Forgive someone (even yourself). Wear something colorful. Start fresh.", element: "fire" },
-    { id: `navratri-spring-${year}`, name: "Chaitra Navratri", date: new Date(year, 3, 6), tradition: "vedic", category: "festival", description: "Nine nights honoring the divine feminine in all her forms — from fierce Durga to gentle Saraswati. Each night invokes a different aspect of the Goddess. Coincides with the Hindu new year.", ritualHint: "Dedicate each day to a different feminine quality: courage, wisdom, creativity, compassion, strength, beauty, knowledge, abundance, grace.", element: "spirit" },
-    { id: `guru-purnima-${year}`, name: "Guru Purnima", date: new Date(year, 6, 29), tradition: "vedic", category: "festival", description: "Full moon honoring teachers and gurus. In Vedic tradition, knowledge passed from teacher to student is sacred. This day honors everyone who has guided your path.", ritualHint: "Thank a teacher, mentor, or guide in your life. Reflect on what you've learned from others.", element: "air" },
-    { id: `navratri-autumn-${year}`, name: "Sharad Navratri", date: new Date(year, 9, 2), tradition: "vedic", category: "festival", description: "The autumn nine nights. The most widely celebrated Navratri. Durga battles the buffalo demon Mahishasura — representing the triumph of consciousness over ignorance.", ritualHint: "Nine days of decluttering — physical, mental, emotional. One layer each day.", element: "spirit" },
-    { id: `diwali-${year}`, name: "Diwali", date: new Date(year, 9, 20), tradition: "vedic", category: "festival", description: "Festival of lights. Celebrates the victory of light over darkness, knowledge over ignorance. Connected to Lakshmi (abundance), Ram's return home, and the new moon of Kartik.", ritualHint: "Light candles or diyas in every room. Deep clean your home. Set financial intentions.", element: "fire" },
+  // Makar Sankranti is solar (sidereal Sun into Capricorn) and is computed.
+  // The rest follow the tithi calendar, where the observed day depends on which
+  // tithi is current at sunrise or in the evening in India — not something a
+  // new-moon search gets right — so they come from OBSERVED_DATES.
+  pushKnown(
+    { id: `makar-sankranti-${year}`, name: "Makar Sankranti", date: makarSankranti(year), tradition: "vedic", category: "solar", description: "The sun enters Capricorn (Makara). One of the few Hindu festivals tied to the solar calendar. Marks the end of winter solstice and the beginning of longer days. Celebrated with kite flying and bonfires.", ritualHint: "Let something old fly away — write it on paper and release it. Face the sun.", element: "fire" },
+    { id: `maha-shivaratri-${year}`, name: "Maha Shivaratri", date: observed("maha-shivaratri", year), tradition: "vedic", category: "festival", description: "The great night of Shiva. A night of deep meditation and stillness. The darkest night before the new moon in Phalguna. Shiva represents the cosmic destroyer — making space for what's new.", ritualHint: "Stay up late in meditation or quiet reflection. Welcome the void.", element: "spirit" },
+    { id: `holi-${year}`, name: "Holi", date: observed("holi", year), tradition: "vedic", category: "festival", description: "Festival of colors and the triumph of good over evil. Celebrates the arrival of spring, forgiveness, and new beginnings. Holika's bonfire burns away the old.", ritualHint: "Forgive someone (even yourself). Wear something colorful. Start fresh.", element: "fire" },
+    { id: `navratri-spring-${year}`, name: "Chaitra Navratri", date: observed("navratri-spring", year), tradition: "vedic", category: "festival", description: "Nine nights honoring the divine feminine in all her forms — from fierce Durga to gentle Saraswati. Each night invokes a different aspect of the Goddess. Coincides with the Hindu new year.", ritualHint: "Dedicate each day to a different feminine quality: courage, wisdom, creativity, compassion, strength, beauty, knowledge, abundance, grace.", element: "spirit" },
+    { id: `guru-purnima-${year}`, name: "Guru Purnima", date: observed("guru-purnima", year), tradition: "vedic", category: "festival", description: "Full moon honoring teachers and gurus. In Vedic tradition, knowledge passed from teacher to student is sacred. This day honors everyone who has guided your path.", ritualHint: "Thank a teacher, mentor, or guide in your life. Reflect on what you've learned from others.", element: "air" },
+    { id: `navratri-autumn-${year}`, name: "Sharad Navratri", date: observed("navratri-autumn", year), tradition: "vedic", category: "festival", description: "The autumn nine nights. The most widely celebrated Navratri. Durga battles the buffalo demon Mahishasura — representing the triumph of consciousness over ignorance.", ritualHint: "Nine days of decluttering — physical, mental, emotional. One layer each day.", element: "spirit" },
+    { id: `diwali-${year}`, name: "Diwali", date: observed("diwali", year), tradition: "vedic", category: "festival", description: "Festival of lights. Celebrates the victory of light over darkness, knowledge over ignorance. Connected to Lakshmi (abundance), Ram's return home, and the new moon of Kartik.", ritualHint: "Light candles or diyas in every room. Deep clean your home. Set intentions for the year ahead.", element: "fire" },
   );
 
   // ── CHINESE / EAST ASIAN ──
+  // Computed in Beijing time, which is what the Chinese calendar is reckoned
+  // in: solar terms are Sun longitudes, and lunar months begin on the Beijing
+  // date of the new moon. (Vietnam reckons in UTC+7 and occasionally differs
+  // by a day.)
   events.push(
-    { id: `lunar-ny-${year}`, name: "Lunar New Year", date: new Date(year, 1, 17), tradition: "chinese", category: "festival", description: "The most important festival in Chinese, Korean, Vietnamese, and many East Asian cultures. Based on the lunisolar calendar, it marks the first new moon after the winter solstice. A time of family reunion, feasting, and fresh starts.", ritualHint: "Clean your entire space before the day. Wear something new. Set 3 intentions for the year.", element: "fire" },
-    { id: `qingming-${year}`, name: "Qingming (Tomb Sweeping Day)", date: new Date(year, 3, 4), tradition: "chinese", category: "festival", description: "A day to honor and remember ancestors. Families visit graves, clean tombs, and make offerings. In Chinese cosmology, maintaining connection with ancestors ensures harmony.", ritualHint: "Visit a place that connects you to your family history. Cook a family recipe. Tell a story about someone who came before you.", element: "earth" },
-    { id: `mid-autumn-${year}`, name: "Mid-Autumn Festival", date: new Date(year, 9, 4), tradition: "chinese", category: "moon", description: "The full moon of the eighth lunar month — the most beautiful moon of the year in Chinese tradition. Celebrates reunion, gratitude, and the harvest. Connected to the legend of Chang'e, the moon goddess.", ritualHint: "Share food under the moonlight. Call someone you miss. Make moon-shaped offerings.", element: "water" },
-    { id: `dongzhi-${year}`, name: "Dongzhi (Winter Solstice Festival)", date: new Date(year, 11, 21), tradition: "chinese", category: "solar", description: "In Chinese philosophy, this is when yin energy peaks and yang begins to return. A celebration of the return of light and longer days. Families gather to make tangyuan (sweet rice balls symbolizing reunion).", ritualHint: "Make or eat something round — symbolizing wholeness and coming full circle.", element: "water" },
+    { id: `lunar-ny-${year}`, name: "Lunar New Year", date: lunarNewYear(year), tradition: "chinese", category: "festival", description: "The most important festival in Chinese, Korean, Vietnamese, and many East Asian cultures. Based on the lunisolar calendar, it marks the new moon that opens the first lunar month — usually the second new moon after the winter solstice. A time of family reunion, feasting, and fresh starts.", ritualHint: "Clean your entire space before the day. Wear something new. Set 3 intentions for the year.", element: "fire" },
+    { id: `qingming-${year}`, name: "Qingming (Tomb Sweeping Day)", date: solarTermDay(15, year), tradition: "chinese", category: "festival", description: "A day to honor and remember ancestors. Families visit graves, clean tombs, and make offerings. In Chinese cosmology, maintaining connection with ancestors ensures harmony.", ritualHint: "Visit a place that connects you to your family history. Cook a family recipe. Tell a story about someone who came before you.", element: "earth" },
+    { id: `mid-autumn-${year}`, name: "Mid-Autumn Festival", date: midAutumn(year), tradition: "chinese", category: "moon", description: "The full moon of the eighth lunar month — the most beautiful moon of the year in Chinese tradition. Celebrates reunion, gratitude, and the harvest. Connected to the legend of Chang'e, the moon goddess.", ritualHint: "Share food under the moonlight. Call someone you miss. Make moon-shaped offerings.", element: "water" },
+    { id: `dongzhi-${year}`, name: "Dongzhi (Winter Solstice Festival)", date: solarTermDay(270, year), tradition: "chinese", category: "solar", description: "In Chinese philosophy, this is when yin energy peaks and yang begins to return. A celebration of the return of light and longer days. Families gather to make tangyuan (sweet rice balls symbolizing reunion).", ritualHint: "Make or eat something round — symbolizing wholeness and coming full circle.", element: "water" },
   );
 
   // ── ISLAMIC ──
-  // Dates shift ~11 days earlier each year in the Gregorian calendar
-  // These are rough 2026 estimates
-  events.push(
-    { id: `ramadan-${year}`, name: "Ramadan Begins", date: new Date(year, 1, 17), tradition: "islamic", category: "festival", description: "The ninth month of the Islamic calendar. A month of fasting, reflection, and spiritual discipline. From dawn to sunset, Muslims fast — cultivating empathy, gratitude, and self-mastery.", ritualHint: "Try a personal discipline for one day — whether fasting, silence, or screen-free time. Notice what surfaces when you create space.", element: "spirit" },
-    { id: `eid-fitr-${year}`, name: "Eid al-Fitr", date: new Date(year, 2, 19), tradition: "islamic", category: "festival", description: "Festival of breaking the fast. Marks the end of Ramadan with communal prayers, feasting, and charity. A celebration of spiritual accomplishment and generosity.", ritualHint: "Complete something you've been working on and celebrate. Be generous with someone today.", element: "air" },
-    { id: `eid-adha-${year}`, name: "Eid al-Adha", date: new Date(year, 4, 26), tradition: "islamic", category: "festival", description: "Festival of sacrifice. Honors Abraham's willingness to sacrifice what he valued most. A profound meditation on what we're willing to give up for what matters.", ritualHint: "What are you willing to sacrifice for your deepest values? Make a meaningful offering — time, resources, or ego.", element: "fire" },
+  // Set by moon sighting, so they can differ by a day between countries. The
+  // table holds the expected dates; nothing is shown for a year it lacks.
+  pushKnown(
+    { id: `ramadan-${year}`, name: "Ramadan Begins", date: observed("ramadan", year), tradition: "islamic", category: "festival", description: "The ninth month of the Islamic calendar. A month of fasting, reflection, and spiritual discipline. From dawn to sunset, Muslims fast — cultivating empathy, gratitude, and self-mastery.", ritualHint: "Try a small personal discipline for one day — an hour of silence, or a screen-free evening. Notice what surfaces when you create space.", element: "spirit" },
+    { id: `eid-fitr-${year}`, name: "Eid al-Fitr", date: observed("eid-fitr", year), tradition: "islamic", category: "festival", description: "Festival of breaking the fast. Marks the end of Ramadan with communal prayers, feasting, and charity. A celebration of spiritual accomplishment and generosity.", ritualHint: "Complete something you've been working on and celebrate. Be generous with someone today.", element: "air" },
+    { id: `eid-adha-${year}`, name: "Eid al-Adha", date: observed("eid-adha", year), tradition: "islamic", category: "festival", description: "Festival of sacrifice. Honors Abraham's willingness to sacrifice what he valued most. A profound meditation on what we're willing to give up for what matters.", ritualHint: "What are you willing to sacrifice for your deepest values? Make a meaningful offering — time, resources, or ego.", element: "fire" },
   );
 
   // ── INDIGENOUS & OTHER ──
@@ -881,10 +924,10 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
 
   // ── WICCAN / NEO-PAGAN SABBATS (with moon context) ──
   events.push(
-    { id: `ostara-${year}`, name: "Ostara", date: new Date(year, 2, 20), tradition: "pagan", category: "festival", description: "Wiccan name for the Spring Equinox. Balance of light and dark. The goddess returns from winter, and the god grows stronger. A time of renewal and planting.", ritualHint: "Plant seeds (literal or metaphorical). Balance two opposites. Decorate eggs as symbols of new life.", element: "air" },
-    { id: `litha-${year}`, name: "Litha (Midsummer)", date: new Date(year, 5, 21), tradition: "pagan", category: "festival", description: "Wiccan name for the Summer Solstice. Peak solar power. The god is at full strength. Celebrate your power and fullest expression. Bonfires honor the sun's majesty.", ritualHint: "Jump over a bonfire (real or metaphorical). Dance in full sunlight. Crown yourself with flowers.", element: "fire" },
-    { id: `mabon-${year}`, name: "Mabon", date: new Date(year, 8, 22), tradition: "pagan", category: "festival", description: "Wiccan name for the Autumn Equinox. Second harvest festival. Gratitude for abundance. The god enters the underworld as the goddess mourns. Darkness begins to grow.", ritualHint: "Bake bread. Harvest what you've grown this year (literally or creatively). Prepare for the darker half.", element: "earth" },
-    { id: `yule-${year}`, name: "Yule (Winter Solstice)", date: new Date(year, 11, 21), tradition: "pagan", category: "festival", description: "Wiccan name for the Winter Solstice. The rebirth of the sun god. The darkest night contains the promise of returning light. Fires are lit to encourage the sun's return.", ritualHint: "Light candles in the darkness. Sit in silence. Welcome the inner light that cannot be extinguished.", element: "water" },
+    { id: `ostara-${year}`, name: "Ostara", date: springEq, tradition: "pagan", category: "festival", description: "Wiccan name for the Spring Equinox. Balance of light and dark. The goddess returns from winter, and the god grows stronger. A time of renewal and planting.", ritualHint: "Plant seeds (literal or metaphorical). Balance two opposites. Decorate eggs as symbols of new life.", element: "air" },
+    { id: `litha-${year}`, name: "Litha (Midsummer)", date: summerSol, tradition: "pagan", category: "festival", description: "Wiccan name for the Summer Solstice. Peak solar power. The god is at full strength. Celebrate your power and fullest expression. Bonfires honor the sun's majesty.", ritualHint: "Jump over a bonfire (real or metaphorical). Dance in full sunlight. Crown yourself with flowers.", element: "fire" },
+    { id: `mabon-${year}`, name: "Mabon", date: autumnEq, tradition: "pagan", category: "festival", description: "Wiccan name for the Autumn Equinox. Second harvest festival. Gratitude for abundance. The god enters the underworld as the goddess mourns. Darkness begins to grow.", ritualHint: "Bake bread. Harvest what you've grown this year (literally or creatively). Prepare for the darker half.", element: "earth" },
+    { id: `yule-${year}`, name: "Yule (Winter Solstice)", date: winterSol, tradition: "pagan", category: "festival", description: "Wiccan name for the Winter Solstice. The rebirth of the sun god. The darkest night contains the promise of returning light. Fires are lit to encourage the sun's return.", ritualHint: "Light candles in the darkness. Sit in silence. Welcome the inner light that cannot be extinguished.", element: "water" },
   );
 
   // ── WITCHY & ESOTERIC OBSERVANCES ──
@@ -895,7 +938,7 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
     { id: `hecates-night-${year}`, name: "Hecate's Night (Dark Moon)", date: new Date(year, 10, 16), tradition: "pagan", category: "moon", description: "November 16 (or nearest dark moon). Hecate, goddess of crossroads and the underworld, is honored at the darkest moment. A time for shadow work, divination, and releasing what no longer serves.", ritualHint: "Visit a threshold or crossroads (physically or symbolically). Write what you're releasing and safely burn it. Sit with your shadow.", element: "spirit" },
     { id: `feast-hecate-${year}`, name: "Feast of Hecate", date: new Date(year, 7, 13), tradition: "pagan", category: "festival", description: "August 13 — Hecate, goddess of witchcraft, magic, and the crossroads, is celebrated. In ancient times, food was left at three-way intersections for her and wandering spirits. A powerful day for magic.", ritualHint: "Practice divination or tarot. Leave an offering at a crossroads or on your altar. Meditate on cycles and transitions.", element: "spirit" },
     { id: `festival-diana-${year}`, name: "Festival of Diana", date: new Date(year, 7, 13), tradition: "pagan", category: "festival", description: "August 13 — Diana, Roman goddess of the hunt, the moon, and independence. Sacred to witches as a protector of women and wild things. Bonfires were lit in her honor in ancient Rome.", ritualHint: "Dance or move with wild freedom. Burn candles for Diana. Claim your independence and fierce beauty.", element: "water" },
-    { id: `persephone-return-${year}`, name: "Persephone's Return", date: new Date(year, 2, 20), tradition: "pagan", category: "festival", description: "Spring Equinox — Persephone returns from the underworld, and Demeter's grief becomes joy. Spring returns. Celebrated in ancient Greek Anthesteria and Thesmophoria. The goddess of rebirth and shadow integration.", ritualHint: "Meditate on returning from darkness. Plant seeds in a pot. Welcome yourself back from winter dormancy.", element: "air" },
+    { id: `persephone-return-${year}`, name: "Persephone's Return", date: springEq, tradition: "pagan", category: "festival", description: "Spring Equinox — Persephone returns from the underworld, and Demeter's grief becomes joy. Spring returns. Celebrated in ancient Greek Anthesteria and Thesmophoria. The goddess of rebirth and shadow integration.", ritualHint: "Meditate on returning from darkness. Plant seeds in a pot. Welcome yourself back from winter dormancy.", element: "air" },
   );
 
   // ── EGYPTIAN & GODDESS FESTIVALS ──
@@ -904,26 +947,56 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
     { id: `hathor-festival-${year}`, name: "Festival of Hathor", date: new Date(year, 0, 7), tradition: "egyptian", category: "festival", description: "January 7 (approximate) — Hathor, goddess of love, beauty, music, and joy. Egyptians celebrated with music, dance, and offerings of flowers and honey. A festival of sensuality and happiness.", ritualHint: "Play music and dance. Wear something beautiful. Create or appreciate art. Celebrate joy.", element: "fire" },
   );
 
-  // ── PLANETARY EVENTS & RETROGRADES (2026 approximate dates) ──
-  events.push(
-    { id: `mercury-retrograde-1-${year}`, name: "Mercury Retrograde", date: new Date(year, 1, 26), endDate: new Date(year, 2, 21), tradition: "astronomical", category: "planetary", description: "February 26 – March 21, 2026. Mercury appears to move backward in the sky. In astrology, this is associated with communication delays, technology glitches, and a need for review and reflection. A time to edit, revise, and reconsider.", ritualHint: "Avoid signing major contracts. Proofread everything. Journalize about what needs to be reconsidered.", element: "air" },
-    { id: `mercury-retrograde-2-${year}`, name: "Mercury Retrograde", date: new Date(year, 5, 30), endDate: new Date(year, 6, 24), tradition: "astronomical", category: "planetary", description: "June 30 – July 24, 2026. Another period of Mercury's backward apparent motion. Communication can be murky. Use this time to revisit unfinished conversations, edit old projects, or reconnect with people from your past.", ritualHint: "Finish what you started. Clean out your old messages and emails. Have the conversation you've been avoiding.", element: "air" },
-    { id: `mercury-retrograde-3-${year}`, name: "Mercury Retrograde", date: new Date(year, 9, 24), endDate: new Date(year, 10, 13), tradition: "astronomical", category: "planetary", description: "October 24 – November 13, 2026. Mercury's third retrograde period of the year. The final review of the year's lessons. Reread old journals, reassess your direction, and clarify your intentions before year's end.", ritualHint: "Journal about the year's lessons. Reconcile with someone if needed. Slow down and listen deeply.", element: "air" },
-    { id: `venus-retrograde-${year}`, name: "Venus Retrograde", date: new Date(year, 9, 3), endDate: new Date(year, 10, 14), tradition: "astronomical", category: "planetary", description: "October 3 – November 14, 2026. Venus moves backward — a rare occurrence (happens every 18 months or so). A time for self-love, reassessing relationships, and clarifying what you truly value and desire.", ritualHint: "Practice radical self-care. Review your relationships. Clarify your values. What do you truly want?", element: "water" },
-  );
+  // ── RETROGRADES ──
+  // Computed from the station search for whatever year is asked for. These used
+  // to be 2026's dates stamped onto `new Date(year, …)`, so every other year
+  // showed 2026's periods — including a Venus retrograde that 2027 does not
+  // have — with "2026" written in the copy.
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year + 1, 0, 1);
+  for (const planet of ["Mercury", "Venus", "Mars"] as const) {
+    for (const p of retrogradePeriodsBetween(planet, yearStart, yearEnd)) {
+      const start = calendarDayIn(p.start);
+      const end = calendarDayIn(p.end);
+      const span = `${monthDay(start)} – ${monthDay(end)}`;
+      const signs = p.startSign === p.endSign ? `in ${p.startSign}` : `from ${p.startSign} back into ${p.endSign}`;
+      const copy = RETROGRADE_COPY[planet];
+      events.push({
+        id: `${planet.toLowerCase()}-retrograde-${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`,
+        name: `${planet} Retrograde`,
+        date: start,
+        endDate: end,
+        tradition: "astronomical",
+        category: "planetary",
+        description: `${span}, ${signs}. ${copy.description}`,
+        ritualHint: copy.ritualHint,
+        element: copy.element,
+      });
+    }
+  }
 
-  // ── ECLIPSE SEASONS (2026) ──
-  events.push(
-    { id: `solar-eclipse-1-${year}`, name: "Solar Eclipse", date: new Date(year, 1, 17), tradition: "astronomical", category: "solar", description: "February 17, 2026 — Solar eclipse in Aquarius. Solar eclipses are cosmic reset buttons. A new moon on steroids. Powerful for setting intentions and starting new chapters. The shadow of the moon obscures the sun. What becomes visible in the darkness?", ritualHint: "Sit in silence and darkness. Plant an intention that needs solar fire. What do you want to birth?", element: "spirit" },
-    { id: `lunar-eclipse-1-${year}`, name: "Lunar Eclipse", date: new Date(year, 2, 3), tradition: "astronomical", category: "moon", description: "March 3, 2026 — Lunar eclipse in Virgo. Lunar eclipses illuminate what was hidden. A full moon on steroids. Reveals truth. Often brings sudden endings or revelations. The earth's shadow falls on the moon — what shadow work is calling?", ritualHint: "Journal about what's being revealed. Release what no longer serves. Name your truth.", element: "water" },
-    { id: `solar-eclipse-2-${year}`, name: "Solar Eclipse", date: new Date(year, 7, 12), tradition: "astronomical", category: "solar", description: "August 12, 2026 — Solar eclipse in Leo. Another solar eclipse, another reset point. A powerful moment of beginning again. The cosmos clears the stage for what's next.", ritualHint: "Begin something new and bold. Declare your next chapter. Walk through the cosmic door.", element: "spirit" },
-    { id: `lunar-eclipse-2-${year}`, name: "Lunar Eclipse", date: new Date(year, 7, 28), tradition: "astronomical", category: "moon", description: "August 28, 2026 — Lunar eclipse in Pisces. The year's second lunar eclipse. Emotional revelations and spiritual truths surface. What have you been avoiding feeling? Let the eclipse illuminate it.", ritualHint: "Look inward. What have you learned? What do you need to release?", element: "water" },
-  );
+  // ── ECLIPSES ──
+  // Searched, not typed: type (total, annular, partial, penumbral), sign and
+  // day all come from the eclipse itself, read on the reader's calendar.
+  for (const e of eclipsesBetween(yearStart, yearEnd)) {
+    const day = calendarDayIn(e.at);
+    const copy = ECLIPSE_COPY[e.kind];
+    events.push({
+      id: `${e.kind}-eclipse-${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`,
+      name: e.label,
+      date: day,
+      tradition: "astronomical",
+      category: e.kind === "solar" ? "solar" : "moon",
+      description: `${monthDay(day)} — ${e.label.toLowerCase()} in ${e.sign}. ${copy.description}`,
+      ritualHint: copy.ritualHint,
+      element: copy.element,
+    });
+  }
 
   // ── CULTURAL ASTROLOGY & NEW YEAR FESTIVALS ──
-  events.push(
-    { id: `nowruz-${year}`, name: "Nowruz (Persian New Year)", date: new Date(year, 2, 20), tradition: "persian", category: "festival", description: "March 20, 2026 — Ancient Persian spring festival coinciding with the Spring Equinox. Celebrated for over 3,000 years across Persian, Kurdish, Tajik, and Central Asian cultures. A time of renewal, cleansing, and celebrating life's victory over death.", ritualHint: "Wear something new. Clean your entire space. Set intentions for the new year. Light a candle for hope.", element: "fire" },
-    { id: `losar-${year}`, name: "Losar (Tibetan New Year)", date: new Date(year, 1, 17), tradition: "tibetan", category: "festival", description: "February 17, 2026 (approximate) — Tibetan Buddhist celebration marking the new year. Celebrated for 15 days with prayer, art, family gatherings, and butter sculptures. A time to purify, decorate with sacred offerings, and welcome new blessings.", ritualHint: "Decorate your space with bright colors and symbols. Gather with community. Eat round foods symbolizing wholeness.", element: "spirit" },
+  pushKnown(
+    { id: `nowruz-${year}`, name: "Nowruz (Persian New Year)", date: nowruz(year), tradition: "persian", category: "festival", description: "Ancient Persian spring festival coinciding with the Spring Equinox. Celebrated for over 3,000 years across Persian, Kurdish, Tajik, and Central Asian cultures. A time of renewal, cleansing, and celebrating life's victory over death.", ritualHint: "Wear something new. Clean your entire space. Set intentions for the new year. Light a candle for hope.", element: "fire" },
+    { id: `losar-${year}`, name: "Losar (Tibetan New Year)", date: observed("losar", year), tradition: "tibetan", category: "festival", description: "Tibetan Buddhist celebration marking the new year. Celebrated for 15 days with prayer, art, family gatherings, and butter sculptures. A time to purify, decorate with sacred offerings, and welcome new blessings.", ritualHint: "Decorate your space with bright colors and symbols. Gather with community. Eat round foods symbolizing wholeness.", element: "spirit" },
     { id: `songkran-${year}`, name: "Songkran (Thai New Year)", date: new Date(year, 3, 13), endDate: new Date(year, 3, 15), tradition: "thai", category: "festival", description: "April 13–15 — Thai water festival marking the Buddhist new year. Water symbolizes washing away bad luck and bringing blessings. Families gather, temples receive offerings, and water play celebrates renewal and cleansing.", ritualHint: "Bathe or shower mindfully, washing away the old. Splash water on others with joy. Wear white for purity.", element: "water" },
     { id: `obon-${year}`, name: "Obon Festival", date: new Date(year, 7, 13), endDate: new Date(year, 7, 15), tradition: "japanese", category: "festival", description: "August 13–15 — Japanese festival honoring ancestors. Families gather and return to their hometowns. Spirits of ancestors are believed to return. Lanterns (chochin) and fires guide them. A beautiful celebration of connection across time.", ritualHint: "Light lanterns or candles for ancestors. Gather with family. Remember those who came before. Cook family recipes.", element: "spirit" },
   );
@@ -946,12 +1019,12 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   for (const at of moonEventsForYear("full", year)) {
     const month = at.getMonth();
     const day = at.getDate();
-    const name = fullMoonNameFor(at, year);
+    const name = fullMoonNameFor(at);
     const sign = signAt(at);
     const isBlue = name === "Blue Moon";
-    const isEclipse = isEclipseInstant(at, "lunar");
-    const specialLabel = isBlue ? " — Blue Moon (rare second full moon this month)" :
-                         isEclipse ? " — Lunar Eclipse" : "";
+    const eclipse = eclipseNear(at, "lunar");
+    const specialLabel = (isBlue ? " — Blue Moon (rare second full moon this month)" : "")
+      + (eclipse ? ` — ${eclipse.label}` : "");
     events.push({
       id: `full-moon-${year}-${month}-${day}`,
       name: `Full ${name} (Esbat)`,
@@ -967,14 +1040,14 @@ export function getCelestialEvents(year: number): CelestialEvent[] {
   for (const at of moonEventsForYear("new", year)) {
     const month = at.getMonth();
     const sign = signAt(at);
-    const isEclipse = isEclipseInstant(at, "solar");
+    const eclipse = eclipseNear(at, "solar");
     events.push({
       id: `new-moon-${year}-${month}-${at.getDate()}`,
       name: "New Moon",
       date: new Date(year, month, at.getDate()),
       tradition: "astronomical",
       category: "moon",
-      description: `New Moon in ${sign}.${isEclipse ? " — Solar Eclipse" : ""} The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.`,
+      description: `New Moon in ${sign}.${eclipse ? ` — ${eclipse.label}` : ""} The moon is invisible — the darkest sky. In every tradition, this is a time of beginnings, planting, and setting intentions in the fertile darkness.`,
       ritualHint: "Write 3 intentions by candlelight. Speak them aloud to the dark sky.",
       element: "water",
     });
@@ -998,11 +1071,153 @@ const FULL_MOON_NAMES = [
   "Buck Moon", "Sturgeon Moon", "Harvest Moon", "Hunter's Moon", "Beaver Moon", "Cold Moon",
 ];
 
-function fullMoonNameFor(at: Date, year: number): string {
-  const earlierSameMonth = moonEventsForYear("full", year)
-    .filter((d) => d.getMonth() === at.getMonth() && d.getTime() < at.getTime());
-  return earlierSameMonth.length ? "Blue Moon" : FULL_MOON_NAMES[at.getMonth()];
+function fullMoonNameFor(at: Date, timeZone?: string | null): string {
+  // The month is the reader's month: a full moon at 03:00 UTC on 1 November is
+  // still 31 October in Texas, and there it may be the month's second.
+  const here = calendarDayIn(at, timeZone);
+  const previous = calendarDayIn(nextMoonEventInstant("full", new Date(at.getTime() - 35 * DAY_MS)), timeZone);
+  const sameMonth = previous.getFullYear() === here.getFullYear() && previous.getMonth() === here.getMonth();
+  return sameMonth ? "Blue Moon" : FULL_MOON_NAMES[here.getMonth()];
 }
+
+// ─── Computed festival dates ─────────────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function monthDay(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
+
+/** The instant the Sun reaches a tropical longitude, searching from 1 Jan UTC. */
+function sunReaches(longitude: number, year: number): Date {
+  const t = Astronomy.SearchSunLongitude(longitude, new Date(Date.UTC(year, 0, 1)), 367);
+  if (!t) throw new Error(`Sun never reached ${longitude}° in ${year}`);
+  return t.date;
+}
+
+/** A Chinese solar term (jieqi) — the Beijing date the Sun reaches that longitude. */
+function solarTermDay(longitude: number, year: number): Date {
+  return calendarDayIn(sunReaches(longitude, year), "Asia/Shanghai");
+}
+
+/** The Beijing date of the last new moon on or before `target`'s Beijing date. */
+function lunarMonthStartOnOrBefore(target: Date): Date {
+  const targetDay = calendarDayIn(target, "Asia/Shanghai").getTime();
+  let cursor = new Date(target.getTime() - 32 * DAY_MS);
+  let best = calendarDayIn(cursor, "Asia/Shanghai");
+  for (let i = 0; i < 3; i++) {
+    const nm = nextMoonEventInstant("new", cursor);
+    const day = calendarDayIn(nm, "Asia/Shanghai");
+    if (day.getTime() > targetDay) break;
+    best = day;
+    cursor = new Date(nm.getTime() + DAY_MS);
+  }
+  return best;
+}
+
+/**
+ * Lunar New Year: the first day of the lunar month that contains the
+ * principal term Yushui (Sun at 330°) — the month-numbering rule of the
+ * modern Chinese calendar. Checked against 2025 (29 Jan), 2026 (17 Feb),
+ * 2027 (6 Feb) and the awkward 2033 (31 Jan).
+ */
+function lunarNewYear(year: number): Date {
+  return lunarMonthStartOnOrBefore(sunReaches(330, year));
+}
+
+/** Mid-Autumn: the 15th day of the month that contains the autumn equinox. */
+function midAutumn(year: number): Date {
+  const start = lunarMonthStartOnOrBefore(sunReaches(180, year));
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
+}
+
+/**
+ * Nowruz: the Iranian calendar's rule — the day of the equinox if it falls
+ * before noon in Tehran, otherwise the next day. (Iran uses true noon; mean
+ * noon can differ for an equinox within a few minutes of 12:00.)
+ */
+function nowruz(year: number): Date {
+  const eq = getSeasonDates(year).springEquinox;
+  const day = calendarDayIn(eq, "Asia/Tehran");
+  const noon = new Date(localDayWindow(day, "Asia/Tehran").start.getTime() + 12 * 60 * 60 * 1000);
+  return eq < noon ? day : new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+}
+
+/** Makar Sankranti: the Sun enters sidereal (Lahiri) Capricorn, dated in India. */
+function makarSankranti(year: number): Date {
+  // Find the tropical longitude that is 270° sidereal at that moment: start
+  // with the ayanamsa near the date, then correct once for its drift.
+  let at = sunReaches(294, year);
+  for (let i = 0; i < 2; i++) {
+    const tropical = getSunLongitude(at);
+    const ayanamsa = ((tropical - toSidereal(tropical, jdFromDate(at), "lahiri")) % 360 + 360) % 360;
+    const t = Astronomy.SearchSunLongitude(270 + ayanamsa, new Date(at.getTime() - 5 * DAY_MS), 10);
+    if (t) at = t.date;
+  }
+  return calendarDayIn(at, "Asia/Kolkata");
+}
+
+/**
+ * Festivals on calendars that cannot be derived from a new-moon search: the
+ * Hindu tithi calendar (the observed day depends on which tithi holds at
+ * sunrise or at dusk in India), Islamic months (set by moon sighting, and can
+ * differ by a day between countries), and the Tibetan calendar (its own leap
+ * and skipped days). Month is 0-based. ONLY years listed here show these
+ * festivals; add each new year from an authoritative panchang / hijri
+ * calendar rather than extrapolating. Islamic dates are the expected dates.
+ */
+const OBSERVED_DATES: Record<string, Record<number, [number, number]>> = {
+  "maha-shivaratri": { 2026: [1, 15] },
+  holi:              { 2026: [2, 4] },   // Holika Dahan the evening of Mar 3
+  "navratri-spring": { 2026: [2, 19] },
+  "guru-purnima":    { 2026: [6, 29] },
+  "navratri-autumn": { 2026: [9, 11] },
+  diwali:            { 2026: [10, 8] },
+  ramadan:           { 2026: [1, 18] },
+  "eid-fitr":        { 2026: [2, 20] },
+  "eid-adha":        { 2026: [4, 27] },
+  losar:             { 2026: [1, 18] },
+};
+
+function observed(id: string, year: number): Date | null {
+  const md = OBSERVED_DATES[id]?.[year];
+  return md ? new Date(year, md[0], md[1]) : null;
+}
+
+// ─── Retrograde & eclipse copy ───────────────────────────────────────────────
+// Reflection only. No advice about contracts, purchases, money or health:
+// a real decision does not get made by a transit.
+
+const RETROGRADE_COPY: Record<"Mercury" | "Venus" | "Mars", Pick<CelestialEvent, "description" | "ritualHint" | "element">> = {
+  Mercury: {
+    description: "Mercury appears to move backward in the sky. Astrology associates this stretch with review — rereading, revisiting, reconnecting with people and projects from the past. A time traditionally given to editing rather than launching.",
+    ritualHint: "Reread something you wrote months ago. Revisit an unfinished conversation. Journal about what deserves a second look.",
+    element: "air",
+  },
+  Venus: {
+    description: "Venus moves backward — it happens roughly every eighteen months. Traditionally a time for reassessing relationships and clarifying what you truly value and desire.",
+    ritualHint: "Practice radical self-care. Reflect on your relationships. Clarify your values. What do you truly want?",
+    element: "water",
+  },
+  Mars: {
+    description: "Mars moves backward, about every two years. Astrology reads this as drive turning inward — a season traditionally associated with rethinking strategy rather than forcing momentum.",
+    ritualHint: "Notice where you've been pushing. Move your body gently and let frustration have somewhere to go.",
+    element: "fire",
+  },
+};
+
+const ECLIPSE_COPY: Record<SkyEclipse["kind"], Pick<CelestialEvent, "description" | "ritualHint" | "element">> = {
+  solar: {
+    description: "Solar eclipses are often called cosmic reset buttons — a new moon turned up. The shadow of the moon crosses the sun. What becomes visible in the darkness?",
+    ritualHint: "Sit in silence and darkness. Name an intention that needs solar fire. What do you want to begin?",
+    element: "spirit",
+  },
+  lunar: {
+    description: "Lunar eclipses are traditionally read as illuminating what was hidden — a full moon turned up. The earth's shadow falls on the moon. What is asking to be seen?",
+    ritualHint: "Journal about what's being revealed. Release what no longer serves. Name your truth.",
+    element: "water",
+  },
+};
 
 /** The sign the moon is actually standing in at that instant. */
 function signAt(at: Date): string {
@@ -1149,7 +1364,7 @@ export const MOON_LORE: Record<string, MoonNameLore> = {
     altNames: ["Second Moon", "Bonus Moon"],
     origin: "European, Colonial American",
     story:
-      "A rare second full moon in a single calendar month — happening roughly every 2.5 years. The phrase 'once in a blue moon' comes from this rarity. May 2026 has two full moons: the Flower Moon on May 1 and the Blue Moon on May 31.",
+      "A rare second full moon in a single calendar month — happening roughly every 2.5 years. The phrase 'once in a blue moon' comes from this rarity.",
     energy:
       "The unexpected gift. An extra full moon is a bonus round — use it for whatever unfinished business the first one stirred up. Double the release, double the magic.",
     emoji: "🔵",
@@ -1381,56 +1596,47 @@ export interface TodaysMoonEvent {
    * part, and that stays on the one day the event actually happens.
    */
   isPeak: boolean;
+  /** "Total Lunar Eclipse", "Annular Solar Eclipse"… when isEclipse. */
+  eclipseLabel?: string;
 }
-
-// 2026 eclipse dates for cross-referencing with moon events
-const ECLIPSE_DATES_2026: { month: number; day: number; type: "solar" | "lunar" }[] = [
-  { month: 1, day: 17, type: "solar" },   // Feb 17 — Solar eclipse (new moon)
-  { month: 2, day: 3, type: "lunar" },    // Mar 3 — Lunar eclipse (full moon)
-  { month: 7, day: 12, type: "solar" },   // Aug 12 — Solar eclipse (new moon)
-  { month: 7, day: 28, type: "lunar" },   // Aug 28 — Lunar eclipse (full moon)
-];
 
 /**
- * Whether a computed moon instant is one of the 2026 eclipses.
+ * Today's new or full moon, if the moon reads as one.
  *
- * Matched in UTC, because that is the timezone eclipses are quoted in and the
- * one this table was written from. Matching in local time loses the August
- * lunar eclipse for anyone west of Greenwich: it is 04:18 UTC on the 28th,
- * which is the evening of the 27th in Texas, and the table only knows about a
- * 28th.
+ * `date` is the day being asked about. In a browser, pass the current time and
+ * leave `timeZone` off — the runtime's zone is the reader's. On a server, pass
+ * the person's calendar date (as localNow() builds it) WITH their IANA zone:
+ * the peak day and the month that names the moon are both calendar questions,
+ * and the server's calendar is not theirs.
  *
- * Still a typed table, and still only 2026 — astronomy-engine can search
- * eclipses properly and this should move to it, but that is its own change.
- * The year guard means 2027 says "no eclipse" rather than quietly matching on
- * a month and a day.
+ * Eclipses come from the eclipse search, for every year. (This used to match a
+ * 2026-only table and answer "no eclipse" for every other year.)
  */
-function isEclipseInstant(at: Date, type: "solar" | "lunar"): boolean {
-  if (at.getUTCFullYear() !== 2026) return false;
-  return ECLIPSE_DATES_2026.some(
-    (e) => e.type === type && e.month === at.getUTCMonth() && e.day === at.getUTCDate()
-  );
-}
-
-export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
-  const phase = getMoonPhase(date).phase;
+export function getTodaysMoonEvent(date: Date, timeZone?: string | null): TodaysMoonEvent | null {
+  // With a zone, read the phase at their local noon; without one, at `date`.
+  const ref = timeZone
+    ? new Date(localDayWindow(date, timeZone).start.getTime() + 12 * 60 * 60 * 1000)
+    : date;
+  const phase = getMoonPhase(ref).phase;
   if (phase !== "new" && phase !== "full") return null;
 
   // Look back far enough to catch an instant a day or two behind us: the phase
   // window opens before the event and closes after it.
-  const from = new Date(date.getTime() - 4 * 24 * 60 * 60 * 1000);
+  const from = new Date(ref.getTime() - 4 * DAY_MS);
   const at = nextMoonEventInstant(phase, from);
-  const isPeak = isSameLocalDay(at, date);
+  const isPeak = timeZone ? isOnDay(at, date, timeZone) : isSameLocalDay(at, date);
   const zodiacSign = getCurrentMoonSign(at).full;
+  const eclipse = eclipseNear(at, phase === "full" ? "lunar" : "solar");
 
   if (phase === "full") {
-    const name = fullMoonNameFor(at, at.getFullYear());
+    const name = fullMoonNameFor(at, timeZone);
     return {
       kind: "full",
       moonName: name,
       zodiacSign,
       isBlue: name === "Blue Moon",
-      isEclipse: isEclipseInstant(at, "lunar"),
+      isEclipse: !!eclipse,
+      eclipseLabel: eclipse?.label,
       lore: MOON_LORE[name],
       isPeak,
     };
@@ -1440,7 +1646,8 @@ export function getTodaysMoonEvent(date: Date): TodaysMoonEvent | null {
     kind: "new",
     zodiacSign,
     isBlue: false,
-    isEclipse: isEclipseInstant(at, "solar"),
+    isEclipse: !!eclipse,
+    eclipseLabel: eclipse?.label,
     lore: NEW_MOON_LORE,
     isPeak,
   };
@@ -1472,7 +1679,7 @@ const FULL_MOON_EMOJI: Record<string, string> = {
  */
 export function getFullMoonsForYear(year: number): YearMoonEntry[] {
   return moonEventsForYear("full", year).map((at) => {
-    const name = fullMoonNameFor(at, year);
+    const name = fullMoonNameFor(at);
     return {
       month: at.getMonth(),
       day: at.getDate(),

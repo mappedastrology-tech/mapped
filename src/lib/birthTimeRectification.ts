@@ -42,6 +42,7 @@ export interface RisingScanInput {
   longitude: number;
   zodiacSystem?: string;        // "tropical" | "sidereal"
   ayanamsa?: string;
+  timezone?: string | null;     // the chart's stored zone; estimated when absent
 }
 
 /**
@@ -93,7 +94,7 @@ export function risingIntervals(input: RisingScanInput): RisingInterval[] {
     // on a daylight-saving changeover has two different offsets within the
     // same date, and a single offset would slide every interval after the
     // change by an hour.
-    const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day, hour);
+    const tzOffset = getUtcOffsetHours(input.latitude, input.longitude, year, month, day, hour, input.timezone);
     const jd = julday(year, month, day, hour - tzOffset);
     const sign = ascendantSign(jd, input.latitude, input.longitude, sidereal, ayanamsa);
 

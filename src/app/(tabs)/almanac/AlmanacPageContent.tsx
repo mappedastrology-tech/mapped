@@ -16,6 +16,7 @@ import {
   getActivityDetail,
   getCategoryDefinitions,
   scoreCategoryForDate,
+  isUnscoredTopic,
   getWeekData,
   getMonthData,
   type ActivityDetail,
@@ -50,7 +51,8 @@ import { getDailyEnergy } from "@/lib/celestialCalendar";
 const CATEGORIES_KEY = "mapped:almanac-categories";
 const CUSTOM_NAMES_KEY = "mapped:almanac-custom-names";
 const TRANSITS_KEY = "mapped:transits";
-const DEFAULT_CATEGORIES = ["communication", "love", "money", "body", "rest"];
+// "money" was a default; day scores for money decisions were removed.
+const DEFAULT_CATEGORIES = ["communication", "love", "body", "rest"];
 
 /** Decorative stars scattered behind the moon hero — [x%, y%, size, opacity]. */
 const HERO_STARS: [number, number, number, number][] = [
@@ -60,12 +62,6 @@ const HERO_STARS: [number, number, number, number][] = [
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
-
-/** Format void-of-course time for the status bar */
-function formatVocTime(timeStr: string): string {
-  // timeStr is like "2:15 PM" — just return the hour:min portion
-  return timeStr.replace(/\s?(AM|PM)/i, (_, p) => p.toLowerCase() === "am" ? "" : "");
-}
 
 /** Convert a slug like "filming-tiktok-videos" to "Filming Tiktok Videos" */
 function unslugify(slug: string): string {
@@ -904,6 +900,7 @@ export default function AlmanacPageContent() {
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
   const [showCategoryLibrary, setShowCategoryLibrary] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState("");
+  const [customCategoryNote, setCustomCategoryNote] = useState<string | null>(null);
   const [transitData, setTransitData] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ActivityDetail | null>(null);
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
@@ -916,7 +913,15 @@ export default function AlmanacPageContent() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setCategories(parsed);
+          // Drop saved categories the almanac no longer scores (the removed
+          // medical, money and legal ones, or the same typed in as custom).
+          const builtIn = new Set(getCategoryDefinitions().map((d) => d.id));
+          const kept = parsed.filter((c): c is string =>
+            typeof c === "string" && (builtIn.has(c) || !isUnscoredTopic(c)));
+          setCategories(kept.length > 0 ? kept : DEFAULT_CATEGORIES);
+          if (kept.length !== parsed.length) {
+            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(kept.length > 0 ? kept : DEFAULT_CATEGORIES)); } catch { /* no-op */ }
+          }
         }
       }
       const names = localStorage.getItem(CUSTOM_NAMES_KEY);
@@ -967,6 +972,12 @@ export default function AlmanacPageContent() {
     const trimmed = customCategoryInput.trim();
     if (trimmed) {
       const id = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      if (id && isUnscoredTopic(id) && !getCategoryDefinitions().some((d) => d.id === id)) {
+        setCustomCategoryNote("The almanac doesn't score health, money or legal decisions — those deserve better than a moon sign.");
+        setCustomCategoryInput("");
+        return;
+      }
+      setCustomCategoryNote(null);
       if (id && !categories.includes(id)) {
         saveCategories([...categories, id]);
         // Store the original display name for custom categories
@@ -1026,29 +1037,6 @@ export default function AlmanacPageContent() {
   const moonImageSrc = `/moons/${(
     { new: "new-moon", full: "full-moon", "last-quarter": "third-quarter" } as Record<string, string>
   )[sky.moonPhase.phase] ?? sky.moonPhase.phase}.webp`;
-
-  // Generate astrological reason lines for good-for items
-  const goodForReasons = useMemo(() => {
-    const reasons = [
-      `${sky.moonSign} Moon · honesty lands`,
-      `2nd house · Venus trine`,
-      `${sky.moonSignElement} energy · flow state`,
-      `${sky.planetaryRuler.planet} day · momentum`,
-      `${sky.moonSign} depth · clarity rises`,
-    ];
-    return reasons;
-  }, [sky]);
-
-  // Generate reasons for skip-today items
-  const skipReasons = useMemo(() => {
-    const reasons: string[] = [];
-    if (sky.voidOfCourseMoon) {
-      reasons.push(`Moon void after ${formatVocTime(sky.voidOfCourseMoon.start)}`);
-    }
-    reasons.push("Venus square Saturn");
-    reasons.push(`${sky.moonSign} intensity · wait`);
-    return reasons;
-  }, [sky]);
 
   // Personal transit interpretation — always returns meaningful content
   const transitInterpretation = useMemo(() => {
@@ -1860,20 +1848,20 @@ export default function AlmanacPageContent() {
               V/C
             </span>
             <span className="text-[11.5px]" style={{ lineHeight: 1.4, color: "var(--foreground-muted)" }}>
-              Void of course from {formatVocTime(sky.voidOfCourseMoon.start)} — let new plans settle until tomorrow.
-              <InfoTip text="Void-of-Course Moon: the Moon has made its last major aspect before changing signs. Traditional astrology says avoid starting anything new during this window — plans may not stick." />
+              {sky.voidOfCourseMoon.summary} — traditionally a pause before it enters {sky.voidOfCourseMoon.nextSign}.
+              <InfoTip text="Void-of-Course Moon: from the Moon's last exact major aspect (conjunction, sextile, square, trine or opposition to any planet, Sun through Pluto) until it enters the next sign. Tradition treats it as a pause, associated with routine more than fresh starts." />
             </span>
           </div>
         )}
 
-        {/* ━━━ SABIAN SYMBOL — today's image ━━━ */}
+        {/* ━━━ DEGREE IMAGE — today's image (written for Mapped; not the Sabian set) ━━━ */}
         <div
           className="px-[22px] py-[22px]"
           style={{ borderRadius: 18, background: "var(--background-card)", border: "0.5px solid var(--border-card)" }}
         >
           <p className="text-[10px] uppercase font-bold mb-3" style={{ letterSpacing: "0.14em", color: "var(--brass)" }}>
             {sabianSymbol.sign} {sabianSymbol.degree}&deg; · Today&apos;s image
-            <InfoTip text="The Sabian Symbol for today's Sun degree. Each of the 360 degrees of the zodiac has a symbolic image, channeled in 1925. Think of it as a daily meditation image based on where the Sun actually is." />
+            <InfoTip text="An image for today's Sun degree, written for Mapped. The idea of an image for each of the zodiac's 360 degrees comes from the Sabian Symbols tradition; these images are our own. Think of it as a daily reflection based on where the Sun actually is." />
           </p>
           <p
             className="text-[19px] mb-3"
@@ -2752,18 +2740,18 @@ export default function AlmanacPageContent() {
           </div>
         </AlmanacDrawer>
 
-        {/* Body Timing */}
+        {/* Moon & body lore (was "body timing") */}
         <AlmanacDrawer
-          title="In your body"
+          title="Moon & body lore"
           icon={ALMANAC_ICONS.body}
-          preview={`${bodyTiming.summaryLabel} — Moon in ${bodyTiming.moonSign}`}
+          preview={bodyTiming.summaryLabel}
         >
           <div className="flex flex-col gap-4">
 
-            {/* Planning For date picker */}
+            {/* Day picker */}
             <div>
               <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--foreground-muted)" }}>
-                Planning For
+                Look at a day
               </p>
               <label
                 className="rounded-lg px-3 py-2.5 flex items-center justify-between cursor-pointer"
@@ -2785,7 +2773,7 @@ export default function AlmanacPageContent() {
                   <input
                     type="date"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    aria-label="Pick a date to check body timing"
+                    aria-label="Pick a date to read its moon and body lore"
                     value={`${bodyTimingDate.getFullYear()}-${String(bodyTimingDate.getMonth() + 1).padStart(2, "0")}-${String(bodyTimingDate.getDate()).padStart(2, "0")}`}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -2808,92 +2796,22 @@ export default function AlmanacPageContent() {
               }}
             >
               <p className="text-[11px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                {bodyTiming.summaryLabel}
+                In almanac lore: {bodyTiming.bodyArea}
               </p>
               <p className="text-[9px] mt-0.5" style={{ color: "var(--foreground-on-card-muted)" }}>
                 Moon in {bodyTiming.moonSign} · {bodyTiming.moonPhase}
               </p>
             </div>
 
-            {/* Maybe Skip */}
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--terracotta)" }}>
-                Maybe Skip This Day
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {bodyTiming.avoid.map((item, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg px-3 py-2 flex items-center gap-2.5"
-                    style={{
-                      background: item.risk === "high"
-                        ? "color-mix(in srgb, var(--terracotta) 8%, var(--background-card))"
-                        : "color-mix(in srgb, var(--brass) 6%, var(--background-card))",
-                      border: `1px solid color-mix(in srgb, ${item.risk === "high" ? "var(--terracotta)" : "var(--brass)"} 15%, transparent)`,
-                    }}
-                  >
-                    <span className="text-[16px] shrink-0">{item.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                        {item.label}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--foreground-on-card-muted)" }}>
-                        {item.detail}
-                      </p>
-                    </div>
-                    <span
-                      className="text-[8px] uppercase tracking-[0.1em] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{
-                        background: item.risk === "high"
-                          ? "color-mix(in srgb, var(--terracotta) 20%, transparent)"
-                          : "color-mix(in srgb, var(--brass) 15%, transparent)",
-                        color: item.risk === "high" ? "var(--terracotta)" : "var(--brass)",
-                      }}
-                    >
-                      {item.risk === "high" ? "Not Ideal" : "Heads Up"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Good To Go */}
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: "var(--sage)" }}>
-                Good To Go
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {bodyTiming.safe.map((item, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg px-3 py-2 flex items-center gap-2.5"
-                    style={{
-                      background: "color-mix(in srgb, var(--sage) 8%, var(--background-card))",
-                      border: "1px solid color-mix(in srgb, var(--sage) 15%, transparent)",
-                    }}
-                  >
-                    <span className="text-[16px] shrink-0">{item.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                        {item.label}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--foreground-on-card-muted)" }}>
-                        {item.detail}
-                      </p>
-                    </div>
-                    <span
-                      className="text-[8px] uppercase tracking-[0.1em] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{
-                        background: "color-mix(in srgb, var(--sage) 20%, transparent)",
-                        color: "var(--sage)",
-                      }}
-                    >
-                      All Clear
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* The lore — reflection only. The old "Maybe Skip / Good To Go"
+                lists told people which check-ups and procedures to avoid by
+                Moon sign; that was medical scheduling and has been removed. */}
+            <p
+              className="text-[12px] leading-relaxed"
+              style={{ color: "var(--foreground-on-card)", fontFamily: "var(--font-ui)" }}
+            >
+              {bodyTiming.lore}
+            </p>
 
             {/* Worth Knowing */}
             <div>
@@ -2924,52 +2842,9 @@ export default function AlmanacPageContent() {
               </div>
             </div>
 
-            {/* Better Days Nearby */}
-            {bodyTiming.betterDays.length > 0 && (
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: "var(--foreground-muted)" }}>
-                  Better Days Nearby
-                </p>
-                <p className="text-[10px] mb-2" style={{ color: "var(--foreground-on-card-muted)" }}>
-                  If you&apos;re flexible on the date —
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {bodyTiming.betterDays.map((bd, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer"
-                      style={{
-                        background: "color-mix(in srgb, var(--sage) 6%, var(--background-card))",
-                        border: "1px solid color-mix(in srgb, var(--sage) 12%, transparent)",
-                      }}
-                      onClick={() => setBodyTimingDate(bd.date)}
-                    >
-                      <div>
-                        <p className="text-[12px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
-                          {bd.label}
-                        </p>
-                        <p className="text-[10px]" style={{ color: "var(--foreground-on-card-muted)" }}>
-                          Moon in {bd.moonSign} · {bd.reason}
-                        </p>
-                      </div>
-                      <span
-                        className="text-[8px] uppercase tracking-[0.1em] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{
-                          background: "color-mix(in srgb, var(--sage) 20%, transparent)",
-                          color: "var(--sage)",
-                        }}
-                      >
-                        Clear
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Disclaimer */}
             <p className="text-[9px] leading-relaxed italic text-center" style={{ color: "var(--foreground-on-card-faint)" }}>
-              Based on traditional almanac folklore — not medical advice. Always talk to your doctor for anything important.
+              Folklore, offered for reflection. It isn&apos;t health guidance and shouldn&apos;t shape when you seek or schedule care.
             </p>
 
           </div>
@@ -3340,6 +3215,11 @@ export default function AlmanacPageContent() {
                   Add
                 </button>
               </div>
+              {customCategoryNote && (
+                <p className="text-[11px] mt-2" role="status" style={{ color: "var(--foreground-muted)" }}>
+                  {customCategoryNote}
+                </p>
+              )}
             </section>
           </div>
         </div>

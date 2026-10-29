@@ -1057,7 +1057,7 @@ export const ingestedReference: ReferenceEntry[] = [
       },
       {
         "label": "Nature",
-        "value": "Natural malefic; commonly held exalted in Scorpio, debilitated in Taurus (disputed among traditions)"
+        "value": "Natural malefic; commonly held exalted in Taurus, debilitated in Scorpio (some traditions say exalted in Gemini, debilitated in Sagittarius) — the mirror of Ketu"
       },
       {
         "label": "Signifies",

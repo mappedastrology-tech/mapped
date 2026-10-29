@@ -60,7 +60,9 @@ export function getTransitIntensity(ta: TransitForScoring): IntensityResult {
 
   let label = "Background hum";
   let color = "text-muted";
-  if (score >= 75) { label = "Life-altering"; color = "text-terracotta"; }
+  // Labels describe how loud the transit is, never what it will do to a life:
+  // the top band used to read "Life-altering", which is a forecast.
+  if (score >= 75) { label = "Peak intensity"; color = "text-terracotta"; }
   else if (score >= 55) { label = "Very strong"; color = "text-amber"; }
   else if (score >= 38) { label = "Significant"; color = "text-secondary"; }
   else if (score >= 20) { label = "Moderate"; color = "text-muted"; }

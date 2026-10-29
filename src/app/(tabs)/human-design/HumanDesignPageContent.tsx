@@ -32,6 +32,8 @@ interface ChartRow {
   unknownTime: boolean;
   name: string;
   place: string;
+  /** The chart's stored birth time zone (see lib/astro/birthTimezone). */
+  timezone?: string | null;
 }
 
 /** Astronomical glyphs for the Design / Personality activation columns.
@@ -90,7 +92,7 @@ export default function HumanDesignPageContent() {
           "";
         const { data } = await supabase
           .from("charts")
-          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, city_name")
+          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, city_name, timezone")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -104,6 +106,7 @@ export default function HumanDesignPageContent() {
             unknownTime: !!data.unknown_time,
             name: data.name,
             place: (data.city_name as string) || "",
+            timezone: data.timezone as string | null,
           });
           setName(metaName || data.name || "");
           setIsLoading(false);
@@ -122,6 +125,7 @@ export default function HumanDesignPageContent() {
             unknownTime: !!p.unknownTime,
             name: p.name,
             place: p.cityName || p.city_name || p.place || "",
+            timezone: p.timezone,
           });
           setName(metaName || p.name || "");
         }
@@ -140,6 +144,7 @@ export default function HumanDesignPageContent() {
       birthTime: row.birthTime,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
     });
   }, [row]);
 

@@ -16,7 +16,7 @@ import { AI_RESTING_MESSAGE, AI_UNAVAILABLE_MESSAGE, AI_UPGRADE_MESSAGE } from "
  * the mistake this file now catches. The sentences live in
  * `@/lib/ai/messages`, which is safe to import anywhere.
  */
-const SERVER_ONLY = ["@/lib/ai/budget", "@/lib/ai/meter"];
+const SERVER_ONLY = ["@/lib/ai/budget", "@/lib/ai/meter", "@/lib/astro/geoTimezone"];
 
 /** The server-only modules themselves — they may import each other. */
 const EXEMPT = ["src/lib/ai/budget.ts", "src/lib/ai/meter.ts"];

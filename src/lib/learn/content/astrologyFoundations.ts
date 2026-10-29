@@ -208,7 +208,7 @@ export const astrologyFoundations: Course = {
               ["Pisces", "Water", "Mutable", "Jupiter / Neptune"],
             ] },
             { kind: "callout", tone: "tradition", title: "Polarities: every sign has a partner", text: "The signs pair into six opposite axes (Aries–Libra, Taurus–Scorpio, and so on). Opposite signs share a modality and complementary elements, and they often express two ends of the same theme — Aries' 'me' balancing Libra's 'we,' Cancer's private home balancing Capricorn's public ambition." },
-            { kind: "callout", tone: "history", title: "Old & new rulers", text: "Before the outer planets were discovered, each planet ruled two signs. Modern astrologers added Pluto (Scorpio), Uranus (Aquarius), and Neptune (Pisces) as 'co-rulers.' Both the traditional and modern rulers are still used — traditional astrologers often keep Mars for Scorpio and Saturn for Aquarius." },
+            { kind: "callout", tone: "history", title: "Old & new rulers", text: "Before the outer planets were discovered, each planet ruled two signs. Modern astrologers added Pluto (Scorpio), Uranus (Aquarius), and Neptune (Pisces) as 'co-rulers.' Both are still used. Mapped names the modern ruler first with the traditional one alongside (\"Pluto, traditionally Mars\"), and uses the traditional ruler for techniques that need a single planet, like profections." },
             { kind: "explore", prompt: "The wheel of signs", instructions: "Tap any glyph to learn it", image: "/images/learn/zodiac-wheel-fragment-1.webp", items: [
               { glyph: "♈", name: "Aries", meta: "Fire · Cardinal · Mar 21–Apr 19", accent: "#c9881f", blurb: "Cardinal fire, ruled by Mars — the initiator. Bold, direct and quick to begin." },
               { glyph: "♉", name: "Taurus", meta: "Earth · Fixed · Apr 20–May 20", accent: "#6a9a4a", blurb: "Fixed earth, ruled by Venus — steady and sensual. Patient, grounded, loyal." },
@@ -217,11 +217,11 @@ export const astrologyFoundations: Course = {
               { glyph: "♌", name: "Leo", meta: "Fire · Fixed · Jul 23–Aug 22", accent: "#c9881f", blurb: "Fixed fire, ruled by the Sun — warm and proud. Generous, expressive, loyal." },
               { glyph: "♍", name: "Virgo", meta: "Earth · Mutable · Aug 23–Sep 22", accent: "#6a9a4a", blurb: "Mutable earth, ruled by Mercury — precise and practical. Helpful and analytical." },
               { glyph: "♎", name: "Libra", meta: "Air · Cardinal · Sep 23–Oct 22", accent: "#B8A0D2", blurb: "Cardinal air, ruled by Venus — relational and fair. Harmonious and diplomatic." },
-              { glyph: "♏", name: "Scorpio", meta: "Water · Fixed · Oct 23–Nov 21", accent: "#5b6bb5", blurb: "Fixed water, ruled by Mars and Pluto — intense and private. Probing and transformative." },
+              { glyph: "♏", name: "Scorpio", meta: "Water · Fixed · Oct 23–Nov 21", accent: "#5b6bb5", blurb: "Fixed water, ruled by Pluto, traditionally Mars — intense and private. Probing and transformative." },
               { glyph: "♐", name: "Sagittarius", meta: "Fire · Mutable · Nov 22–Dec 21", accent: "#c9881f", blurb: "Mutable fire, ruled by Jupiter — restless and seeking. Adventurous and candid." },
               { glyph: "♑", name: "Capricorn", meta: "Earth · Cardinal · Dec 22–Jan 19", accent: "#6a9a4a", blurb: "Cardinal earth, ruled by Saturn — ambitious and disciplined. Patient and enduring." },
-              { glyph: "♒", name: "Aquarius", meta: "Air · Fixed · Jan 20–Feb 18", accent: "#B8A0D2", blurb: "Fixed air, ruled by Saturn and Uranus — independent and original. Inventive and humane." },
-              { glyph: "♓", name: "Pisces", meta: "Water · Mutable · Feb 19–Mar 20", accent: "#5b6bb5", blurb: "Mutable water, ruled by Jupiter and Neptune — dreamy and porous. Imaginative and compassionate." },
+              { glyph: "♒", name: "Aquarius", meta: "Air · Fixed · Jan 20–Feb 18", accent: "#B8A0D2", blurb: "Fixed air, ruled by Uranus, traditionally Saturn — independent and original. Inventive and humane." },
+              { glyph: "♓", name: "Pisces", meta: "Water · Mutable · Feb 19–Mar 20", accent: "#5b6bb5", blurb: "Mutable water, ruled by Neptune, traditionally Jupiter — dreamy and porous. Imaginative and compassionate." },
             ] },
           ],
           quiz: [
@@ -543,7 +543,7 @@ export const astrologyFoundations: Course = {
               ["Trine", "120°", "Harmonious — natural flow"],
               ["Opposition", "180°", "Tense — polarity, balance"],
             ] },
-            { kind: "callout", tone: "tip", title: "What an 'orb' is", text: "Aspects rarely land on the exact degree, so astrologers allow a margin called the orb — usually a few degrees, wider for the Sun and Moon. A square that's 2° off the exact 90° still counts; one that's 12° off generally doesn't. The tighter the orb, the louder the aspect." },
+            { kind: "callout", tone: "tip", title: "What an 'orb' is", text: "Aspects rarely land on the exact degree, so astrologers allow a margin called the orb — usually a few degrees. Traditions differ (some allow more for the Sun and Moon); Mapped uses one table for every chart: 8° for conjunctions and oppositions, 7° for trines and squares, 5° for sextiles. A square that's 2° off the exact 90° counts; one that's 12° off doesn't. The tighter the orb, the louder the aspect." },
             { kind: "callout", tone: "history", title: "Soft, hard, and the major/minor split", text: "The five majors come from Ptolemy, who tied them to simple divisions of the circle. Astrologers group them as 'soft' (sextile, trine — flowing) and 'hard' (square, opposition — challenging), with the conjunction neutral. Later astrologers added 'minor' aspects like the quincunx (150°) and semisextile (30°), used more sparingly." },
             { kind: "callout", tone: "tradition", title: "Tension isn't bad", text: "Squares and oppositions get a bad reputation, but they're where growth happens — they create the friction that pushes you to develop. Trines and sextiles flow easily but can be taken for granted, sometimes becoming talents you never bother to use." },
             { kind: "keyfacts", items: [

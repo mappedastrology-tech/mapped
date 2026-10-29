@@ -99,7 +99,7 @@ export const astrologyReference: ReferenceEntry[] = [
     "Libra is cardinal air, ruled by Venus — the diplomat. Fair, charming, and relational, it seeks balance, beauty, and harmony, and thinks best in partnership. At its best it's gracious and just; off-balance it grows indecisive and conflict-avoidant.",
     "Balance, harmony, partnership, fairness, charm", "Diplomatic, fair, charming, cooperative", "Indecisive, avoids conflict, people-pleasing"),
   sign("scorpio", "Scorpio", "Oct 23 – Nov 21", "Water", "Fixed", "Mars / Pluto",
-    "Scorpio is fixed water, ruled by Mars and — in modern practice — Pluto, the investigator. Intense, private, and perceptive, it dives beneath the surface toward truth, intimacy, and transformation. At its best it's loyal and transformative; off-balance it turns jealous, controlling, and secretive.",
+    "Scorpio is fixed water, ruled by Pluto, traditionally Mars — the investigator. Intense, private, and perceptive, it dives beneath the surface toward truth, intimacy, and transformation. At its best it's loyal and transformative; off-balance it turns jealous, controlling, and secretive.",
     "Intensity, depth, transformation, loyalty, power", "Loyal, perceptive, resilient, passionate", "Jealous, controlling, holds grudges"),
   sign("sagittarius", "Sagittarius", "Nov 22 – Dec 21", "Fire", "Mutable", "Jupiter",
     "Sagittarius is mutable fire, ruled by Jupiter — the explorer. Free, optimistic, and philosophical, it chases meaning, adventure, and the bigger picture. At its best it's expansive and honest; off-balance it grows restless, blunt, and over-promising.",
@@ -108,10 +108,10 @@ export const astrologyReference: ReferenceEntry[] = [
     "Capricorn is cardinal earth, ruled by Saturn — the strategist. Disciplined, ambitious, and patient, it climbs steadily toward long-term goals and earned authority. At its best it's responsible and enduring; off-balance it becomes cold, rigid, and all work.",
     "Discipline, ambition, structure, patience, responsibility", "Hardworking, responsible, patient, capable", "Cold, rigid, work over life"),
   sign("aquarius", "Aquarius", "Jan 20 – Feb 18", "Air", "Fixed", "Saturn / Uranus",
-    "Aquarius is fixed air, ruled by Saturn and — in modern practice — Uranus, the visionary. Independent, inventive, and humane, it thinks ahead, questions norms, and cares about the collective. At its best it's original and principled; off-balance it turns aloof and emotionally detached.",
+    "Aquarius is fixed air, ruled by Uranus, traditionally Saturn — the visionary. Independent, inventive, and humane, it thinks ahead, questions norms, and cares about the collective. At its best it's original and principled; off-balance it turns aloof and emotionally detached.",
     "Independence, innovation, community, ideals, originality", "Inventive, principled, open-minded, humane", "Aloof, contrarian, emotionally distant"),
   sign("pisces", "Pisces", "Feb 19 – Mar 20", "Water", "Mutable", "Jupiter / Neptune",
-    "Pisces is mutable water, ruled by Jupiter and — in modern practice — Neptune, the dreamer. Imaginative, compassionate, and porous, it feels everything and softens the boundary between self and world. At its best it's creative and empathic; off-balance it drifts into escapism and self-sacrifice.",
+    "Pisces is mutable water, ruled by Neptune, traditionally Jupiter — the dreamer. Imaginative, compassionate, and porous, it feels everything and softens the boundary between self and world. At its best it's creative and empathic; off-balance it drifts into escapism and self-sacrifice.",
     "Imagination, compassion, intuition, spirituality, surrender", "Empathetic, creative, gentle, intuitive", "Escapist, weak boundaries, self-sacrificing"),
 
   // ── 10 planets & luminaries ──
@@ -185,18 +185,20 @@ export const astrologyReference: ReferenceEntry[] = [
     "Pisces", "Cadent", "Unconscious, solitude, endings, the hidden"),
 
   // ── 5 major aspects ──
+  // "Typical orb" matches the one table the app calculates with
+  // (lib/astro/constants.ts ASPECTS): 8 / 5 / 7 / 7 / 8.
   aspect("conjunction", "Conjunction", "0°", "Blended / intensified",
     "A conjunction fuses two planets at the same degree, blending their energies into a single, concentrated force. Whether it feels easy or tense depends entirely on which planets are involved — but the effect is always prominent and amplified.",
     "Two voices speaking as one — for better or worse", "~8°"),
   aspect("sextile", "Sextile", "60°", "Harmonious / opportunity",
     "A sextile is a gentle, supportive angle — an opportunity that's available if you reach for it. The two planets cooperate easily, offering talent or ease that still needs a little effort to switch on.",
-    "An open door you choose to walk through", "~4°"),
+    "An open door you choose to walk through", "~5°"),
   aspect("square", "Square", "90°", "Tense / dynamic",
     "A square is friction between two planets pulling in different directions. It creates tension, frustration, and challenge — but that very pressure is what drives growth, effort, and achievement.",
     "Productive friction that demands you act", "~7°"),
   aspect("trine", "Trine", "120°", "Harmonious / flowing",
     "A trine is the most harmonious angle — an easy, natural flow between two planets, usually of the same element. It brings talent and grace, though it can be so effortless it's taken for granted.",
-    "Effortless flow you barely notice", "~8°"),
+    "Effortless flow you barely notice", "~7°"),
   aspect("opposition", "Opposition", "180°", "Polarity / tension",
     "An opposition sits two planets directly across the chart, creating a polarity to balance. It often plays out through other people or a push-pull between two needs, asking for integration rather than either/or.",
     "A see-saw seeking balance", "~8°"),

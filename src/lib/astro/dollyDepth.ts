@@ -1,10 +1,12 @@
 // Precomputed "depth" text block for the Dolly astrology chatbot.
 //
-// Pure, dependency-free. Given a user's natal chart, it derives the heavier
+// Pure; its one import is the shared aspect/orb table. Given a user's natal chart, it derives the heavier
 // traditional-astrology math (aspects, dignities, chart shape, profections,
 // Part of Fortune) up front so the chatbot can read it as plain text instead
 // of computing it live. Everything is guarded: a missing field means the
 // affected section is skipped, never thrown.
+
+import { ASPECTS as CHART_ASPECTS } from "./constants";
 
 export interface DepthChart {
   bigThree?: { sun: string; moon: string; rising: string };
@@ -116,13 +118,11 @@ const ASPECT_BODIES = [
   "Pluto",
 ] as const;
 
-const ASPECTS = [
-  { name: "conjunction", angle: 0, orb: 8 },
-  { name: "sextile", angle: 60, orb: 4 },
-  { name: "square", angle: 90, orb: 7 },
-  { name: "trine", angle: 120, orb: 8 },
-  { name: "opposition", angle: 180, orb: 8 },
-] as const;
+// The one orb table (lib/astro/constants.ts). Dolly used to carry her own —
+// sextile 4°, trine 8° — so she could name an aspect the chart screen didn't
+// show, or miss one it did.
+export const DEPTH_ASPECTS = CHART_ASPECTS.map(([name, angle, orb]) => ({ name, angle, orb }));
+const ASPECTS = DEPTH_ASPECTS;
 
 const HOUSE_THEMES: Record<number, string> = {
   1: "self/body",
@@ -433,18 +433,12 @@ function sectionProfection(chart: DepthChart, ref: Date): string {
 
   const activatedHouse = (age % 12) + 1;
 
-  // Determine the sign on the activated house cusp.
-  let cuspIdx = -1;
-  if (chart.houses && chart.houses.length) {
-    const h = chart.houses.find((x) => x.number === activatedHouse);
-    if (h) cuspIdx = signIndex(h.sign);
-  }
-  if (cuspIdx < 0) {
-    // Fall back: count whole signs from the rising sign.
-    const risingIdx = risingSignIndex(chart);
-    if (risingIdx >= 0) cuspIdx = (risingIdx + (activatedHouse - 1)) % 12;
-  }
-  if (cuspIdx < 0) return "";
+  // Profections are whole-sign: count one sign per year from the rising sign,
+  // whatever house system the chart displays. (This used to read the Placidus
+  // cusp first, which names a different sign whenever signs are intercepted.)
+  const risingIdx = risingSignIndex(chart);
+  if (risingIdx < 0) return "";
+  const cuspIdx = (risingIdx + (activatedHouse - 1)) % 12;
 
   const timeLord = DOMICILE_RULER[cuspIdx];
   const theme = HOUSE_THEMES[activatedHouse];
@@ -452,7 +446,7 @@ function sectionProfection(chart: DepthChart, ref: Date): string {
   return (
     `Profection year (age ${age}): ${ordinal(activatedHouse)} house activated (${fullSign(
       cuspIdx
-    )}), time-lord ${timeLord}. Read ${timeLord}'s natal condition and any current transits to it as the year's headline. ` +
+    )}, counted in whole signs from the rising sign), time-lord ${timeLord} (traditional ruler). Read ${timeLord}'s natal condition and any current transits to it as the year's headline. ` +
     `Classic theme of the ${ordinal(activatedHouse)} house: ${theme}.`
   );
 }

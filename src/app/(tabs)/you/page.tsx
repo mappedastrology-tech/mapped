@@ -11,7 +11,7 @@
  * Contradiction warnings for conflicting placements.
  */
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel, { SIGN_NAMES } from "@/components/ChartWheel";
 import ChartWheelStar from "@/components/ChartWheelStar";
@@ -26,6 +26,7 @@ import { calculateChart } from "@/lib/astro/calculateChart";
 import { getMeanLilithData } from "@/lib/astro/lilithClient";
 import { SIGN_FULL } from "@/lib/knowledge";
 import { getChartRuler } from "@/lib/chartRuler";
+import { moonSignRange } from "@/lib/astro/moonRange";
 import { getSectLight, getLordOfTheYear, type SectLightInfo, type LordOfTheYearInfo } from "@/lib/rulers";
 import { detectContradictions, detectStelliums, type Contradiction, type Stellium } from "@/lib/contradictions";
 import { analyzeChart, type ChartAnalysis } from "@/lib/chartAnalysis";
@@ -33,7 +34,9 @@ import ChartInsightsPanel from "@/components/ChartInsightsPanel";
 import VedicChartPanel from "@/components/VedicChartPanel";
 import type { VedicDetails } from "@/lib/astro/vedic/vedicChart";
 import { chartCalcParams, chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
-import { chartColumns, systemColumns, writeWithOptionalColumns } from "@/lib/chartSystemSync";
+import { applyBirthTimezone, chartColumns, fetchBirthTimezone, systemColumns, writeWithOptionalColumns } from "@/lib/chartSystemSync";
+import { isResolvedZone, type BirthOffset } from "@/lib/astro/birthTimezone";
+import BirthTimezoneLine from "@/components/BirthTimezoneLine";
 import { useTheme } from "@/components/ThemeProvider";
 
 interface Planet {
@@ -69,7 +72,11 @@ interface ChartData {
   cityName: string;
   latitude: number;
   longitude: number;
-  timezone?: string;
+  timezone?: string | null;
+  /** How the birth time was converted to UT (zone, offset, LMT, clock change). */
+  timezoneInfo?: BirthOffset | null;
+  /** Placidus can't be cast above the polar circles; the houses fell back to Porphyry. */
+  polarFallback?: boolean;
   bigThree: { sun: string; moon: string; rising: string };
   planets: Planet[];
   houses: House[];
@@ -1183,6 +1190,7 @@ export default function YouTab() {
   const [aspectTab, setAspectTab] = useState<"strong" | "medium" | "mild">("strong");
   const [pageTab, setPageTab] = useState<"placements" | "aspects" | "insights" | "vedic">("placements");
   const [accountName, setAccountName] = useState<string | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadChart() {
@@ -1201,6 +1209,7 @@ export default function YouTab() {
           .single();
 
         if (data) {
+          setOwnerId(session.user.id);
           // Recalculate client-side — no API call, no serverless dependency.
           // This runs the exact same calculateChart() in the browser.
           const system = chartSystemFromRow(data);
@@ -1213,6 +1222,8 @@ export default function YouTab() {
               latitude: data.latitude,
               longitude: data.longitude,
               cityName: data.city_name,
+              // Unresolved ("UTC"/null) → estimated here, then resolved below.
+              timezone: data.timezone,
               ...chartCalcParams(system),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             }) as any;
@@ -1246,6 +1257,8 @@ export default function YouTab() {
               latitude: data.latitude,
               longitude: data.longitude,
               timezone: data.timezone,
+              timezoneInfo: recalc.timezoneInfo || null,
+              polarFallback: !!recalc.polarFallback,
               bigThree: recalc.bigThree,
               planets: recalc.planets,
               houses: recalc.houses,
@@ -1337,6 +1350,76 @@ export default function YouTab() {
     return () => { cancelled = true; };
   }, [chartData, backfillDone]);
 
+  /** The chart recalculated with a different birth time zone. */
+  function withZone(prev: ChartData, zone: string): ChartData {
+    const r = calculateChart({
+      name: prev.name,
+      birthDate: prev.birthDate,
+      birthTime: prev.birthTime,
+      unknownTime: prev.unknownTime,
+      latitude: prev.latitude,
+      longitude: prev.longitude,
+      cityName: prev.cityName,
+      timezone: zone,
+      ...chartCalcParams(prev.system ?? chartSystemFromRow(null)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any;
+    return {
+      ...prev,
+      timezone: r.timezone ?? zone,
+      timezoneInfo: r.timezoneInfo || null,
+      polarFallback: !!r.polarFallback,
+      bigThree: r.bigThree,
+      planets: r.planets,
+      houses: r.houses,
+      aspects: r.aspects,
+      specialPoints: r.specialPoints || [],
+      midheaven: r.midheaven || null,
+      ascendant: r.ascendant || null,
+      vedic: r.vedic || null,
+    };
+  }
+
+  /**
+   * Use `zone` for the birth time (null = look the birthplace's zone up), save
+   * it on the chart row and rebuild everything that reads the row.
+   */
+  async function changeBirthZone(zone: string | null) {
+    if (!chartData) return;
+    const next = zone ?? await fetchBirthTimezone(chartData.latitude, chartData.longitude);
+    if (!next) throw new Error("Couldn't reach the time zone lookup. Check your connection, or enter the zone yourself.");
+    if (ownerId) {
+      const res = await applyBirthTimezone(ownerId, next);
+      if (res.charts === 0) throw new Error("Couldn't save the time zone. Try again.");
+    }
+    setChartData((prev) => (prev ? withZone(prev, next) : prev));
+  }
+
+  // Charts saved before zones were stored hold "UTC" (a placeholder) or null,
+  // and were calculated on an estimated zone. Resolve the real one once and
+  // keep it on the row, so every later recalculation — and every feature that
+  // reads the stored positions — uses it. If the lookup can't be reached the
+  // estimate stays, labelled as one by BirthTimezoneLine.
+  // A ref, not state: flipping state would re-run this effect, and other
+  // effects update chartData too — neither may abandon a lookup in flight.
+  const zoneResolveTried = useRef(false);
+  useEffect(() => {
+    if (!chartData || !ownerId || zoneResolveTried.current || isResolvedZone(chartData.timezone)) return;
+    zoneResolveTried.current = true;
+    const estimate = chartData.timezoneInfo?.offsetHours;
+    (async () => {
+      const zone = await fetchBirthTimezone(chartData.latitude, chartData.longitude);
+      if (!zone) return;
+      if (withZone(chartData, zone).timezoneInfo?.offsetHours === estimate) {
+        // The estimate was right: record the zone, nothing else moves.
+        await supabase.from("charts").update({ timezone: zone }).eq("user_id", ownerId);
+      } else {
+        await applyBirthTimezone(ownerId, zone);
+      }
+      setChartData((prev) => (prev ? withZone(prev, zone) : prev));
+    })().catch((err) => console.warn("[You] Time zone resolution failed:", err));
+  }, [chartData, ownerId]);
+
   // Compute effective houses/bigThree with cusp override BEFORE useMemo that needs them
   const effectiveHouses = useMemo(() => {
     if (!chartData) return [];
@@ -1412,6 +1495,23 @@ export default function YouTab() {
     return analyzeChart(planetsForAnalysis, housesForAnalysis, chartData.aspects, allPoints, mhAbsPos);
   }, [chartData, lilithFallback]);
 
+  // Unknown birth time: the Moon can change sign during the day, so check both
+  // ends of the birth date rather than trusting the placeholder-time Moon.
+  const moonRange = useMemo(() => {
+    if (!chartData?.unknownTime) return null;
+    try {
+      return moonSignRange({
+        birthDate: chartData.birthDate,
+        latitude: chartData.latitude,
+        longitude: chartData.longitude,
+        zodiacSystem: chartData.system?.zodiacSystem,
+        ayanamsa: chartData.system?.ayanamsa,
+      });
+    } catch {
+      return null;
+    }
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
@@ -1459,10 +1559,22 @@ export default function YouTab() {
           {name.split(" ")[0]}
         </h1>
         <p className="text-[11.5px] mt-2" style={{ color: "var(--foreground-muted)" }}>
-          {chartData.birthDate} · {chartData.birthTime}
-          {unknownTime && " (approx)"}
+          {chartData.birthDate} · {unknownTime ? "Time unknown" : chartData.birthTime}
           {chartData.cityName ? ` · ${chartData.cityName}` : ""}
         </p>
+        {chartData.timezoneInfo && (
+          <BirthTimezoneLine
+            info={chartData.timezoneInfo}
+            birthTime={chartData.birthTime}
+            unknownTime={unknownTime}
+            onChange={changeBirthZone}
+          />
+        )}
+        {chartData.polarFallback && !unknownTime && (
+          <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--foreground-faint)" }}>
+            Placidus houses can&rsquo;t be drawn this far north or south, so your houses use Porphyry.
+          </p>
+        )}
         {chartData.system && (
           <p className="text-[9px] tracking-[0.2em] uppercase font-semibold mt-1.5" style={{ color: "var(--foreground-faint)" }}>
             {chartSystemLabel(chartData.system)}
@@ -1535,8 +1647,15 @@ export default function YouTab() {
         >
           <p className="text-[11px] leading-relaxed" style={{ color: "var(--foreground-secondary)" }}>
             Your birth time is unknown, so your rising sign, houses, and angles
-            (like the Midheaven) can&apos;t be calculated accurately — they&apos;re hidden
-            here. Your Sun, Moon, and planetary signs are still accurate.
+            (like the Midheaven) can&apos;t be calculated — they&apos;re hidden here.
+            {moonRange?.changesSign
+              ? <> The Moon changed signs on the day you were born, so your Moon is in{" "}
+                  {SIGN_FULL[moonRange.start] || moonRange.start} or {SIGN_FULL[moonRange.end] || moonRange.end}.
+                  Your birth time decides which.</>
+              : moonRange
+                ? <> Your Moon stayed in {SIGN_FULL[moonRange.start] || moonRange.start} all day, so that&apos;s certain.</>
+                : <> The Moon changes sign every two to three days, so on some birth dates its sign depends on the time.</>}
+            {" "}Your Sun and other planetary signs hold unless one changed sign that day, which is rare.
           </p>
           <button
             onClick={() => router.push("/chart/new?edit=true")}

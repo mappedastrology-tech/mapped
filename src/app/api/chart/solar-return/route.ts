@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateSolarReturn } from "@/lib/astro/calculateSolarReturn";
+import { localClock } from "@/lib/astro/birthTimezone";
+import { lookupTimezone } from "@/lib/astro/geoTimezone";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 /**
@@ -19,6 +21,10 @@ async function handlePOST(request: NextRequest) {
     }
 
     const result = calculateSolarReturn(data);
+    // The return instant on the clocks where it is cast. calculateSolarReturn
+    // works in UT; the zone lookup needs geo-tz, which only runs here.
+    const zone = lookupTimezone(Number(data.latitude), Number(data.longitude));
+    if (zone) result.returnLocal = localClock(String(result.returnUtc), zone);
     return NextResponse.json(result);
   } catch (err) {
     console.error("Solar return error:", err);

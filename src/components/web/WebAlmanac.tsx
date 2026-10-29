@@ -186,10 +186,11 @@ export default function WebAlmanac() {
         </div>
 
         {/* V/C — only when the Moon is actually void of course today */}
-        {sky?.vocStart && (
+        {/* (It used to render while loading too, with a made-up "2:32 pm".) */}
+        {sky?.vocSummary && (
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 14, padding: "13px 18px", borderRadius: 14, background: "color-mix(in srgb, var(--terra) 9%, var(--card))", border: "1px solid color-mix(in srgb, var(--terra) 22%, transparent)" }}>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", padding: "3px 8px", borderRadius: 6, background: "color-mix(in srgb, var(--brass) 18%, transparent)", color: "var(--brass)" }}>V/C</span>
-            <span style={{ fontSize: 14, color: "var(--fg2)" }}>Moon void of course from {sky.vocStart} — let new plans settle until tomorrow. Soft-launch today; go public then.</span>
+            <span style={{ fontSize: 14, color: "var(--fg2)" }}>{sky.vocSummary} — traditionally a pause before it enters {sky.vocNextSign}.</span>
           </div>
         )}
 
@@ -197,9 +198,9 @@ export default function WebAlmanac() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, marginTop: 36, alignItems: "start" }}>
           {/* MAIN */}
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            {/* Sabian */}
+            {/* Degree image (written for Mapped; not the Sabian set) */}
             <div style={{ ...card, padding: "30px 32px" }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s Sabian symbol` : "Today’s Sabian symbol"}</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, color: "var(--brass)", margin: "0 0 14px" }}>{sky ? `${sky.sabian.sign} ${sky.sabian.degree}° · Today’s degree image` : "Today’s degree image"}</p>
               <p style={{ fontFamily: "var(--deco)", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, color: "var(--fg)", margin: "0 0 14px", textWrap: "pretty" }}>{sky ? `“${sky.sabian.symbol}”` : LOADING}</p>
               {sky && <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--muted)", margin: 0, textWrap: "pretty" }}>{sky.sabian.keynote}</p>}
             </div>

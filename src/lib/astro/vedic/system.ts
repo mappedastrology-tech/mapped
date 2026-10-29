@@ -14,7 +14,7 @@
 
 import { AYANAMSA_LABELS, formatDegreesMinutes, normalizeAyanamsa, type AyanamsaName } from "./ayanamsa";
 import { HOUSE_SYSTEM_LABELS, normalizeHouseSystem, type HouseSystem } from "./houses";
-import { normalizeNodeType, type NodeType } from "./nodes";
+import { NODE_TYPE_LABELS, normalizeNodeType, type NodeType } from "./nodes";
 import { nakshatraOf } from "./nakshatra";
 
 export type ZodiacSystem = "tropical" | "sidereal";
@@ -75,12 +75,18 @@ export function chartCalcParams(sys: ChartSystem) {
   };
 }
 
-/** "Sidereal · Lahiri · Whole sign" / "Tropical · Placidus" — for the chart screen. */
+/**
+ * "Sidereal · Lahiri · Whole sign · Mean node" / "Tropical · Placidus · True node"
+ * — for the chart screen. The node type is named in both zodiacs: mean and true
+ * nodes differ by up to ~1.7°, enough to change a node's sign or house, so a
+ * reader comparing with another app needs to know which one this is.
+ */
 export function chartSystemLabel(sys: ChartSystem): string {
   const parts: string[] = sys.zodiacSystem === "sidereal"
     ? ["Sidereal", AYANAMSA_LABELS[sys.ayanamsa]]
     : ["Tropical"];
   parts.push(HOUSE_SYSTEM_LABELS[sys.houseSystem]);
+  parts.push(NODE_TYPE_LABELS[sys.nodeType]);
   return parts.join(" · ");
 }
 

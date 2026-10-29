@@ -1,195 +1,118 @@
 /**
- * Chiron Ephemeris — Correction-enhanced Keplerian model.
+ * Chiron Ephemeris — interpolated Swiss Ephemeris table.
  *
- * Computes Chiron's geocentric tropical ecliptic longitude using a Keplerian
- * orbital model with epoch-dependent correction offsets calibrated against
- * known accurate positions from standard ephemerides.
+ * Chiron's orbit is strongly perturbed by Saturn and Uranus, so no compact
+ * analytic model holds it: a two-body Keplerian orbit is 4–6° off within a
+ * few decades of its epoch and 50°+ off two centuries away. Instead
+ * chironTable.ts carries its apparent geocentric tropical longitude every
+ * 10 days, 1801–2200, generated from Swiss Ephemeris (seas_18.se1) by
+ * scripts/generate_chiron_table.py. This module decodes it once and
+ * interpolates with a 4-point Lagrange cubic.
  *
- * The correction curve is interpolated using cubic Hermite splines (Catmull-Rom)
- * between calibration points spanning 1940–2030.
+ * Accuracy: within 0.001° of Swiss Ephemeris (quantization is 0.0001°).
+ * Speed is the derivative of the same cubic, so the retrograde flag and the
+ * station dates agree with Swiss.
  *
- * Accuracy: ~0.5–1.5° for most dates (vs ~3–4° without corrections).
+ * Outside 1801–2200 there is no authoritative position to give, so these
+ * functions return NaN and callers must leave Chiron out (getSpecialPoints
+ * does).
  */
 
-import * as Astronomy from "astronomy-engine";
+import {
+  CHIRON_START_JD,
+  CHIRON_STEP_DAYS,
+  CHIRON_COUNT,
+  CHIRON_SCALE,
+  CHIRON_FIRST,
+  CHIRON_DELTAS,
+} from "./chironTable";
 
-const DEG = Math.PI / 180;
-const RAD = 180 / Math.PI;
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const OFFSET = 1 << 17;
 
-// ─── Calibration data ───
-// Each entry: [julianDay, correctionDegrees]
-// correction = true_position - raw_keplerian_position
-// So: corrected = rawKeplerian + interpolatedCorrection
-const CALIBRATION_POINTS: [number, number][] = [
-  [2429630, -2.0],   // 1940-01-01
-  [2433283, -1.0],   // 1950-01-01
-  [2435109, -1.5],   // 1955-01-01
-  [2436935, -1.5],   // 1960-01-01
-  [2438762, -2.0],   // 1965-01-01
-  [2440588, +4.7],   // 1970-01-01 (raw gives ~1.3°, need 6°)
-  [2442414, +2.0],   // 1975-01-01
-  [2444240, -1.8],   // 1980-01-01
-  [2446067, -2.5],   // 1985-01-01
-  [2447893, -3.9],   // 1990-01-01
-  [2448805, -1.0],   // 1992-07-01 (pre-retrograde)
-  [2448876, -2.0],   // 1992-09-10 (Hailey's birth — must give ~135°)
-  [2449000, -1.5],   // 1993-01-12 area
-  [2449354, -2.0],   // 1994-01-01
-  [2449719, -3.0],   // 1995-01-01
-  [2451545, -3.3],   // 2000-01-01
-  [2453371, -3.5],   // 2005-01-01
-  [2455197, +3.8],   // 2010-01-01
-  [2457023, +2.5],   // 2015-01-01
-  [2458849, +1.3],   // 2020-01-01
-  [2460676, +3.0],   // 2025-01-01
-  [2462502, +2.5],   // 2030-01-01
-];
+let table: Float64Array | null = null;
 
-// Sort by JD (should already be sorted but just in case)
-CALIBRATION_POINTS.sort((a, b) => a[0] - b[0]);
-
-/**
- * Cubic Hermite (Catmull-Rom) interpolation of the correction curve.
- */
-function interpolateCorrection(jd: number): number {
-  const pts = CALIBRATION_POINTS;
-  const n = pts.length;
-
-  // Clamp to range
-  if (jd <= pts[0][0]) return pts[0][1];
-  if (jd >= pts[n - 1][0]) return pts[n - 1][1];
-
-  // Find the segment
-  let idx = 0;
-  for (let i = 0; i < n - 1; i++) {
-    if (jd >= pts[i][0] && jd < pts[i + 1][0]) {
-      idx = i;
-      break;
-    }
+/** Decode the table (unwrapped longitudes in degrees) on first use. */
+function getTable(): Float64Array {
+  if (table) return table;
+  const digit = new Int8Array(128);
+  for (let i = 0; i < 64; i++) digit[B64.charCodeAt(i)] = i;
+  const t = new Float64Array(CHIRON_COUNT);
+  let units = CHIRON_FIRST;
+  t[0] = units / CHIRON_SCALE;
+  for (let i = 1; i < CHIRON_COUNT; i++) {
+    const k = (i - 1) * 3;
+    const v = (digit[CHIRON_DELTAS.charCodeAt(k)] << 12)
+      | (digit[CHIRON_DELTAS.charCodeAt(k + 1)] << 6)
+      | digit[CHIRON_DELTAS.charCodeAt(k + 2)];
+    units += v - OFFSET;
+    t[i] = units / CHIRON_SCALE;
   }
+  table = t;
+  return t;
+}
 
-  // Get 4 points for Catmull-Rom (p0, p1, p2, p3)
-  const i0 = Math.max(0, idx - 1);
-  const i1 = idx;
-  const i2 = idx + 1;
-  const i3 = Math.min(n - 1, idx + 2);
+const TABLE_END_JD = CHIRON_START_JD + (CHIRON_COUNT - 1) * CHIRON_STEP_DAYS;
 
-  const p0 = pts[i0][1];
-  const p1 = pts[i1][1];
-  const p2 = pts[i2][1];
-  const p3 = pts[i3][1];
-
-  // Normalized parameter t in [0, 1] for the segment [i1, i2]
-  const t = (jd - pts[i1][0]) / (pts[i2][0] - pts[i1][0]);
-  const t2 = t * t;
-  const t3 = t2 * t;
-
-  // Catmull-Rom interpolation
-  const result = 0.5 * (
-    (2 * p1) +
-    (-p0 + p2) * t +
-    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
-  );
-
-  return result;
+/** True when Chiron can be computed for this Julian Day (1801–2200). */
+export function chironAvailable(jd: number): boolean {
+  return jd >= CHIRON_START_JD && jd <= TABLE_END_JD;
 }
 
 /**
- * Raw Keplerian model for Chiron (heliocentric -> geocentric).
- * Same algorithm as the original ephemeris.ts implementation.
+ * Lagrange cubic through the four table rows around jd.
+ * Returns the unwrapped longitude and its first and second derivatives
+ * (degrees per day, degrees per day²).
  */
-function rawKeplerianChiron(jd: number): number {
-  const daysSinceJ2000 = jd - 2451545.0;
-  const n = 360.0 / (50.76 * 365.25); // mean motion deg/day
+function interpolate(jd: number): { lon: number; speed: number; accel: number } {
+  const t = getTable();
+  const x = (jd - CHIRON_START_JD) / CHIRON_STEP_DAYS;
+  // Nodes i-1..i+2, shifted inward at the ends of the table.
+  const i = Math.min(Math.max(Math.floor(x), 1), CHIRON_COUNT - 3);
+  const u = x - i;
+  const y0 = t[i - 1], y1 = t[i], y2 = t[i + 1], y3 = t[i + 2];
 
-  // Orbital elements (JPL/Horizons-derived for J2000.0)
-  const a = 13.708;
-  const e = 0.37891;
-  const i_rad = 6.935 * DEG;
-  const Omega = 209.35; // longitude of ascending node (°)
-  const omega = 339.54; // argument of perihelion (°)
-  const M0 = 27.0;      // mean anomaly at J2000 (°)
+  const lon =
+    -y0 * u * (u - 1) * (u - 2) / 6
+    + y1 * (u + 1) * (u - 1) * (u - 2) / 2
+    - y2 * (u + 1) * u * (u - 2) / 2
+    + y3 * (u + 1) * u * (u - 1) / 6;
 
-  // Mean anomaly
-  let M = ((M0 + n * daysSinceJ2000) % 360 + 360) % 360;
+  const dLon =
+    -y0 * (3 * u * u - 6 * u + 2) / 6
+    + y1 * (3 * u * u - 4 * u - 1) / 2
+    - y2 * (3 * u * u - 2 * u - 2) / 2
+    + y3 * (3 * u * u - 1) / 6;
 
-  // Solve Kepler's equation
-  let Ea = M * DEG;
-  for (let iter = 0; iter < 20; iter++) {
-    Ea = Ea - (Ea - e * Math.sin(Ea) - M * DEG) / (1 - e * Math.cos(Ea));
-  }
+  const d2Lon =
+    -y0 * (6 * u - 6) / 6
+    + y1 * (6 * u - 4) / 2
+    - y2 * (6 * u - 2) / 2
+    + y3 * (6 * u) / 6;
 
-  // True anomaly
-  const nu = 2 * Math.atan2(
-    Math.sqrt(1 + e) * Math.sin(Ea / 2),
-    Math.sqrt(1 - e) * Math.cos(Ea / 2)
-  );
-
-  // Heliocentric distance
-  const r = a * (1 - e * Math.cos(Ea));
-
-  // Argument of latitude (u = ω + ν)
-  const u = (omega * DEG) + nu;
-
-  // Heliocentric ecliptic coordinates (with inclination)
-  const OmegaRad = Omega * DEG;
-  const xEcl = r * (Math.cos(OmegaRad) * Math.cos(u) - Math.sin(OmegaRad) * Math.sin(u) * Math.cos(i_rad));
-  const yEcl = r * (Math.sin(OmegaRad) * Math.cos(u) + Math.cos(OmegaRad) * Math.sin(u) * Math.cos(i_rad));
-
-  // Earth's heliocentric position
-  const time = jdToDate(jd);
-  const sunGeo = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
-  const sunEcl = Astronomy.Ecliptic(sunGeo);
-  const earthDist = Math.sqrt(sunGeo.x * sunGeo.x + sunGeo.y * sunGeo.y + sunGeo.z * sunGeo.z);
-  const sunLonRad = sunEcl.elon * DEG;
-  const sunLatRad = sunEcl.elat * DEG;
-  const xEarth = -earthDist * Math.cos(sunLatRad) * Math.cos(sunLonRad);
-  const yEarth = -earthDist * Math.cos(sunLatRad) * Math.sin(sunLonRad);
-
-  // Geocentric ecliptic coordinates of Chiron
-  const xGeo = xEcl - xEarth;
-  const yGeo = yEcl - yEarth;
-
-  let lon = Math.atan2(yGeo, xGeo) * RAD;
-  lon = ((lon % 360) + 360) % 360;
-
-  return lon;
-}
-
-/** Convert Julian Day to a Date object (needed for astronomy-engine). */
-function jdToDate(jd: number): Date {
-  const z = Math.floor(jd + 0.5);
-  const f = jd + 0.5 - z;
-  let A: number;
-  if (z < 2299161) { A = z; }
-  else {
-    const alpha = Math.floor((z - 1867216.25) / 36524.25);
-    A = z + 1 + alpha - Math.floor(alpha / 4);
-  }
-  const B = A + 1524;
-  const C = Math.floor((B - 122.1) / 365.25);
-  const D = Math.floor(365.25 * C);
-  const E = Math.floor((B - D) / 30.6001);
-  const day = B - D - Math.floor(30.6001 * E);
-  const month = E < 14 ? E - 1 : E - 13;
-  const year = month > 2 ? C - 4716 : C - 4715;
-  const hour = f * 24;
-  const h = Math.floor(hour);
-  const m = Math.round((hour - h) * 60);
-  return new Date(Date.UTC(year, month - 1, day, h, m));
+  return {
+    lon,
+    speed: dLon / CHIRON_STEP_DAYS,
+    accel: d2Lon / (CHIRON_STEP_DAYS * CHIRON_STEP_DAYS),
+  };
 }
 
 /**
- * Get Chiron's geocentric ecliptic longitude with correction applied.
+ * Chiron's geocentric tropical ecliptic longitude (0–360, unrounded),
+ * or NaN outside 1801–2200.
  *
- * @param jd - Julian Day number
- * @returns Ecliptic longitude in degrees (0-360)
+ * @param jd - Julian Day (UT)
  */
 export function getChironLongitude(jd: number): number {
-  const raw = rawKeplerianChiron(jd);
-  const correction = interpolateCorrection(jd);
-  let corrected = raw + correction;
-  corrected = ((corrected % 360) + 360) % 360;
-  return Math.round(corrected * 100) / 100;
+  return getChironData(jd).longitude;
+}
+
+/**
+ * Chiron's longitude, instantaneous speed (°/day) and acceleration (°/day²);
+ * all NaN outside 1801–2200.
+ */
+export function getChironData(jd: number): { longitude: number; speed: number; accel: number } {
+  if (!chironAvailable(jd)) return { longitude: NaN, speed: NaN, accel: NaN };
+  const { lon, speed, accel } = interpolate(jd);
+  return { longitude: ((lon % 360) + 360) % 360, speed, accel };
 }

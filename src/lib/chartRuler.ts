@@ -6,24 +6,16 @@
  * it colors everything about how you move through the world.
  */
 
-/** Rising sign → ruling planet */
-const SIGN_RULER: Record<string, string> = {
-  Ari: "Mars",     Tau: "Venus",    Gem: "Mercury",
-  Can: "Moon",     Leo: "Sun",      Vir: "Mercury",
-  Lib: "Venus",    Sco: "Pluto",    Sag: "Jupiter",
-  Cap: "Saturn",   Aqu: "Uranus",   Pis: "Neptune",
-};
-
-/** Traditional co-rulers for signs with modern rulers */
-const CO_RULERS: Record<string, string> = {
-  Sco: "Mars",     // Pluto is modern, Mars is traditional
-  Aqu: "Saturn",   // Uranus is modern, Saturn is traditional
-  Pis: "Jupiter",  // Neptune is modern, Jupiter is traditional
-};
+// Rulerships come from the one shared table (lib/rulerships.ts). The chart
+// ruler is NAMED by its modern ruler with the traditional co-ruler alongside
+// ("Pluto, traditionally Mars"); techniques that need a single planet
+// (profections) use the traditional ruler in lib/rulers.ts.
+import { modernRuler, traditionalCoRuler, rulerLabel } from "./rulerships";
 
 export interface ChartRulerInfo {
-  planet: string;        // "Mars"
-  coRuler?: string;      // "Pluto" (if applicable)
+  planet: string;        // modern ruler, e.g. "Pluto" for Scorpio rising
+  coRuler?: string;      // traditional co-ruler where it differs, e.g. "Mars"
+  label: string;         // display form: "Pluto, traditionally Mars"
   risingSIgn: string;    // "Ari"
   rulerSign: string;     // The sign the ruling planet is in
   rulerHouse: string | null; // The house the ruling planet is in
@@ -75,10 +67,10 @@ export function getChartRuler(
   const risingSign = risingSignOverride || firstHouse?.sign || houses[0]?.sign;
   if (!risingSign) return null;
 
-  const rulerName = SIGN_RULER[risingSign];
+  const rulerName = modernRuler(risingSign);
   if (!rulerName) return null;
 
-  const coRulerName = CO_RULERS[risingSign];
+  const coRulerName = traditionalCoRuler(risingSign);
 
   const rulerPlanet = planets.find((p) => p.name === rulerName);
   if (!rulerPlanet) return null;
@@ -88,17 +80,23 @@ export function getChartRuler(
   const houseOrd = formatHouseOrdinal(rulerPlanet.house);
 
   // Generate Dolly-voiced summary based on the ruler's placement
-  const summary = generateRulerSummary(
+  let summary = generateRulerSummary(
     rulerName,
     risingFull,
     rulerSignFull,
     houseOrd,
     rulerPlanet.sign
   );
+  if (coRulerName) {
+    const co = planets.find((p) => p.name === coRulerName);
+    const coSign = co ? SIGN_FULL_NAMES[co.sign] || co.sign : null;
+    summary += ` Traditional astrology gives ${risingFull} rising to ${coRulerName}${coSign ? `, which sits in ${coSign} in your chart` : ""}, so its placement is part of the story too.`;
+  }
 
   return {
     planet: rulerName,
     coRuler: coRulerName,
+    label: rulerLabel(risingSign),
     risingSIgn: risingSign,
     rulerSign: rulerPlanet.sign,
     rulerHouse: rulerPlanet.house,
@@ -120,7 +118,7 @@ const RULER_IN_SIGN: Record<string, { meaning: string; advice: string }> = {
   },
   "Mars|Taurus": {
     meaning: "You have a slow-burning, unstoppable drive. You don't rush into anything, but once you commit, nothing moves you off course. Your life builds through patience and sheer stubbornness.",
-    advice: "Stop feeling guilty about taking your time. Your pace IS your power. Build things that last — investments, skills, relationships. Quick wins aren't your game; legacy is.",
+    advice: "Stop feeling guilty about taking your time. Your pace IS your power. Build things that last — skills, relationships, a body of work. Quick wins aren't your game; legacy is.",
   },
   "Mars|Gemini": {
     meaning: "Your energy scatters across a dozen interests at once, and you navigate life through words, ideas, and connections. You're wired to stay mentally stimulated or you go stir-crazy.",
@@ -293,14 +291,14 @@ const RULER_IN_SIGN: Record<string, { meaning: string; advice: string }> = {
 
   // ── JUPITER (rules Sagittarius rising) ──
   "Jupiter|Aries": { meaning: "Your growth comes through bold, independent action. Luck finds you when you're brave enough to go first. Your path expands every time you take a risk others wouldn't.", advice: "Be the first mover. Start the company, pitch the idea, book the flight. Your luck is tied to courage — the bigger the leap, the bigger the reward." },
-  "Jupiter|Taurus": { meaning: "Your growth is slow, steady, and incredibly fruitful. Luck finds you through patience, investment, and building real value. Financial abundance is genuinely available to you.", advice: "Invest — in yourself, in assets, in skills. Your wealth compounds over time. Don't chase get-rich-quick; your path is get-rich-inevitably." },
+  "Jupiter|Taurus": { meaning: "Your growth is slow, steady, and incredibly fruitful. Good things find you through patience and building real value. You understand what lasts.", advice: "Put your energy into yourself and your skills. What you build grows over time. Shortcuts aren't your path; steady care is." },
   "Jupiter|Gemini": { meaning: "Your growth comes through learning, communicating, and connecting ideas. Luck finds you through your network and your ability to make people understand complex things.", advice: "Never stop learning and never stop talking about what you've learned. Your luck multiplies through communication — write, teach, podcast, network." },
   "Jupiter|Cancer": { meaning: "Jupiter is exalted here — your growth comes through nurturing, family, and emotional intelligence. Your generosity and caring attract extraordinary luck.", advice: "Lean into your emotional gifts. Build family — biological or chosen. Your luck flows through the relationships you nurture. The more you give, the more comes back." },
   "Jupiter|Leo": { meaning: "Your growth comes through creative self-expression, leadership, and generosity. Luck finds you on stage, in charge, or in any situation where your warmth is visible.", advice: "Be generous and visible. Your luck is tied to your willingness to shine. Create, lead, celebrate others — abundance follows your warmth." },
   "Jupiter|Virgo": { meaning: "Your growth comes through mastery, service, and getting the details right. Your luck is quieter than most — it shows up as opportunities to be genuinely useful.", advice: "Become the expert. Your luck comes through competence, not charm. The more skilled you become, the more doors open. Master something fully." },
   "Jupiter|Libra": { meaning: "Your growth comes through partnership, justice, and creating beauty. Luck finds you through collaboration and your ability to bring people together.", advice: "Partner up. Your biggest wins come through collaboration, not solo effort. Invest in relationships with people who are as ambitious and fair-minded as you are." },
-  "Jupiter|Scorpio": { meaning: "Your growth comes through transformation, depth, and working with other people's resources. Luck finds you in crisis, in intimacy, and in the things most people avoid.", advice: "Go where others are afraid to look. Your luck lives in the shadows — investments, psychology, shared resources, deep research. The deeper you go, the more you find." },
-  "Jupiter|Sagittarius": { meaning: "Jupiter is at home here — your growth potential is enormous. Travel, philosophy, higher education, and big-picture thinking are all supercharged. Your optimism is genuinely prophetic.", advice: "Think bigger than everyone around you. Travel, study, publish, teach. Your vision for what's possible is more accurate than people give you credit for. Bet on yourself." },
+  "Jupiter|Scorpio": { meaning: "Your growth comes through transformation, depth, and working with other people's resources. Luck finds you in crisis, in intimacy, and in the things most people avoid.", advice: "Go where others are afraid to look. Your luck lives in the shadows — psychology, trust, deep research. The deeper you go, the more you find." },
+  "Jupiter|Sagittarius": { meaning: "Jupiter is at home here — your growth potential is enormous. Travel, philosophy, higher education, and big-picture thinking are all supercharged. Your optimism is genuinely infectious.", advice: "Think bigger than everyone around you. Travel, study, publish, teach. Your vision for what's possible is more accurate than people give you credit for. Bet on yourself." },
   "Jupiter|Capricorn": { meaning: "Jupiter is in fall here — your growth doesn't come easy or free. But what you build is more solid than anyone's. Your luck is earned through discipline and long-term strategy.", advice: "Play the long game patiently. Your rewards come late but they come BIG. Don't compare your timeline to anyone else's — you're building something that lasts." },
   "Jupiter|Aquarius": { meaning: "Your growth comes through innovation, community, and thinking differently than everyone else. Luck finds you in groups, movements, and future-oriented projects.", advice: "Find your tribe and build something radical together. Your luck multiplies through community and original thinking. Don't try to fit in — your different perspective IS your advantage." },
   "Jupiter|Pisces": { meaning: "Jupiter is the traditional ruler of Pisces — your growth comes through compassion, faith, creativity, and spiritual connection. Your generosity is genuinely limitless.", advice: "Trust your intuition about opportunities — your gut is more reliable than spreadsheets. Give generously but set boundaries. Your spiritual gifts are real assets — treat them like it." },
@@ -325,7 +323,7 @@ const RULER_IN_SIGN: Record<string, { meaning: string; advice: string }> = {
   "Pluto|Gemini": { meaning: "Your power transforms through information, communication, and how people think. You see the manipulation in words and can use language as a tool for deep change.", advice: "Use your insight into communication to reveal truth, not to manipulate. Your writing, speaking, and ideas have unusual power — wield them responsibly." },
   "Pluto|Cancer": { meaning: "Your power transforms through family, home, and emotional bonds. Family dynamics are where your deepest work happens — healing generational patterns is your actual life mission.", advice: "Do the family healing work. Break the cycles. Your transformation of home and emotional life ripples out to everyone around you." },
   "Pluto|Leo": { meaning: "Your power transforms through creative self-expression and leadership. You have a magnetic presence that can either inspire devotion or create power struggles.", advice: "Lead through authenticity, not dominance. Your creative power is enormous — channel it into work that transforms how people see themselves." },
-  "Pluto|Virgo": { meaning: "Your power transforms through analysis, health, and service. You see what's broken in systems and people, and you have the intensity to actually fix it.", advice: "Use your penetrating analysis for healing, not criticism. Your ability to diagnose problems — in health, systems, or people — is your superpower." },
+  "Pluto|Virgo": { meaning: "Your power transforms through analysis, health, and service. You see what's broken in systems and people, and you have the intensity to actually fix it.", advice: "Use your penetrating analysis for healing, not criticism. Your ability to see what is broken — in systems, habits, or plans — is your superpower." },
   "Pluto|Libra": { meaning: "Your power transforms through relationships and justice. Every significant partnership is a crucible — you and the people closest to you transform each other profoundly.", advice: "Choose your partners carefully — they shape your transformation. Use your power to create fairness, not to control relationship dynamics." },
   "Pluto|Scorpio": { meaning: "Pluto is at home here — your power is at maximum intensity. You see through everything, transform constantly, and carry a depth that most people find either magnetic or terrifying.", advice: "You already know you're powerful. The work is learning to be powerful WITHOUT controlling everything. Let people transform at their own pace. Your depth is a gift — don't weaponize it." },
   "Pluto|Sagittarius": { meaning: "Your power transforms through beliefs, truth-seeking, and exposing what's false. You have an intense need for meaning and you won't settle for comfortable lies.", advice: "Use your transformative vision to teach and inspire. Your passion for truth is genuine — share it through travel, writing, teaching, or philosophy." },

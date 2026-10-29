@@ -102,7 +102,7 @@ export default function RectificationPage() {
       const { data: chart } = user
         ? await supabase
             .from("charts")
-            .select("birth_date, latitude, longitude, zodiac_system, ayanamsa")
+            .select("birth_date, latitude, longitude, timezone, zodiac_system, ayanamsa")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(1)
@@ -120,6 +120,7 @@ export default function RectificationPage() {
         birthDate: chart.birth_date,
         latitude: chart.latitude,
         longitude: chart.longitude,
+        timezone: chart.timezone ?? null,
         zodiacSystem: chart.zodiac_system ?? undefined,
         ayanamsa: chart.ayanamsa ?? undefined,
         window: selectedWindow,

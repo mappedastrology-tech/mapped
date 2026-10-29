@@ -1124,7 +1124,7 @@ function MoonPhaseSection({ moonPhase }: { moonPhase: ChartAnalysis["moonPhase"]
 
 // ─── 6. Sect ──────────────────────────────────────────────────────────────────
 
-function SectSection({ sect }: { sect: ChartAnalysis["sect"] }) {
+function SectSection({ sect }: { sect: NonNullable<ChartAnalysis["sect"]> }) {
   const interp = getSectInterpretation(sect.isDayChart);
 
   return (
@@ -1657,12 +1657,16 @@ export default function ChartInsightsPanel({ analysis, planets }: ChartInsightsP
         <MoonPhaseSection moonPhase={analysis.moonPhase} />
       </InsightSection>
 
-      <InsightSection
-        title="Day or night person"
-        count={analysis.sect.isDayChart ? "day" : "night"}
-      >
-        <SectSection sect={analysis.sect} />
-      </InsightSection>
+      {/* Sect needs the Sun's house, which needs a birth time. With no time
+          the section is left out rather than defaulting to "night". */}
+      {analysis.sect && (
+        <InsightSection
+          title="Day or night person"
+          count={analysis.sect.isDayChart ? "day" : "night"}
+        >
+          <SectSection sect={analysis.sect} />
+        </InsightSection>
+      )}
 
       {analysis.retrogradePlanets.length > 0 && (
         <InsightSection
