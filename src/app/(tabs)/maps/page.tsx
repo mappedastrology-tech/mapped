@@ -14,6 +14,8 @@ import { useTheme } from "@/components/ThemeProvider";
 import { fmtDateRange, fmtExactDate, natalPointsLabel } from "@/lib/transitFormat";
 import { supabase } from "@/lib/supabase";
 import { calculateChart } from "@/lib/astro/calculateChart";
+import { birthTimeToUtcHour, isResolvedZone } from "@/lib/astro/birthTimezone";
+import { fetchBirthTimezone } from "@/lib/chartSystemSync";
 import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
 import { getGrowthArea, getStrengthArea, getAspectCopy } from "@/lib/astro/growthAreas";
 import { toPlatonic } from "@/lib/astro/platonicText";
@@ -1378,6 +1380,7 @@ function chartVertex(
   birthDate?: string | null, birthTime?: string | null,
   latitude?: number | null, longitude?: number | null,
   unknownTime?: boolean | null, zodiacSystem?: string | null, ayanamsa?: string | null,
+  timezone?: string | null,
 ): { sign: string; absPosition: number } | null {
   if (!birthDate || !birthTime || latitude == null || longitude == null || unknownTime) return null;
   try {
@@ -1387,6 +1390,7 @@ function chartVertex(
       birthTime,
       latitude,
       longitude,
+      timezone,
       zodiacSystem: (zodiacSystem as "tropical" | "sidereal") || "tropical",
       ...(zodiacSystem === "sidereal" ? { ayanamsa: (ayanamsa as "lahiri" | "krishnamurti" | "raman") || "lahiri" } : {}),
     }) as { vertex?: { sign: string; absPosition: number } | null };
@@ -1440,29 +1444,22 @@ const ASPECT_COLORS: Record<string, string> = {
    Helpers
    ═══════════════════════════════════════════ */
 
-/** Helper: convert local birth time to UTC using IANA timezone string */
-function birthTimeToUtcHour(birthDate: string, birthTime: string, timezone?: string): number {
-  const [hh, mm] = String(birthTime || "12:00").split(":").map(Number);
-  const localHour = hh + mm / 60;
 
-  if (!timezone) {
-    // Fallback: assume UTC-6 (CST) if no timezone available
-    return localHour + 6;
-  }
-
-  try {
-    // Use Intl to get the UTC offset for the birth date in the given timezone
-    const dateStr = `${birthDate}T${birthTime.padStart(5, "0")}:00`;
-    const localDate = new Date(dateStr);
-    // Get offset in minutes between UTC and the timezone
-    const utcDate = new Date(localDate.toLocaleString("en-US", { timeZone: "UTC" }));
-    const tzDate = new Date(localDate.toLocaleString("en-US", { timeZone: timezone }));
-    const offsetMinutes = (utcDate.getTime() - tzDate.getTime()) / 60000;
-    return localHour + offsetMinutes / 60;
-  } catch {
-    // Fallback if timezone string is invalid
-    return localHour + 6;
-  }
+/**
+ * When the Sun returns, on the clocks where the return is cast. The API's
+ * returnDate/returnTime are UT; returnLocal is the same instant in the
+ * location's zone. Without a birth time the instant is only known to within
+ * a day, so only the date is shown.
+ */
+function solarReturnWhen(sr: Record<string, unknown>): string {
+  const local = sr.returnLocal as { date: string; time: string; zone: string; abbreviation: string | null } | undefined;
+  const d = new Date(`${local?.date ?? String(sr.returnDate)}T12:00:00`);
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const date = `${dayNames[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  if (sr.unknownTime) return date;
+  const time = local ? `${local.time} ${local.abbreviation ?? local.zone.replace(/_/g, " ")}` : `${String(sr.returnTime)} UT`;
+  return `${date} at ${time}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -2606,6 +2603,9 @@ export default function MapsTab() {
             bigThree: chartData.big_three,
             birthDate: chartData.birth_date,
             birthTime: chartData.birth_time,
+            // birth_time is "12:00" for an unknown time; this flag is the only
+            // signal (solar-return angles and time depend on it).
+            unknownTime: !!chartData.unknown_time,
             cityName: chartData.city_name ?? undefined,
             latitude: chartData.latitude,
             longitude: chartData.longitude,
@@ -2630,6 +2630,7 @@ export default function MapsTab() {
                 bigThree: parsed.bigThree,
                 birthDate: parsed.birthDate,
                 birthTime: parsed.birthTime,
+                unknownTime: !!parsed.unknownTime,
                 latitude: parsed.latitude,
                 longitude: parsed.longitude,
                 timezone: parsed.timezone,
@@ -2661,6 +2662,7 @@ export default function MapsTab() {
                   latitude: conn.latitude,
                   longitude: conn.longitude,
                   cityName: conn.city_name,
+                  timezone: conn.timezone,
                   ...chartCalcParams(userSystem),
                 }) as any;
                 return {
@@ -2721,6 +2723,7 @@ export default function MapsTab() {
     let birthTime = userChart?.birthTime || "12:00";
     let birthLat = userChart?.latitude;
     let birthLng = userChart?.longitude;
+    let birthZone: string | null | undefined = userChart?.timezone;
 
     if (!birthDate) {
       try {
@@ -2731,6 +2734,7 @@ export default function MapsTab() {
           birthTime = parsed.birthTime || "12:00";
           birthLat = parsed.latitude;
           birthLng = parsed.longitude;
+          birthZone = parsed.timezone;
           // Also update userChart state for future use
           if (birthDate && userChart) {
             setUserChart({ ...userChart, birthDate, birthTime, latitude: birthLat, longitude: birthLng, timezone: parsed.timezone });
@@ -2744,21 +2748,28 @@ export default function MapsTab() {
     setAstroLoading(true);
     setAstroError(false);
     const [y, m, d] = String(birthDate).split("-").map(Number);
-    const tz = userChart?.timezone;
-    const utcHour = birthTimeToUtcHour(String(birthDate), String(birthTime || "12:00"), tz || undefined);
-    fetch("/api/astrocartography", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        birthYear: y, birthMonth: m, birthDay: d,
-        birthHourUtc: utcHour,
-        birthLat: birthLat || 0,
-        birthLng: birthLng || 0,
-        targetLat: cityLat || birthLat || 30,
-        targetLng: cityLng || birthLng || -98,
-        radius: 8,
-      }),
-    })
+    const lat = Number(birthLat || 0), lng = Number(birthLng || 0);
+    // Every line moves 1° of longitude per 4 minutes of birth time, so the
+    // local time must become UT with the birthplace's real zone. Charts saved
+    // before zones were stored hold "UTC" (a placeholder, not a zone): look
+    // the zone up, and fall back to the coordinate estimate only if offline.
+    const zoneReady: Promise<string | null | undefined> = isResolvedZone(birthZone)
+      ? Promise.resolve(birthZone)
+      : fetchBirthTimezone(lat, lng);
+    zoneReady
+      .then((zone) => fetch("/api/astrocartography", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthYear: y, birthMonth: m, birthDay: d,
+          birthHourUtc: birthTimeToUtcHour(String(birthDate), String(birthTime || "12:00"), zone, lat, lng),
+          birthLat: lat,
+          birthLng: lng,
+          targetLat: cityLat || birthLat || 30,
+          targetLng: cityLng || birthLng || -98,
+          radius: 8,
+        }),
+      }))
       .then(res => {
         if (!res.ok) { setAstroError(true); return null; }
         return res.json();
@@ -2875,7 +2886,8 @@ export default function MapsTab() {
         city_name: formCity,
         latitude: formLat,
         longitude: formLng,
-        timezone: null,
+        // Resolved server-side from the coordinates by /api/chart/calculate.
+        timezone: chartResult.timezone ?? null,
         big_three: chartResult.bigThree,
         planets: chartResult.planets,
         houses: chartResult.houses,
@@ -3029,6 +3041,8 @@ export default function MapsTab() {
         latitude: formLat,
         longitude: formLng,
         ...(chartResult ? {
+          // A new place means a new zone; the old one must not follow it.
+          timezone: chartResult.timezone ?? null,
           big_three: chartResult.bigThree,
           planets: chartResult.planets,
           houses: chartResult.houses,
@@ -3101,12 +3115,12 @@ export default function MapsTab() {
       const userVertex = chartVertex(
         (userChart as any).birthDate, (userChart as any).birthTime,
         (userChart as any).latitude, (userChart as any).longitude,
-        false, (userChart as any).zodiacSystem, (userChart as any).ayanamsa,
+        false, (userChart as any).zodiacSystem, (userChart as any).ayanamsa, userChart.timezone,
       );
       const connVertex = chartVertex(
         conn.birth_date, conn.birth_time,
         (conn as any).latitude, (conn as any).longitude,
-        (conn as any).unknown_time, (userChart as any).zodiacSystem, (userChart as any).ayanamsa,
+        (conn as any).unknown_time, (userChart as any).zodiacSystem, (userChart as any).ayanamsa, conn.timezone,
       );
       const res = await fetch("/api/synastry", {
         method: "POST",
@@ -3183,7 +3197,11 @@ export default function MapsTab() {
           natalSunAbsPos: sunPlanet.absPosition,
           birthDate: conn.birth_date,
           birthTime: conn.birth_time || "12:00",
-          unknownTime: !conn.birth_time,
+          unknownTime: conn.unknown_time || !conn.birth_time,
+          // Lets the API recompute the natal Sun unrounded (see calculateSolarReturn).
+          birthTimezone: conn.timezone,
+          birthLatitude: conn.latitude,
+          birthLongitude: conn.longitude,
           // last resort — user has no location set
           latitude: conn.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: conn.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -3403,6 +3421,10 @@ export default function MapsTab() {
           birthDate: userChart.birthDate,
           birthTime: userChart.birthTime || "12:00",
           unknownTime: !!userChart.unknownTime || !userChart.birthTime,
+          // Lets the API recompute the natal Sun unrounded (see calculateSolarReturn).
+          birthTimezone: userChart.timezone,
+          birthLatitude: userChart.latitude,
+          birthLongitude: userChart.longitude,
           // last resort — user has no location set
           latitude: userChart.latitude ?? loc?.lat ?? DEFAULT_COORDS.lat,
           longitude: userChart.longitude ?? loc?.lng ?? DEFAULT_COORDS.lng,
@@ -4239,14 +4261,7 @@ export default function MapsTab() {
                         </svg>
                         <span className="text-brass/80 text-xs font-medium">Your Sun returns on</span>
                       </div>
-                      <p className="text-foreground text-sm">
-                        {(() => {
-                          const d = new Date(selfSolarReturn.returnDate + "T12:00:00");
-                          const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                          const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                          return `${dayNames[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${selfSolarReturn.returnTime}`;
-                        })()}
-                      </p>
+                      <p className="text-foreground text-sm">{solarReturnWhen(selfSolarReturn)}</p>
                     </div>
 
                     {/* Big three */}
@@ -4297,7 +4312,7 @@ export default function MapsTab() {
                         houses={selfSolarReturn.houses}
                         aspects={selfSolarReturn.aspects}
                         specialPoints={selfSolarReturn.specialPoints}
-                        meta={{ year: String(selfSolarYear), returnDate: selfSolarReturn.returnDate || "", returnTime: selfSolarReturn.returnTime || "" }}
+                        meta={{ year: String(selfSolarYear), returnWhen: solarReturnWhen(selfSolarReturn), returnUtc: selfSolarReturn.unknownTime ? "" : selfSolarReturn.returnUtc || "" }}
                       />
                     </div>
 
@@ -6002,14 +6017,7 @@ export default function MapsTab() {
                         </svg>
                         <span className="text-brass/80 text-xs font-medium">{firstName}&rsquo;s Sun returns on</span>
                       </div>
-                      <p className="text-foreground text-sm">
-                        {(() => {
-                          const d = new Date(solarReturnData.returnDate + "T12:00:00");
-                          const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                          const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                          return `${dayNames[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${solarReturnData.returnTime}`;
-                        })()}
-                      </p>
+                      <p className="text-foreground text-sm">{solarReturnWhen(solarReturnData)}</p>
                     </div>
 
                     {/* Big three badges */}
@@ -6047,7 +6055,7 @@ export default function MapsTab() {
                         houses={solarReturnData.houses}
                         aspects={solarReturnData.aspects}
                         specialPoints={solarReturnData.specialPoints}
-                        meta={{ year: String(solarReturnYear), returnDate: solarReturnData.returnDate || "", returnTime: solarReturnData.returnTime || "" }}
+                        meta={{ year: String(solarReturnYear), returnWhen: solarReturnWhen(solarReturnData), returnUtc: solarReturnData.unknownTime ? "" : solarReturnData.returnUtc || "" }}
                       />
                     </div>
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateChart } from "@/lib/astro/calculateChart";
+import { isResolvedZone } from "@/lib/astro/birthTimezone";
+import { lookupTimezone } from "@/lib/astro/geoTimezone";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 /**
@@ -24,6 +26,15 @@ async function handlePOST(request: NextRequest) {
     if (!data.birthTime) {
       data.birthTime = "12:00";
       data.unknownTime = true;
+    }
+
+    // The birthplace's real zone. A caller passes `timezone` only when it is
+    // the stored zone (or the user's own override) for THESE coordinates;
+    // otherwise — new charts, edited places, the legacy "UTC" placeholder —
+    // it is resolved here from the coordinates. The result carries it, and
+    // saveChart stores it on the row.
+    if (!isResolvedZone(data.timezone)) {
+      data.timezone = lookupTimezone(Number(data.latitude), Number(data.longitude));
     }
 
     const result = calculateChart(data);

@@ -4,7 +4,7 @@
  * Calculates current planetary positions and finds aspects to a natal chart.
  * Supports both Tropical and Sidereal zodiac systems.
  *
- * Uses Swiss Ephemeris for planet positions and transit window scanning.
+ * Uses astronomy-engine (via ephemeris.ts) for planet positions and transit window scanning.
  */
 
 import {
@@ -269,7 +269,7 @@ export function calculateTransits(data: TransitInput) {
   // Ayanamsa at the TRANSIT moment (not the birth moment, not a constant).
   const ayanamsaOffset = isSidereal ? ayanamsaDegrees(jd, ayanamsaName) : 0;
 
-  // Calculate transiting planet positions using Swiss Ephemeris
+  // Calculate transiting planet positions (astronomy-engine, via ephemeris.ts)
   const transitPlanets: TransitPlanet[] = [];
   for (const pname of TRANSITING_BODIES) {
     const planetData = getPlanetData(jd, PLANETS[pname]);

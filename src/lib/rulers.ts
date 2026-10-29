@@ -9,14 +9,9 @@
  */
 
 import { SIGN_FULL } from "./knowledge";
+import { TRADITIONAL_RULER, modernRuler } from "./rulerships";
 
-/* ─── Sign → Traditional ruler mapping ─── */
-const TRADITIONAL_RULER: Record<string, string> = {
-  Ari: "Mars",     Tau: "Venus",    Gem: "Mercury",
-  Can: "Moon",     Leo: "Sun",      Vir: "Mercury",
-  Lib: "Venus",    Sco: "Mars",     Sag: "Jupiter",
-  Cap: "Saturn",   Aqu: "Saturn",   Pis: "Jupiter",
-};
+const ZODIAC_ORDER = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
 
 /* ─── Interfaces ─── */
 
@@ -33,7 +28,7 @@ export interface SectLightInfo {
 export interface LordOfTheYearInfo {
   age: number;
   profectionHouse: number;     // 1-12
-  profectionSign: string;      // abbreviation of the sign on that house cusp
+  profectionSign: string;      // abbreviation of the whole sign counted from the rising sign
   lordPlanet: string;          // the planet ruling that sign (traditional)
   lordSign: string;            // what sign the lord is in natally
   lordHouse: string | null;    // what house the lord is in natally
@@ -112,8 +107,16 @@ export function getSectLight(
  * Algorithm:
  * 1. Determine user's age (years since birth)
  * 2. Profection house = (age % 12) + 1
- * 3. Find the sign on that house cusp (whole sign houses = house N starts with sign N from rising)
+ * 3. Count whole signs from the rising sign: the profected sign is the rising
+ *    sign advanced by `age` signs. This is whole-sign, whatever house system
+ *    the chart displays.
  * 4. Traditional ruler of that sign = Lord of the Year
+ *
+ * Profections are a Hellenistic technique, defined on whole signs. This used to
+ * read the sign on the Placidus cusp of house N instead, which differs whenever
+ * a sign is intercepted or duplicated on the cusps — common at higher latitudes —
+ * and then named the wrong planet as the year's ruler. `houses` is still the
+ * input because house 1 carries the rising sign in every system.
  */
 export function getLordOfTheYear(
   birthDate: string,
@@ -138,11 +141,11 @@ export function getLordOfTheYear(
   // Profection house = (age % 12) + 1
   const profectionHouse = (age % 12) + 1;
 
-  // Use the sign on the Placidus cusp for the profection house
-  // (matches the house system the rest of the chart displays)
-  const profectionHouseData = houses.find(h => h.number === profectionHouse);
-  if (!profectionHouseData) return null;
-  const profectionSign = profectionHouseData.sign;
+  // Whole-sign: count signs from the rising sign (house 1's sign in any system).
+  const risingSign = houses.find(h => h.number === 1)?.sign;
+  const risingIdx = risingSign ? ZODIAC_ORDER.indexOf(risingSign.slice(0, 3)) : -1;
+  if (risingIdx < 0) return null;
+  const profectionSign = ZODIAC_ORDER[(risingIdx + age) % 12];
   const lordPlanet = TRADITIONAL_RULER[profectionSign];
   if (!lordPlanet) return null;
 
@@ -176,7 +179,14 @@ export function getLordOfTheYear(
     ? ` Your natal ${planetsInProfectionSign.join(" and ")} ${planetsInProfectionSign.length === 1 ? "is" : "are"} also in ${signFull}, so ${planetsInProfectionSign.length === 1 ? "it gets" : "they get"} activated this year too.`
     : "";
 
-  const summary = `You're ${age} — a ${houseOrd} house profection year. Your ${houseOrd} house cusp falls in ${signFull}, ruled by ${lordPlanet}. This year, ${lordPlanet} is your Lord of the Year. ${houseTheme}${lordInSign}${coActivated} Watch transits to your natal ${lordPlanet} closely — they're the plot points of your year.`;
+  // Name the modern ruler too where it differs, so a reader who learned
+  // "Scorpio is Pluto's" isn't left wondering why we said Mars.
+  const modern = modernRuler(profectionSign);
+  const rulerNote = modern && modern !== lordPlanet
+    ? `${lordPlanet}, its traditional ruler (the modern ruler is ${modern}; profections use the traditional one)`
+    : lordPlanet;
+
+  const summary = `You're ${age} — a ${houseOrd} house profection year. Counting one sign per year from your rising sign lands on ${signFull}, ruled by ${rulerNote}. This year, ${lordPlanet} is your Lord of the Year. ${houseTheme}${lordInSign}${coActivated} Transits to your natal ${lordPlanet} are worth paying closer attention to this year.`;
 
   return {
     age,
@@ -223,7 +233,7 @@ const HOUSE_THEMES: Record<number, string> = {
   5: "This is a year about creativity, romance, joy, and self-expression. What makes you come alive leads the way.",
   6: "This is a year about health, daily routines, work, and service. How you structure your days changes everything.",
   7: "This is a year about partnerships, marriage, and one-on-one relationships. The other person matters enormously right now.",
-  8: "This is a year about transformation, shared resources, intimacy, and endings that lead to beginnings.",
+  8: "This is a year about transformation, shared resources, intimacy, and letting go to make room.",
   9: "This is a year about travel, higher learning, philosophy, and expansion. Your worldview is under construction.",
   10: "This is a year about career, public reputation, and legacy. What you build in the world is the focus.",
   11: "This is a year about community, friendships, hopes, and your vision for the future. Your people matter most.",

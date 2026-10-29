@@ -5,22 +5,28 @@
  * Each one is here because the tradition holds it to be a moment rather than a
  * span — which is also what keeps the volume low enough to be worth sending.
  *
- * Every function takes a date and answers "did this happen on this calendar
- * day, in this timezone", because that is the question a daily notification
- * asks. They are pure and use the same ephemeris as the rest of the app.
+ * Every function answers "did this happen on this calendar day, for someone in
+ * this timezone", because that is the question a daily notification asks.
+ * `day` carries the calendar date in its local fields (the shape localNow() and
+ * the screens produce); `timeZone` is the reader's IANA zone. On the server the
+ * zone is not optional in spirit: the runtime's own midnight is UTC there, and
+ * an event at 02:00 UTC is the previous evening in the Americas. These used to
+ * build that midnight with `new Date(y, m, d)`, which is how US users came to
+ * get eclipse and station pushes a day late.
+ *
+ * The events themselves are exact instants from the shared sky calendar.
  */
 
 import * as Astronomy from "astronomy-engine";
+import {
+  stationsBetween, retrogradePeriodsBetween, ingressesBetween, nextEclipseAfter,
+  eclipsesBetween, localDayWindow, isOnDay, STATION_PLANETS,
+} from "@/lib/astro/skyCalendar";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const SIGNS = [
-  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
-];
-
 /** Planets that station often enough to matter and slowly enough to be felt. */
-export const STATIONING = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+export const STATIONING = STATION_PLANETS;
 export type StationingPlanet = typeof STATIONING[number];
 
 /** Outer planets only: an ingress that means something lasts years, not weeks. */
@@ -31,33 +37,6 @@ export const YEARS_PER_SIGN: Record<string, number> = {
   Jupiter: 1, Saturn: 3, Uranus: 7, Neptune: 14, Pluto: 20,
 };
 
-/**
- * Apparent geocentric ecliptic longitude — where the planet appears to be from
- * here, which is the only frame in which anything is ever retrograde.
- *
- * Astronomy.EclipticLongitude is HELIOCENTRIC. Using it made every station
- * detection return nothing at all, because seen from the Sun no planet ever
- * turns around.
- */
-function lonAt(body: Astronomy.Body, at: Date): number {
-  const vec = Astronomy.GeoVector(body, at, true);
-  return Astronomy.Ecliptic(vec).elon;
-}
-
-function bodyFor(name: string): Astronomy.Body {
-  return Astronomy.Body[name as keyof typeof Astronomy.Body] as Astronomy.Body;
-}
-
-/** Signed daily motion, degrees, unwrapped across the 0/360 boundary. */
-function motion(body: Astronomy.Body, at: Date): number {
-  const a = lonAt(body, new Date(at.getTime() - DAY_MS / 2));
-  const b = lonAt(body, new Date(at.getTime() + DAY_MS / 2));
-  let d = b - a;
-  if (d > 180) d -= 360;
-  if (d < -180) d += 360;
-  return d;
-}
-
 export interface Station {
   planet: string;
   /** "retrograde" when it turns backwards, "direct" when it resumes. */
@@ -65,63 +44,37 @@ export interface Station {
   /** The degree it stops on — the degree the tradition says carries the weight. */
   longitude: number;
   sign: string;
+  /** The exact instant of the station. */
+  at: Date;
   /**
    * For a direct station: when this planet turned retrograde, so the copy can
-   * say how long it has been stuck without inventing a date. Undefined when the
-   * search does not reach back far enough.
+   * say how long it has been stuck without inventing a date. Undefined only if
+   * the retrograde station is out of the search's reach.
    */
   retrogradeSince?: Date;
 }
 
 /**
- * Walk back to the station that started this retrograde.
- *
- * Without it the "stuck since [month]" line has to be filled with something,
- * and the something it was being filled with was the current month — so a
- * planet turning direct in February was announced as having been stuck since
- * February. Pluto's retrograde runs nearly half a year, so the search has to
- * reach further than feels necessary.
- */
-function retrogradeStartedAt(body: Astronomy.Body, directStation: Date): Date | undefined {
-  for (let back = 1; back <= 200; back++) {
-    const d = new Date(directStation.getTime() - back * DAY_MS);
-    const before = motion(body, new Date(d.getTime() - DAY_MS));
-    const after = motion(body, d);
-    if (Math.sign(before) !== Math.sign(after) && after < 0) return d;
-  }
-  return undefined;
-}
-
-/**
  * Planets stationing on this local day.
  *
- * A station is where the planet's apparent motion reverses, so it is found by
- * the sign of the daily motion changing between yesterday and today. The
- * tradition holds the station, not the retrograde span, to be the event worth
- * marking: a stationary planet is slow, and slowness is held to intensify. It
- * is also two moments per cycle instead of three weeks of nagging.
+ * The tradition holds the station, not the retrograde span, to be the event
+ * worth marking: a stationary planet is slow, and slowness is held to
+ * intensify. It is also two moments per cycle instead of three weeks of
+ * nagging.
  */
-export function stationsOn(day: Date): Station[] {
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-  const end = new Date(start.getTime() + DAY_MS);
-  const out: Station[] = [];
-  for (const name of STATIONING) {
-    const body = bodyFor(name);
-    const before = motion(body, start);
-    const after = motion(body, end);
-    if (before === 0 || after === 0) continue;
-    if (Math.sign(before) === Math.sign(after)) continue;
-    const lon = lonAt(body, start);
-    const direction = after < 0 ? "retrograde" : "direct";
-    out.push({
-      planet: name,
-      direction,
-      longitude: lon,
-      sign: SIGNS[Math.floor(lon / 30) % 12],
-      ...(direction === "direct" ? { retrogradeSince: retrogradeStartedAt(body, start) } : {}),
-    });
-  }
-  return out;
+export function stationsOn(day: Date, timeZone?: string | null): Station[] {
+  const { start, end } = localDayWindow(day, timeZone);
+  return stationsBetween(start, end).map((s) => {
+    const out: Station = {
+      planet: s.planet, direction: s.direction, longitude: s.longitude, sign: s.sign, at: s.at,
+    };
+    if (s.direction === "direct") {
+      const period = retrogradePeriodsBetween(s.planet, s.at, new Date(s.at.getTime() + 1))
+        .find((p) => p.end.getTime() === s.at.getTime());
+      if (period) out.retrogradeSince = period.start;
+    }
+    return out;
+  });
 }
 
 export interface Ingress {
@@ -134,22 +87,16 @@ export interface Ingress {
  * Outer planets changing sign on this local day.
  *
  * Inner-planet ingresses happen constantly and say little; Saturn changing sign
- * is a three-year statement. Note that a planet can cross a boundary three
- * times when it retrogrades back over it — this reports each crossing, which is
- * honest, because each one is a real change of sign.
+ * is a three-year statement. A planet can cross a boundary three times when it
+ * retrogrades back over it — each crossing is reported, because each one is a
+ * real change of sign. (This used to compare the sign at yesterday's midnight
+ * with today's, which announced an ingress on the day after it happened.)
  */
-export function ingressesOn(day: Date): Ingress[] {
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-  const prev = new Date(start.getTime() - DAY_MS);
-  const out: Ingress[] = [];
-  for (const name of SLOW_MOVERS) {
-    const body = bodyFor(name);
-    const a = Math.floor(lonAt(body, prev) / 30) % 12;
-    const b = Math.floor(lonAt(body, start) / 30) % 12;
-    if (a === b) continue;
-    out.push({ planet: name, sign: SIGNS[b], years: YEARS_PER_SIGN[name] ?? 1 });
-  }
-  return out;
+export function ingressesOn(day: Date, timeZone?: string | null): Ingress[] {
+  const { start, end } = localDayWindow(day, timeZone);
+  return ingressesBetween(start, end)
+    .filter((g) => (SLOW_MOVERS as readonly string[]).includes(g.planet))
+    .map((g) => ({ planet: g.planet, sign: g.sign, years: YEARS_PER_SIGN[g.planet] ?? 1 }));
 }
 
 export interface EclipseSeason {
@@ -174,66 +121,34 @@ export const SEASON_LEAD_DAYS = 18;
  * True on the day an eclipse season opens.
  *
  * Detected from the eclipses themselves rather than from node geometry: the
- * season opens on the first day the next eclipse is within the lead window and
- * yesterday it was not.
+ * season opens on the first local day the next eclipse is within the lead
+ * window of that day's midnight, and yesterday it was not.
  */
-export function eclipseSeasonOpensOn(day: Date): EclipseSeason | null {
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-  const prev = new Date(start.getTime() - DAY_MS);
+export function eclipseSeasonOpensOn(day: Date, timeZone?: string | null): EclipseSeason | null {
+  const { start } = localDayWindow(day, timeZone);
+  const prevStart = localDayWindow(new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1), timeZone).start;
   const inWindow = (from: Date) => {
-    const next = nextEclipse(from);
+    const next = nextEclipseAfter(from);
     const days = (next.at.getTime() - from.getTime()) / DAY_MS;
     return days <= SEASON_LEAD_DAYS ? next : null;
   };
   const today = inWindow(start);
   if (!today) return null;
-  if (inWindow(prev)) return null;   // the season was already open yesterday
+  if (inWindow(prevStart)) return null;   // the season was already open yesterday
 
   // Count the eclipses inside the season — usually two, occasionally three.
-  let count = 0;
-  let cursor = start;
-  const seasonEnd = new Date(start.getTime() + 37 * DAY_MS);
-  while (cursor < seasonEnd) {
-    const e = nextEclipse(cursor);
-    if (e.at >= seasonEnd) break;
-    count++;
-    cursor = new Date(e.at.getTime() + DAY_MS);
-  }
+  const count = eclipsesBetween(start, new Date(start.getTime() + 37 * DAY_MS)).length;
   return { firstAt: today.at, kind: today.kind, count };
 }
 
-/**
- * Eclipse searches are the most expensive thing in this file and the season
- * check asks for the same ones repeatedly — a day-resolution cache turns a
- * year's scan from minutes into seconds. Results are a pure function of the
- * date, so caching them cannot go stale.
- */
-const eclipseCache = new Map<string, { at: Date; kind: "solar" | "lunar" }>();
-
-function nextEclipse(from: Date): { at: Date; kind: "solar" | "lunar" } {
-  const key = from.toISOString().slice(0, 10);
-  const cached = eclipseCache.get(key);
-  if (cached) return cached;
-
-  const solar = Astronomy.SearchGlobalSolarEclipse(from);
-  const lunar = Astronomy.SearchLunarEclipse(from);
-  const result = solar.peak.date < lunar.peak.date
-    ? { at: solar.peak.date, kind: "solar" as const }
-    : { at: lunar.peak.date, kind: "lunar" as const };
-
-  if (eclipseCache.size > 2000) eclipseCache.clear();
-  eclipseCache.set(key, result);
-  return result;
-}
-
 /** An eclipse peaking on this local day, if any. */
-export function eclipseOn(day: Date): { kind: "solar" | "lunar"; at: Date } | null {
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-  const e = nextEclipse(new Date(start.getTime() - DAY_MS));
-  const sameDay = e.at.getFullYear() === start.getFullYear()
-    && e.at.getMonth() === start.getMonth()
-    && e.at.getDate() === start.getDate();
-  return sameDay ? e : null;
+export function eclipseOn(
+  day: Date,
+  timeZone?: string | null,
+): { kind: "solar" | "lunar"; at: Date; type: string; label: string } | null {
+  const { start, end } = localDayWindow(day, timeZone);
+  const e = eclipsesBetween(start, end)[0];
+  return e ? { kind: e.kind, at: e.at, type: e.type, label: e.label } : null;
 }
 
 /**
@@ -245,17 +160,21 @@ export function eclipseOn(day: Date): { kind: "solar" | "lunar"; at: Date } | nu
  * what earns it the top of the priority order.
  */
 export function solarReturnInstant(natalSunLongitude: number, year: number): Date {
-  // The Sun passes each longitude once a year; start a fortnight early so the
-  // search brackets it wherever in the year it falls.
-  const approx = Astronomy.SearchSunLongitude(natalSunLongitude, new Date(Date.UTC(year - 1, 11, 20)), 400);
-  if (!approx) throw new Error(`no solar return for longitude ${natalSunLongitude} in ${year}`);
-  return approx.date;
+  // The Sun passes each longitude exactly once per UTC year. (This used to
+  // start the search on 20 December of the year before, so for a natal Sun in
+  // the last ten days of Capricorn's approach it returned last December's
+  // return — and solarReturnOn never fired for late-December birthdays.)
+  const found = Astronomy.SearchSunLongitude(natalSunLongitude, new Date(Date.UTC(year, 0, 1)), 367);
+  if (!found) throw new Error(`no solar return for longitude ${natalSunLongitude} in ${year}`);
+  return found.date;
 }
 
-export function solarReturnOn(day: Date, natalSunLongitude: number): Date | null {
-  const at = solarReturnInstant(natalSunLongitude, day.getFullYear());
-  const same = at.getFullYear() === day.getFullYear()
-    && at.getMonth() === day.getMonth()
-    && at.getDate() === day.getDate();
-  return same ? at : null;
+/** The solar return instant, when it falls on this local day. */
+export function solarReturnOn(day: Date, natalSunLongitude: number, timeZone?: string | null): Date | null {
+  // Search the local day itself (with a day's margin), so a return that is
+  // 31 December locally and 1 January in UTC is still found.
+  const { start } = localDayWindow(day, timeZone);
+  const found = Astronomy.SearchSunLongitude(natalSunLongitude, new Date(start.getTime() - DAY_MS), 3);
+  if (!found) return null;
+  return isOnDay(found.date, day, timeZone) ? found.date : null;
 }

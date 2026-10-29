@@ -43,6 +43,7 @@ interface ChartRow {
   unknownTime: boolean;
   latitude: number | null;
   longitude: number | null;
+  timezone?: string | null;
   bigThree: { sun?: string; moon?: string; rising?: string } | null;
   placements: Placement[];
 }
@@ -115,7 +116,7 @@ export default function ProfilePageContent() {
           (session.user.user_metadata?.name as string | undefined) || "";
         const { data } = await supabase
           .from("charts")
-          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, big_three, planets, special_points")
+          .select("name, birth_date, birth_time, latitude, longitude, unknown_time, timezone, big_three, planets, special_points")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -128,6 +129,7 @@ export default function ProfilePageContent() {
             unknownTime: !!data.unknown_time,
             latitude: data.latitude,
             longitude: data.longitude,
+            timezone: data.timezone as string | null,
             bigThree: (data.big_three as ChartRow["bigThree"]) ?? null,
             placements: toPlacements(data.planets, data.special_points),
           });
@@ -148,6 +150,7 @@ export default function ProfilePageContent() {
             unknownTime: !!parsed.unknownTime,
             latitude: parsed.latitude,
             longitude: parsed.longitude,
+            timezone: parsed.timezone,
             bigThree: parsed.bigThree ?? null,
             placements: toPlacements(parsed.planets, parsed.specialPoints, parsed.special_points),
           });
@@ -172,6 +175,7 @@ export default function ProfilePageContent() {
       birthTime: row.birthTime,
       latitude: row.latitude,
       longitude: row.longitude,
+      timezone: row.timezone,
     });
   }, [row]);
 

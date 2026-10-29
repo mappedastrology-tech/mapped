@@ -96,7 +96,7 @@ export const astrologyAdvanced: Course = {
               ["Mercury / Venus", "Slowly, sometimes retrograde", "Evolving mind & values"],
               ["Outer planets", "Almost not at all", "Rarely used in progressions"],
             ] },
-            { kind: "callout", tone: "history", title: "Roots in Ptolemy", text: "The 'day for a year' idea is ancient; a version appears in Ptolemy's Tetrabiblos (2nd century CE). Secondary progressions as practiced today were formalized in the modern era, but the symbolic equation of one rotation with one revolution is very old." },
+            { kind: "callout", tone: "history", title: "Older than the method", text: "Secondary progressions were systematized by Placidus de Titis in the 17th century, who presented them as following from Ptolemy — but the day-for-a-year rule itself isn't in Ptolemy's Tetrabiblos. The symbolic equation of a day with a year is older still: it appears in the Hebrew Bible (Numbers 14:34, Ezekiel 4:6)." },
             { kind: "callout", tone: "evidence", title: "Progressed vs. progressed-to-natal", text: "Astrologers read two layers: a progressed planet changing sign or house (an internal shift), and a progressed planet aspecting a natal planet (an internal development 'landing' on a birth theme). Both are symbolic overlays on the unchanging natal chart." },
             { kind: "keyfacts", items: [
               "Secondary progressions: 1 day after birth = 1 year of life.",
@@ -184,7 +184,7 @@ export const astrologyAdvanced: Course = {
           blocks: [
             { kind: "text", text: "Profections are an elegant traditional timing method. Each year of life advances the emphasis by one house: your 1st year of life highlights the 1st house, your 2nd the 2nd house, and so on, cycling back to the 1st house every 12 years (ages 0, 12, 24, 36… are all 1st-house years)." },
             { kind: "text", text: "To find your profected house, take your age, divide by 12, and keep the remainder. A remainder of 0 is a 1st-house year, 1 is a 2nd-house year, and so on. The whole point is to spotlight one house — and one ruling planet — for the next twelve months." },
-            { kind: "callout", tone: "tip", title: "The 'lord of the year'", text: "The planet that rules the sign on the profected house becomes the year's 'time-lord' — the planet running the show for those twelve months. Transits to it, and its own condition, color the year. It's a simple way to know which area of life and which planet are emphasized." },
+            { kind: "callout", tone: "tip", title: "The 'lord of the year'", text: "Profections count in whole signs: one sign per year from your rising sign. The traditional ruler of the sign you land on becomes the year's 'time-lord' — the planet running the show for those twelve months (Mapped does it this way, whatever house system your chart displays). Transits to it, and its own condition, color the year. It's a simple way to know which area of life and which planet are emphasized." },
             { kind: "table", headers: ["Age", "Profected house", "Life area emphasized"], rows: [
               ["0, 12, 24, 36…", "1st", "Self, body, vitality"],
               ["1, 13, 25, 37…", "2nd", "Money, resources, values"],

@@ -5,7 +5,7 @@
  * natal degree each year — essentially your astrological birthday chart.
  * It maps themes for the year ahead.
  *
- * Uses Swiss Ephemeris for planet positions and binary search for the
+ * Uses astronomy-engine (via ephemeris.ts) for planet positions and binary search for the
  * exact Sun-return moment.
  */
 
@@ -28,6 +28,7 @@ import {
 } from "./ephemeris";
 import { ayanamsaDegrees, normalizeAyanamsa, type AyanamsaName } from "./vedic/ayanamsa";
 import { normalizeHouseSystem, wholeSignCusps, wholeSignHouse, type HouseSystem } from "./vedic/houses";
+import { resolveBirthOffset } from "./birthTimezone";
 
 // ---------- Types ----------
 
@@ -49,6 +50,18 @@ interface SolarReturnInput {
    * case; so does this.
    */
   unknownTime?: boolean;
+  /**
+   * The natal birth data. When present the natal Sun is recomputed here from
+   * the birth instant instead of trusting `natalSunAbsPos`, which callers take
+   * from a stored chart rounded to 0.01° — the Sun covers 0.01° in about 14
+   * minutes, so the return time came out several minutes wrong.
+   * `birthLatitude/Longitude` are the BIRTHPLACE (latitude/longitude above are
+   * where the return is cast); `birthTimezone` is the chart's stored zone.
+   */
+  birthTime?: string | null;
+  birthTimezone?: string | null;
+  birthLatitude?: number | null;
+  birthLongitude?: number | null;
 }
 
 // ---------- Helpers ----------
@@ -129,8 +142,7 @@ function jdToDateTime(jd: number): { dateStr: string; timeStr: string } {
 // ---------- Main export ----------
 
 export function calculateSolarReturn(data: SolarReturnInput) {
-  const natalSunAbs = data.natalSunAbsPos;
-  const [, birthMonth, birthDay] = data.birthDate.split("-").map(Number);
+  const [birthYear, birthMonth, birthDay] = data.birthDate.split("-").map(Number);
   const targetYear = data.year ?? new Date().getFullYear();
   const lat = data.latitude;
   const lng = data.longitude;
@@ -139,6 +151,15 @@ export function calculateSolarReturn(data: SolarReturnInput) {
   const ayanamsaName = normalizeAyanamsa(data.ayanamsa);
   const isSidereal = zodiacSystem === "sidereal";
   const houseSystem = normalizeHouseSystem(data.houseSystem, zodiacSystem);
+
+  // The natal Sun, unrounded, in the chart's own zodiac (see SolarReturnInput).
+  let natalSunAbs = data.natalSunAbsPos;
+  if (data.birthTime && data.birthLatitude != null && data.birthLongitude != null) {
+    const [hh, mm] = data.birthTime.split(":").map(Number);
+    const local = hh + (mm || 0) / 60;
+    const tz = resolveBirthOffset(data.birthTimezone, data.birthLatitude, data.birthLongitude, birthYear, birthMonth, birthDay, local);
+    natalSunAbs = getSunLongitude(julday(birthYear, birthMonth, birthDay, local - tz.offsetHours), isSidereal ? ayanamsaName : null);
+  }
 
   // Find the exact return moment (natalSunAbs is in the chart's own zodiac)
   const returnJd = findSolarReturnJd(natalSunAbs, birthMonth, birthDay, targetYear, isSidereal ? ayanamsaName : null);
@@ -267,8 +288,12 @@ export function calculateSolarReturn(data: SolarReturnInput) {
 
   const result: Record<string, unknown> = {
     year: targetYear,
+    // returnDate/returnTime are UNIVERSAL TIME. Display through returnUtc in
+    // the return location's zone (the API route adds returnLocal), never as
+    // if they were local.
     returnDate: returnDateStr,
     returnTime: returnTimeStr,
+    returnUtc: new Date(Math.round((returnJd - 2440587.5) * 86400000)).toISOString(),
     natalSunDegree: Math.round(natalSunAbs * 100) / 100,
     bigThree,
     planets,

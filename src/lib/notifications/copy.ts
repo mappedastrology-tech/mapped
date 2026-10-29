@@ -152,9 +152,12 @@ export const COPY: CopyTemplate[] = [
   { category: "eclipses", variant: "solar",
     title: "Solar eclipse in [sign]",
     body: "Everything will feel like it needs deciding today. It doesn't. Give it two days." },
+  // Lunar eclipses are read as culminations. Name the theme and leave the
+  // choosing with them: "something's ending" on a lock screen is a prediction,
+  // and it lands on whoever is already afraid it's true.
   { category: "eclipses", variant: "lunar",
     title: "Lunar eclipse in [sign]",
-    body: "Something's ending. You've probably known for a while." },
+    body: "A full moon with extra weight. What you're ready to let end is your call, not the sky's." },
   { category: "eclipses", variant: "saros",
     title: "You've met this one",
     body: "Same eclipse family as [year]. Whatever was going on for you then, it rhymes." },
@@ -175,7 +178,7 @@ export const COPY: CopyTemplate[] = [
     body: "Something's felt stuck since [month]. That's why. It just turned around." },
   { category: "retrograde_stations", variant: "direct-undated",
     title: "[planet] moves again",
-    body: "Whatever's felt stuck for weeks isn't anymore. You should feel it within the week." },
+    body: "Whatever's felt stuck for weeks has room to move now." },
 
   { category: "retrograde_shadow", variant: "clears",
     title: "Out of the shadow",
@@ -197,7 +200,7 @@ export const COPY: CopyTemplate[] = [
 
   { category: "major_transits", variant: "conjunction",
     title: "[planet] meets your [natal]",
-    body: "Exact today. Something's beginning here. You'll recognise it later." },
+    body: "Exact today. Notice what starts asking for your attention here." },
   { category: "major_transits", variant: "opposition",
     title: "[planet] opposes your [natal]",
     body: "Exact today. Two parts of your life want opposite things. Both have a point." },

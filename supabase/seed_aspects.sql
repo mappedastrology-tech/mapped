@@ -1,5 +1,7 @@
 -- Seed data for kb_aspects table
 -- Inserts the 5 major astrological aspects
+-- Orbs match the one table the app calculates with: src/lib/astro/constants.ts ASPECTS
+-- (conjunction 8, opposition 8, trine 7, square 7, sextile 5).
 
 INSERT INTO kb_aspects (name, symbol, degrees, orb, nature, summary, keywords) VALUES
 (
@@ -15,7 +17,7 @@ INSERT INTO kb_aspects (name, symbol, degrees, orb, nature, summary, keywords) V
   'sextile',
   '⚹',
   60,
-  6,
+  5,
   'harmonious',
   $$A 60-degree angle creates an easy flow between two planetary energies. Opportunities arrive without drama, and you can tap into both planets' strengths without fighting against yourself. This is where potential converts to action with less friction.$$,
   'supportive,flowing,opportunity,ease,creative,natural talent,assistance'
@@ -33,7 +35,7 @@ INSERT INTO kb_aspects (name, symbol, degrees, orb, nature, summary, keywords) V
   'trine',
   '△',
   120,
-  8,
+  7,
   'harmonious',
   $$A 120-degree angle is the universe's green light—the planets work as if they were designed to do so. Talents come naturally, situations develop smoothly, and success feels effortless. You have built-in support for expressing these energies.$$,
   'harmony,ease,talent,grace,luck,flow,support,natural ability,blessing'
