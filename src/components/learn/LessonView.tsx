@@ -46,8 +46,15 @@ export default function LessonView({ courseId, lessonId }: { courseId: string; l
   if (!course || !lesson) {
     return (
       <main className="min-h-screen lib-felt">
-        <LibraryHeader title="Lesson" fallback={`/library/${courseId}`} />
-        <p className="max-w-lg mx-auto px-5 py-10 text-center text-sm" style={{ color: "var(--foreground-muted)" }}>This lesson couldn&rsquo;t be found.</p>
+        <LibraryHeader title="Lesson not found" fallback={course ? `/library/${courseId}` : "/library"} />
+        <div className="max-w-lg mx-auto px-5 py-12 text-center">
+          <p className="text-[15px] leading-relaxed mb-5" style={{ color: "var(--foreground-secondary)" }}>
+            We couldn&rsquo;t find that lesson. It may have moved, or the link may be mistyped.
+          </p>
+          <Link href={course ? `/library/${courseId}` : "/library"} className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold" style={{ background: "var(--brass)", color: "var(--background)" }}>
+            {course ? "Back to the course" : "Browse the library"}
+          </Link>
+        </div>
       </main>
     );
   }
