@@ -278,7 +278,9 @@ function FullFooter() {
 export function CompactFooter({ tagline = "Read the sky, then trust yourself." }: { tagline?: string }) {
   return (
     <footer style={{ position: "relative", zIndex: 10, borderTop: "1px solid var(--hair)", background: "var(--bg2)" }}>
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      {/* The extra bottom padding keeps this line above the floating
+          bug-report button (bottom-left, lg:bottom-6) on signed-in pages. */}
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "34px 32px 80px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>© 2026 Mapped. {tagline}</span>
         <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "var(--fg2)" }}>← Back to home</Link>
       </div>

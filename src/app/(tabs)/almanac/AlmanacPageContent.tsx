@@ -1081,7 +1081,9 @@ export default function AlmanacPageContent() {
     const phaseNote = isWaxing
       ? "The waxing phase adds momentum to anything you start."
       : "The waning phase supports clearing out what's not working.";
-    return `${sky.moonSign} Moon with ${ruler.planet} ruling the day. ${elementDescriptions[element] || "balanced energy today"}. ${phaseNote}`;
+    // Capitalised: it starts a sentence after the full stop.
+    const desc = elementDescriptions[element] || "balanced energy today";
+    return `${sky.moonSign} Moon with ${ruler.planet} ruling the day. ${desc.charAt(0).toUpperCase()}${desc.slice(1)}. ${phaseNote}`;
   }, [transitData, sky]);
 
   // Category scores
@@ -3111,8 +3113,10 @@ export default function AlmanacPageContent() {
               );
             })}
           </div>
-          {weekData.headline?.title && (
-            <p className="text-[11px] leading-relaxed mt-3.5" style={{ color: "var(--foreground-muted)" }}>{weekData.headline.title}</p>
+          {/* The headline's body, not its title: the title alone ("THIS
+              WEEK'S ENERGY") read as a heading with nothing under it. */}
+          {weekData.headline?.body && (
+            <p className="text-[11px] leading-relaxed mt-3.5" style={{ color: "var(--foreground-muted)" }}>{weekData.headline.body}</p>
           )}
         </button>
 

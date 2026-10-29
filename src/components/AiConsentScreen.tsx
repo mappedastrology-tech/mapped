@@ -48,7 +48,9 @@ export default function AiConsentScreen({
       role="dialog"
       aria-modal="true"
       aria-labelledby="ai-consent-title"
-      className="flex-1 flex flex-col overflow-y-auto px-6 py-8"
+      // pb-40: on Dolly the bug-report button floats at bottom 108px; the
+      // buttons at the end of this screen must be able to scroll clear of it.
+      className="flex-1 flex flex-col overflow-y-auto px-6 pt-8 pb-40"
       style={{ background: "var(--background)" }}
     >
       <div className="w-full max-w-md mx-auto">

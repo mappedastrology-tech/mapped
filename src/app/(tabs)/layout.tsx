@@ -180,7 +180,9 @@ export default function TabsLayout({
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 <TopBar />
-                <div className="pb-4 lg:pb-10">
+                {/* Bottom padding clears the floating bug-report button,
+                    so the last line of every page can scroll out from under it. */}
+                <div className="pb-24 lg:pb-20">
                   {children}
                 </div>
               </div>
