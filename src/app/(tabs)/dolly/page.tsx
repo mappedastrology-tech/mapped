@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { greetingFor, firstNameOf } from "@/lib/greeting";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
 import { useTier } from "@/components/TierProvider";
@@ -1651,9 +1652,7 @@ export default function DollyTab() {
                   style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 500, fontSize: 18, lineHeight: 1.45, color: "rgba(244,236,214,0.96)" }}
                 >
                   {(() => {
-                    const h = new Date().getHours();
-                    const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-                    return `${salutation}, ${userName ? userName.split(" ")[0] : "Seeker"}.`;
+                    return `${greetingFor()}, ${firstNameOf(userName) ?? "Seeker"}.`;
                   })()}
                 </p>
                 <p className="text-sm" style={{ lineHeight: 1.65, color: "rgba(240,230,210,0.9)" }}>

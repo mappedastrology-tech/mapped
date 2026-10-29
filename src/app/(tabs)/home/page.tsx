@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSheetDismiss } from "@/lib/useSheetDismiss";
 import { supabase } from "@/lib/supabase";
+import { greetingFor } from "@/lib/greeting";
 import { buildFallbackHoroscope } from "@/lib/fallbackHoroscope";
 import { authedFetch } from "@/lib/authedFetch";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -451,12 +452,7 @@ export default function HomeTab() {
     day: "numeric",
   });
 
-  const greeting =
-    today.getHours() < 12
-      ? "Good morning"
-      : today.getHours() < 17
-      ? "Good afternoon"
-      : "Good evening";
+  const greeting = greetingFor(today);
 
   useEffect(() => {
     async function loadUser() {
