@@ -33,6 +33,20 @@ export const PROMPT_LIMITS = {
   connections: 12,
   /** Journal / tarot context blocks sent by the client. */
   context: 4_000,
+  /**
+   * The journal block, which is deliberately larger than the rest.
+   *
+   * Dolly is sent the person's whole journal, not a sample of it — being shown
+   * a sliver was what made her tell people she "could only see two" of their
+   * entries. Someone who writes every day fills this; the client aims a
+   * comfortable margin below it, so this is the backstop against a runaway or
+   * hand-rolled client rather than the working limit.
+   *
+   * Affordable because the journal travels in the CACHED half of the prompt:
+   * it changes when they write an entry, not between messages, so a long
+   * conversation buys it once rather than on every turn.
+   */
+  journal: 14_000,
 } as const;
 
 /**

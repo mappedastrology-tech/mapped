@@ -23,7 +23,12 @@ export const AI_PROVIDER_NAME = "Anthropic";
 export const AI_SHARED_ITEMS = [
   "Your birth date, time and place, and the chart built from them",
   "What you write to Dolly, and what she has written back",
-  "Journal entries, when you ask for a reflection or a prompt",
+  // Was "when you ask for a reflection or a prompt", which stopped being true
+  // when Dolly started being sent the journal itself rather than a few
+  // 160-character excerpts of it. She is given it on every message so she can
+  // answer from what they have actually written — a disclosure that
+  // understates what is sent is worse than none.
+  "Your journal entries, so Dolly can talk about what you have written",
   "The people on your map — their names and charts — when a question is about them",
   "A photograph of your palm, when you ask for a palmistry reading",
 ] as const;

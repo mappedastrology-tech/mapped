@@ -76,9 +76,12 @@ export default function PrivacyPage() {
         placements, and live transits.<br />
         &bull; <strong>Your first name</strong>, so a reading can address you.<br />
         &bull; <strong>What you write to Dolly</strong>, and the recent conversation, so she can follow a thread.<br />
-        &bull; <strong>Recent journal entries.</strong> Dolly is sent short excerpts from your latest entries and
-        the moods attached to them, so she can refer to what is going on with you. A journal <em>reflection</em>
-        sends the full text of the entries in the period being reflected on.<br />
+        &bull; <strong>Your journal entries.</strong> When you talk to Dolly, your entries are sent with your
+        question &mdash; their full text, dates, titles and moods, newest first &mdash; so she can answer from what
+        you have actually written rather than from a fragment of it. If you have written a great deal, the most
+        recent fill the space available and she is told how many older ones exist. Entries you <em>burn</em> are
+        never stored and never sent. A journal <em>reflection</em> sends the entries in the period being reflected
+        on.<br />
         &bull; <strong>Your latest tarot or oracle pull</strong>, including any note you wrote about it.<br />
         &bull; <strong>People you have saved as connections.</strong> When you ask about a relationship, that
         person&rsquo;s name, their relationship to you and their birth chart are sent as part of the question.

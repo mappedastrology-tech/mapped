@@ -15,6 +15,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { inflateSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 import {
   toPdfText,
   transcriptBlocks,
@@ -191,4 +192,91 @@ test("a long conversation paginates, and every page is numbered", async () => {
   for (const line of drawn) {
     assert.ok(line.length < 140, `line is too long to have been wrapped: ${line}`);
   }
+});
+
+/* ── It has to look like Mapped, not like a language model ──────────────── */
+
+/** The light-theme value of a CSS custom property, as #rrggbb. */
+function lightToken(name: string): string {
+  const css = readFileSync("src/app/globals.css", "utf8");
+  const block = css.slice(css.indexOf('[data-theme="light"] {'));
+  const m = block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+  assert.ok(m, `globals.css has no light --${name}`);
+  return m[1].toLowerCase();
+}
+
+/** An RGB triple declared in the transcript renderer, as #rrggbb. */
+function pdfColour(name: string): string {
+  const src = readFileSync("src/lib/dollyTranscript.ts", "utf8");
+  const m = src.match(new RegExp(`const ${name}: RGB = \\[(\\d+), (\\d+), (\\d+)\\]`));
+  assert.ok(m, `dollyTranscript has no ${name}`);
+  return `#${[1, 2, 3].map((i) => Number(m[i]).toString(16).padStart(2, "0")).join("")}`;
+}
+
+test("the transcript is drawn in Mapped's own colours, not approximated by eye", () => {
+  // Pinned against globals.css rather than against literals, so the day
+  // someone retunes the palette this says so instead of leaving the PDF a
+  // shade behind the app it came from.
+  assert.equal(pdfColour("PAPER"), lightToken("background"), "the paper is not Mapped's cream");
+  assert.equal(pdfColour("INK"), lightToken("foreground"));
+  assert.equal(pdfColour("MUTED"), lightToken("foreground-muted"));
+  assert.equal(pdfColour("BRASS"), lightToken("brass"));
+  assert.equal(pdfColour("PLUM"), lightToken("plum"));
+  assert.equal(pdfColour("CARD"), lightToken("background-card"));
+});
+
+test("Dolly's words stay legible on her plum bubble", () => {
+  // Cream on plum, as in the app, where her bubble is plum in BOTH themes.
+  // Checked rather than assumed: this is the one place in the document where
+  // light text sits on a dark fill, and getting it wrong prints a page of
+  // near-invisible text that nobody sees until it is on paper.
+  const lum = (hex: string) => {
+    const c = [1, 3, 5].map((i) => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  assert.ok(ratio(pdfColour("CREAM"), pdfColour("PLUM")) >= 7, "Dolly's bubble text is hard to read");
+  assert.ok(ratio(pdfColour("INK"), pdfColour("CARD")) >= 7, "the reader's own words are hard to read");
+  assert.ok(ratio(pdfColour("BRASS"), pdfColour("PAPER")) >= 4.5, "the brass labels are hard to read");
+  assert.ok(ratio(pdfColour("MUTED"), pdfColour("PAPER")) >= 4.5, "the muted lines are hard to read");
+});
+
+test("every page is painted cream, not left white", async () => {
+  const blob = await buildTranscriptPdf({
+    messages: Array.from({ length: 90 }, (_, i) => ({
+      role: (i % 2 ? "assistant" : "user") as "assistant" | "user",
+      content: `Message ${i}. ${"Something said at some length. ".repeat(6)}`,
+      timestamp: AT + i * 60_000,
+    })),
+    now: new Date(2026, 10, 6),
+  });
+  const bytes = Buffer.from(await blob.arrayBuffer());
+  const pages = (bytes.toString("latin1").match(/\/Type \/Page[^s]/g) ?? []).length;
+  assert.ok(pages >= 3, `expected several pages, got ${pages}`);
+
+  // jsPDF writes fills as "r g b rg", the components as 0-1 fractions at two
+  // decimal places.
+  const paper = pdfColour("PAPER")
+    .slice(1)
+    .match(/../g)!
+    .map((h) => (parseInt(h, 16) / 255).toFixed(2))
+    .join(" ");
+  const fills = pdfStrings(bytes); // forces the streams to decompress
+  assert.ok(fills.length > 0);
+
+  const raw = bytes.toString("latin1");
+  let painted = 0;
+  for (const m of raw.matchAll(/[^d]stream\r?\n([\s\S]*?)endstream/g)) {
+    let text: string;
+    try { text = inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { continue; }
+    if (!text.includes("Tj")) continue;
+    if (text.includes(`${paper} rg`)) painted += 1;
+  }
+  assert.equal(painted, pages, `${pages - painted} page(s) print on white`);
 });

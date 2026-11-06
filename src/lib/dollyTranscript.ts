@@ -225,23 +225,104 @@ export function transcriptFilename(day?: string, now: Date = new Date()): string
    Drawing it
    ═══════════════════════════════════════════ */
 
+/**
+ * The transcript is meant to look like it came from Mapped.
+ *
+ * The first version was black Helvetica on white paper — correct, legible,
+ * and indistinguishable from anything else a language model has ever printed.
+ * It had none of the app in it. Someone who saves a conversation with Dolly is
+ * keeping something personal; handing them a generic dump of their own words
+ * is a worse gift than it looks.
+ *
+ * So it is drawn the way the thread is drawn: cream paper, Dolly in her plum
+ * bubble with cream ink, the reader's own words in a white card on the right,
+ * brass rules and brass small-caps, and the Mapped star at the top and between
+ * the days. All of it from the app's light-theme tokens rather than
+ * approximated by eye.
+ *
+ * Typefaces are the built-in PDF ones, deliberately. Mapped's own faces (Le
+ * Jour Serif, Bodoni Moda, DM Sans) ship as woff2, which a PDF cannot embed —
+ * they would have to be converted and bundled, their licences would have to
+ * cover PDF embedding, and every transcript would carry the font's bytes.
+ * Times stands in for the serif and follows Mapped's own rule that body copy
+ * on light surfaces is a serif; Helvetica carries the small-caps labels, which
+ * is what --font-ui does in the app.
+ */
+
 /** A4 in points, which is jsPDF's unit here. */
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const MARGIN = 56;
-const TEXT_W = PAGE_W - MARGIN * 2;
-/** Where the footer starts, and therefore where the text has to stop. */
-const BOTTOM = PAGE_H - 74;
+const MARGIN = 54;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+/** Where the footer starts, and therefore where the content has to stop. */
+const BOTTOM = PAGE_H - 70;
 
-const BODY_SIZE = 10.5;
-const BODY_LEAD = 15.5;
+/** A bubble never runs the full measure — the asymmetry is what says "chat". */
+const BUBBLE_MAX = CONTENT_W * 0.86;
+const PAD_X = 15;
+const PAD_Y = 12;
+const RADIUS = 13;
 
-/** Print colours, sampled from the app rather than invented. */
-const INK: [number, number, number] = [42, 35, 32];
-const INK_SOFT: [number, number, number] = [120, 110, 100];
-const BRASS: [number, number, number] = [150, 118, 46];
-const PLUM: [number, number, number] = [92, 70, 128];
-const RULE: [number, number, number] = [214, 206, 194];
+const BODY_SIZE = 10.3;
+const BODY_LEAD = 15;
+/** Between paragraphs inside one bubble. */
+const PARA_GAP = 6;
+
+type RGB = [number, number, number];
+
+/** Mapped's light theme, straight from globals.css. */
+const PAPER: RGB = [245, 240, 225];   // --background
+const CARD: RGB = [255, 255, 255];    // --background-card
+const INK: RGB = [26, 24, 21];        // --foreground
+const MUTED: RGB = [101, 94, 78];     // --foreground-muted
+const BRASS: RGB = [126, 101, 38];    // --brass
+const PLUM: RGB = [74, 37, 64];       // --plum
+const CREAM: RGB = [240, 230, 210];   // --cream (on plum)
+const RULE: RGB = [216, 208, 192];    // --border-card
+
+/** jsPDF's surface, as much of it as this file uses. */
+interface Doc {
+  addPage(): void;
+  setPage(n: number): void;
+  getNumberOfPages(): number;
+  setFont(name: string, style?: string): void;
+  setFontSize(n: number): void;
+  setTextColor(r: number, g: number, b: number): void;
+  setFillColor(r: number, g: number, b: number): void;
+  setDrawColor(r: number, g: number, b: number): void;
+  setLineWidth(n: number): void;
+  text(text: string, x: number, y: number): void;
+  line(x1: number, y1: number, x2: number, y2: number): void;
+  rect(x: number, y: number, w: number, h: number, style?: string): void;
+  roundedRect(x: number, y: number, w: number, h: number, rx: number, ry: number, style?: string): void;
+  lines(lines: number[][], x: number, y: number, scale?: number[], style?: string, closed?: boolean): void;
+  splitTextToSize(text: string, width: number): string[];
+  getTextWidth(text: string): number;
+  output(type: string): unknown;
+  setLineHeightFactor(n: number): void;
+}
+
+/**
+ * Mapped's four-pointed star, drawn rather than typed.
+ *
+ * The app's ✦ is not in any encoding a built-in PDF font can reach, and
+ * embedding a font for one glyph is absurd — so it is eight line segments.
+ */
+function star(doc: Doc, cx: number, cy: number, r: number, color: RGB) {
+  const w = r * 0.22;
+  doc.setFillColor(...color);
+  doc.lines(
+    [
+      [w, r - w], [r - w, w], [w - r, w], [-w, r - w],
+      [-w, w - r], [w - r, -w], [r - w, -w], [w, w - r],
+    ],
+    cx,
+    cy - r,
+    [1, 1],
+    "F",
+    true,
+  );
+}
 
 /**
  * Build the PDF.
@@ -254,7 +335,7 @@ const RULE: [number, number, number] = [214, 206, 194];
 export async function buildTranscriptPdf(opts: TranscriptOptions): Promise<Blob> {
   const { messages, userName, day, now = new Date() } = opts;
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
+  const doc = new jsPDF({ unit: "pt", format: "a4", compress: true }) as unknown as Doc;
   doc.setLineHeightFactor(1.3);
 
   const first = (userName ?? "").trim().split(/\s+/)[0] ?? "";
@@ -263,46 +344,61 @@ export async function buildTranscriptPdf(opts: TranscriptOptions): Promise<Blob>
 
   let y = MARGIN;
 
-  /** Make room for `need` points, starting a page if there isn't any. */
-  const room = (need: number) => {
-    if (y + need <= BOTTOM) return;
+  /** Cream paper, edge to edge. Every page, before anything is drawn on it. */
+  const paint = () => {
+    doc.setFillColor(...PAPER);
+    doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+  };
+
+  const newPage = () => {
     doc.addPage();
+    paint();
     y = MARGIN;
   };
 
-  const write = (text: string, size: number, color: [number, number, number], style = "normal", font = "helvetica") => {
+  /** Make room for `need` points, turning the page if there isn't any. */
+  const room = (need: number) => {
+    if (y + need > BOTTOM) newPage();
+  };
+
+  paint();
+
+  /** Wrap `text` at `width` in the given face, and report how tall it will be. */
+  const wrap = (text: string, width: number, size: number, font: string, style: string) => {
+    doc.setFont(font, style);
+    doc.setFontSize(size);
+    return doc.splitTextToSize(text, width);
+  };
+
+  /** A centred line of small-caps, with the brass star for company. */
+  const centred = (text: string, size: number, color: RGB, font = "helvetica", style = "bold") => {
     doc.setFont(font, style);
     doc.setFontSize(size);
     doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(text, TEXT_W) as string[];
-    const lead = size * 1.45;
-    // Keep at least two lines with whatever introduced them, so a paragraph
-    // never starts with one orphan line at the foot of a page.
-    room(Math.min(lines.length, 2) * lead);
-    for (const line of lines) {
-      room(lead);
-      doc.text(line, MARGIN, y + size);
-      y += lead;
-    }
+    const w = doc.getTextWidth(text);
+    doc.text(text, (PAGE_W - w) / 2, y + size);
+    return w;
   };
 
-  /* ── Title ── */
+  /* ── Title ──────────────────────────────────────────────────────────── */
+
+  star(doc, MARGIN + 5, y + 5, 5.5, BRASS);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...BRASS);
-  doc.text("M A P P E D", MARGIN, y + 8);
-  y += 24;
+  doc.text("M A P P E D", MARGIN + 18, y + 8.5);
+  y += 28;
 
   doc.setFont("times", "italic");
-  doc.setFontSize(21);
+  doc.setFontSize(23);
   doc.setTextColor(...INK);
-  doc.text("Conversation with Dolly", MARGIN, y + 16);
-  y += 32;
+  doc.text("Conversation with Dolly", MARGIN, y + 17);
+  y += 34;
 
-  // When the conversation happened, and when this copy was taken. They are
-  // usually the same day and then saying both is noise — but a transcript
-  // pulled out of the history list months later is exactly the case where the
-  // reader needs to know which conversation they are holding.
+  // When it happened and when this copy was taken. Usually the same day, and
+  // then saying both is noise — but a transcript pulled out of the history
+  // list months later is exactly when the reader needs to know which
+  // conversation they are holding.
   const longDate = (d: Date) =>
     d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   const saved = longDate(now);
@@ -312,67 +408,223 @@ export async function buildTranscriptPdf(opts: TranscriptOptions): Promise<Blob>
     ? longDate(new Date(Number(day!.slice(0, 4)), Number(day!.slice(5, 7)) - 1, Number(day!.slice(8, 10))))
     : null;
   const turns = messages.filter((m) => !m.notice && !m.crisis).length;
-  const parts = [
+  const subtitle = [
     youLabel === "You" ? null : youLabel,
     held && held !== saved ? `${held}, saved ${saved}` : `Saved ${saved}`,
     `${turns} message${turns === 1 ? "" : "s"}`,
-  ].filter(Boolean);
-  write(parts.join(" · "), 9, INK_SOFT);
-  y += 6;
-  doc.setDrawColor(...RULE);
-  doc.setLineWidth(0.6);
-  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+  ].filter(Boolean).join("  ·  ");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text(subtitle, MARGIN, y + 9);
   y += 20;
 
-  /* ── The conversation ── */
-  if (blocks.length === 0) {
-    write("This conversation is empty.", BODY_SIZE, INK_SOFT, "italic");
-  }
-  for (const block of blocks) {
-    if (block.kind === "stamp") {
-      y += 8;
-      write(block.text.toUpperCase(), 8, INK_SOFT, "bold");
-      y += 4;
-    } else if (block.kind === "speaker") {
-      y += 10;
-      // Keep the name with the first lines of what they said.
-      room(BODY_LEAD * 3);
-      write(block.text, 8.5, block.who === "dolly" ? PLUM : BRASS, "bold");
-      y += 2;
-    } else if (block.kind === "note") {
-      y += 6;
-      write(block.text, 9.5, INK_SOFT, "italic");
-      y += 2;
-    } else {
-      write(block.text, BODY_SIZE, INK, "normal");
-      y += 4;
+  doc.setDrawColor(...BRASS);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+  y += 22;
+
+  /* ── The conversation ───────────────────────────────────────────────── */
+
+  /**
+   * One speaker's turn, as a bubble.
+   *
+   * Paragraphs stay inside one bubble, the way they do on screen. A turn
+   * longer than a page is split, and each piece gets its own bubble — which
+   * reads honestly as "this carries on" rather than as a rectangle sliced by
+   * the paper's edge.
+   */
+  const drawBubble = (paras: string[], who: "you" | "dolly") => {
+    const mine = who === "you";
+    const inner = BUBBLE_MAX - PAD_X * 2;
+    const font = "times";
+
+    // Wrap first, then size the bubble to the longest line it actually has —
+    // a three-word answer should be a three-word bubble, not a full-width bar.
+    const wrapped = paras.map((t) => wrap(t, inner, BODY_SIZE, font, "normal"));
+    const flat: { text: string; gapAfter: boolean }[] = [];
+    wrapped.forEach((lines, i) => {
+      lines.forEach((text, j) => {
+        flat.push({ text, gapAfter: j === lines.length - 1 && i < wrapped.length - 1 });
+      });
+    });
+    doc.setFont(font, "normal");
+    doc.setFontSize(BODY_SIZE);
+    const widest = flat.reduce((m, l) => Math.max(m, doc.getTextWidth(l.text)), 0);
+    const boxW = Math.min(BUBBLE_MAX, Math.max(widest + PAD_X * 2, 68));
+
+    let i = 0;
+    while (i < flat.length) {
+      // At least two lines of a turn travel together; one orphan line in its
+      // own bubble at the foot of a page looks like a mistake.
+      const minimum = PAD_Y * 2 + BODY_LEAD * Math.min(2, flat.length - i);
+      if (y + minimum > BOTTOM) newPage();
+
+      // How many lines fit in what is left of this page.
+      let count = 0;
+      let used = PAD_Y * 2;
+      while (i + count < flat.length) {
+        const add = BODY_LEAD + (flat[i + count].gapAfter ? PARA_GAP : 0);
+        if (y + used + add > BOTTOM) break;
+        used += add;
+        count += 1;
+      }
+      if (count === 0) count = 1;
+
+      let h = PAD_Y * 2;
+      for (let k = 0; k < count; k += 1) h += BODY_LEAD + (flat[i + k].gapAfter ? PARA_GAP : 0);
+
+      const x = mine ? PAGE_W - MARGIN - boxW : MARGIN;
+      if (mine) {
+        // The reader's own words: a white card with a hairline, which is what
+        // --background-card over --background looks like.
+        doc.setFillColor(...CARD);
+        doc.setDrawColor(...RULE);
+        doc.setLineWidth(0.6);
+        doc.roundedRect(x, y, boxW, h, RADIUS, RADIUS, "FD");
+      } else {
+        // Dolly's bubble is plum in BOTH themes in the app, so it is plum here.
+        doc.setFillColor(...PLUM);
+        doc.roundedRect(x, y, boxW, h, RADIUS, RADIUS, "F");
+      }
+
+      doc.setFont(font, "normal");
+      doc.setFontSize(BODY_SIZE);
+      doc.setTextColor(...(mine ? INK : CREAM));
+      let ty = y + PAD_Y;
+      for (let k = 0; k < count; k += 1) {
+        doc.text(flat[i + k].text, x + PAD_X, ty + BODY_SIZE);
+        ty += BODY_LEAD + (flat[i + k].gapAfter ? PARA_GAP : 0);
+      }
+
+      y += h;
+      i += count;
+      if (i < flat.length) y += 5;
     }
+  };
+
+  /** "DOLLY · 9:14 PM", over the bubble, on the bubble's own side. */
+  const drawSpeaker = (text: string, who: "you" | "dolly") => {
+    room(BODY_LEAD * 3);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.8);
+    doc.setTextColor(...(who === "dolly" ? PLUM : BRASS));
+    const w = doc.getTextWidth(text);
+    doc.text(text, who === "you" ? PAGE_W - MARGIN - w : MARGIN, y + 8);
+    y += 13;
+  };
+
+  if (blocks.length === 0) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(BODY_SIZE);
+    doc.setTextColor(...MUTED);
+    doc.text("This conversation is empty.", MARGIN, y + BODY_SIZE);
+    y += BODY_LEAD;
   }
 
-  /* ── What this is, said on the page itself ── */
-  y += 14;
-  room(40);
+  // Consecutive body blocks after a speaker belong to that speaker's turn, and
+  // share one bubble — the way they share one bubble on screen.
+  for (let b = 0; b < blocks.length; b += 1) {
+    const block = blocks[b];
+
+    if (block.kind === "stamp") {
+      y += 12;
+      room(30);
+      // A rule either side of the date, with the star sitting in the gap.
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.6);
+      const label = block.text.toUpperCase();
+      const w = doc.getTextWidth(label);
+      const mid = PAGE_W / 2;
+      doc.setDrawColor(...RULE);
+      doc.setLineWidth(0.5);
+      doc.line(MARGIN, y + 4, mid - w / 2 - 16, y + 4);
+      doc.line(mid + w / 2 + 16, y + 4, PAGE_W - MARGIN, y + 4);
+      star(doc, mid - w / 2 - 9, y + 4, 2.6, BRASS);
+      star(doc, mid + w / 2 + 9, y + 4, 2.6, BRASS);
+      centred(label, 7.6, MUTED);
+      y += 20;
+      continue;
+    }
+
+    if (block.kind === "note") {
+      y += 8;
+      const lines = wrap(block.text, CONTENT_W - 60, 9.2, "times", "italic");
+      room(lines.length * 13 + 6);
+      doc.setFont("times", "italic");
+      doc.setFontSize(9.2);
+      doc.setTextColor(...MUTED);
+      for (const line of lines) {
+        const w = doc.getTextWidth(line);
+        doc.text(line, (PAGE_W - w) / 2, y + 9.2);
+        y += 13;
+      }
+      y += 6;
+      continue;
+    }
+
+    if (block.kind === "speaker") {
+      y += 11;
+      drawSpeaker(block.text, block.who);
+      const paras: string[] = [];
+      while (b + 1 < blocks.length && blocks[b + 1].kind === "body") {
+        b += 1;
+        paras.push(blocks[b].text);
+      }
+      if (paras.length) drawBubble(paras, block.who);
+      continue;
+    }
+
+    // A body block with no speaker before it — can't happen today, but it
+    // should print rather than disappear if it ever does.
+    drawBubble([block.text], block.who);
+  }
+
+  /* ── What this is, said on the page itself ──────────────────────────── */
+
+  y += 20;
+  room(56);
   doc.setDrawColor(...RULE);
+  doc.setLineWidth(0.5);
   doc.line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 12;
-  write(
-    "Dolly is an AI, not a person. She uses astrology as a lens, not a prediction — you always have agency. "
-      + "This transcript is a record of a conversation, not advice, a diagnosis or a forecast.",
-    8.5,
-    INK_SOFT,
+  y += 14;
+  const closing = wrap(
+    "Dolly is an AI, not a person. She uses astrology as a lens, not a prediction — you always have "
+      + "agency. This transcript is a record of a conversation: not advice, not a diagnosis, not a forecast.",
+    CONTENT_W,
+    8.6,
+    "times",
     "italic",
   );
+  doc.setFont("times", "italic");
+  doc.setFontSize(8.6);
+  doc.setTextColor(...MUTED);
+  for (const line of closing) {
+    doc.text(line, MARGIN, y + 8.6);
+    y += 12;
+  }
 
-  /* ── Footers, once the page count is finally known ── */
+  /* ── Footers, once the page count is finally known ──────────────────── */
+
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p += 1) {
     doc.setPage(p);
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, PAGE_H - 50, PAGE_W - MARGIN, PAGE_H - 50);
+
+    star(doc, MARGIN + 3, PAGE_H - 36, 3.2, BRASS);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.4);
+    doc.setTextColor(...BRASS);
+    doc.text("M A P P E D", MARGIN + 12, PAGE_H - 33.5);
+
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...INK_SOFT);
-    doc.text("Mapped · Dolly", MARGIN, PAGE_H - 34);
+    doc.setFontSize(7.4);
+    doc.setTextColor(...MUTED);
     const label = `${p} of ${pages}`;
-    doc.text(label, PAGE_W - MARGIN - doc.getTextWidth(label), PAGE_H - 34);
+    doc.text(label, PAGE_W - MARGIN - doc.getTextWidth(label), PAGE_H - 33.5);
   }
 
   return doc.output("blob") as Blob;

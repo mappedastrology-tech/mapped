@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { AI_SHARED_ITEMS } from "../src/lib/aiConsent";
 
 /**
  * Dolly has a name, a portrait, a first-person voice and a warm manner. All
@@ -76,7 +77,7 @@ test("the privacy page lists what actually gets sent", () => {
   // names and charts of third parties who never agreed to anything.
   const src = read("src/app/privacy/page.tsx");
   for (const thing of [
-    /Recent journal entries/,
+    /Your journal entries/,
     /latest tarot or oracle pull/,
     /People you have saved as connections/,
     /summary Dolly keeps about you/,
@@ -84,6 +85,28 @@ test("the privacy page lists what actually gets sent", () => {
   ]) {
     assert.match(src, thing, `privacy page omits: ${thing}`);
   }
+
+  // And it does not UNDERSTATE them. The page used to say Dolly was sent
+  // "short excerpts" of the latest entries, which was true of the old
+  // 160-character sample and is not true of the journal she is given now. A
+  // disclosure that undersells what leaves the device is worse than none.
+  assert.doesNotMatch(src, /short excerpts/i, "the privacy page still describes journal excerpts");
+  assert.match(src, /full text/i, "the privacy page does not say the entries are sent in full");
+  // Burn entries are promised to leave no trace; the page has to say so.
+  assert.match(src, /burn[\s\S]{0,80}never (stored|sent)/i, "the privacy page does not mention burned entries");
+});
+
+test("the consent screen's list matches what the privacy page describes", () => {
+  // The consent screen is the one most people actually read, and it said
+  // journal entries went "when you ask for a reflection or a prompt" long
+  // after they started going with every message.
+  const items = AI_SHARED_ITEMS.join("\n");
+  assert.match(items, /journal entries/i, "the consent screen does not mention the journal");
+  assert.doesNotMatch(
+    items,
+    /journal[\s\S]{0,60}when you ask/i,
+    "the consent screen still says the journal only goes when asked for",
+  );
 });
 
 test("the stored memory can be read and deleted, as the privacy page claims", () => {
