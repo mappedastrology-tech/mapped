@@ -39,7 +39,13 @@ const SIGN_GLYPH: Record<string, string> = {
  * Dolly's own first person, so they were told a permanent plan boundary was a
  * temporary glitch and invited to keep trying something that would never work.
  */
-type Msg = { from: "dolly" | "you"; text: string; notice?: boolean; crisis?: boolean };
+/**
+ * `at` is when the message landed. Nothing on screen shows it — the desktop
+ * thread is one sitting — but a saved transcript without dates is a wall of
+ * text you cannot place, and this is the only record of when any of it was
+ * said.
+ */
+type Msg = { from: "dolly" | "you"; text: string; at: number; notice?: boolean; crisis?: boolean };
 /**
  * The suggested questions come from lib/dollyStarters now.
  *
@@ -48,7 +54,7 @@ type Msg = { from: "dolly" | "you"; text: string; notice?: boolean; crisis?: boo
  * attached that nothing ever read, left over from the design prototype. The
  * Cancer question is wrong for roughly eleven readers in twelve.
  */
-const GREET: Msg = { from: "dolly", text: "Hi — I’m Dolly, your astrological guide. I read your birth chart and the live sky to answer in plain, kind language. Ask me anything, or tap a question below to begin." };
+const GREET: Msg = { from: "dolly", at: 0, text: "Hi — I’m Dolly, your astrological guide. I read your birth chart and the live sky to answer in plain, kind language. Ask me anything, or tap a question below to begin." };
 
 
 export default function WebDolly() {
@@ -77,7 +83,7 @@ export default function WebDolly() {
    * So it is gone rather than conditional — a branch on a question with one
    * answer is just a slower way to be wrong.
    */
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Cross-feature context loaded for signed-in users so web Dolly knows the
   // same things the mobile Dolly does — chart, people, and live transits.
@@ -108,6 +114,9 @@ export default function WebDolly() {
    */
   const [aiConsent, setAiConsent] = useState<AiConsentState>("unknown");
   const [consentChecked, setConsentChecked] = useState(false);
+  /** Saving the conversation as a PDF transcript — see saveTranscript. */
+  const [savingTranscript, setSavingTranscript] = useState(false);
+  const [transcriptNote, setTranscriptNote] = useState<string | null>(null);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
   // Was an unconditional `scrollTop = scrollHeight` on every message change,
@@ -226,7 +235,7 @@ export default function WebDolly() {
      */
     const crisis = detectCrisis(userText);
     if (crisis) {
-      setMessages((m) => [...m, { from: "you", text: userText }, { from: "dolly", text: "", crisis: true }]);
+      setMessages((m) => [...m, { from: "you", text: userText, at: Date.now() }, { from: "dolly", text: "", at: Date.now(), crisis: true }]);
       setInput("");
       setAnnouncement(crisisAnnouncement());
       // Still sent, so a paid reader also gets Dolly's own careful answer
@@ -242,7 +251,7 @@ export default function WebDolly() {
     const history = messages
       .filter((m) => m !== GREET && !m.notice && !m.crisis && m.text.trim())
       .map((m) => ({ role: m.from === "dolly" ? "assistant" : "user", content: m.from === "dolly" ? dollyBody(m.text) : m.text }));
-    if (!crisis) setMessages((m) => [...m, { from: "you", text: userText }]);
+    if (!crisis) setMessages((m) => [...m, { from: "you", text: userText, at: Date.now() }]);
     setInput("");
     setTyping(true);
 
@@ -261,8 +270,8 @@ export default function WebDolly() {
     const fail = (text: string) => {
       setMessages((m) => {
         const last = m[m.length - 1];
-        if (last?.from === "dolly" && last.text === "") return [...m.slice(0, -1), { from: "dolly" as const, text }];
-        return [...m, { from: "dolly" as const, text }];
+        if (last?.from === "dolly" && last.text === "") return [...m.slice(0, -1), { from: "dolly" as const, text, at: last.at || Date.now() }];
+        return [...m, { from: "dolly" as const, text, at: Date.now() }];
       });
     };
 
@@ -292,7 +301,7 @@ export default function WebDolly() {
           const text = typeof body.error === "string" && body.error.trim()
             ? body.error
             : "Dolly isn't available on your plan right now.";
-          setMessages((m) => [...m, { from: "dolly" as const, text, notice: true }]);
+          setMessages((m) => [...m, { from: "dolly" as const, text, at: Date.now(), notice: true }]);
           return;
         }
         throw new Error(`status ${res.status}`);
@@ -303,7 +312,7 @@ export default function WebDolly() {
         const ok = await res.json().catch(() => null);
         if (ok?.crisis) {
           setTyping(false);
-          setMessages((m) => (m.some((x) => x.crisis) ? m : [...m, { from: "dolly" as const, text: "", crisis: true }]));
+          setMessages((m) => (m.some((x) => x.crisis) ? m : [...m, { from: "dolly" as const, text: "", at: Date.now(), crisis: true }]));
           setAnnouncement(crisisAnnouncement());
           return;
         }
@@ -323,8 +332,8 @@ export default function WebDolly() {
             const p = JSON.parse(data);
             if (typeof p.text === "string" && p.text) {
               full += p.text;
-              if (!started) { started = true; setTyping(false); setMessages((m) => [...m, { from: "dolly", text: full }]); }
-              else setMessages((m) => { const c = m.slice(); c[c.length - 1] = { from: "dolly", text: full }; return c; });
+              if (!started) { started = true; setTyping(false); setMessages((m) => [...m, { from: "dolly", text: full, at: Date.now() }]); }
+              else setMessages((m) => { const c = m.slice(); const last = c[c.length - 1]; c[c.length - 1] = { from: "dolly", text: full, at: last?.at || Date.now() }; return c; });
             }
           } catch { /* skip malformed chunk */ }
         }
@@ -347,6 +356,63 @@ export default function WebDolly() {
     }
   };
   const send = () => { const t = input.trim(); if (t) sendMsg(t); };
+
+  /**
+   * The composer grows with what is in it.
+   *
+   * Enter writes a line here now, so the box has to be able to hold the lines.
+   * Written straight to the DOM: it is a measurement the browser has already
+   * made, and routing it through state would lay the page out twice per
+   * keystroke.
+   */
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [input]);
+
+  /**
+   * Save the conversation as a PDF transcript.
+   *
+   * Same builder as the phone — one document, whichever screen it was saved
+   * from. jsPDF is behind a dynamic import so it never reaches the bundle that
+   * has to parse before Dolly can say hello.
+   */
+  const saveTranscript = async () => {
+    const real = messages.filter((m) => m.at > 0 || m.from === "you");
+    if (!real.length || savingTranscript) return;
+    setSavingTranscript(true);
+    setTranscriptNote(null);
+    try {
+      const [transcript, files] = await Promise.all([
+        import("@/lib/dollyTranscript"),
+        import("@/lib/saveFile"),
+      ]);
+      const blob = await transcript.buildTranscriptPdf({
+        messages: messages.map((m) => ({
+          role: m.from === "dolly" ? ("assistant" as const) : ("user" as const),
+          content: m.text,
+          timestamp: m.at,
+          notice: m.notice,
+          crisis: m.crisis,
+        })),
+      });
+      await files.saveOrShareFile(blob, transcript.transcriptFilename(), {
+        title: "Conversation with Dolly",
+        text: "My conversation with Dolly, from Mapped.",
+      });
+      setTranscriptNote("Transcript saved.");
+    } catch (err) {
+      setTranscriptNote(
+        (err as Error)?.name === "FileSaveUnsupportedError"
+          ? (err as Error).message
+          : "Couldn't save that transcript. Try again?",
+      );
+    } finally {
+      setSavingTranscript(false);
+    }
+  };
 
   /**
    * Permission before the chat, as on mobile ((tabs)/dolly/page.tsx): a
@@ -543,27 +609,65 @@ export default function WebDolly() {
             ))}
           </div>
 
+          {/* How the transcript save went. Saving leaves the page — a Files
+              dialog, a downloads shelf — and on some devices cannot happen at
+              all; a button that spins and settles says nothing either way. */}
+          {transcriptNote && (
+            <div role="status" style={{ padding: "8px 20px 0", textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)" }}>
+              {transcriptNote}
+            </div>
+          )}
+
           {/* input */}
-          <div style={{ padding: "14px 20px 20px", borderTop: "1px solid var(--line)", display: "flex", gap: 12 }}>
+          <div style={{ padding: "14px 20px 20px", borderTop: "1px solid var(--line)", display: "flex", gap: 12, alignItems: "flex-end" }}>
             {/* A placeholder is not a label: it disappears on the first
                 keystroke, and a screen reader announced this only as "edit
                 text". */}
             <label htmlFor="web-dolly-input" className="sr-only">Ask Dolly a question about your chart</label>
-            <input
+            {/*
+              A textarea, and Enter writes a line in it.
+
+              This was a single-line <input> where Enter sent, so the one
+              question you could ask Dolly here was a question you could fit on
+              one line — paste a paragraph and the newlines were silently
+              dropped. It now matches the phone: Enter is a new line,
+              Cmd/Ctrl+Enter sends, and so does the button.
+            */}
+            <textarea
               id="web-dolly-input"
               ref={inputRef}
               value={input}
-              // isComposing: without this, Enter while an IME candidate window
-              // is open sends the half-built word instead of accepting it, so
-              // Japanese, Chinese and Korean input was unusable here.
+              rows={1}
+              enterKeyHint="enter"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !(e.nativeEvent as unknown as KeyboardEvent).isComposing) send();
+                if (e.key !== "Enter") return;
+                // isComposing: without this, Enter while an IME candidate
+                // window is open acts on the half-built word instead of
+                // accepting it, so Japanese, Chinese and Korean input is
+                // unusable.
+                if ((e.nativeEvent as unknown as KeyboardEvent).isComposing) return;
+                if (e.metaKey || e.ctrlKey) { e.preventDefault(); send(); }
               }}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Dolly anything about your chart…"
-              style={{ flex: 1, background: "var(--soft)", border: "1px solid var(--hair)", borderRadius: 999, padding: "13px 20px", color: "var(--fg)", fontFamily: "var(--wbody)", fontSize: 14.5, outline: "none" }}
+              title="Send with ⌘/Ctrl + Enter"
+              style={{ flex: 1, background: "var(--soft)", border: "1px solid var(--hair)", borderRadius: input.includes("\n") ? 18 : 999, padding: "13px 20px", color: "var(--fg)", fontFamily: "var(--wbody)", fontSize: 14.5, outline: "none", resize: "none", minHeight: 48, maxHeight: 200, lineHeight: 1.5 }}
             />
-            <button onClick={send} aria-label="Send message" style={{ width: 48, height: 48, flex: "0 0 auto", borderRadius: "50%", border: "none", cursor: "pointer", background: "var(--brass)", color: "var(--btn-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Take it with you. Desktop is where a person actually files a
+                PDF, and it had no way to get one out at all. */}
+            <button
+              onClick={saveTranscript}
+              disabled={savingTranscript}
+              aria-label="Save this conversation as a PDF transcript"
+              title="Save as PDF"
+              style={{ width: 48, height: 48, flex: "0 0 auto", borderRadius: "50%", cursor: savingTranscript ? "default" : "pointer", background: "var(--soft)", border: "1px solid var(--hair)", color: "var(--fg2)", opacity: savingTranscript ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M7 10l5 5 5-5M12 15V3" />
+              </svg>
+            </button>
+            <button onClick={send} aria-label="Send message" title="Send (⌘/Ctrl + Enter)" style={{ width: 48, height: 48, flex: "0 0 auto", borderRadius: "50%", border: "none", cursor: "pointer", background: "var(--brass)", color: "var(--btn-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
             </button>
           </div>

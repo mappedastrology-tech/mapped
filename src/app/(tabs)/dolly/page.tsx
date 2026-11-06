@@ -107,6 +107,9 @@ interface ConnectionContext {
  */
 const FOLD_EVERY = 6;
 
+/** Tallest the composer grows before it scrolls internally, in px. */
+const COMPOSER_MAX_H = 180;
+
 /** Long enough that a divider means "you came back", not "you paused". */
 const GAP_MS = 60 * 60 * 1000;
 
@@ -212,6 +215,15 @@ export default function DollyTab() {
   const [announcement, setAnnouncement] = useState("");
   /** Shown when the paywall is in its 24h cooldown — see handleSend. */
   const [upgradeNotice, setUpgradeNotice] = useState(false);
+  /**
+   * Which conversation is being turned into a PDF right now, if any.
+   *
+   * A key rather than a boolean, because the history list offers the same
+   * action on every row and a shared flag would spin all forty of them.
+   */
+  const [savingTranscript, setSavingTranscript] = useState<string | null>(null);
+  /** What to say about the last save — success, or why it didn't happen. */
+  const [transcriptNote, setTranscriptNote] = useState<string | null>(null);
 
   // History drawer state
   const [showHistory, setShowHistory] = useState(false);
@@ -752,20 +764,46 @@ export default function DollyTab() {
       if (streamTimeout) clearTimeout(streamTimeout);
       setIsStreaming(false);
       abortRef.current = null;
-      // Back to where the person was typing. Focus used to land on <body>
-      // after every send and stay there.
-      inputRef.current?.focus();
+      // Put focus back ONLY if it fell on the floor.
+      //
+      // The problem being solved is real: focus used to land on <body> after
+      // every send and stay there, so a keyboard user had to Tab in from the
+      // top of the page to ask a second question. But focusing the composer
+      // unconditionally is its own bug on a phone — it summons the keyboard
+      // over the answer the moment Dolly finishes writing it, while the reader
+      // is still on the first line. Restoring focus to <body> and nowhere else
+      // keeps the keyboard fix and drops the ambush.
+      if (typeof document !== "undefined" && document.activeElement === document.body) {
+        inputRef.current?.focus();
+      }
     }
   }
 
+  /**
+   * Enter writes a new line. It does not send.
+   *
+   * It used to be the other way round, which is the convention for a one-line
+   * chat box and the wrong one for this box. People bring Dolly whole
+   * paragraphs — a situation, then the part that actually worries them — and
+   * every attempt at a second line fired off half a thought instead. The
+   * recovery (Shift+Enter) is invisible, and on a phone there is no Shift to
+   * hold at all, so a phone user simply could not write two lines.
+   *
+   * So: Enter is a new line everywhere, the send button is the way to send,
+   * and Cmd/Ctrl+Enter sends from the keyboard for anyone who wants it.
+   */
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== "Enter") return;
     // isComposing: while an IME is open, Enter commits the candidate word.
     // Without this check a Japanese, Chinese or Korean speaker cannot type a
-    // sentence — the first Enter sends the half-finished one.
-    if (e.key === "Enter" && !e.shiftKey && !(e.nativeEvent as KeyboardEvent).isComposing) {
+    // sentence — the first Enter would act on the half-finished one.
+    if ((e.nativeEvent as KeyboardEvent).isComposing) return;
+    if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
       handleSend();
     }
+    // Plain Enter, and Shift+Enter: left alone, so the textarea does what a
+    // textarea does.
   }
 
   // Declared up here, not beside the sheet's markup: the early returns for the
@@ -818,7 +856,11 @@ export default function DollyTab() {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "24px";
-    const h = Math.min(el.scrollHeight, 120);
+    // 180, not 120. Enter writes a new line now, so a message of four or five
+    // lines is the normal case rather than the exception, and a box that
+    // stopped growing at two of them meant typing into a slot while the start
+    // of your own sentence scrolled out of sight.
+    const h = Math.min(el.scrollHeight, COMPOSER_MAX_H);
     el.style.height = `${h}px`;
     if (composerRef.current) composerRef.current.style.borderRadius = h > 52 ? "22px" : "99px";
   }, [input]);
@@ -832,6 +874,56 @@ export default function DollyTab() {
       foldMemory(messagesRef.current, true);
     };
   }, [foldMemory]);
+
+  /**
+   * Save a conversation as a PDF transcript.
+   *
+   * Everything heavy is behind a dynamic import: jsPDF is a third of a
+   * megabyte and the overwhelming majority of sessions never save anything, so
+   * it must not be in the bundle that has to parse before Dolly can say hello.
+   *
+   * `saveOrShareFile` rather than a synthetic `<a download>`, because the
+   * anchor does nothing at all inside WKWebView — the click resolves, nothing
+   * throws, and the person is left believing a file they never got was saved.
+   * That is three of the four platforms this ships to.
+   */
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (noteTimer.current) clearTimeout(noteTimer.current); }, []);
+
+  const saveTranscript = useCallback(
+    async (msgs: Message[], day?: string, key = "current") => {
+      if (!msgs.length || savingTranscript) return;
+      setSavingTranscript(key);
+      setTranscriptNote(null);
+      try {
+        const [transcript, files] = await Promise.all([
+          import("@/lib/dollyTranscript"),
+          import("@/lib/saveFile"),
+        ]);
+        const blob = await transcript.buildTranscriptPdf({ messages: msgs, userName, day });
+        await files.saveOrShareFile(blob, transcript.transcriptFilename(day), {
+          title: "Conversation with Dolly",
+          text: "My conversation with Dolly, from Mapped.",
+        });
+        setTranscriptNote("Transcript saved.");
+      } catch (err) {
+        // FileSaveUnsupportedError already carries a sentence written for the
+        // reader — repeating a generic failure over it would be worse, not
+        // safer. Matched by name because the class is behind the same dynamic
+        // import as the thing that threw it.
+        setTranscriptNote(
+          (err as Error)?.name === "FileSaveUnsupportedError"
+            ? (err as Error).message
+            : "Couldn't save that transcript. Try again?",
+        );
+      } finally {
+        setSavingTranscript(null);
+        if (noteTimer.current) clearTimeout(noteTimer.current);
+        noteTimer.current = setTimeout(() => setTranscriptNote(null), 6000);
+      }
+    },
+    [savingTranscript, userName],
+  );
 
   const closeLeave = useCallback(() => setShowLeavePrompt(false), []);
   useDialogKeys(showLeavePrompt, leaveRef, closeLeave);
@@ -1311,6 +1403,18 @@ export default function DollyTab() {
           </div>
         </div>
 
+        {/* Same status line as the chat view: saving leaves the app, and on
+            some devices it cannot happen at all. See the chat view's copy. */}
+        {transcriptNote && (
+          <div
+            role="status"
+            className="px-5 py-2 text-center shrink-0"
+            style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--foreground-secondary)", background: "var(--lib-track)" }}
+          >
+            {transcriptNote}
+          </div>
+        )}
+
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
           {historyLoading ? (
@@ -1417,6 +1521,34 @@ export default function DollyTab() {
                         </div>
                       </button>
 
+                      {/* Save as PDF (hidden in multi-select mode). Beside
+                          Delete on purpose: this list is where someone goes
+                          when they are thinking about a reading as a KEPT
+                          thing, and until now the only verb offered there was
+                          destroy it. */}
+                      {!selectMode && (
+                        <button
+                          onClick={() => saveTranscript(convo.messages, convo.day, convo.id)}
+                          disabled={savingTranscript !== null}
+                          className="pl-4 pr-1 py-3.5 flex-shrink-0 text-muted hover:text-foreground transition-colors self-stretch flex items-center disabled:opacity-45"
+                          aria-label={`Save as PDF: ${summaries[convo.id] || preview}`}
+                        >
+                          {savingTranscript === convo.id ? (
+                            <span
+                              className="block rounded-full animate-spin"
+                              style={{ width: 15, height: 15, border: "2px solid var(--border-card)", borderTopColor: "var(--terracotta)" }}
+                              role="status"
+                              aria-label="Saving"
+                            />
+                          ) : (
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <path d="M7 10l5 5 5-5M12 15V3" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+
                       {/* Delete button (hidden in multi-select mode) */}
                       {!selectMode && (
                         <button
@@ -1502,7 +1634,10 @@ export default function DollyTab() {
       />
 
       {/* Header — moon-orb avatar + DOLLY */}
-      <div className="relative z-10 flex items-center gap-3 px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-card)" }}>
+      {/* gap-2.5 and px-4, not gap-3 and px-5: the header carries a fourth
+          control now (save), and at 320px the four 42px buttons plus the old
+          gutters left the wordmark nowhere to go but off the edge. */}
+      <div className="relative z-10 flex items-center gap-2.5 px-4 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-card)" }}>
         <button
           onClick={openHistory}
           aria-label="Conversations"
@@ -1520,8 +1655,8 @@ export default function DollyTab() {
           <DollyAvatar size={44} float className="relative" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>DOLLY</h1>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="truncate" style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 500, letterSpacing: "0.04em", color: "var(--foreground)" }}>DOLLY</h1>
             {/*
               This was a glowing green dot. A green dot beside a name, next to
               a portrait, means one thing to everyone who has used a messaging
@@ -1533,6 +1668,7 @@ export default function DollyTab() {
             */}
             <span
               aria-label="Dolly is an AI assistant"
+              className="shrink-0"
               style={{
                 fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700,
                 letterSpacing: "0.12em", padding: "2px 6px", borderRadius: 4,
@@ -1548,6 +1684,38 @@ export default function DollyTab() {
               the wordmark above it and outweighed it. */}
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, lineHeight: 1.3, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--foreground-muted)", marginTop: 3 }}>your cosmic guide</p>
         </div>
+        {/*
+          Take it with you.
+          A conversation with Dolly is often the most personal thing in the
+          app — and until now the only copy of it lived in localStorage and a
+          Supabase row, behind an account, inside an app. No way to re-read it
+          on a laptop, bring it to a therapist, or keep it if the subscription
+          lapses. One tap, one PDF.
+        */}
+        {messages.length > 0 && (
+          <button
+            onClick={() => saveTranscript(messages, viewingDay ?? undefined)}
+            disabled={savingTranscript !== null}
+            aria-label="Save this conversation as a PDF transcript"
+            title="Save as PDF"
+            className="shrink-0 rounded-full flex items-center justify-center transition-transform active:scale-95 disabled:opacity-45"
+            style={{ width: 42, height: 42, background: "var(--surface-mid)", border: "0.5px solid var(--border-card)" }}
+          >
+            {savingTranscript === "current" ? (
+              <span
+                className="block rounded-full animate-spin"
+                style={{ width: 16, height: 16, border: "2px solid color-mix(in srgb, var(--lavender) 30%, transparent)", borderTopColor: "var(--lavender)" }}
+                role="status"
+                aria-label="Saving"
+              />
+            ) : (
+              <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--lavender)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M7 10l5 5 5-5M12 15V3" />
+              </svg>
+            )}
+          </button>
+        )}
         {messages.length > 0 && (
           <button
             onClick={() => setShowLeavePrompt(true)}
@@ -1561,6 +1729,25 @@ export default function DollyTab() {
           </button>
         )}
       </div>
+
+      {/*
+        How the transcript save went, said out loud.
+
+        Saving leaves the app entirely — a share sheet, a Files picker, a
+        downloads shelf — and on some devices it cannot happen at all. A button
+        that spins and then returns to rest, with the file somewhere or nowhere,
+        is the same silence that made the GDPR export feel broken. role="status"
+        so it is announced once rather than hunted for.
+      */}
+      {transcriptNote && (
+        <div
+          role="status"
+          className="relative z-10 px-5 py-2 text-center shrink-0"
+          style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--foreground-secondary)", background: "var(--lib-track)" }}
+        >
+          {transcriptNote}
+        </div>
+      )}
 
       {/* Leave prompt — offer to keep or discard the current reading.
           A real dialog: it was a bare div, so it had no role, Escape did
@@ -1927,7 +2114,11 @@ export default function DollyTab() {
         <button
           onClick={() => scrollToBottom()}
           className="absolute z-20 left-1/2 flex items-center gap-1.5 transition-transform active:scale-95"
-          style={{ bottom: 92, transform: "translateX(-50%)", padding: "8px 15px", borderRadius: 99, background: "var(--card)", border: "0.5px solid var(--border-card)", boxShadow: "0 6px 20px rgba(0,0,0,0.35)", color: "var(--foreground)", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600 }}
+          /* Rides up with the composer. At a fixed 92px it sat UNDER the
+             keyboard-cleared composer, so the one control that gets you back
+             to the newest message was unreachable exactly when the keyboard
+             was up. */
+          style={{ bottom: 92 + keyboardInset, transform: "translateX(-50%)", padding: "8px 15px", borderRadius: 99, background: "var(--card)", border: "0.5px solid var(--border-card)", boxShadow: "0 6px 20px rgba(0,0,0,0.35)", color: "var(--foreground)", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600 }}
         >
           {isStreaming ? "Dolly is writing" : "Latest"}
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2019,13 +2210,17 @@ export default function DollyTab() {
              */
             aria-busy={isStreaming}
             rows={1}
-            className="flex-1 bg-transparent text-foreground placeholder:text-muted resize-none outline-none max-h-[120px] py-1.5"
+            /* enterKeyHint="enter": the phone keyboard's return key says what
+               it now does. It was showing "send" on iOS and the arrow on
+               Android, both of which promised to send the message. */
+            enterKeyHint="enter"
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted resize-none outline-none py-1.5"
             /* 16px exactly. Below that, iOS zooms the page in when the field
                takes focus and leaves it zoomed — the usual "fix" for which is
                maximum-scale=1, which takes pinch-zoom away from everyone (see
                the viewport in layout.tsx). Sizing the input correctly solves
                it without costing anyone their magnification. */
-            style={{ minHeight: "24px", fontSize: 16 }}
+            style={{ minHeight: "24px", maxHeight: COMPOSER_MAX_H, fontSize: 16 }}
           />
           {/* Send, or Stop while she is writing. There was no way to stop a
               reply at all: the only route to the abort controller was "New
@@ -2040,6 +2235,10 @@ export default function DollyTab() {
             // without vanishing into the page.
             className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-45"
             aria-label={isStreaming ? "Stop generating" : "Send message"}
+            /* Says how to send without reaching for the button. Enter is a new
+               line now, and an unlabelled arrow is not going to tell anyone
+               that. */
+            title={isStreaming ? "Stop generating" : "Send (⌘/Ctrl + Enter)"}
             /* Brass, like every other primary action in the app. This was
                --journal-accent, borrowed from the Journal tab, which is
                lavender in dark but SLATE BLUE (#5b6180) in light — a colour

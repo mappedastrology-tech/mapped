@@ -10,9 +10,22 @@
 
 import { useState } from "react";
 import BugReportModal from "@/components/BugReportModal";
+import { useKeyboardOpen } from "@/lib/useKeyboardOpen";
 
 export default function BugReportButton({ liftAboveComposer = false }: { liftAboveComposer?: boolean }) {
   const [open, setOpen] = useState(false);
+  /**
+   * Out of the way while someone is typing.
+   *
+   * It is positioned against the bottom of the LAYOUT viewport, which on iOS
+   * Safari the keyboard does not shrink — so with a keyboard up it is not
+   * beside the composer any more, it is somewhere in the middle of whatever is
+   * left of the screen, floating over the text being written. A floating
+   * secondary affordance has no business there. The modal is left mounted so a
+   * report already open is not touched — only the floating trigger behind it
+   * goes away.
+   */
+  const keyboardOpen = useKeyboardOpen();
 
   return (
     <>
@@ -45,6 +58,9 @@ export default function BugReportButton({ liftAboveComposer = false }: { liftAbo
         onClick={() => setOpen(true)}
         aria-label="Report a bug"
         title="Report a bug"
+        // Inline, not a `hidden` attribute or a Tailwind class: the button's
+        // own `flex` class would win over the UA stylesheet's [hidden] rule.
+        style={keyboardOpen ? { display: "none" } : undefined}
         className={`fixed ${liftAboveComposer ? "bottom-[108px]" : "bottom-24 lg:bottom-6"} left-4 z-40 flex items-center justify-center w-10 h-10 rounded-full
                    border border-foreground/10 bg-surface/80 text-muted shadow-sm backdrop-blur-sm
                    hover:text-terracotta hover:border-terracotta/30 active:scale-95 transition-all`}
