@@ -122,11 +122,11 @@ export const PLANET_MEANINGS: Record<string, Record<string, string>> = {
     IC: "Your home is a hub of activity and conversation. Good for working from home and learning.",
   },
   "North Node": {
-    keyword: "Destiny & Soul Growth",
+    keyword: "Purpose & Growth",
     ASC: "You step into your purpose here. Life feels aligned, like you are finally moving in the right direction.",
-    DSC: "Fated partnerships. The people you meet here push you toward who you are becoming.",
+    DSC: "Purposeful partnerships. The people you meet here can push you toward who you are becoming.",
     MC: "Your career here feels like a calling, not just a job. Public recognition for being authentically yourself.",
-    IC: "Soul-level roots. This place connects you to something ancestral or deeply purposeful.",
+    IC: "Deep roots. This place can connect you to something ancestral or deeply purposeful.",
   },
 };
 

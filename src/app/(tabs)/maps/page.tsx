@@ -741,7 +741,7 @@ const TRANSIT_PAIR_MANIFESTS: Record<string, Record<string, string[]>> = {
   },
   "Neptune-Venus": {
     challenging: ["Falling for someone who isn't who they seem", "Financial decisions based on wishful thinking", "Aesthetic perfectionism that leads to constant dissatisfaction"],
-    harmonious: ["Romantic experiences that feel transcendent and fated", "Artistic inspiration at its most beautiful and flowing", "Attracting beauty, grace, and harmony effortlessly"],
+    harmonious: ["Romantic experiences that feel transcendent", "Artistic inspiration at its most beautiful and flowing", "Attracting beauty, grace, and harmony effortlessly"],
     neutral: ["Their ideal of love is being redefined from the ground up", "A creative or romantic experience that feels like a dream", "The line between love and illusion is very thin right now"],
   },
   "Jupiter-Saturn": {
@@ -1682,7 +1682,7 @@ const LIFE_AREAS: LifeArea[] = [
   },
   {
     id: "destiny",
-    label: "Destiny",
+    label: "Purpose",
     icon: "☊\uFE0E",
     question: "Where is my purpose?",
     planets: { "North Node": 5, Sun: 4, Jupiter: 3, Pluto: 1.5 },
@@ -1790,7 +1790,7 @@ const PLANET_PLAIN: Record<string, string> = {
   Uranus: "sudden change and independence",
   Neptune: "creativity, intuition, and illusion",
   Pluto: "deep transformation and power",
-  "North Node": "your life purpose and destiny",
+  "North Node": "your sense of purpose and direction",
 };
 
 /** Specific crossing descriptions for planet pairs — keyed by sorted planet names */
@@ -1841,13 +1841,13 @@ const CROSSING_DESCRIPTIONS: Record<string, string> = {
   "Neptune|Saturn": "Dreams meet reality. You learn which visions are worth building and which are illusions. Bittersweet clarity.",
   "Pluto|Saturn": "Power meets discipline. Transformation through hard work. You rebuild things from the ground up here.",
   "North Node|Sun": "Your identity aligns with your life purpose. You feel like you're finally heading in the right direction.",
-  "Moon|North Node": "Your emotional instincts guide you toward your destiny. Home and purpose feel connected.",
+  "Moon|North Node": "Your emotional instincts point toward your purpose. Home and direction feel connected.",
   "North Node|Venus": "Love and purpose align. Relationships here push you toward who you're meant to become.",
-  "Jupiter|North Node": "Growth and destiny combine. Opportunities arrive that feel fated. Expansion serves your larger purpose.",
+  "Jupiter|North Node": "Growth and purpose combine. Opportunities here can feel meaningful. Expansion serves your larger direction.",
   "Mars|North Node": "Your drive pushes you toward your purpose. Action feels meaningful and aligned here.",
-  "Mercury|North Node": "Communication and learning serve your destiny. The ideas you encounter here shape your path.",
+  "Mercury|North Node": "Communication and learning serve your purpose. The ideas you encounter here can shape your path.",
   "North Node|Saturn": "Difficult lessons that serve your growth. The hard stuff here is the point — it's building something lasting.",
-  "North Node|Pluto": "Deep transformation aligned with destiny. You shed old versions of yourself and step into who you're becoming.",
+  "North Node|Pluto": "Deep transformation aligned with purpose. You can shed old versions of yourself and step into who you're becoming.",
   "North Node|Uranus": "Your path takes unexpected turns that feel right in hindsight. Freedom and purpose merge.",
   "Neptune|North Node": "Spiritual calling. Your intuition guides you toward your purpose, but the path isn't always clear.",
 };
@@ -1880,7 +1880,7 @@ const LIFE_AREA_COPY: Record<LifeAreaId, CityDetail> = {
     headline: (city) => `${city} is strong for love`,
     description: (_city, top) => {
       if (top.planet === "Venus" && top.angle === "ASC") return "You become more magnetic here — people are drawn to you almost without reason. Expect more attention, more offers, more beauty in daily life.";
-      if (top.planet === "Venus" && top.angle === "DSC") return "This is where you meet them. Partnerships form more easily, attraction feels mutual and fated. Longer stays increase the chances.";
+      if (top.planet === "Venus" && top.angle === "DSC") return "Partnership energy is strong here. Connection can come more easily, and attraction can feel mutual.";
       if (top.planet === "Venus" && top.angle === "IC") return "A place for building something together. Domesticity feels sweet here, not stifling. Good for settling down with someone.";
       if (top.planet === "Moon" && top.angle === "DSC") return "Emotional connection comes easily here. Partnerships tend toward depth and intuition rather than surface chemistry.";
       return "Venus energy amplifies attraction and openness. You're more receptive to love here, and it's more receptive to you.";
@@ -1894,15 +1894,15 @@ const LIFE_AREA_COPY: Record<LifeAreaId, CityDetail> = {
   destiny: {
     headline: (city) => `${city} aligns with your purpose`,
     description: (_city, top) => {
-      if (top.planet === "North Node") return "Your soul's direction passes through here. Life feels more on-track, like you're moving toward something rather than away. Decisions come more clearly.";
-      if (top.planet === "Sun" && top.angle === "MC") return "You're seen here. Your public self and your true self align more easily. Career moves made from this place tend to stick.";
-      return "The energy here supports forward motion. Things you start tend to have weight and longevity.";
+      if (top.planet === "North Node") return "Your sense of direction runs through here. Life can feel more on-track, like you're moving toward something rather than away.";
+      if (top.planet === "Sun" && top.angle === "MC") return "You're seen here. Your public self and your true self can align more easily.";
+      return "The energy here supports forward motion and things that matter to you.";
     },
     reasoning: (_city, lines) => {
       const lineDesc = lines.slice(0, 2).map(l => `${l.planet} ${ANGLE_NAMES[l.angle] || l.angle}`).join(" and ");
-      return `Your ${lineDesc} line${lines.length > 1 ? "s pass" : " passes"} through here. The North Node represents your soul's evolutionary direction — where you're headed this lifetime, not where you've been. At the Midheaven, that purpose becomes visible to others.`;
+      return `Your ${lineDesc} line${lines.length > 1 ? "s pass" : " passes"} through here. Astrologers read the North Node as your direction of growth — where you're heading, not where you've been. At the Midheaven, that purpose becomes visible to others.`;
     },
-    caveat: "Destiny lines feel compelling but can be intense. Growth here isn't always comfortable — it's the 'right' path, not necessarily the easy one.",
+    caveat: "Purpose lines can feel compelling and intense. Growth here isn't always comfortable, and the meaningful path isn't necessarily the easy one.",
   },
   money: {
     headline: (city) => `${city} favors prosperity`,
