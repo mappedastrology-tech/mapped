@@ -469,6 +469,78 @@ export function voidOfCourseBetween(start: Date, end: Date): VoidOfCourse[] {
   return out;
 }
 
+// ─── Exact aspects ───────────────────────────────────────────────────────────
+
+/** Bodies the almanac reads aspects between: the Moon, then Sun through Pluto. */
+export const ASPECT_BODIES = ["Moon", "Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+
+export type PtolemaicAspect = "conjunction" | "sextile" | "square" | "trine" | "opposition";
+
+export interface ExactAspect {
+  /** The faster body for Moon aspects ("Moon"), else the first in ASPECT_BODIES order. */
+  a: string;
+  b: string;
+  aspect: PtolemaicAspect;
+  /** The instant the aspect perfects. */
+  at: Date;
+}
+
+const aspectDayCache = new Map<number, ExactAspect[]>();
+
+/**
+ * Every exact Ptolemaic aspect between any two ASPECT_BODIES in one UTC day.
+ *
+ * Same frame and aspect set as the void-of-course search (apparent geocentric
+ * longitude of date; conjunction, sextile, square, trine, opposition; no
+ * orbs — an aspect is the instant it perfects), so the Moon's last aspect here
+ * is the instant its void-of-course period begins.
+ *
+ * Longitudes are sampled every two hours and each crossing bisected to ten
+ * seconds. Two hours is short enough that no pair can perfect the same aspect
+ * twice inside one step: the Moon's speed relative to any planet stays under
+ * ~16°/day (≈1.3° per step), and planet pairs move far slower. A pair that
+ * reaches an exact aspect and turns back without crossing it (a near-miss at a
+ * station) is not an aspect and is not reported.
+ */
+function aspectsForUtcDay(dayMs: number): ExactAspect[] {
+  const hit = aspectDayCache.get(dayMs);
+  if (hit) return hit;
+  const steps = 12;
+  const times = Array.from({ length: steps + 1 }, (_, i) => dayMs + i * 2 * HOUR);
+  const lon = ASPECT_BODIES.map((b) => times.map((t) => apparentLongitude(b, new Date(t))));
+  const out: ExactAspect[] = [];
+  for (let i = 0; i < ASPECT_BODIES.length; i++) {
+    for (let j = i + 1; j < ASPECT_BODIES.length; j++) {
+      const A = ASPECT_BODIES[i], B = ASPECT_BODIES[j];
+      for (let k = 0; k < steps; k++) {
+        const sLo = norm360(lon[i][k] - lon[j][k]);
+        const sHi = norm360(lon[i][k + 1] - lon[j][k + 1]);
+        for (const { angle, name } of VOC_ASPECTS) {
+          const fLo = wrap180(sLo - angle), fHi = wrap180(sHi - angle);
+          if ((fLo < 0) === (fHi < 0) || Math.abs(fHi - fLo) >= 90) continue;
+          const at = bisect(times[k], times[k + 1], (x) => wrap180(norm360(apparentLongitude(A, new Date(x)) - apparentLongitude(B, new Date(x))) - angle), 10 * 1000);
+          // [dayMs, next dayMs): a crossing exactly on the boundary belongs to one day only.
+          if (at >= dayMs && at < dayMs + DAY) out.push({ a: A, b: B, aspect: name as PtolemaicAspect, at: new Date(at) });
+        }
+      }
+    }
+  }
+  out.sort((x, y) => x.at.getTime() - y.at.getTime());
+  aspectDayCache.set(dayMs, out);
+  return out;
+}
+
+/** Exact aspects with start <= at < end, earliest first. Optionally only those involving `body`. */
+export function exactAspectsBetween(start: Date, end: Date, body?: string): ExactAspect[] {
+  const out: ExactAspect[] = [];
+  for (let d = Math.floor(start.getTime() / DAY) * DAY; d < end.getTime(); d += DAY) {
+    for (const x of aspectsForUtcDay(d)) {
+      if (x.at >= start && x.at < end && (!body || x.a === body || x.b === body)) out.push(x);
+    }
+  }
+  return out;
+}
+
 // ─── Local days ──────────────────────────────────────────────────────────────
 
 /**

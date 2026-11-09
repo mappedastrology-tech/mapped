@@ -576,6 +576,22 @@ function detectCombustPlanets(planets: Planet[]): CombustStatus[] {
 
 // ─── Essential Dignities ───────────────────────────────────────────────────────
 
+/**
+ * One planet's essential dignity in one sign, from the tables above (Sun
+ * through Saturn, traditional rulerships; Mercury in Virgo is domicile and
+ * exaltation, reported as domicile). `sign` may be the three-letter
+ * abbreviation ("Lib") or the full name ("Libra"). The same answer the chart
+ * page gives, so the almanac and the chart never disagree about a planet.
+ */
+export function essentialDignity(planet: string, sign: string): PlanetDignity['dignity'] {
+  const s = sign.slice(0, 3);
+  if (DOMICILE[planet]?.includes(s)) return 'domicile';
+  if (EXALTATION[planet] === s) return 'exaltation';
+  if (DETRIMENT[planet]?.includes(s)) return 'detriment';
+  if (FALL[planet] === s) return 'fall';
+  return 'peregrine';
+}
+
 function computeDignities(planets: Planet[]): PlanetDignity[] {
   const results: PlanetDignity[] = [];
 

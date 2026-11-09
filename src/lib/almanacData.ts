@@ -108,6 +108,7 @@ import {
   stationsBetween, ingressesBetween, eclipsesBetween, retrogradeAt, retrogradePeriodsBetween,
 } from "@/lib/astro/skyCalendar";
 import * as Astronomy from "astronomy-engine";
+import { readCategoryForDay, readActivityForDay, overallDayScore, ACTIVITY_PROFILE, type CategoryReason } from "@/lib/almanacCategories";
 
 // ─── MOON SIGN ACTIVITIES (curated per specification) ─────────────────────────
 
@@ -183,7 +184,7 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
     { activity: "Collaborating on a shared project", icon: "👥" },
   ],
   Scorpio: [
-    { activity: "Quitting a bad habit", icon: "🔥" },
+    { activity: "Asking the question under the question", icon: "🔥" },
     { activity: "Doing shadow work or therapy", icon: "🪞" },
     { activity: "Having a deep conversation", icon: "🌊" },
     { activity: "Journaling about what you're ready to release", icon: "🖋️" },
@@ -1003,28 +1004,16 @@ export interface ActivityDetail {
   activity: string;
   type: "good" | "skip";
   score: number;
+  /** Favorable / Mixed / Quiet */
+  word: string;
   scoreContext: string;
   factors: ActivityFactor[];
   bestWindow: BestWindow | null;
+  /** Why there is no window, when there is none. */
+  windowNote: string | null;
   personalTransit: string | null;
   historyNote: string | null;
 }
-
-/** Moon sign alignment scores for activity types */
-const SIGN_ACTIVITY_ALIGNMENT: Record<string, Record<string, number>> = {
-  Aries: { action: 4, communication: 2, creativity: 3, patience: -2, planning: 1 },
-  Taurus: { action: 1, communication: 2, creativity: 3, patience: 4, planning: 3 },
-  Gemini: { action: 2, communication: 4, creativity: 3, patience: -1, planning: 2 },
-  Cancer: { action: 1, communication: 2, creativity: 3, patience: 3, planning: 2 },
-  Leo: { action: 3, communication: 3, creativity: 4, patience: 1, planning: 2 },
-  Virgo: { action: 2, communication: 2, creativity: 1, patience: 3, planning: 4 },
-  Libra: { action: 1, communication: 3, creativity: 3, patience: 2, planning: 3 },
-  Scorpio: { action: 3, communication: 2, creativity: 3, patience: 2, planning: 3 },
-  Sagittarius: { action: 4, communication: 3, creativity: 2, patience: -1, planning: 1 },
-  Capricorn: { action: 2, communication: 1, creativity: 1, patience: 3, planning: 4 },
-  Aquarius: { action: 3, communication: 3, creativity: 4, patience: 0, planning: 2 },
-  Pisces: { action: 0, communication: 2, creativity: 4, patience: 3, planning: 1 },
-};
 
 type ActivityCategory = "action" | "communication" | "creativity" | "patience" | "planning";
 
@@ -1103,7 +1092,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "curating something beautiful a playlist a shelf": "creativity",
   "collaborating on a shared project": "communication",
   // Scorpio
-  "quitting a bad habit": "action",
+  "asking the question under the question": "communication",
   "doing shadow work or therapy": "patience",
   "having a deep conversation": "communication",
   "journaling about what you re ready to release": "patience",
@@ -1220,160 +1209,48 @@ function getActivityCategory(activity: string): string {
   return ACTIVITY_CATEGORY[normalizeActivity(activity)] ?? categorizeByKeyword(activity.toLowerCase());
 }
 
-/** Planet ruler descriptions keyed by day-of-week */
-const PLANET_ASPECT_DESCRIPTIONS: Record<number, { label: string; goodDesc: string; skipDesc: string }> = {
-  0: { label: "Sun trine Moon", goodDesc: "Solar vitality harmonizes with lunar instinct, giving clarity and confidence.", skipDesc: "Solar dominance overwhelms subtlety; assertive energy clashes with what needs gentleness." },
-  1: { label: "Moon conjunct Neptune", goodDesc: "Emotional depth is amplified; intuition runs clear and strong.", skipDesc: "Boundaries dissolve easily today; discernment is clouded." },
-  2: { label: "Mars sextile Jupiter", goodDesc: "Directed action meets expansive opportunity. Momentum builds naturally.", skipDesc: "Restless energy pushes too fast; impulsiveness undermines careful thought." },
-  3: { label: "Mercury trine Pluto", goodDesc: "Mental focus reaches rare depth. Words carry weight and penetrate.", skipDesc: "Over-analysis creates paralysis; mental intensity becomes obsessive loops." },
-  4: { label: "Jupiter trine Venus", goodDesc: "Abundance flows easily. Social grace and generosity are highlighted.", skipDesc: "Excess and overindulgence tempt; boundaries loosen when they shouldn't." },
-  5: { label: "Venus sextile Saturn", goodDesc: "Beauty and discipline combine; lasting commitments feel natural.", skipDesc: "Coldness or rigidity creeps into what should be warm and open." },
-  6: { label: "Saturn trine Neptune", goodDesc: "Structure meets vision; practical mysticism and patient faith.", skipDesc: "Heaviness dampens enthusiasm; the weight of responsibility feels isolating." },
-};
-
+/**
+ * The reading behind one "Good for today" / "Hold off on" line, from the real
+ * sky (almanacCategories.readActivityForDay).
+ *
+ * This used to show a fixed invented aspect for each weekday (a Sun–Moon trine
+ * every Sunday, "Mars sextile Jupiter" every Tuesday) with a random "Exact at"
+ * time, a random best window, a random "next comparable day" and seeded
+ * weights. Every factor now names a configuration that is actually in the sky
+ * that day, with its computed time; the window is computed or absent.
+ */
 export function getActivityDetail(
   activity: string,
   type: "good" | "skip",
   date: Date,
-  moonSign: string,
-  sky: TodaySky
+  _moonSign?: string,
+  _sky?: TodaySky,
+  timeZone?: string | null,
 ): ActivityDetail {
-  const seed = hashForDetail(activity, date);
-  const category = getActivityCategory(activity);
-  const element = SIGN_ELEMENTS[moonSign] || "earth";
-  const dayOfWeekIdx = date.getDay();
-  const moonPhase = sky.moonPhase;
-  const isWaxing = moonPhase.phase.startsWith("waxing") || moonPhase.phase === "new" || moonPhase.phase === "first-quarter";
-
-  // ── Compute factors ──
-  const factors: ActivityFactor[] = [];
-
-  // 1. Moon sign factor (always present)
-  const signAlignment = SIGN_ACTIVITY_ALIGNMENT[moonSign] || SIGN_ACTIVITY_ALIGNMENT["Aries"];
-  const baseAlignment = signAlignment[category] ?? 2;
-  const moonWeight = type === "good"
-    ? 1.5 + baseAlignment * 0.5
-    : -(1.0 + (4 - baseAlignment) * 0.4);
-
-  factors.push({
-    label: `Moon in ${moonSign}`,
-    description: type === "good"
-      ? `${moonSign} is a ${element} sign that naturally supports ${category}-oriented activities. The lunar energy aligns well with this intention.`
-      : `${moonSign} energy runs counter to what this activity requires. The ${element} quality creates friction rather than flow.`,
-    weight: Math.round(moonWeight * 10) / 10,
-    icon: "moon",
-  });
-
-  // 2. Planetary aspect factor
-  const planetInfo = PLANET_ASPECT_DESCRIPTIONS[dayOfWeekIdx];
-  const planetWeight = type === "good"
-    ? 1.2 + seededRandom(seed + 7) * 1.5
-    : -(0.8 + seededRandom(seed + 7) * 1.2);
-
-  factors.push({
-    label: planetInfo.label,
-    description: type === "good" ? planetInfo.goodDesc : planetInfo.skipDesc,
-    weight: Math.round(planetWeight * 10) / 10,
-    icon: "planet",
-    timing: `Exact at ${formatTime(12 + seededRandom(seed + 11) * 6)}`,
-  });
-
-  // 3. Mercury status factor — from the station search. (This was a coin flip:
-  // "~20% chance of retrograde shadow", whatever Mercury was actually doing.)
-  const mercury = mercuryStatus(date);
-  const mercuryRetro = mercury.state !== "direct";
-  const mercWeight = mercuryRetro
-    ? (type === "good" ? -0.8 : 1.2)
-    : (type === "good" ? 1.0 + seededRandom(seed + 22) * 0.8 : -(0.5 + seededRandom(seed + 22) * 0.6));
-
-  factors.push({
-    label: mercury.label,
-    description: mercury.description,
-    weight: Math.round(mercWeight * 10) / 10,
-    icon: mercuryRetro ? "retrograde" : "planet",
-  });
-
-  // 4. VOC factor (if applicable)
-  if (sky.voidOfCourseMoon) {
-    const vocWeight = type === "good" ? -1.2 : 1.5;
-    factors.push({
-      label: "Void-of-course Moon",
-      description: `The moon is void-of-course from ${sky.voidOfCourseMoon.start} to ${sky.voidOfCourseMoon.end}. New initiatives started during this window tend not to develop as planned.`,
-      weight: Math.round(vocWeight * 10) / 10,
-      icon: "void",
-      timing: `${sky.voidOfCourseMoon.start} - ${sky.voidOfCourseMoon.end}`,
-    });
-  }
-
-  // 5. Phase factor
-  const phaseAligned = (type === "good" && isWaxing) || (type === "skip" && !isWaxing);
-  const phaseWeight = phaseAligned
-    ? (type === "good" ? 0.8 + seededRandom(seed + 30) * 0.7 : -(0.6 + seededRandom(seed + 30) * 0.5))
-    : (type === "good" ? -(0.3 + seededRandom(seed + 31) * 0.4) : 0.4 + seededRandom(seed + 31) * 0.4);
-
-  factors.push({
-    label: isWaxing ? "Waxing phase (building)" : "Waning phase (releasing)",
-    description: isWaxing
-      ? "The growing moon supports new beginnings, expansion, and building momentum."
-      : "The diminishing moon supports completion, release, and clearing away what no longer serves.",
-    weight: Math.round(phaseWeight * 10) / 10,
-    icon: "moon",
-  });
-
-  // ── Compute score ──
-  const rawSum = factors.reduce((sum, f) => sum + Math.abs(f.weight), 0);
-  // Normalize to 6-10 range
-  const normalizedScore = Math.min(10, Math.max(6, 6 + (rawSum / factors.length) * 1.2));
-  const score = Math.round(normalizedScore * 10) / 10;
-
-  // ── Score context ──
-  const nextDayOffset = 3 + Math.floor(seededRandom(seed + 50) * 14);
-  const nextDate = new Date(date.getTime() + nextDayOffset * 24 * 60 * 60 * 1000);
-  const nextDateStr = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-  const scoreContext = type === "good"
-    ? `One of the stronger windows this month for this activity. The next comparable day is ${nextDateStr}.`
-    : `The sky is notably misaligned with this activity today. Conditions improve around ${nextDateStr}.`;
-
-  // ── Best window (good items only) ──
-  let bestWindow: BestWindow | null = null;
-  if (type === "good") {
-    const windowStart = 9 + Math.floor(seededRandom(seed + 60) * 7); // 9am - 4pm start
-    const windowDuration = 1.5 + seededRandom(seed + 61) * 1.5; // 1.5 - 3 hours
-    bestWindow = {
-      start: formatTime(windowStart),
-      end: formatTime(windowStart + windowDuration),
-      reason: `${planetInfo.label} perfecting`,
-    };
-  }
-
-  // ── History note ──
-  // There is no rating history behind this. It used to print invented numbers
-  // ("you have rated your planning 7.4 on average — 23% higher than your
-  // baseline") as if they were the person's own data. Null until real ratings
-  // exist to summarise.
-  const historyNote: string | null = null;
-
+  const kind = getActivityCategory(activity) as keyof typeof ACTIVITY_PROFILE;
+  const reading = readActivityForDay(activity, kind, type, date, timeZone);
+  const icon = (k: CategoryReason["kind"]): ActivityFactor["icon"] =>
+    k === "moon" || k === "phase" ? "moon" : k === "motion" ? "retrograde" : k === "void" ? "void" : "planet";
+  const word = reading.word.toLowerCase();
   return {
     activity,
     type,
-    score,
-    scoreContext,
-    factors,
-    bestWindow,
+    score: reading.score,
+    word: reading.word,
+    scoreContext: type === "good"
+      ? `The Moon's sign puts this on today's list. Read through the rest of the sky, the day is ${word} for it — a description of conditions, not a promise.`
+      : `The Moon's sign puts this on today's hold-off list. Read through the rest of the sky, the day is ${word} for it — a description of conditions, not a verdict.`,
+    factors: reading.reasons.map((r) => ({ label: r.label, description: r.note, weight: r.weight, icon: icon(r.kind) })),
+    bestWindow: type === "good" && reading.bestWindow
+      ? { start: reading.bestWindow.start, end: reading.bestWindow.end, reason: reading.bestWindow.reason }
+      : null,
+    windowNote: type === "good" ? reading.windowNote : null,
     personalTransit: null,
-    historyNote,
+    // There is no rating history behind this. It used to print invented
+    // numbers as if they were the person's own data. Null until real ratings
+    // exist to summarise.
+    historyNote: null,
   };
-}
-
-/** Deterministic hash for activity detail generation */
-function hashForDetail(activity: string, date: Date): number {
-  const dateStr = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  const str = `${activity}:${dateStr}`;
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
 }
 
 export function getGardenTips(date: Date, lat?: number | null): GardenTips {
@@ -1432,28 +1309,16 @@ export function getGardenTips(date: Date, lat?: number | null): GardenTips {
 }
 
 // ─── CATEGORY SCORING ENGINE ─────────────────────────────────────────────────
+// Lives in almanacCategories.ts (method documented there). Re-exported here so
+// existing imports keep working.
 
-export interface CategoryDefinition {
-  id: string;
-  name: string;
-  domain: string;
-  description: string;
-  factors: CategoryFactor[];
-  isBase: boolean;
-}
-
-export interface CategoryFactor {
-  name: string;
-  planet: string;
-  weight: number;
-  favorableSigns: string[];
-  unfavorableSigns: string[];
-}
+export type { CategoryDefinition, CategoryReading, CategoryReason, CategoryWindow, CategoryTier } from "@/lib/almanacCategories";
 
 export interface CategoryScore {
   score: number;
   topFactor: string;
 }
+
 
 // ─── WEEK VIEW TYPES ──────────────────────────────────────────────────────────
 
@@ -1589,699 +1454,20 @@ export interface MonthData {
   moments: AlmanacMoment[];  // "month's moments" list
 }
 
-const BASE_CATEGORIES: CategoryDefinition[] = [
-  {
-    id: "communication",
-    name: "Communication",
-    domain: "Base",
-    description: "Emails, hard conversations, launches",
-    isBase: true,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Gemini", "Virgo", "Aquarius", "Libra"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.6, favorableSigns: ["Gemini", "Libra", "Aquarius"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-      { name: "Phase factor", planet: "moon", weight: 0.3, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "love",
-    name: "Love",
-    domain: "Base",
-    description: "Dates, conversations, reconciliation, connection",
-    isBase: true,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 1.0, favorableSigns: ["Taurus", "Libra", "Pisces", "Cancer"], unfavorableSigns: ["Aries", "Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.8, favorableSigns: ["Cancer", "Libra", "Taurus", "Pisces"], unfavorableSigns: ["Capricorn", "Aquarius"] },
-      { name: "Phase factor", planet: "moon", weight: 0.3, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "body",
-    name: "Body",
-    domain: "Base",
-    description: "Haircuts, starting routines, workouts",
-    isBase: true,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Aries", "Leo", "Sagittarius", "Virgo"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Scorpio", "Capricorn"], unfavorableSigns: ["Taurus", "Cancer", "Libra"] },
-      { name: "Phase factor", planet: "mars", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "rest",
-    name: "Rest",
-    domain: "Base",
-    description: "When to push, when to retreat, recovery windows",
-    isBase: true,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.8, favorableSigns: ["Cancer", "Pisces", "Taurus"], unfavorableSigns: ["Aries", "Gemini", "Sagittarius"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.6, favorableSigns: ["Capricorn", "Aquarius"], unfavorableSigns: ["Cancer", "Leo"] },
-      { name: "Phase factor", planet: "saturn", weight: 0.7, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    // Like every category here, each factor is read against the Moon's sign;
-    // `planet` only adds its weekday (Venus: Friday, Moon: Monday) and the
-    // Mercury-retrograde drag. So the names say what is actually measured.
-    // Moon sign: Leo (the natural 5th house), Pisces (Neptune's sign) and the
-    // Venus signs Taurus and Libra; Virgo and Capricorn are the low end of
-    // SIGN_ACTIVITY_ALIGNMENT's creativity column. Venus rulership: the Moon
-    // in a sign Venus rules, or in Venus's detriment (Aries, Scorpio) and fall
-    // (Virgo). Phase: waxing, as for making something new. No Mercury factor,
-    // so a retrograde neither lowers nor raises it — the retrograde copy
-    // already frames that stretch as revising, which is creative work too.
-    // Not an action category, so a void-of-course Moon doesn't lower it.
-    id: "creativity",
-    name: "Creativity",
-    domain: "Base",
-    description: "Writing, making, music, sketching, starting a creative project",
-    isBase: true,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Leo", "Pisces", "Taurus", "Libra"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Venus rulership", planet: "venus", weight: 0.6, favorableSigns: ["Taurus", "Libra"], unfavorableSigns: ["Aries", "Scorpio", "Virgo"] },
-      { name: "Phase factor", planet: "moon", weight: 0.4, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-];
-
-const EXPANDED_CATEGORIES: CategoryDefinition[] = [
-  // Work domain
-  {
-    id: "negotiation", name: "Negotiation", domain: "Work", description: "Salary talks, deals, boundary setting", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Libra", "Gemini", "Capricorn"], unfavorableSigns: ["Pisces", "Aries"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Scorpio", "Capricorn"], unfavorableSigns: ["Libra", "Pisces"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Capricorn", "Libra", "Scorpio"], unfavorableSigns: ["Pisces", "Cancer"] },
-    ],
-  },
-  {
-    id: "public-speaking", name: "Public speaking", domain: "Work", description: "Talks, panels, pitches, toasts", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Gemini", "Leo", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Sun alignment", planet: "sun", weight: 0.7, favorableSigns: ["Leo", "Sagittarius", "Aries"], unfavorableSigns: ["Pisces", "Cancer", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Leo", "Gemini", "Sagittarius"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-    ],
-  },
-  {
-    id: "launches", name: "Launches", domain: "Work", description: "Product drops, announcements, reveals", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Gemini", "Aquarius", "Leo"], unfavorableSigns: ["Pisces", "Virgo"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.7, favorableSigns: ["Sagittarius", "Leo", "Aquarius"], unfavorableSigns: ["Capricorn", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Aries", "Leo", "Aquarius"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-    ],
-  },
-  {
-    id: "networking", name: "Networking", domain: "Work", description: "Meetups, LinkedIn, cold outreach", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Gemini", "Libra", "Aquarius"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-      { name: "Venus condition", planet: "venus", weight: 0.6, favorableSigns: ["Libra", "Gemini", "Leo"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Gemini", "Libra", "Leo"], unfavorableSigns: ["Scorpio", "Capricorn", "Pisces"] },
-    ],
-  },
-  {
-    id: "job-searching", name: "Job searching", domain: "Work", description: "Applications, interviews, portfolio updates", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Virgo", "Capricorn", "Gemini"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Virgo", "Libra"], unfavorableSigns: ["Aries", "Cancer"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Capricorn", "Virgo", "Taurus"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "asking-for-feedback", name: "Asking for feedback", domain: "Work", description: "Reviews, critiques, honest input", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Virgo", "Gemini", "Libra"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.6, favorableSigns: ["Virgo", "Libra", "Aquarius"], unfavorableSigns: ["Leo", "Aries"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.4, favorableSigns: ["Capricorn", "Virgo"], unfavorableSigns: ["Leo", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "presentations", name: "Presentations", domain: "Work", description: "Slides, demos, show-and-tell", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Gemini", "Leo", "Aquarius"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Sun alignment", planet: "sun", weight: 0.6, favorableSigns: ["Leo", "Aries", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Leo", "Gemini", "Libra"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-    ],
-  },
-  // Relationships domain
-  {
-    id: "first-dates", name: "First dates", domain: "Relationships", description: "Meeting someone new, sparks, chemistry", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 1.0, favorableSigns: ["Libra", "Taurus", "Pisces", "Leo"], unfavorableSigns: ["Virgo", "Capricorn", "Scorpio"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Libra", "Leo", "Gemini", "Taurus"], unfavorableSigns: ["Capricorn", "Virgo", "Scorpio"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.4, favorableSigns: ["Aries", "Leo", "Scorpio"], unfavorableSigns: ["Virgo", "Cancer"] },
-    ],
-  },
-  {
-    id: "dtr-conversations", name: "DTR conversations", domain: "Relationships", description: "Defining the relationship, labels, clarity", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Libra", "Gemini", "Virgo"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Venus condition", planet: "venus", weight: 0.7, favorableSigns: ["Libra", "Taurus", "Cancer"], unfavorableSigns: ["Aries", "Aquarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Libra", "Cancer", "Taurus"], unfavorableSigns: ["Aquarius", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "meeting-parents", name: "Meeting parents", domain: "Relationships", description: "Family introductions, in-laws, milestones", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 0.8, favorableSigns: ["Cancer", "Taurus", "Libra"], unfavorableSigns: ["Aries", "Aquarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Cancer", "Taurus", "Virgo", "Libra"], unfavorableSigns: ["Aries", "Aquarius", "Sagittarius"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.5, favorableSigns: ["Capricorn", "Cancer", "Libra"], unfavorableSigns: ["Aries", "Leo"] },
-    ],
-  },
-  {
-    id: "hard-conversations", name: "Hard conversations", domain: "Relationships", description: "Boundaries, truth-telling, repair bids", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Scorpio", "Virgo", "Libra"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Scorpio", "Aries", "Capricorn"], unfavorableSigns: ["Libra", "Pisces"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Scorpio", "Capricorn", "Virgo"], unfavorableSigns: ["Pisces", "Libra"] },
-    ],
-  },
-  {
-    id: "reconciliation", name: "Reconciliation", domain: "Relationships", description: "Making up, forgiveness, rebuilding trust", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 1.0, favorableSigns: ["Pisces", "Libra", "Cancer", "Taurus"], unfavorableSigns: ["Aries", "Scorpio"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Pisces", "Cancer", "Libra"], unfavorableSigns: ["Aries", "Scorpio", "Capricorn"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.4, favorableSigns: ["Pisces", "Sagittarius", "Cancer"], unfavorableSigns: ["Virgo", "Capricorn"] },
-    ],
-  },
-  {
-    id: "hosting", name: "Hosting", domain: "Relationships", description: "Dinner parties, gatherings, having people over", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 0.8, favorableSigns: ["Taurus", "Libra", "Cancer", "Leo"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Cancer", "Taurus", "Leo", "Libra"], unfavorableSigns: ["Capricorn", "Scorpio"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.4, favorableSigns: ["Sagittarius", "Leo", "Cancer"], unfavorableSigns: ["Virgo", "Capricorn"] },
-    ],
-  },
-  {
-    id: "friend-repair", name: "Friend repair", domain: "Relationships", description: "Reconnecting, apologies, reaching out", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 0.8, favorableSigns: ["Libra", "Pisces", "Aquarius"], unfavorableSigns: ["Aries", "Scorpio"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.6, favorableSigns: ["Gemini", "Libra", "Aquarius"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Aquarius", "Libra", "Gemini"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-    ],
-  },
-  // Body domain
-  {
-    id: "haircuts", name: "Haircuts", domain: "Body", description: "Cuts, color, bang trims, big changes", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Leo", "Virgo", "Libra"], unfavorableSigns: ["Scorpio", "Pisces", "Cancer"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.5, favorableSigns: ["Aries", "Leo"], unfavorableSigns: ["Cancer", "Pisces"] },
-      { name: "Phase factor", planet: "moon", weight: 0.6, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "starting-workouts", name: "Starting workouts", domain: "Body", description: "New gym plans, running programs, classes", isBase: false,
-    factors: [
-      { name: "Mars alignment", planet: "mars", weight: 1.0, favorableSigns: ["Aries", "Leo", "Sagittarius", "Scorpio"], unfavorableSigns: ["Taurus", "Cancer", "Pisces"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Aries", "Leo", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer", "Taurus"] },
-      { name: "Phase factor", planet: "mars", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "tattoo-appointments", name: "Tattoo appointments", domain: "Body", description: "Ink, piercings, body modifications", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Leo", "Scorpio", "Aries"], unfavorableSigns: ["Pisces", "Cancer", "Virgo"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.7, favorableSigns: ["Aries", "Scorpio", "Leo"], unfavorableSigns: ["Libra", "Pisces"] },
-      { name: "Venus condition", planet: "venus", weight: 0.4, favorableSigns: ["Leo", "Scorpio", "Taurus"], unfavorableSigns: ["Virgo", "Capricorn"] },
-    ],
-  },
-  // Home domain
-  {
-    id: "moving", name: "Moving", domain: "Home", description: "Relocating, packing, settling in", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Cancer", "Taurus", "Virgo"], unfavorableSigns: ["Aries", "Sagittarius", "Gemini"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.7, favorableSigns: ["Virgo", "Taurus", "Cancer"], unfavorableSigns: ["Sagittarius", "Pisces"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.5, favorableSigns: ["Capricorn", "Taurus", "Cancer"], unfavorableSigns: ["Aries", "Sagittarius"] },
-    ],
-  },
-  {
-    id: "deep-cleaning", name: "Deep cleaning", domain: "Home", description: "Decluttering, organizing, purging", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Virgo", "Capricorn", "Scorpio"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.5, favorableSigns: ["Aries", "Virgo", "Scorpio"], unfavorableSigns: ["Taurus", "Pisces"] },
-      { name: "Phase factor", planet: "moon", weight: 0.6, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "renovations", name: "Renovations", domain: "Home", description: "Remodeling, construction, big upgrades", isBase: false,
-    factors: [
-      { name: "Mars alignment", planet: "mars", weight: 0.8, favorableSigns: ["Aries", "Capricorn", "Taurus"], unfavorableSigns: ["Cancer", "Pisces", "Libra"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Taurus", "Virgo"], unfavorableSigns: ["Cancer", "Aries"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Taurus", "Capricorn", "Virgo"], unfavorableSigns: ["Pisces", "Gemini"] },
-    ],
-  },
-  {
-    id: "planting", name: "Planting", domain: "Home", description: "Garden starts, seeds, transplants", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Cancer", "Scorpio", "Pisces", "Taurus"], unfavorableSigns: ["Aries", "Leo", "Gemini"] },
-      { name: "Phase factor", planet: "moon", weight: 0.8, favorableSigns: [], unfavorableSigns: [] },
-      { name: "Venus condition", planet: "venus", weight: 0.3, favorableSigns: ["Taurus", "Cancer", "Virgo"], unfavorableSigns: ["Aries", "Gemini"] },
-    ],
-  },
-  // Creative domain
-  {
-    id: "publishing", name: "Publishing", domain: "Creative", description: "Books, articles, newsletters, posts", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Gemini", "Virgo", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.6, favorableSigns: ["Sagittarius", "Gemini", "Leo"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Gemini", "Sagittarius", "Leo"], unfavorableSigns: ["Scorpio", "Capricorn"] },
-    ],
-  },
-  {
-    id: "performing", name: "Performing", domain: "Creative", description: "Gigs, shows, open mics, recitals", isBase: false,
-    factors: [
-      { name: "Sun alignment", planet: "sun", weight: 0.9, favorableSigns: ["Leo", "Sagittarius", "Aries"], unfavorableSigns: ["Capricorn", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Leo", "Aries", "Sagittarius", "Gemini"], unfavorableSigns: ["Capricorn", "Virgo"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.4, favorableSigns: ["Aries", "Leo", "Scorpio"], unfavorableSigns: ["Libra", "Cancer"] },
-    ],
-  },
-  {
-    id: "recording", name: "Recording", domain: "Creative", description: "Music, podcasts, voiceovers, demos", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Gemini", "Libra", "Aquarius"], unfavorableSigns: ["Pisces", "Sagittarius"] },
-      { name: "Venus condition", planet: "venus", weight: 0.6, favorableSigns: ["Libra", "Taurus", "Pisces"], unfavorableSigns: ["Aries", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Pisces", "Libra", "Taurus"], unfavorableSigns: ["Aries", "Gemini"] },
-    ],
-  },
-  {
-    id: "photo-shoots", name: "Photo shoots", domain: "Creative", description: "Portraits, headshots, content shoots", isBase: false,
-    factors: [
-      { name: "Venus condition", planet: "venus", weight: 1.0, favorableSigns: ["Libra", "Leo", "Taurus", "Pisces"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Sun alignment", planet: "sun", weight: 0.6, favorableSigns: ["Leo", "Libra", "Aries"], unfavorableSigns: ["Capricorn", "Scorpio"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Leo", "Libra", "Taurus"], unfavorableSigns: ["Capricorn", "Scorpio"] },
-    ],
-  },
-  {
-    id: "starting-projects", name: "Starting projects", domain: "Creative", description: "Fresh canvases, blank pages, new ideas", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.8, favorableSigns: ["Aries", "Leo", "Aquarius", "Gemini"], unfavorableSigns: ["Capricorn", "Virgo"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Leo", "Sagittarius"], unfavorableSigns: ["Taurus", "Cancer"] },
-      { name: "Phase factor", planet: "mars", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "finishing-projects", name: "Finishing projects", domain: "Creative", description: "Final edits, shipping, wrapping up", isBase: false,
-    factors: [
-      { name: "Saturn alignment", planet: "saturn", weight: 0.8, favorableSigns: ["Capricorn", "Virgo", "Scorpio"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Virgo", "Capricorn", "Scorpio"], unfavorableSigns: ["Aries", "Gemini"] },
-      { name: "Phase factor", planet: "saturn", weight: 0.6, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  // Travel domain
-  {
-    id: "starting-trips", name: "Starting trips", domain: "Travel", description: "Departures, road trips, first days", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.9, favorableSigns: ["Sagittarius", "Gemini", "Aquarius"], unfavorableSigns: ["Pisces", "Virgo"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.7, favorableSigns: ["Sagittarius", "Pisces", "Aries"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Sagittarius", "Gemini", "Aries"], unfavorableSigns: ["Cancer", "Taurus"] },
-    ],
-  },
-  {
-    id: "booking-travel", name: "Booking travel", domain: "Travel", description: "Flights, hotels, planning itineraries", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 1.0, favorableSigns: ["Gemini", "Virgo", "Sagittarius"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.5, favorableSigns: ["Sagittarius", "Pisces", "Gemini"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Gemini", "Sagittarius", "Libra"], unfavorableSigns: ["Cancer", "Capricorn"] },
-    ],
-  },
-  {
-    id: "long-drives", name: "Long drives", domain: "Travel", description: "Road trips, cross-country, scenic routes", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Sagittarius", "Gemini", "Aries"], unfavorableSigns: ["Pisces", "Cancer"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Sagittarius", "Leo"], unfavorableSigns: ["Cancer", "Pisces"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Sagittarius", "Aries", "Gemini"], unfavorableSigns: ["Cancer", "Pisces"] },
-    ],
-  },
-  {
-    id: "international-travel", name: "International travel", domain: "Travel", description: "Overseas trips, long journeys, new places", isBase: false,
-    factors: [
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.9, favorableSigns: ["Sagittarius", "Pisces", "Aquarius"], unfavorableSigns: ["Virgo", "Capricorn"] },
-      { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Sagittarius", "Gemini", "Aquarius"], unfavorableSigns: ["Pisces", "Virgo"] },
-      { name: "Moon sign", planet: "moon", weight: 0.4, favorableSigns: ["Sagittarius", "Aquarius", "Gemini"], unfavorableSigns: ["Cancer", "Taurus"] },
-    ],
-  },
-  // Inner Work domain
-  {
-    id: "journaling", name: "Journaling", domain: "Inner Work", description: "Morning pages, reflection, processing", isBase: false,
-    factors: [
-      { name: "Mercury condition", planet: "mercury", weight: 0.8, favorableSigns: ["Gemini", "Virgo", "Scorpio", "Pisces"], unfavorableSigns: ["Aries", "Sagittarius"] },
-      { name: "Moon sign", planet: "moon", weight: 0.7, favorableSigns: ["Pisces", "Cancer", "Scorpio"], unfavorableSigns: ["Aries", "Leo"] },
-      { name: "Phase factor", planet: "moon", weight: 0.4, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "shadow-work", name: "Shadow work", domain: "Inner Work", description: "Confronting patterns, integration, depth", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Scorpio", "Pisces", "Capricorn"], unfavorableSigns: ["Leo", "Aries", "Gemini"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Scorpio", "Aquarius"], unfavorableSigns: ["Leo", "Aries"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.4, favorableSigns: ["Scorpio", "Capricorn"], unfavorableSigns: ["Libra", "Pisces"] },
-    ],
-  },
-  {
-    id: "dream-work", name: "Dream work", domain: "Inner Work", description: "Lucid dreaming, dream journals, interpretation", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Pisces", "Cancer", "Scorpio"], unfavorableSigns: ["Virgo", "Capricorn", "Gemini"] },
-      { name: "Phase factor", planet: "moon", weight: 0.7, favorableSigns: [], unfavorableSigns: [] },
-      { name: "Jupiter alignment", planet: "jupiter", weight: 0.3, favorableSigns: ["Pisces", "Cancer", "Sagittarius"], unfavorableSigns: ["Virgo", "Gemini"] },
-    ],
-  },
-  {
-    id: "ancestral-work", name: "Ancestral work", domain: "Inner Work", description: "Family healing, lineage, inherited patterns", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Cancer", "Scorpio", "Pisces", "Capricorn"], unfavorableSigns: ["Aries", "Gemini"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.8, favorableSigns: ["Capricorn", "Cancer", "Scorpio"], unfavorableSigns: ["Aries", "Leo"] },
-      { name: "Phase factor", planet: "moon", weight: 0.4, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  // Recovery domain
-  {
-    id: "high-willpower-days", name: "High-willpower days", domain: "Recovery", description: "When discipline is available and strong", isBase: false,
-    factors: [
-      { name: "Mars alignment", planet: "mars", weight: 0.9, favorableSigns: ["Aries", "Scorpio", "Capricorn", "Leo"], unfavorableSigns: ["Pisces", "Cancer", "Libra"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Scorpio", "Virgo"], unfavorableSigns: ["Sagittarius", "Pisces"] },
-      { name: "Moon sign", planet: "moon", weight: 0.5, favorableSigns: ["Capricorn", "Aries", "Scorpio"], unfavorableSigns: ["Pisces", "Cancer"] },
-    ],
-  },
-  {
-    id: "low-willpower-days", name: "Low-willpower days", domain: "Recovery", description: "When to be gentle and avoid temptation", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.9, favorableSigns: ["Pisces", "Cancer", "Libra"], unfavorableSigns: ["Aries", "Scorpio", "Capricorn"] },
-      { name: "Venus condition", planet: "venus", weight: 0.6, favorableSigns: ["Pisces", "Taurus", "Libra"], unfavorableSigns: ["Aries", "Virgo"] },
-      { name: "Phase factor", planet: "moon", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "breaking-habits", name: "Breaking habits", domain: "Recovery", description: "Letting go of patterns and routines", isBase: false,
-    factors: [
-      { name: "Mars alignment", planet: "mars", weight: 0.8, favorableSigns: ["Scorpio", "Aries", "Capricorn"], unfavorableSigns: ["Taurus", "Cancer", "Pisces"] },
-      { name: "Saturn alignment", planet: "saturn", weight: 0.7, favorableSigns: ["Capricorn", "Scorpio", "Aquarius"], unfavorableSigns: ["Cancer", "Leo"] },
-      { name: "Phase factor", planet: "saturn", weight: 0.6, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-  {
-    id: "starting-habits", name: "Starting habits", domain: "Recovery", description: "New routines, streaks, consistency", isBase: false,
-    factors: [
-      { name: "Moon sign", planet: "moon", weight: 0.8, favorableSigns: ["Aries", "Virgo", "Capricorn", "Taurus"], unfavorableSigns: ["Pisces", "Sagittarius", "Gemini"] },
-      { name: "Mars alignment", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Capricorn", "Virgo"], unfavorableSigns: ["Pisces", "Libra"] },
-      { name: "Phase factor", planet: "mars", weight: 0.5, favorableSigns: [], unfavorableSigns: [] },
-    ],
-  },
-];
-
-/** Mapping from planet names to planetary day rulers */
-const PLANET_DAY_MAP: Record<string, number> = {
-  sun: 0,      // Sunday
-  moon: 1,     // Monday
-  mars: 2,     // Tuesday
-  mercury: 3,  // Wednesday
-  jupiter: 4,  // Thursday
-  venus: 5,    // Friday
-  saturn: 6,   // Saturday
-};
+export { getCategoryDefinitions, isUnscoredTopic, readCategoryForDay, overallDayScore, SCORE_EXPLAINER, REMOVED_CATEGORIES } from "@/lib/almanacCategories";
 
 /**
- * Returns all category definitions (base + expanded library).
+ * Score and lead reason for one category on one local day — a thin wrapper over
+ * readCategoryForDay for callers that only need the number. `_sky` is ignored:
+ * the reading computes the whole local day itself rather than trusting a
+ * snapshot taken at one instant.
  */
-export function getCategoryDefinitions(): CategoryDefinition[] {
-  return [...BASE_CATEGORIES, ...EXPANDED_CATEGORIES];
+export function scoreCategoryForDate(categoryId: string, date: Date, _sky?: TodaySky, timeZone?: string | null): CategoryScore {
+  const r = readCategoryForDay(categoryId, date, { timeZone });
+  if (!r.scored) return { score: 5, topFactor: "Not scored by the sky" };
+  return { score: r.score, topFactor: r.reasons[0]?.label ?? "" };
 }
 
-/**
- * Topics the almanac never scores by the sky: medical care, medication,
- * procedures and screenings, therapy appointments, money decisions
- * (investing, loans, debt, big purchases), and legal or contractual ones.
- * A real decision with real consequences does not get made by a transit.
- *
- * The built-in categories for these were removed; this also catches a
- * removed category still saved in someone's list, and the same topics typed
- * in as a custom category.
- */
-const UNSCORED_TOPIC = new RegExp([
-  "surg", "operation", "procedur", "medic", "prescri", "pill", "dose", "dental", "dentist", "teeth", "tooth",
-  "doctor", "clinic", "hospital", "screening", "mammogram", "biopsy", "vaccin", "treatment", "therap",
-  "chemo", "diagnos", "health", "iud", "ivf", "fertility", "pregnan", "abortion",
-  "money", "invest", "stock", "crypto", "loan", "mortgage", "debt", "credit", "financ", "budget",
-  "salary", "purchase", "buying", "buy-", "property", "real-estate", "tax", "retire", "business",
-  "contract", "lease", "signing", "legal", "lawyer", "lawsuit", "court", "divorce", "visa", "immigra",
-].join("|"));
-
-export function isUnscoredTopic(categoryId: string): boolean {
-  return UNSCORED_TOPIC.test(categoryId.toLowerCase());
-}
-
-// ─── KEYWORD → FACTOR INFERENCE FOR CUSTOM CATEGORIES ─────────────────────
-
-interface InferredFactor extends CategoryFactor {
-  phasePreference?: "waxing" | "waning";
-}
-
-/** Maps keywords found in custom category IDs to astrological factor profiles. */
-const KEYWORD_FACTORS: { keywords: string[]; factor: InferredFactor }[] = [
-  // Creative / visual / appearance
-  {
-    keywords: ["film", "video", "tiktok", "youtube", "camera", "photo", "picture", "visual", "art", "paint", "draw", "design", "fashion", "style", "beauty", "makeup", "aesthetic"],
-    factor: { name: "Venus creativity", planet: "venus", weight: 0.6, favorableSigns: ["Taurus", "Libra", "Pisces", "Leo"], unfavorableSigns: ["Virgo", "Scorpio"], phasePreference: "waxing" },
-  },
-  {
-    keywords: ["film", "video", "tiktok", "youtube", "perform", "stage", "show", "present", "public", "stream", "broadcast", "content"],
-    factor: { name: "Sun visibility", planet: "sun", weight: 0.4, favorableSigns: ["Leo", "Sagittarius", "Aries"], unfavorableSigns: ["Capricorn", "Aquarius"], phasePreference: "waxing" },
-  },
-  // Communication / social
-  {
-    keywords: ["call", "talk", "speak", "email", "text", "write", "blog", "pitch", "interview", "network", "meet", "connect", "social", "chat"],
-    factor: { name: "Mercury flow", planet: "mercury", weight: 0.7, favorableSigns: ["Gemini", "Virgo", "Aquarius", "Libra"], unfavorableSigns: ["Sagittarius", "Pisces"], phasePreference: "waxing" },
-  },
-  // Physical / body / sport
-  {
-    keywords: ["gym", "workout", "exercise", "run", "lift", "sport", "hike", "swim", "yoga", "dance", "train", "fitness", "body", "physical"],
-    factor: { name: "Mars vitality", planet: "mars", weight: 0.6, favorableSigns: ["Aries", "Scorpio", "Capricorn", "Leo"], unfavorableSigns: ["Taurus", "Libra", "Cancer"], phasePreference: "waxing" },
-  },
-  // Rest / healing / self-care
-  {
-    keywords: ["rest", "sleep", "nap", "relax", "meditat", "heal", "recovery", "spa", "bath", "journal", "reflect", "quiet", "calm"],
-    factor: { name: "Moon receptivity", planet: "moon", weight: 0.7, favorableSigns: ["Cancer", "Pisces", "Taurus"], unfavorableSigns: ["Aries", "Gemini", "Sagittarius"], phasePreference: "waning" },
-  },
-  // Career / business (money, investing, loans and contracts are never scored — see isUnscoredTopic)
-  {
-    keywords: ["client", "brand", "pitch", "negotiate"],
-    factor: { name: "Jupiter abundance", planet: "jupiter", weight: 0.5, favorableSigns: ["Sagittarius", "Pisces", "Cancer", "Taurus"], unfavorableSigns: ["Gemini", "Virgo"], phasePreference: "waxing" },
-  },
-  // Love / romance / relationships
-  {
-    keywords: ["love", "date", "romance", "relationship", "partner", "flirt", "intimate", "sex", "attract", "seduc"],
-    factor: { name: "Venus magnetism", planet: "venus", weight: 0.7, favorableSigns: ["Taurus", "Libra", "Pisces", "Cancer"], unfavorableSigns: ["Aries", "Virgo", "Capricorn"], phasePreference: "waxing" },
-  },
-  // Learning / study / mental
-  {
-    keywords: ["study", "learn", "read", "research", "exam", "test", "course", "class", "focus", "think", "plan", "strateg", "analyz"],
-    factor: { name: "Mercury intellect", planet: "mercury", weight: 0.6, favorableSigns: ["Gemini", "Virgo", "Aquarius", "Scorpio"], unfavorableSigns: ["Sagittarius", "Aries"], phasePreference: "waxing" },
-  },
-  // Domestic / home
-  {
-    keywords: ["clean", "organiz", "declutter", "home", "cook", "garden", "plant", "decorat", "renovate", "move", "nest"],
-    factor: { name: "Moon nurturing", planet: "moon", weight: 0.6, favorableSigns: ["Cancer", "Taurus", "Virgo"], unfavorableSigns: ["Sagittarius", "Aquarius", "Aries"], phasePreference: "waning" },
-  },
-  // Spiritual / magic
-  {
-    keywords: ["ritual", "spell", "magic", "manifest", "tarot", "divination", "spirit", "pray", "sacred", "altar", "moon", "crystal"],
-    factor: { name: "Neptune intuition", planet: "moon", weight: 0.6, favorableSigns: ["Pisces", "Cancer", "Scorpio"], unfavorableSigns: ["Virgo", "Gemini", "Capricorn"], phasePreference: "waning" },
-  },
-  // Adventure / travel
-  {
-    keywords: ["travel", "trip", "adventure", "explore", "drive", "fly", "vacation", "road", "hike", "camp", "outdoor"],
-    factor: { name: "Jupiter expansion", planet: "jupiter", weight: 0.6, favorableSigns: ["Sagittarius", "Aries", "Leo", "Aquarius"], unfavorableSigns: ["Cancer", "Taurus", "Virgo"], phasePreference: "waxing" },
-  },
-];
-
-/**
- * Infers astrological factors from keywords in a custom category ID.
- * Returns matching factors (deduplicated by name).
- */
-function inferFactorsFromKeywords(categoryId: string): InferredFactor[] {
-  const id = categoryId.toLowerCase();
-  const matched = new Map<string, InferredFactor>();
-
-  for (const entry of KEYWORD_FACTORS) {
-    for (const kw of entry.keywords) {
-      if (id.includes(kw)) {
-        // Deduplicate by factor name — first match wins
-        if (!matched.has(entry.factor.name)) {
-          matched.set(entry.factor.name, entry.factor);
-        }
-        break;
-      }
-    }
-  }
-
-  return Array.from(matched.values());
-}
-
-/**
- * Scores a category for a given date using the sky data.
- * Returns a score (1.0-10.0) and the most impactful factor description.
- */
-export function scoreCategoryForDate(categoryId: string, date: Date, sky: TodaySky): CategoryScore {
-  const allDefs = getCategoryDefinitions();
-  const def = allDefs.find(d => d.id === categoryId);
-
-  // Belt and braces: the screen filters these out, but a stored or custom
-  // category must never come back with a day score.
-  if (!def && isUnscoredTopic(categoryId)) return { score: 5, topFactor: "Not scored by the sky" };
-
-  // Mercury factors used to read only the Moon's sign, so "Communication"
-  // could top the list mid-retrograde while Home said "expect plans to shift".
-  const mercuryRx = mercuryStatus(date).state === "retrograde";
-
-  if (!def) {
-    // Custom category: infer astrological factors from keywords in the ID
-    const inferredFactors = inferFactorsFromKeywords(categoryId);
-    if (inferredFactors.length > 0) {
-      // Score using inferred factors (same logic as defined categories)
-      const moonSign = sky.moonSign;
-      const moonPhase = sky.moonPhase;
-      const isWaxing = moonPhase.phase.startsWith("waxing") || moonPhase.phase === "new" || moonPhase.phase === "first-quarter";
-      const dayOfWeekIdx = date.getDay();
-      const hasVoc = sky.voidOfCourseMoon !== null;
-      const dateSeed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
-
-      let totalWeight = 0;
-      let weightedScore = 0;
-      let topFactorName = "";
-      let topImpact = -Infinity;
-
-      for (const factor of inferredFactors) {
-        let subScore = 5.0;
-        if (factor.favorableSigns.includes(moonSign)) {
-          subScore += 2.5 + seededRandom(dateSeed + factor.name.length) * 1.0;
-        } else if (factor.unfavorableSigns.includes(moonSign)) {
-          subScore -= 2.0 + seededRandom(dateSeed + factor.name.length + 7) * 1.0;
-        } else {
-          subScore += (seededRandom(dateSeed + factor.name.length + 3) - 0.5) * 1.5;
-        }
-        const planetDayIdx = PLANET_DAY_MAP[factor.planet];
-        if (planetDayIdx !== undefined && planetDayIdx === dayOfWeekIdx) {
-          subScore += 1.5;
-        }
-        if (mercuryRx && factor.planet === "mercury") subScore -= 1.5;
-        if (factor.phasePreference === "waxing" && isWaxing) subScore += 0.8;
-        else if (factor.phasePreference === "waning" && !isWaxing) subScore += 0.8;
-        if (hasVoc) subScore -= 0.5;
-
-        subScore = Math.max(1, Math.min(10, subScore));
-        const impact = subScore * factor.weight;
-        weightedScore += impact;
-        totalWeight += factor.weight;
-        if (impact > topImpact) {
-          topImpact = impact;
-          topFactorName = factor.name;
-        }
-      }
-
-      const score = Math.round((weightedScore / totalWeight) * 10) / 10;
-      return { score: Math.max(1, Math.min(9.5, score)), topFactor: topFactorName || `Moon in ${sky.moonSign}` };
-    }
-
-    // Truly unknown: generate a varied score based on moon sign element
-    const seed = hashForDetail(categoryId, date);
-    const elementBonus = sky.moonSignElement === "fire" ? 0.8 : sky.moonSignElement === "air" ? 0.4 : 0;
-    const score = Math.round((3.5 + seededRandom(seed) * 4.5 + elementBonus) * 10) / 10;
-    return { score, topFactor: `Moon in ${sky.moonSign}` };
-  }
-
-  const moonSign = sky.moonSign;
-  const moonPhase = sky.moonPhase;
-  const isWaxing = moonPhase.phase.startsWith("waxing") || moonPhase.phase === "new" || moonPhase.phase === "first-quarter";
-  const dayOfWeekIdx = date.getDay();
-  const hasVoc = sky.voidOfCourseMoon !== null;
-
-  // Deterministic seed for stable day-to-day scores
-  const dateSeed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
-
-  interface FactorResult {
-    name: string;
-    subScore: number;
-    weight: number;
-    impact: number;
-  }
-
-  const factorResults: FactorResult[] = [];
-
-  for (const factor of def.factors) {
-    let subScore = 5.0; // baseline neutral
-
-    // Check moon sign alignment
-    if (factor.favorableSigns.includes(moonSign)) {
-      subScore += 2.5 + seededRandom(dateSeed + factor.name.length) * 1.0;
-    } else if (factor.unfavorableSigns.includes(moonSign)) {
-      subScore -= 2.0 + seededRandom(dateSeed + factor.name.length + 7) * 1.0;
-    } else {
-      // Neutral: slight variation
-      subScore += (seededRandom(dateSeed + factor.name.length + 3) - 0.5) * 1.5;
-    }
-
-    // Planetary day ruler alignment bonus
-    const planetDayIdx = PLANET_DAY_MAP[factor.planet];
-    if (planetDayIdx !== undefined && planetDayIdx === dayOfWeekIdx) {
-      subScore += 1.5;
-    }
-    if (mercuryRx && factor.planet === "mercury") subScore -= 1.5;
-
-    // Phase alignment for "Phase factor" type factors
-    if (factor.name.toLowerCase().includes("phase")) {
-      // Determine if this category benefits from waxing or waning
-      const waningCategories = ["rest", "deep-cleaning", "breaking-habits", "finishing-projects", "shadow-work"];
-      const prefersWaning = waningCategories.includes(def.id);
-
-      if (prefersWaning) {
-        subScore += isWaxing ? -1.0 : 2.0;
-      } else {
-        subScore += isWaxing ? 1.5 : -0.5;
-      }
-    }
-
-    // VOC penalty for action-oriented categories
-    if (hasVoc) {
-      const actionCategories = ["communication", "launches", "negotiation", "first-dates",
-        "dtr-conversations", "starting-trips", "starting-workouts",
-        "starting-projects", "starting-habits", "job-searching"];
-      if (actionCategories.includes(def.id)) {
-        subScore -= 1.0;
-      }
-    }
-
-    // Clamp sub-score
-    subScore = Math.max(0, Math.min(10, subScore));
-
-    const impact = subScore * factor.weight;
-    factorResults.push({ name: factor.name, subScore, weight: factor.weight, impact });
-  }
-
-  // Weighted sum normalized to 1.0-10.0
-  const totalWeight = factorResults.reduce((sum, f) => sum + f.weight, 0);
-  const weightedSum = factorResults.reduce((sum, f) => sum + f.subScore * f.weight, 0);
-  let finalScore = totalWeight > 0 ? weightedSum / totalWeight : 5.0;
-
-  // Normalize to 1.0-10.0 range
-  finalScore = Math.max(1.0, Math.min(10.0, finalScore));
-  finalScore = Math.round(finalScore * 10) / 10;
-
-  // Find top factor (highest absolute impact)
-  const sortedFactors = [...factorResults].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
-  const topFactorResult = sortedFactors[0];
-
-  // Build the top factor description string
-  let topFactor = "";
-  if (topFactorResult) {
-    const planetLabel = topFactorResult.name;
-    if (topFactorResult.subScore >= 6) {
-      topFactor = `${planetLabel} + ${moonSign} Moon`;
-    } else if (topFactorResult.subScore <= 4) {
-      topFactor = `${planetLabel} challenged in ${moonSign}`;
-    } else {
-      topFactor = `${planetLabel} neutral`;
-    }
-  }
-
-  return { score: finalScore, topFactor };
-}
 
 // ─── WEEK VIEW DATA ───────────────────────────────────────────────────────────
 
@@ -2528,12 +1714,12 @@ export function getWeekData(anchorDate: Date): WeekData {
       }
     }
 
-    // Compute overall day score
+    // Overall day score: the mean of the five base categories read from the
+    // real sky (almanacCategories.overallDayScore). It was a seeded random
+    // number plus a weekday-ruler bonus, so "Brightest day" and "Go gently"
+    // were chosen by the random part.
     const goodFor = getGoodForToday(d);
-    const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-    // Base score from moon sign element + planetary alignment
-    let dayScore = 5.0 + seededRandom(seed + 99) * 2.0;
-    // Boost if moon sign aligns well with planetary ruler
+    const dayScore = overallDayScore(d);
     const favorablePairs: Record<string, string[]> = {
       Sun: ["Leo", "Aries", "Sagittarius"],
       Moon: ["Cancer", "Taurus", "Pisces"],
@@ -2543,14 +1729,6 @@ export function getWeekData(anchorDate: Date): WeekData {
       Venus: ["Taurus", "Libra", "Pisces"],
       Saturn: ["Capricorn", "Aquarius", "Libra"],
     };
-    if (favorablePairs[planetRuler]?.includes(moonSign)) dayScore += 2.0;
-    // Event days get lower score if it's a challenging event
-    if (isEventDay && weekEvent?.type === "station" && weekEvent.planet === "Mercury") {
-      dayScore -= 2.5;
-    }
-    // VOC penalty
-    if (sky.voidOfCourseMoon) dayScore -= 0.8;
-    dayScore = Math.round(Math.max(2.0, Math.min(9.5, dayScore)) * 10) / 10;
 
     // Build score factors for the expandable explanation
     const scoreFactors: ScoreFactor[] = [];
@@ -2562,9 +1740,9 @@ export function getWeekData(anchorDate: Date): WeekData {
     const moonAligned = favorablePairs[planetRuler]?.includes(moonSign);
     scoreFactors.push({
       label: `Moon in ${moonSign}`,
-      effect: moonAligned ? "boost" : "neutral",
+      effect: "neutral",
       detail: moonAligned
-        ? `${moonSign} harmonizes with ${planetRuler}, amplifying the day's best qualities.`
+        ? `${moonSign} sits well with ${planetRuler}'s day — ${SIGN_VERDICTS[moonSign] || "mixed energy"}.`
         : `${moonSign} brings its own flavor — ${SIGN_VERDICTS[moonSign] || "mixed energy"}.`,
     });
     if (sky.voidOfCourseMoon) {
@@ -2851,31 +2029,9 @@ export function getMonthData(year: number, month: number, categoryFilter?: strin
         score = catScore.score;
         topReason = catScore.topFactor;
       } else {
-        // Overall day score (same logic as week view)
-        const seed = cellDate.getFullYear() * 10000 + (cellDate.getMonth() + 1) * 100 + cellDate.getDate();
-        const planetRuler = sky.planetaryRuler.planet;
-        const moonSign = sky.moonSign;
-        let dayScore = 5.0 + seededRandom(seed + 99) * 2.0;
-        const favorablePairs: Record<string, string[]> = {
-          Sun: ["Leo", "Aries", "Sagittarius"],
-          Moon: ["Cancer", "Taurus", "Pisces"],
-          Mars: ["Aries", "Scorpio", "Capricorn"],
-          Mercury: ["Gemini", "Virgo", "Aquarius"],
-          Jupiter: ["Sagittarius", "Pisces", "Cancer"],
-          Venus: ["Taurus", "Libra", "Pisces"],
-          Saturn: ["Capricorn", "Aquarius", "Libra"],
-        };
-        if (favorablePairs[planetRuler]?.includes(moonSign)) dayScore += 2.0;
-        // Check for challenging events
-        for (const evt of majorEventsNear(cellDate)) {
-          const evtD = new Date(evt.date.getFullYear(), evt.date.getMonth(), evt.date.getDate());
-          if (evtD.toDateString() === cellDate.toDateString() && evt.type === "station" && evt.planet === "Mercury") {
-            dayScore -= 2.5;
-          }
-        }
-        if (sky.voidOfCourseMoon) dayScore -= 0.8;
-        score = Math.round(Math.max(2.0, Math.min(9.5, dayScore)) * 10) / 10;
-        topReason = `Moon in ${moonSign}`;
+        // Overall day score: the mean of the five base categories (same as the week view).
+        score = overallDayScore(cellDate);
+        topReason = `Moon in ${sky.moonSign}`;
       }
 
       // Color level: 5-step ramp
