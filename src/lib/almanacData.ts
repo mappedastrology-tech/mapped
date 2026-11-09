@@ -185,7 +185,7 @@ const MOON_SIGN_ACTIVITIES: Record<string, GoodForItem[]> = {
   ],
   Scorpio: [
     { activity: "Asking the question under the question", icon: "🔥" },
-    { activity: "Doing shadow work or therapy", icon: "🪞" },
+    { activity: "Doing shadow work", icon: "🪞" },
     { activity: "Having a deep conversation", icon: "🌊" },
     { activity: "Journaling about what you're ready to release", icon: "🖋️" },
     { activity: "Clearing out an old inbox or folder", icon: "🗃️" },
@@ -1093,7 +1093,7 @@ const ACTIVITY_CATEGORY: Record<string, ActivityCategory> = {
   "collaborating on a shared project": "communication",
   // Scorpio
   "asking the question under the question": "communication",
-  "doing shadow work or therapy": "patience",
+  "doing shadow work": "patience",
   "having a deep conversation": "communication",
   "journaling about what you re ready to release": "patience",
   "clearing out an old inbox or folder": "planning",
@@ -1718,7 +1718,6 @@ export function getWeekData(anchorDate: Date): WeekData {
     // real sky (almanacCategories.overallDayScore). It was a seeded random
     // number plus a weekday-ruler bonus, so "Brightest day" and "Go gently"
     // were chosen by the random part.
-    const goodFor = getGoodForToday(d);
     const dayScore = overallDayScore(d);
     const favorablePairs: Record<string, string[]> = {
       Sun: ["Leo", "Aries", "Sagittarius"],
