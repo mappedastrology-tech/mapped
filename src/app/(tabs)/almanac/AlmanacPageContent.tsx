@@ -52,7 +52,7 @@ const CATEGORIES_KEY = "mapped:almanac-categories";
 const CUSTOM_NAMES_KEY = "mapped:almanac-custom-names";
 const TRANSITS_KEY = "mapped:transits";
 // "money" was a default; day scores for money decisions were removed.
-const DEFAULT_CATEGORIES = ["communication", "love", "body", "rest"];
+const DEFAULT_CATEGORIES = ["communication", "love", "body", "rest", "creativity"];
 
 /** Decorative stars scattered behind the moon hero — [x%, y%, size, opacity]. */
 const HERO_STARS: [number, number, number, number][] = [

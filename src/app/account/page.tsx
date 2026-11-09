@@ -20,6 +20,8 @@ import CitySearch from "@/components/CitySearch";
 import BugReportModal from "@/components/BugReportModal";
 import DataExportButton from "@/components/DataExportButton";
 import DollyMemorySection from "@/components/DollyMemorySection";
+import AiConsentScreen from "@/components/AiConsentScreen";
+import { AI_PROVIDER_NAME, readAiConsent, declineAiConsent, type AiConsentState } from "@/lib/aiConsent";
 import Link from "next/link";
 import { ORACLE_DECKS } from "@/lib/oracleDecks";
 import {
@@ -1817,6 +1819,89 @@ function PromoCodeSection() {
 
 /* ─── Theme / Appearance section ─── */
 
+/* ─── AI features (Dolly) section ─── */
+
+/**
+ * Where "You can change your mind" on the consent screen actually leads.
+ *
+ * Off records a decline exactly as "Not now" does (declineAiConsent), and from
+ * then on every AI route refuses on the server (lib/ai/consent.ts). On
+ * re-shows the full consent screen rather than flipping a switch, so turning
+ * it back on is the same informed yes as the first time — the person sees the
+ * current list of what is sent before agreeing to it.
+ */
+function AiFeaturesSection() {
+  const [state, setState] = useState<AiConsentState | "loading">("loading");
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    readAiConsent().then((s) => { if (alive) setState(s); });
+    return () => { alive = false; };
+  }, []);
+
+  const on = state === "granted";
+
+  async function turnOff() {
+    setBusy(true);
+    setStatus(null);
+    const ok = await declineAiConsent();
+    setBusy(false);
+    if (ok) {
+      setState("declined");
+      setStatus({ ok: true, text: "Switched off. Nothing more is sent." });
+    } else {
+      setStatus({ ok: false, text: "That didn't save — check your connection and try again." });
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-surface border border-foreground/15 p-5">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="text-xs uppercase tracking-widest text-muted">AI features (Dolly)</h2>
+        <ToggleSwitch
+          checked={on}
+          disabled={state === "loading" || busy}
+          onChange={() => (on ? void turnOff() : setAsking(true))}
+          label="AI features (Dolly)"
+        />
+      </div>
+      <p className="text-[11px] text-muted leading-relaxed">
+        {state === "loading"
+          ? "Checking…"
+          : on
+            ? `On. Dolly and the other AI features — your daily horoscope, journal prompts, rituals and palmistry — send what they need to our AI provider, ${AI_PROVIDER_NAME}.`
+            : `Off. Nothing is sent to ${AI_PROVIDER_NAME}, and Dolly stays switched off. Everything else in Mapped keeps working.`}
+      </p>
+      {status && (
+        <p role="status" className="text-[11px] mt-2" style={{ color: status.ok ? "var(--sage-bright)" : "var(--danger-text)" }}>
+          {status.text}
+        </p>
+      )}
+
+      {asking && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "var(--background)" }}>
+          <div className="flex justify-end px-4 pt-[max(env(safe-area-inset-top),12px)]">
+            <button
+              onClick={() => setAsking(false)}
+              className="text-sm text-muted hover:text-foreground"
+              style={{ minHeight: 44, minWidth: 44 }}
+            >
+              Close
+            </button>
+          </div>
+          <AiConsentScreen
+            onGranted={() => { setAsking(false); setState("granted"); setStatus({ ok: true, text: "Switched on." }); }}
+            onDeclined={() => { setAsking(false); setState("declined"); }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ThemeSection() {
   const { mode, setMode, theme, autoWithoutLocation } = useTheme();
 
@@ -2678,6 +2763,9 @@ function AccountPage() {
 
           {/* ─── Oracle Deck ─── */}
           <OracleDeckSection />
+
+          {/* ─── AI features (Dolly) ─── */}
+          <AiFeaturesSection />
 
           {/* ─── Notifications ─── */}
           <NotificationSettingsSection />

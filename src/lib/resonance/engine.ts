@@ -295,7 +295,7 @@ export interface ResonanceResult {
 }
 
 export const ENGINE_VERSION = "1.3.0"; // sign-name normalisation: zodiac features now actually reach the engine
-export const DATA_VERSION = "archetypes@1.1.0";
+export const DATA_VERSION = "archetypes@1.2.0"; // 1.2.0: gentler character, animal, deity and archetype-name copy
 
 function dominantTrait(deltas: TraitDeltas): TraitId {
   let best: TraitId = TRAIT_ORDER[0], mag = -1;

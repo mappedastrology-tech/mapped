@@ -16,7 +16,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Source with comments removed.
@@ -41,6 +42,23 @@ test("the browser never calls the geocoder directly", () => {
     "CitySearch must go through /api/geocode, not the upstream geocoder",
   );
   assert.ok(CLIENT.includes("/api/geocode"), "CitySearch should call our own route");
+});
+
+test("no client code anywhere calls the geocoder directly", () => {
+  // The second copy: maps/page.tsx geocoded a typed-but-not-picked place
+  // straight from the device. Only the server route may name the upstream.
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) { if (!p.startsWith(join("src", "app", "api"))) walk(p); continue; }
+      if (!/\.(ts|tsx)$/.test(e)) continue;
+      if (/nominatim\.openstreetmap\.org/.test(stripComments(readFileSync(p, "utf8")))) offenders.push(p);
+    }
+  };
+  walk("src");
+  assert.deepEqual(offenders, [], `direct geocoder calls from client code: ${offenders.join(", ")}`);
+  assert.ok(readFileSync("src/app/(tabs)/maps/page.tsx", "utf8").includes("/api/geocode?q="));
 });
 
 test("no browser code tries to set a User-Agent, which is always dropped", () => {

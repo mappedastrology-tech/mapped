@@ -12,8 +12,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { evaluateFatedMark } from "@/lib/astro/fatedMarks";
+import { evaluateFatedMark, CATEGORY_LABEL, CATEGORY_KEYWORDS } from "@/lib/astro/fatedMarks";
 import { COPY } from "@/lib/notifications/copy";
+import { CHARACTERS } from "@/lib/resonance/characters";
+import { ANIMAL_GUIDES } from "@/lib/resonance/animals";
+import { DEITIES } from "@/lib/resonance/deities";
 import { getTransitIntensity } from "@/lib/transitIntensity";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -96,6 +99,27 @@ test("every generated fated-mark reason is free of the banned patterns", () => {
         for (const [re, why] of BANNED) if (re.test(m.reason)) hits.add(`${ctx} ${a}/${b}/${asp} (${why}): ${m.reason}`);
       }
   assert.deepEqual([...hits], []);
+});
+
+test("synastry contact labels and keywords carry no fate language", () => {
+  const FATE = /\b(?:fated?|fateful|destin(?:y|ed)|karm\w*|soul-?deep|soul ?mates?|binding|meant to be)\b/i;
+  const words = [...Object.values(CATEGORY_LABEL), ...Object.values(CATEGORY_KEYWORDS).flat()];
+  for (const w of words) assert.doesNotMatch(w, FATE, `fate language in label/keyword: ${w}`);
+  // The rendered feature: heading, counts, InfoTip and summary note on the Maps page.
+  const maps = proseOf("src/app/(tabs)/maps/page.tsx");
+  for (const s of ["Fated contacts", "Fated Contacts", " fated</span>", '" · Fated"', 'label: "Fated"',
+    "karmic thread", "fated quality", "Destiny, Karmic, Binding, Soul-deep",
+    'label: "Destiny", cls', 'label: "Karmic", cls', 'label: "Binding", cls', 'label: "Soul-deep", cls'])
+    assert.ok(!maps.includes(s), `old fate wording still on the Maps page: ${s}`);
+});
+
+test("identity-card taglines (character, animal guide, deity) don't cast the reader as violent or doomed", () => {
+  // The tagline is the line on the Profile card that people read as being about them.
+  const GRIM = /\b(?:murder\w*|kill\w*|slay\w*|slain|blood\w*|grave|doom\w*|ruin\w*|revenge|devastat\w*|monster|madness|mad|rots?|could end it|the dead)\b/i;
+  const hits = [...CHARACTERS, ...ANIMAL_GUIDES, ...DEITIES]
+    .filter((g) => GRIM.test(g.tagline))
+    .map((g) => `${g.id}: ${g.tagline}`);
+  assert.deepEqual(hits, []);
 });
 
 test("notification bodies predict nothing", () => {
