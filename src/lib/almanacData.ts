@@ -1638,6 +1638,29 @@ const BASE_CATEGORIES: CategoryDefinition[] = [
       { name: "Phase factor", planet: "saturn", weight: 0.7, favorableSigns: [], unfavorableSigns: [] },
     ],
   },
+  {
+    // Like every category here, each factor is read against the Moon's sign;
+    // `planet` only adds its weekday (Venus: Friday, Moon: Monday) and the
+    // Mercury-retrograde drag. So the names say what is actually measured.
+    // Moon sign: Leo (the natural 5th house), Pisces (Neptune's sign) and the
+    // Venus signs Taurus and Libra; Virgo and Capricorn are the low end of
+    // SIGN_ACTIVITY_ALIGNMENT's creativity column. Venus rulership: the Moon
+    // in a sign Venus rules, or in Venus's detriment (Aries, Scorpio) and fall
+    // (Virgo). Phase: waxing, as for making something new. No Mercury factor,
+    // so a retrograde neither lowers nor raises it — the retrograde copy
+    // already frames that stretch as revising, which is creative work too.
+    // Not an action category, so a void-of-course Moon doesn't lower it.
+    id: "creativity",
+    name: "Creativity",
+    domain: "Base",
+    description: "Writing, making, music, sketching, starting a creative project",
+    isBase: true,
+    factors: [
+      { name: "Moon sign", planet: "moon", weight: 1.0, favorableSigns: ["Leo", "Pisces", "Taurus", "Libra"], unfavorableSigns: ["Virgo", "Capricorn"] },
+      { name: "Venus rulership", planet: "venus", weight: 0.6, favorableSigns: ["Taurus", "Libra"], unfavorableSigns: ["Aries", "Scorpio", "Virgo"] },
+      { name: "Phase factor", planet: "moon", weight: 0.4, favorableSigns: [], unfavorableSigns: [] },
+    ],
+  },
 ];
 
 const EXPANDED_CATEGORIES: CategoryDefinition[] = [
