@@ -7404,11 +7404,16 @@ export default function MapsTab() {
                         let lng = tlLng;
                         if (!lat) {
                           try {
-                            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(tlCity)}&limit=1`, { headers: { "User-Agent": "Mapped-Astrology-App" } });
-                            const data = await res.json();
-                            if (data && data[0]) {
-                              lat = parseFloat(data[0].lat);
-                              lng = parseFloat(data[0].lon);
+                            // Through our own /api/geocode, like CitySearch —
+                            // never the geocoder straight from the device. See
+                            // that route for why (the User-Agent a browser
+                            // drops, the shared cache, honest failures).
+                            const res = await fetch(`/api/geocode?q=${encodeURIComponent(tlCity)}`);
+                            const data = await res.json().catch(() => ({ places: [] }));
+                            const first = res.ok && Array.isArray(data?.places) ? data.places[0] : null;
+                            if (first) {
+                              lat = parseFloat(first.lat);
+                              lng = parseFloat(first.lon);
                             }
                           } catch { /* proceed without coords */ }
                         }

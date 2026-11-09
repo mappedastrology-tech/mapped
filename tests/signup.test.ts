@@ -270,6 +270,7 @@ test("every route that sends data to the AI provider checks consent first", () =
     "src/app/api/journal/reflect/route.ts",
     "src/app/api/journal/prompt/route.ts",
     "src/app/api/horoscope/route.ts",
+    "src/app/api/chart/interpret/route.ts",
   ];
   for (const r of routes) {
     const src = read(r);
@@ -292,11 +293,14 @@ test("the consent screen names the company and what leaves", () => {
   const src = read("src/components/AiConsentScreen.tsx");
   assert.match(src, /AI_PROVIDER_NAME/);
   assert.match(src, /AI_SHARED_ITEMS/);
-  const lib = read("src/lib/aiConsent.ts");
+  // The list and the provider live in the module the server reads too.
+  const lib = read("src/lib/aiConsentShared.ts");
   assert.match(lib, /AI_PROVIDER_NAME = "Anthropic"/, "the provider is not named");
   assert.match(lib, /birth date, time and place/i);
-  // The timestamp requirement: the stored value is the moment they agreed.
-  assert.match(lib, /saveSetting\(uid, AI_CONSENT_KEY, new Date\(\)\.toISOString\(\)\)/);
+  // The timestamp requirement: the stored value is the moment they agreed
+  // (and, since v2, which version of the list they agreed to).
+  assert.match(lib, /`v\$\{AI_CONSENT_VERSION\}:\$\{at\.toISOString\(\)\}`/);
+  assert.match(read("src/lib/aiConsent.ts"), /key: AI_CONSENT_KEY, value: consentValue\(now\)/);
 });
 
 test("declining is a real answer, and does not disable the rest of the app", () => {

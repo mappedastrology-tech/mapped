@@ -20,8 +20,23 @@ import { AI_SHARED_ITEMS } from "../src/lib/aiConsent";
 
 const API_ROOT = "src/app/api";
 
-/** Anything that constructs a model request, however it is spelled. */
-const CALLS_ANTHROPIC = /anthropic\.messages\.(create|stream)|createMessageResilient|messages\.stream\(/;
+/**
+ * Anything that constructs a model request, however it is spelled.
+ *
+ * It used to require the client to be NAMED `anthropic`, so
+ * /api/chart/interpret — whose client is called `client` — slipped through
+ * with no consent check while sending a first name and Big 3 to Anthropic.
+ */
+const CALLS_ANTHROPIC = /\.messages\.(create|stream)\(|createMessageResilient|new Anthropic\(/;
+
+/**
+ * Routes that reach Anthropic with no personal data at all, and why.
+ * Adding to this list needs a reason a reviewer can check.
+ */
+const NO_PERSONAL_DATA: Record<string, string> = {
+  // Uptime check: a one-token "ping", no user, no account.
+  "src/app/api/horoscope/health/route.ts": "health ping",
+};
 
 function routeFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -38,6 +53,7 @@ test("every route that calls Anthropic guards on AI consent first", () => {
   for (const file of routeFiles(API_ROOT)) {
     const src = readFileSync(file, "utf8");
     if (!CALLS_ANTHROPIC.test(src)) continue;
+    if (NO_PERSONAL_DATA[file.split("\\").join("/")]) continue;
     if (!src.includes("guardAiConsent")) {
       offenders.push(`${file} reaches Anthropic but never calls guardAiConsent`);
     }

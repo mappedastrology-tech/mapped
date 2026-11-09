@@ -22,19 +22,24 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  AI_CONSENT_KEY,
+  AI_DECLINED_KEY,
+  AI_CONSENT_VERSION,
+  AI_PROVIDER_NAME,
+  decideAiConsent,
+} from "@/lib/aiConsentShared";
 
 /**
- * The user_settings key. Its VALUE is the ISO timestamp of the moment they
- * agreed — so "when did they consent" is answerable without a second column,
- * which is what matters if anyone ever has to show their working.
+ * The keys, the version and the provider name live in lib/aiConsentShared.ts,
+ * which the browser reads too — so the screen someone agreed to and the check
+ * that enforces it cannot drift apart. Re-exported for existing importers.
+ *
+ * A "yes" is stored as `v<version>:<ISO time>`, so "when did they consent, and
+ * to which list" is answerable without a second column — which is what matters
+ * if anyone ever has to show their working.
  */
-export const AI_CONSENT_KEY = "ai-consent";
-
-/** Bumped only if what we send, or who we send it to, materially changes. */
-export const AI_CONSENT_VERSION = 1;
-
-/** The provider, named — Apple wants the company, not "an AI". */
-export const AI_PROVIDER_NAME = "Anthropic";
+export { AI_CONSENT_KEY, AI_DECLINED_KEY, AI_CONSENT_VERSION, AI_PROVIDER_NAME };
 
 let cached: SupabaseClient | null = null;
 function admin(): SupabaseClient {
@@ -48,26 +53,34 @@ function admin(): SupabaseClient {
 }
 
 /**
- * Has this account agreed?
+ * Has this account agreed — to the CURRENT list, and not since taken it back?
+ *
+ * Both rows are read and decideAiConsent picks the latest answer. So turning
+ * AI off in Settings is refused here even if removing the old "yes" row
+ * failed, and a "yes" to an older version of the list is not enough.
  *
  * A failed read returns false. Refusing to send someone's birth chart to
  * another company because we could not confirm they said yes is the right way
  * round to be wrong: the cost is one unanswered request, and the alternative
  * cost is sending personal data without permission.
+ *
+ * `db` exists for tests; routes leave it out.
  */
-export async function hasAiConsent(userId: string): Promise<boolean> {
+export async function hasAiConsent(userId: string, db?: SupabaseClient): Promise<boolean> {
   try {
-    const { data, error } = await admin()
+    const { data, error } = await (db ?? admin())
       .from("user_settings")
-      .select("value")
+      .select("key, value")
       .eq("user_id", userId)
-      .eq("key", AI_CONSENT_KEY)
-      .maybeSingle();
+      .in("key", [AI_CONSENT_KEY, AI_DECLINED_KEY]);
     if (error) {
       console.error("[ai-consent] could not read consent:", error.message);
       return false;
     }
-    return typeof data?.value === "string" && data.value.length > 0;
+    const rows = (data ?? []) as { key: string; value: unknown }[];
+    const granted = rows.find((r) => r.key === AI_CONSENT_KEY)?.value;
+    const declined = rows.find((r) => r.key === AI_DECLINED_KEY)?.value;
+    return decideAiConsent(granted, declined) === "granted";
   } catch {
     return false;
   }
@@ -97,6 +110,6 @@ export function aiConsentRequired(): Response {
  *   const refusal = await guardAiConsent(uid);
  *   if (refusal) return refusal;
  */
-export async function guardAiConsent(userId: string): Promise<Response | null> {
-  return (await hasAiConsent(userId)) ? null : aiConsentRequired();
+export async function guardAiConsent(userId: string, db?: SupabaseClient): Promise<Response | null> {
+  return (await hasAiConsent(userId, db)) ? null : aiConsentRequired();
 }
