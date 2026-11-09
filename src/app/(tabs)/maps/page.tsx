@@ -17,6 +17,7 @@ import { calculateChart } from "@/lib/astro/calculateChart";
 import { birthTimeToUtcHour, isResolvedZone } from "@/lib/astro/birthTimezone";
 import { fetchBirthTimezone } from "@/lib/chartSystemSync";
 import { SYNASTRY_VERSION } from "@/lib/astro/calculateSynastry";
+import { CATEGORY_LABEL } from "@/lib/astro/fatedMarks";
 import { getGrowthArea, getStrengthArea, getAspectCopy } from "@/lib/astro/growthAreas";
 import { toPlatonic } from "@/lib/astro/platonicText";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -1147,7 +1148,7 @@ function computeCompatibility(
     "transformation": "You transform each other at a deep level",
     "intensity": "An all-or-nothing bond that runs deep",
     "excitement": "Electric, unpredictable energy that keeps things alive",
-    "destiny": "A fated quality — like you were meant to meet",
+    "destiny": "A sense of significance — like this meeting matters",
     "healing": "You help each other heal old wounds",
     "vulnerability": "A safe space to be fully vulnerable",
     "values": "Aligned values and what you hold dear",
@@ -1184,7 +1185,7 @@ function computeCompatibility(
     "transformation": "You help each other evolve through life's changes",
     "intensity": "A deep, meaningful bond that doesn't do surface-level",
     "excitement": "You keep each other's lives interesting and dynamic",
-    "destiny": "A fated quality — like you were always meant to know each other",
+    "destiny": "A sense that this person matters in your story",
     "healing": "You help each other heal and process difficult experiences",
     "vulnerability": "A safe space to be fully honest and open",
     "values": "Aligned values and priorities that keep you in sync",
@@ -1298,8 +1299,8 @@ function computeCompatibility(
   const c2 = challenges[1] || "";
   const hasFated = fated.length > 0;
   const fatedNote = isPlatonic
-    ? `This ${bondWord} has a fated quality — the kind where you feel like this person was always meant to be in your life.`
-    : `There's a karmic thread running through this — it doesn't feel accidental.`;
+    ? `Some of your contacts touch the points astrologers read as significant — the kind that can make someone feel like they've been part of your life for a long time.`
+    : `Some of your contacts touch the points astrologers read as significant — the kind that can make a bond feel like more than a coincidence.`;
 
   if (score >= 75) {
     summary = `This is one of ${isPlatonic ? "the strongest bonds" : "the most compatible connections"} in your chart. `;
@@ -1401,13 +1402,14 @@ function chartVertex(
 }
 
 // Accent color + label for each fated-mark category.
+// Labels come from fatedMarks' CATEGORY_LABEL so the two can't drift apart.
 const FATED_CATEGORY_STYLE: Record<string, { label: string; cls: string }> = {
-  destiny: { label: "Destiny", cls: "text-amber border-amber/30 bg-amber/10" },
-  karmic: { label: "Karmic", cls: "text-sage border-sage/30 bg-sage/10" },
-  binding: { label: "Binding", cls: "text-ink border-ink/30 bg-ink/10" },
-  soulmate: { label: "Soul-deep", cls: "text-terracotta border-terracotta/30 bg-terracotta/10" },
-  healing: { label: "Healing", cls: "text-sage border-sage/30 bg-sage/10" },
-  shadow: { label: "Shadow", cls: "text-ink border-ink/30 bg-ink/10" },
+  destiny: { label: CATEGORY_LABEL.destiny, cls: "text-amber border-amber/30 bg-amber/10" },
+  karmic: { label: CATEGORY_LABEL.karmic, cls: "text-sage border-sage/30 bg-sage/10" },
+  binding: { label: CATEGORY_LABEL.binding, cls: "text-ink border-ink/30 bg-ink/10" },
+  soulmate: { label: CATEGORY_LABEL.soulmate, cls: "text-terracotta border-terracotta/30 bg-terracotta/10" },
+  healing: { label: CATEGORY_LABEL.healing, cls: "text-sage border-sage/30 bg-sage/10" },
+  shadow: { label: CATEGORY_LABEL.shadow, cls: "text-ink border-ink/30 bg-ink/10" },
 };
 
 function elementColor(sign: string): string {
@@ -4769,7 +4771,7 @@ export default function MapsTab() {
                     {syn.fatedContacts.length > 0 && (
                       <>
                         <span>&middot;</span>
-                        <span className="text-amber">{syn.fatedContacts.length} fated</span>
+                        <span className="text-amber">{syn.fatedContacts.length} meaningful</span>
                       </>
                     )}
                   </div>
@@ -4787,7 +4789,7 @@ export default function MapsTab() {
                     highlights={[
                       { label: "Harmonious", value: String(syn.harmony) },
                       { label: "Challenging", value: String(syn.tension) },
-                      { label: "Fated", value: String(syn.fatedContacts.length) },
+                      { label: "Meaningful", value: String(syn.fatedContacts.length) },
                     ]}
                   />
                   <ExportButton
@@ -4799,7 +4801,7 @@ export default function MapsTab() {
                       "Score": String(compat.score),
                       "Harmonious aspects": String(syn.harmony),
                       "Challenging aspects": String(syn.tension),
-                      "Fated contacts": String(syn.fatedContacts.length),
+                      "Meaningful contacts": String(syn.fatedContacts.length),
                     }}
                   />
                 </div>
@@ -4993,7 +4995,7 @@ export default function MapsTab() {
                               </p>
                               <p className="text-muted text-xs">
                                 {nature?.nature === "harmonious" ? "Harmonious" : nature?.nature === "challenging" ? "Challenging" : "Powerful"}
-                                {a.fated && " · Fated"}
+                                {a.fated && " · Meaningful"}
                                 <span className="ml-1 text-muted">{a.orb}&deg; orb</span>
                               </p>
                             </div>
@@ -5067,7 +5069,7 @@ export default function MapsTab() {
                         {syn.fatedContacts.length > 0 && (
                           <>
                             <span>&middot;</span>
-                            <span className="text-amber">{syn.fatedContacts.length} fated</span>
+                            <span className="text-amber">{syn.fatedContacts.length} meaningful</span>
                           </>
                         )}
                       </div>
@@ -5132,9 +5134,9 @@ export default function MapsTab() {
                   <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <h2 className="text-lg text-foreground" style={{ fontFamily: "var(--font-heading)" }}>
-                        Fated contacts
+                        Meaningful contacts
                       </h2>
-                      <InfoTip term="Fated Contacts" explanation="Contacts involving the Lunar Nodes, the Vertex, Saturn, Pluto, Chiron, or Black Moon Lilith between your charts. Each is tagged by what kind of fate it carries — Destiny, Karmic, Binding, Soul-deep, Healing, or Shadow — and ranked by how strongly it shows up." />
+                      <InfoTip term="Meaningful Contacts" explanation="Contacts involving the Lunar Nodes, the Vertex, Saturn, Pluto, Chiron, or Black Moon Lilith between your charts — the points astrologers watch for bonds that feel like more than chance. Each is tagged by the kind of contact it is — Significant, Familiar, Lasting, Deep, Healing, or Shadow — and ranked by how strongly it shows up. They describe what a bond can bring up, not where it has to go." />
                     </div>
                     <div className="flex flex-col gap-2">
                       {syn.fatedContacts.slice(0, 10).map((fc, i) => {
@@ -5166,7 +5168,7 @@ export default function MapsTab() {
                       })}
                       {syn.fatedContacts.length > 10 && (
                         <p className="text-muted text-xs px-1 pt-1">
-                          + {syn.fatedContacts.length - 10} more fated contacts in all aspects below
+                          + {syn.fatedContacts.length - 10} more meaningful contacts in all aspects below
                         </p>
                       )}
                     </div>
@@ -5206,7 +5208,7 @@ export default function MapsTab() {
                               </p>
                               <p className="text-muted text-xs">
                                 {nature?.nature === "harmonious" ? "Harmonious" : nature?.nature === "challenging" ? "Challenging" : "Powerful"}
-                                {a.fated && " · Fated"}
+                                {a.fated && " · Meaningful"}
                                 <span className="ml-1 text-muted">{a.orb}&deg; orb</span>
                               </p>
                             </div>

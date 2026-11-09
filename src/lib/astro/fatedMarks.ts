@@ -82,11 +82,17 @@ const CATEGORY_OF: Record<string, FatedCategory> = {
   Lilith: "shadow",
 };
 
+/**
+ * User-facing category names. Deliberately free of fate language (no "Destiny",
+ * "Karmic", "Binding", "Soul-deep"): a label names the kind of contact, it does
+ * not tell anyone a bond is meant to be (context/safety.md, "The determinism
+ * line"). The internal category ids above are unchanged.
+ */
 export const CATEGORY_LABEL: Record<FatedCategory, string> = {
-  destiny: "Destiny",
-  karmic: "Karmic",
-  binding: "Binding",
-  soulmate: "Soul-deep",
+  destiny: "Significant",
+  karmic: "Familiar",
+  binding: "Lasting",
+  soulmate: "Deep",
   healing: "Healing",
   shadow: "Shadow",
 };
@@ -95,7 +101,7 @@ export const CATEGORY_KEYWORDS: Record<FatedCategory, string[]> = {
   destiny: ["significant meeting", "growth direction", "pulled forward"],
   karmic: ["past-life familiarity", "old patterns", "unfinished business"],
   binding: ["duty", "commitment", "time-tested"],
-  soulmate: ["soul-deep", "transformation", "intense"],
+  soulmate: ["depth", "transformation", "intense"],
   healing: ["old wound", "seen", "mending"],
   shadow: ["untamed", "boundary-pushing", "provocative"],
 };
@@ -143,7 +149,7 @@ const PLANET_THEME: Record<string, string> = {
   Pluto: "intensity",
   Chiron: "healing journey",
   Lilith: "untamed side",
-  Vertex: "fated axis",
+  Vertex: "turning point",
 };
 
 function themeOf(name: string): string {

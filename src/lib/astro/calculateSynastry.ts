@@ -496,7 +496,9 @@ function generateThemes(
  */
 // 8: the Vertex was computed off the wrong formula, so every fated contact
 //    built on it was meaningless. Stored connections must recompute.
-export const SYNASTRY_VERSION = 8;
+// 9: gentler contact labels (Significant / Familiar / Lasting / Deep) and no
+//    "soul-deep" / "fated axis" wording in stored keywords and reasons.
+export const SYNASTRY_VERSION = 9;
 
 export function calculateSynastry(
   chart1: ChartData,
