@@ -22,6 +22,17 @@ npm run lint       # ESLint only (react-hooks rules catch crash bugs)
 npm run typecheck  # TypeScript only
 ```
 
+Live Stripe prices (created 2026-11-09; set these in Netlify when switching to live keys):
+
+| Netlify variable | Plan | Live price id |
+|---|---|---|
+| `STRIPE_PRICE_ID` | Mapped+ monthly $11.11 | `price_1UZyrhRdq07zsKMQ8Re7jUrA` |
+| `STRIPE_PRICE_ID_ANNUAL` | Mapped+ yearly $100 | `price_1UZyrvRdq07zsKMQB7DnYdkz` |
+| `STRIPE_PRICE_ID_MAX` | Mapped Complete monthly $22.22 | `price_1UZyrwRdq07zsKMQmpIiZFhZ` |
+| `STRIPE_PRICE_ID_MAX_ANNUAL` | Mapped Complete yearly $200 | `price_1UZys7Rdq07zsKMQHGPRAaqB` |
+
+The two decks' live ids are in `src/lib/deckStore.ts` (`stripePriceLive`).
+
 The Stripe live webhook must point at
 `https://mapped-astrology.netlify.app/api/stripe/webhook`.
 

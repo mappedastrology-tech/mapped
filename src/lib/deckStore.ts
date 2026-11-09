@@ -55,7 +55,7 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 36,
     priceCents: 555,
     stripePriceEnv: "STRIPE_PRICE_DECK_STITCHED_ANIMAL",
-    stripePriceLive: "", // create the live product before going live (see DECK_STORE_SETUP.md)
+    stripePriceLive: "price_1UZyrxRdq07zsKMQ1iPjhBYt",
     stripePriceTest: "price_1U6waTRdq07zsKMQbdKZfs3n",
     coverImage: "/oracle/stitched-animal/1.webp",
     status: "available",
@@ -69,7 +69,7 @@ export const STORE_DECKS: StoreDeck[] = [
     cardCount: 72,
     priceCents: 555,
     stripePriceEnv: "STRIPE_PRICE_DECK_BIRD",
-    stripePriceLive: "", // create the live product before going live (see DECK_STORE_SETUP.md)
+    stripePriceLive: "price_1UZyrxRdq07zsKMQanOqd4fg",
     stripePriceTest: "price_1U6wbBRdq07zsKMQRmUcFfjW",
     coverImage: "/oracle/bird/1.webp",
     status: "available",
