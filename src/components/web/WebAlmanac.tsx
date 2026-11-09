@@ -27,6 +27,8 @@ import { getOnThisDay } from "@/lib/onThisDay";
 import { getMoonPhase } from "@/lib/celestialCalendar";
 import { getPlantingCalendar } from "@/lib/gardeningAlmanac";
 import { getUniversalBiteForecast } from "@/lib/fishingForecast";
+import { getActivityDetail } from "@/lib/almanacData";
+import WebYourDay from "./WebYourDay";
 
 const VS = "\uFE0E";
 
@@ -42,26 +44,22 @@ function savedGardenZone(): string {
   try { return localStorage.getItem("mapped:garden-zone") || "8b"; } catch { return "8b"; }
 }
 
-/** Short per-item reason for the live good-for list, from the day's Moon sign + phase. */
-function liveGoodReason(moonSign: string, moonLabel: string, i: number): string {
-  const t = [
-    `The ${moonSign} Moon leans this way — the ${moonLabel.toLowerCase()} phase gives it momentum.`,
-    `Well-timed under a ${moonLabel.toLowerCase()} Moon in ${moonSign}.`,
-    `${moonSign} energy favors it; today's sky adds follow-through.`,
-    `A natural fit while the Moon moves through ${moonSign}.`,
-    `The ${moonLabel.toLowerCase()} Moon builds quiet support for this all day.`,
-  ];
-  return t[i % t.length];
-}
-
-/** Short per-item reason for the live hold-off list. */
-function liveHoldReason(moonSign: string, moonLabel: string, i: number): string {
-  const t = [
-    `The ${moonSign} Moon pulls the other way — give it a day or two.`,
-    `Poorly timed under a ${moonLabel.toLowerCase()} Moon in ${moonSign}; it tends to unravel.`,
-    `${moonSign} energy works against this today — wait for a friendlier sky.`,
-  ];
-  return t[i % t.length];
+/**
+ * The reason line under a good-for / hold-off item: the heaviest real factor
+ * behind it (lib/almanacData getActivityDetail — the same reading the mobile
+ * sheet shows). These used to be five rotating stock sentences about the Moon.
+ */
+function liveReason(activity: string, type: "good" | "skip", date: Date): string {
+  try {
+    const d = getActivityDetail(activity, type, date);
+    // Every line on the list is there because of the Moon's sign; the
+    // heaviest *other* factor is what tells two lines apart.
+    const ranked = [...d.factors].sort((p, q) => Math.abs(q.weight) - Math.abs(p.weight));
+    const f = ranked.find((x) => !/^Moon (in|enters) /.test(x.label) && x.weight !== 0) ?? ranked[0];
+    return f ? `${f.label} — ${f.description}` : d.scoreContext;
+  } catch {
+    return "";
+  }
 }
 
 /** Muted sub-line for a live coming-up event, derived from its title. */
@@ -103,10 +101,10 @@ export default function WebAlmanac() {
     ? [{ label: "Sunrise", val: sky.sunrise }, { label: "Sunset", val: sky.sunset }, { label: "Daylight", val: sky.daylight }]
     : [{ label: "Sunrise", val: "—" }, { label: "Sunset", val: "—" }, { label: "Daylight", val: "—" }];
   const goodCol = sky
-    ? { sub: sky.goodFor.why, items: sky.goodFor.activities.map((a, i) => ({ activity: a, reason: liveGoodReason(sky.moonSign, sky.moonLabel, i) })) }
+    ? { sub: sky.goodFor.why, items: sky.goodFor.activities.map((a) => ({ activity: a, reason: liveReason(a, "good", sky.date) })) }
     : { sub: LOADING, items: [] };
   const holdCol = sky
-    ? { sub: sky.holdOff.reason, items: sky.holdOff.activities.map((a, i) => ({ activity: a, reason: liveHoldReason(sky.moonSign, sky.moonLabel, i) })) }
+    ? { sub: sky.holdOff.reason, items: sky.holdOff.activities.map((a) => ({ activity: a, reason: liveReason(a, "skip", sky.date) })) }
     : { sub: LOADING, items: [] };
   const comingUp = sky ? sky.comingUp.map((u) => ({ day: u.day, mon: u.mon, title: u.title, sub: upcomingSub(u.title) })) : [];
 
@@ -224,6 +222,9 @@ export default function WebAlmanac() {
                 </div>
               ))}
             </div>
+
+            {/* Your day — the tracked categories, read from the real sky */}
+            <WebYourDay date={sky?.date ?? null} />
 
             {/* explore — only the cards that could be computed */}
             {explore.length > 0 && <div>

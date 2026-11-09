@@ -19,7 +19,7 @@ test("creativity is a base category and a default", () => {
   assert.equal(c.name, "Creativity");
   assert.match(c.description, /writing|making|music|sketch/i);
   assert.doesNotMatch(c.description, /money|invest|sell|price|health|medic|legal|contract/i);
-  const page = readFileSync("src/app/(tabs)/almanac/AlmanacPageContent.tsx", "utf8");
+  const page = readFileSync("src/components/almanac/useAlmanacCategories.ts", "utf8");
   const defaults = page.match(/const DEFAULT_CATEGORIES = (\[[^\]]*\])/);
   assert.ok(defaults);
   assert.deepEqual(JSON.parse(defaults[1]), ["communication", "love", "body", "rest", "creativity"]);
