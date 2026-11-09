@@ -305,7 +305,7 @@ export async function GET(request: Request) {
 
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
   const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:contacttaylorsometimes@gmail.com";
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:mappedastrology@gmail.com";
   if (!vapidPrivate || !vapidPublic) {
     return NextResponse.json({ error: "VAPID keys not configured" }, { status: 500 });
   }

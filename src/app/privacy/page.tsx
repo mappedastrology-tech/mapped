@@ -169,8 +169,8 @@ export default function PrivacyPage() {
       <LegalH2>Contact</LegalH2>
       <p>
         Questions about this Policy or your data? Email us at{" "}
-        <a href="mailto:contacttaylorsometimes@gmail.com" className="text-terracotta hover:text-terracotta-light transition-colors">
-          contacttaylorsometimes@gmail.com
+        <a href="mailto:mappedastrology@gmail.com" className="text-terracotta hover:text-terracotta-light transition-colors">
+          mappedastrology@gmail.com
         </a>
         .
       </p>

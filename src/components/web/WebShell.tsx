@@ -210,7 +210,7 @@ export default function WebShell({
  * Kept here as one constant so the footer cannot drift from the two legal
  * pages that tell people where to write.
  */
-const SUPPORT_EMAIL = "contacttaylorsometimes@gmail.com";
+const SUPPORT_EMAIL = "mappedastrology@gmail.com";
 
 const FOOT_COLS = [
   { head: "Explore", links: [ { label: "Almanac", href: "/almanac" }, { label: "Maps", href: "/maps" }, { label: "Library", href: "/library" }, { label: "Tarot", href: "/tarot" } ] },
