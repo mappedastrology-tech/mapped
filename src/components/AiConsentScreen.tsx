@@ -72,7 +72,7 @@ export default function AiConsentScreen({
         <p className="text-[14.5px] leading-[1.65] mb-5" style={{ color: "var(--foreground-secondary)" }}>
           Dolly knows your chart, remembers what you&rsquo;ve talked about, and reads your sky the way
           an astrologer would. To answer you, Mapped uses an outside AI service, so your question and
-          the parts of your chart she needs are sent to it. We need your permission first.
+          the things listed below are sent to it. We need your permission first.
         </p>
 
         <div
@@ -96,7 +96,7 @@ export default function AiConsentScreen({
         </div>
 
         <p className="text-[13px] leading-[1.6] mb-6" style={{ color: "var(--foreground-muted)" }}>
-          It is sent only when you ask for something — never in the background.
+          It is sent only while you&rsquo;re using Dolly or another AI feature — never in the background.
         </p>
 
         <div className="flex flex-col gap-2.5">
@@ -138,7 +138,8 @@ export default function AiConsentScreen({
 
         <p className="text-[12px] leading-[1.6] mt-2 text-center" style={{ color: "var(--foreground-muted)" }}>
           Everything else in Mapped — your chart, the almanac, tarot, journal, maps and the
-          library — works either way. You can change your mind in Settings.
+          library — works either way. You can change your mind any time under Account &rarr; AI
+          features (Dolly).
         </p>
       </div>
     </div>

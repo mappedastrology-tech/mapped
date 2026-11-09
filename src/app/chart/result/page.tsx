@@ -5,7 +5,8 @@
  *
  * The full flow on this page:
  * 1. Show the chart wheel, Big 3 pills, all placements
- * 2. Fetch Claude interpretations in the background
+ * 2. Show the Big 3 reading — in-house text before signup, Dolly's once
+ *    signed in with AI allowed (nothing goes to an AI before that)
  * 3. Show auth prompt to save the chart
  * 4. After auth, save chart + interpretations to Supabase
  */
@@ -261,10 +262,12 @@ export default function ChartResult() {
         ))}
       </div>
 
-      {/* Claude-powered interpretations */}
+      {/* Big 3 reading — Dolly's only once signed in and AI is allowed;
+          before that, Mapped's own library text (see Interpretations). */}
       <Interpretations
         name={name}
         bigThree={bigThree}
+        signedIn={!!userId}
         onLoaded={(data) => setInterpretations(data)}
       />
 
