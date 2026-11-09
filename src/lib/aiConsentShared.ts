@@ -33,8 +33,10 @@ export const AI_DECLINED_KEY = "ai-consent-declined";
  *       latest tarot pull, and up to twelve people from the map. Version 1
  *       implied those went only "when you ask" or "when a question is about
  *       them", which was not true.
+ *   3 — adds the note you wrote on a single-card pull, which goes with the
+ *       cards (lib/dollyCrossFeature.ts, first 160 characters).
  */
-export const AI_CONSENT_VERSION = 2;
+export const AI_CONSENT_VERSION = 3;
 
 /** The provider, named — Apple wants the company, not "an AI". */
 export const AI_PROVIDER_NAME = "Anthropic";
@@ -57,7 +59,7 @@ export const AI_SHARED_ITEMS = [
   "What you write to Dolly, what she writes back, and the short note she keeps about your life so she can pick up where you left off",
   "With every message to Dolly: short excerpts from your five most recent journal entries, with the mood you tagged",
   "With every message to Dolly: up to twelve people on your map — their names, how you know them, and their charts",
-  "With every message to Dolly: the cards in your latest tarot or oracle pull",
+  "With every message to Dolly: the cards in your latest tarot or oracle pull, and the start of any note you wrote on a single-card pull",
   "Your journal entries for a week or month, when you ask for a reflection on them",
   "A photograph of your palm, when you ask for a palmistry reading",
 ] as const;
