@@ -225,6 +225,8 @@ test("computed festivals land on their real dates, and table-only ones hide outs
   assert.equal(on(2026, "nowruz"), "3/21");
   assert.equal(on(2026, "diwali"), "11/8");
   // Diwali used to show 20 Oct — 2025's date — every year.
-  assert.equal(on(2027, "diwali"), null);
-  assert.equal(on(2027, "ramadan"), null);
+  assert.equal(on(2027, "diwali"), "10/29");
+  assert.equal(on(2027, "losar"), "2/7");
+  assert.equal(on(2028, "diwali"), null);
+  assert.equal(on(2028, "ramadan"), null);
 });
