@@ -27,23 +27,43 @@ const SIGN_FULL: Record<string, string> = {
 };
 
 async function handlePOST(request: NextRequest) {
-  // Rate limit: 3 chart interpretations per hour per IP (anonymous pre-signup route).
+  /**
+   * Signed in, and consented, before anything else.
+   *
+   * This route used to serve signed-out people on purpose — it wrote the Big
+   * 3 reading on chart/result before signup — so a stranger's first name and
+   * placements went to Anthropic before there was an account to ask, let
+   * alone an answer. Guideline 5.1.2(i) wants permission first, so now:
+   *   - no account → 401. The page shows a reading written in-house instead
+   *     (lib/bigThreeReading.ts) and never calls this.
+   *   - account, no current "yes" → 403 ai_consent_required, like every
+   *     other AI route.
+   * Both refusals come before the rate limiter and the SDK, so a refused
+   * request costs nothing and sends nothing.
+   *
+   * Still NOT tier-gated: it is one short reading per chart, cached on the
+   * device, and it is the first thing a new account sees.
+   */
+  const { getAuthedUserId } = await import("@/lib/apiAuth");
+  const uid = await getAuthedUserId(request).catch(() => null);
+  if (!uid) {
+    return NextResponse.json(
+      { code: "sign_in_required", error: "Sign in to get a reading written by Dolly." },
+      { status: 401 },
+    );
+  }
+  const { guardAiConsent } = await import("@/lib/ai/consent");
+  const consentRefusal = await guardAiConsent(uid);
+  if (consentRefusal) return consentRefusal;
+
+  // Rate limit: 3 chart interpretations per hour per IP.
   const { checkRateLimitDurable, getClientIP } = await import("@/lib/rateLimit");
   const ip = getClientIP(request);
   const { allowed } = await checkRateLimitDurable(`interpret:${ip}`, 3, 60 * 60 * 1000);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
-
-  // This is the one AI route that deliberately serves signed-out people: it
-  // renders the Big 3 reading during onboarding, before there is an account to
-  // charge. So it is NOT tier-gated — gating it would blank the screen that
-  // sells the app. Anonymous callers are held by the per-IP limit above.
-  //
-  // When a caller IS signed in, attribute the spend to them, so the only
-  // unattributed AI traffic is genuine pre-signup traffic.
-  const { getAuthedUserId } = await import("@/lib/apiAuth");
-  const billTo = await getAuthedUserId(request).catch(() => null);
+  const billTo = uid;
 
   try {
     const { name, bigThree } = await request.json();

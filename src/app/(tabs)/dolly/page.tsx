@@ -625,6 +625,33 @@ export default function DollyTab() {
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({ error: "" }));
+        /**
+         * No consent on record: ask for it, rather than fail.
+         *
+         * This is the bug that made Dolly look broken. Consent is read ONCE,
+         * when the tab mounts — but a "yes" stops counting the moment
+         * AI_CONSENT_VERSION moves, which is exactly what is meant to happen
+         * when the disclosure changes. So a tab that was already open kept
+         * sending, the server kept refusing with 403, and 403 was not in the
+         * list below: it fell through to the throw and came back as "Dolly
+         * couldn't finish that answer. Try asking again?" Which is an
+         * invitation to try again, so people did — three times in six seconds
+         * — getting the same sentence each time, with nothing anywhere saying
+         * the word permission, and no way back to the screen that would have
+         * fixed it in one tap.
+         *
+         * Setting consent back to "unknown" puts that screen up, the same way
+         * the desktop screen already did. Not while a support card is on
+         * screen: swapping the whole view would hide it.
+         */
+        if (res.status === 403 && errBody.code === "ai_consent_required") {
+          setMessages(prev => prev.filter(m => m.id !== assistantId));
+          if (!crisis) {
+            setAiConsent("unknown");
+            setAnnouncement("Mapped needs your permission again before Dolly can answer.");
+          }
+          return;
+        }
         // 402 and 429 are policy: the plan, the daily limit, the monthly AI
         // ceiling. 503 is us being unreachable, which the server words
         // honestly too. All three are answered in the server's own words, as

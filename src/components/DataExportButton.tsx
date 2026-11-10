@@ -31,7 +31,10 @@ export default function DataExportButton() {
           }
         }}
         disabled={busy}
-        aria-label="Download a copy of all your Mapped data"
+        /* Says what is in the file, and what is not: preferences kept only
+           on this device (localStorage) never reach the account, so they
+           cannot be in an export built from it. */
+        aria-label="Download my data: a JSON file of everything your Mapped account stores — profile, charts, people, journal and reflections, Dolly conversations and memory, readings, Learn progress and certificates, settings including your AI choice, and notification devices. Preferences kept only on this device are not included."
         className="text-muted/70 hover:text-foreground text-[11px] transition-colors disabled:opacity-50"
       >
         {busy ? "Preparing your data…" : "Download my data"}

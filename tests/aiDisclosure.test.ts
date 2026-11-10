@@ -100,12 +100,16 @@ test("the consent screen's list matches what the privacy page describes", () => 
   // The consent screen is the one most people actually read, and it said
   // journal entries went "when you ask for a reflection or a prompt" long
   // after they started going with every message.
-  const items = AI_SHARED_ITEMS.join("\n");
-  assert.match(items, /journal entries/i, "the consent screen does not mention the journal");
+  // Only the line about DOLLY. A separate item says journal entries go when
+  // you ask for a reflection on a week or a month, and that one is true —
+  // reflections really are on request. Matching across the whole list caught
+  // it by accident and would have forced a correct disclosure to be removed.
+  const dolly = AI_SHARED_ITEMS.find((i) => /journal/i.test(i) && /every message/i.test(i));
+  assert.ok(dolly, "the consent screen does not say the journal goes with every Dolly message");
   assert.doesNotMatch(
-    items,
-    /journal[\s\S]{0,60}when you ask/i,
-    "the consent screen still says the journal only goes when asked for",
+    dolly!,
+    /when you ask/i,
+    "the consent screen still says Dolly only gets the journal when asked",
   );
 });
 

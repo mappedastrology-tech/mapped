@@ -1165,19 +1165,74 @@ function makarSankranti(year: number): Date {
  * and skipped days). Month is 0-based. ONLY years listed here show these
  * festivals; add each new year from an authoritative panchang / hijri
  * calendar rather than extrapolating. Islamic dates are the expected dates.
+ *
+ * Conventions (keep every year on the same ones):
+ *   - Hindu: Drik Panchang (drikpanchang.com) computed for NEW DELHI, India
+ *     (geoname-id=1261481). Drik localises to the visitor's city, so always
+ *     add `&geoname-id=1261481` to the URL; from the US it can show a
+ *     different day. Holi is Rangwali Holi (the day after Holika Dahan);
+ *     Navratri is the Ghatasthapana day; Diwali is Lakshmi Puja.
+ *   - Islamic: the Umm al-Qura calendar (Saudi Arabia), i.e. the "expected"
+ *     date; actual observance depends on moon sighting and can be a day
+ *     later locally. Node's `Intl.DateTimeFormat("en-u-ca-islamic-umalqura")`
+ *     reproduces it: 1 Ramadan, 1 Shawwal, 10 Dhu al-Hijjah.
+ *   - Losar: the Tibetan Phugpa calendar (Men-Tsee-Khang, Dharamsala).
+ *
+ * HOW TO UPDATE YEARLY (tests/observedDates.test.ts fails from 1 October
+ * until next year's entries are here):
+ *   1. Drik Panchang, New Delhi, each with `?year=YYYY&geoname-id=1261481`:
+ *      /festivals/maha-shivaratri/maha-shivaratri-date-time.html
+ *      /festivals/holi/festivals-holika-dahan-timings.html
+ *      /navratri/chaitra-navratri-ghatasthapana.html
+ *      /festivals/guru-purnima/guru-purnima-date-time.html
+ *      /navratri/shardiya-navratri-ghatasthapana.html
+ *      /festivals/lakshmipuja/festivals-lakshmipuja-timings.html
+ *   2. Islamic: Umm al-Qura via Intl (above), cross-checked against a
+ *      published expected-dates notice (e.g. UAE Astronomy Centre).
+ *   3. Losar: Men-Tsee-Khang, or the Tibetan Nuns Project's yearly holidays
+ *      post (tnp.org), which takes its dates from Men-Tsee-Khang.
+ *   Cite each date's source in a comment. If a date can't be verified, leave
+ *   it out: the festival is hidden for that year rather than guessed.
  */
 const OBSERVED_DATES: Record<string, Record<number, [number, number]>> = {
-  "maha-shivaratri": { 2026: [1, 15] },
-  holi:              { 2026: [2, 4] },   // Holika Dahan the evening of Mar 3
-  "navratri-spring": { 2026: [2, 19] },
-  "guru-purnima":    { 2026: [6, 29] },
-  "navratri-autumn": { 2026: [9, 11] },
-  diwali:            { 2026: [10, 8] },
-  ramadan:           { 2026: [1, 18] },
-  "eid-fitr":        { 2026: [2, 20] },
-  "eid-adha":        { 2026: [4, 27] },
-  losar:             { 2026: [1, 18] },
+  // 2026: Drik Panchang, New Delhi. Sharad Navratri (Oct 11) and Losar
+  // (Feb 18) were re-checked 2026-11-09 and stand: Drik Panchang
+  // shardiya-navratri-ghatasthapana.html?year=2026&geoname-id=1261481 gives
+  // Sunday Oct 11; the Tibetan Nuns Project 2026 holidays post and
+  // Wikipedia's Losar table give Feb 18 (Male Fire Horse, 2153).
+  // 2027: fetched 2026-11-09 from Drik Panchang with geoname-id=1261481.
+  "maha-shivaratri": { 2026: [1, 15], 2027: [2, 6] },   // 2027: Sat Mar 6 (maha-shivaratri-date-time.html?year=2027)
+  holi:              { 2026: [2, 4], 2027: [2, 22] },   // Holika Dahan the evening before (2026: Mar 3; 2027: Sun Mar 21, festivals-holika-dahan-timings.html?year=2027)
+  "navratri-spring": { 2026: [2, 19], 2027: [3, 7] },   // 2027: Wed Apr 7 (chaitra-navratri-ghatasthapana.html?year=2027)
+  "guru-purnima":    { 2026: [6, 29], 2027: [6, 18] },  // 2027: Sun Jul 18 (guru-purnima-date-time.html?year=2027)
+  "navratri-autumn": { 2026: [9, 11], 2027: [8, 30] },  // 2027: Thu Sep 30 (shardiya-navratri-ghatasthapana.html?year=2027)
+  diwali:            { 2026: [10, 8], 2027: [9, 29] },  // 2027: Fri Oct 29 (festivals-lakshmipuja-timings.html?year=2027)
+  // Islamic, expected (Umm al-Qura; the 2026 entries match it too). 2027 is
+  // 1448 AH, from Intl islamic-umalqura, agreeing with the UAE Astronomy
+  // Centre's expected dates (khaleejtimes.com/uae/ramadan-eid-al-fitr-eid-al-adha-2027-likely-dates:
+  // Ramadan Feb 8; Eid al-Fitr Mar 9, or Mar 10 if the crescent is not seen;
+  // Eid al-Adha May 16 or 17).
+  ramadan:           { 2026: [1, 18], 2027: [1, 8] },   // 2027: Mon Feb 8 (1 Ramadan 1448)
+  "eid-fitr":        { 2026: [2, 20], 2027: [2, 9] },   // 2027: Tue Mar 9 (1 Shawwal 1448)
+  "eid-adha":        { 2026: [4, 27], 2027: [4, 16] },  // 2027: Sun May 16 (10 Dhu al-Hijjah 1448)
+  // Losar, Phugpa. 2027: Sun Feb 7, Fire Sheep year 2154. Tibetan Nuns
+  // Project (tnp.org/important-tibetan-buddhist-holidays-in-2026/, dates from
+  // Men-Tsee-Khang) and PotalaStore's Phugpa calendar
+  // (potalastore.com/blog/2027-tibetan-buddhist-calendar-dates/).
+  losar:             { 2026: [1, 18], 2027: [1, 7] },
 };
+
+/** Years with at least one OBSERVED_DATES entry. Exported for the upkeep test. */
+export function observedDateYears(): number[] {
+  const years = new Set<number>();
+  for (const byYear of Object.values(OBSERVED_DATES)) for (const y of Object.keys(byYear)) years.add(Number(y));
+  return [...years].sort((a, b) => a - b);
+}
+
+/** Festival ids with an entry for `year`. Exported for the upkeep test. */
+export function observedDateIdsFor(year: number): string[] {
+  return Object.keys(OBSERVED_DATES).filter((id) => OBSERVED_DATES[id][year] != null);
+}
 
 function observed(id: string, year: number): Date | null {
   const md = OBSERVED_DATES[id]?.[year];

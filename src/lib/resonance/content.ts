@@ -77,7 +77,7 @@ const DOMAIN: Record<DomainId, DomainCopy> = {
     self: "connection made visible — the bonds, loyalties, and care that tie people to one another",
     gift: "You weave people together: you remember who needs what, and you hold the relationships that hold a group up.",
     shadow: "You lose yourself in the weave. You over-give, tie yourself to people who drain you, and mistake being needed for being loved.",
-    growth: "Your work is the boundary — learning you can hold the thread without letting it strangle you, and that some ties are meant to be cut.",
+    growth: "Your work is the boundary — learning you can hold the thread without letting it bind you, and that some ties are meant to be cut.",
     love: "You love by belonging and tending, and the practice is receiving care, not only giving it.",
     work: "You do your best work connecting people, tending teams, and holding culture; cold, every-person-for-themselves places hurt you.",
   },
