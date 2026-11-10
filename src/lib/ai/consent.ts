@@ -80,8 +80,33 @@ export async function hasAiConsent(userId: string, db?: SupabaseClient): Promise
     const rows = (data ?? []) as { key: string; value: unknown }[];
     const granted = rows.find((r) => r.key === AI_CONSENT_KEY)?.value;
     const declined = rows.find((r) => r.key === AI_DECLINED_KEY)?.value;
-    return decideAiConsent(granted, declined) === "granted";
-  } catch {
+    const state = decideAiConsent(granted, declined);
+    if (state !== "granted") {
+      /**
+       * Say WHICH kind of no it is.
+       *
+       * Every refusal used to look identical from outside: a 403 and silence.
+       * When the version moved to 3 and an account whose "yes" predated
+       * versioning started being refused on every message, there was no way to
+       * tell that apart from "never asked", "said no", or the database read
+       * failing — and working it out took reading the deploy, the request
+       * logs and the stored rows side by side.
+       *
+       * No user id and no values: the shape of the answer is the whole
+       * diagnostic, and it is not worth putting someone's identifier in a log
+       * to get it.
+       */
+      console.warn(
+        `[ai-consent] refusing: state=${state} has_yes=${granted !== undefined} `
+        + `has_no=${declined !== undefined} required_version=${AI_CONSENT_VERSION}`,
+      );
+    }
+    return state === "granted";
+  } catch (err) {
+    // This used to be a bare `catch { return false }`. A throw here — a
+    // missing service-role key, an unreachable database — is indistinguishable
+    // from a deliberate "no" at the call site, so it has to say so somewhere.
+    console.error("[ai-consent] consent check threw:", err instanceof Error ? err.message : String(err));
     return false;
   }
 }

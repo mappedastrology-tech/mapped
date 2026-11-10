@@ -597,9 +597,16 @@ export function dismissPattern(patternId: string) {
 // ─── Privacy & Copy ──────────────────────────────────────────────────────────
 
 export const JOURNAL_PRIVACY_COPY = {
-  welcome: `This isn't a productivity tool. It's a place where the chart asks the question and you answer.\n\nEvery entry stamps with what's happening in the sky — moon phase, planet day, what's hitting your chart. Over time, patterns surface. Your journaling becomes a record of your life through astrology.\n\nYou can write or speak. Your entries are yours. We don't read them unless you ask us to.`,
+  welcome: `This isn't a productivity tool. It's a place where the chart asks the question and you answer.\n\nEvery entry stamps with what's happening in the sky — moon phase, planet day, what's hitting your chart. Over time, patterns surface. Your journaling becomes a record of your life through astrology.\n\nYou can write or speak. Your entries are yours, they are never trained on and never sold. When you talk to Dolly she is given them, so she can answer from what you've actually written \u2014 and anything you burn is never stored at all.`,
 
-  privacyPromise: `Your journal is yours. Mapped doesn't read your entries unless you specifically ask us to. We never train on your content. We never share it. You can delete anything, export everything.`,
+  /*
+   * This used to promise "Mapped doesn't read your entries unless you
+   * specifically ask us to", which stopped being true when Dolly started
+   * being sent the journal with every message. Nothing renders this constant
+   * today \u2014 but a false promise sitting in the codebase is a false promise
+   * one import away from the screen.
+   */
+  privacyPromise: `Your journal is yours. We never train on your content, and we never share or sell it. Dolly is given your entries when you talk to her, so she can answer from what you've written; anything you burn is never stored at all. You can delete anything, export everything.`,
 
   textPatternOptIn: `To surface deeper patterns — like "you mention your mother more during Cancer transits" — Mapped needs to read your entries. We process them privately, never train on them, and you can turn this off at any time. Want to enable deeper patterns?`,
 

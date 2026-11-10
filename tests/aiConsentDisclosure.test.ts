@@ -28,15 +28,28 @@ import {
 import * as serverConsent from "../src/lib/ai/consent";
 import * as clientConsent from "../src/lib/aiConsent";
 import { PROMPT_LIMITS } from "../src/lib/ai/promptLimits";
+import { buildJournalContext } from "../src/lib/dollyCrossFeature";
 
 const items = AI_SHARED_ITEMS.join("\n").toLowerCase();
 
-test("the list says journal excerpts go with every Dolly message", () => {
+test("the list says the whole journal goes with every Dolly message", () => {
   const line = AI_SHARED_ITEMS.find((i) => /journal/i.test(i) && /every message/i.test(i));
-  assert.ok(line, "no item says journal excerpts travel with every message");
-  assert.match(line!, /five most recent/i);
+  assert.ok(line, "no item says journal entries travel with every message");
+  // "in full", because they are. The list used to say "short excerpts from
+  // your five most recent", which was true of the old 160-character sample
+  // and became an understatement the day Dolly was given the journal itself.
+  assert.match(line!, /in full/i);
   assert.match(line!, /mood/i);
+  assert.doesNotMatch(line!, /excerpt/i, "the list still calls them excerpts");
+  assert.doesNotMatch(line!, /five most recent/i, "the list still says five");
   assert.doesNotMatch(items, /when you ask for a reflection or a prompt/);
+});
+
+test("the list promises, where someone is reading it, that burned entries do not go", () => {
+  // The journal's own ceremony says "your words have left no trace". The
+  // consent screen is where that promise is load-bearing.
+  const line = AI_SHARED_ITEMS.find((i) => /journal/i.test(i) && /every message/i.test(i))!;
+  assert.match(line, /burn[\s\S]*never/i);
 });
 
 test("the list says up to twelve people go with every Dolly message", () => {
@@ -55,10 +68,30 @@ test("'twelve' is the number the Dolly route actually sends", () => {
   assert.match(route, /connections\.slice\(0, PROMPT_LIMITS\.connections\)/);
 });
 
-test("'five most recent' is the number the client actually sends", () => {
-  const src = readFileSync("src/lib/dollyCrossFeature.ts", "utf8");
-  assert.match(src, /\.slice\(0, 5\)/, "the disclosure says five — change both together");
-  assert.match(src, /e\.mood/, "the disclosure says moods go — check that they still do");
+test("\"in full\" is what the client actually sends", () => {
+  // Run rather than grepped: the disclosure is a promise about behaviour, and
+  // the only honest way to check a promise about behaviour is to watch it.
+  const entries = Array.from({ length: 9 }, (_, i) => ({
+    text: `Entry number ${i} and the rest of what was written that day.`,
+    date: `2026-0${(i % 9) + 1}-01`,
+    created_at: `2026-0${(i % 9) + 1}-01T09:00:00.000Z`,
+    mood: "tired",
+    is_burn: false,
+  }));
+  const out = buildJournalContext(entries);
+  for (let i = 0; i < 9; i += 1) {
+    assert.match(out, new RegExp(`Entry number ${i} and the rest`), `entry ${i} was not sent`);
+  }
+  assert.match(out, /9 journal entries in total/, "the count is not stated");
+  assert.match(out, /tired/, "the disclosure says moods go — they do not");
+});
+
+test("burned entries are not sent, as the list promises", () => {
+  const out = buildJournalContext([
+    { text: "Kept.", created_at: "2026-11-06T09:00:00.000Z", is_burn: false },
+    { text: "BURNED.", created_at: "2026-11-05T09:00:00.000Z", is_burn: true },
+  ]);
+  assert.doesNotMatch(out, /BURNED/);
 });
 
 test("the tarot pull and Dolly's memory note are disclosed too", () => {

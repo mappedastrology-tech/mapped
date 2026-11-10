@@ -15,6 +15,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useKeyboardOpen } from "@/lib/useKeyboardOpen";
 
 const DOLLY_TIP_KEY = "mapped:dolly-tip-seen";
 // Long enough to read two short lines, short enough that a user who is busy
@@ -41,6 +42,21 @@ export default function BottomNav() {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const [showDollyTip, setShowDollyTip] = useState(false);
+  /**
+   * Stand down while someone is typing.
+   *
+   * The nav is in the flex column with the page, so on a phone it holds ~60px
+   * of a viewport the keyboard has already halved — six destinations nobody is
+   * navigating to mid-sentence, charged against the two or three lines of their
+   * own text they can still see. Worst on Dolly, where the thread, the
+   * composer and the nav were all competing for about 200px, but it is every
+   * screen with a field on it: the journal entry, the chart form, the bug
+   * report.
+   *
+   * display:none rather than unmounting, so the one-time Dolly tip's timer and
+   * its "seen" flag survive a keyboard coming and going.
+   */
+  const keyboardOpen = useKeyboardOpen();
 
   // One-time "meet Dolly" coachmark — home only.
   //
@@ -88,7 +104,10 @@ export default function BottomNav() {
       ref={navRef}
       className="lg:hidden flex-shrink-0 relative"
       aria-label="Main navigation"
-      style={{ backgroundColor: "#1a2818" }}
+      // aria-hidden too: a hidden nav must not still be the next thing a
+      // screen reader or a Tab press finds under the keyboard.
+      aria-hidden={keyboardOpen || undefined}
+      style={{ backgroundColor: "#1a2818", display: keyboardOpen ? "none" : undefined }}
     >
       {/* First-visit strip introducing Dolly. In flow above the tabs — never an
           overlay — with a pointer sitting in the tab row's top padding so it

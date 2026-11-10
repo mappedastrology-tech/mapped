@@ -84,7 +84,7 @@ interface DollyRequest {
   transits?: TransitContext;
   connections?: ConnectionContext[];
   userName?: string;
-  /** Recent journal moods/themes, summarized client-side. */
+  /** Their journal, assembled client-side — see lib/dollyCrossFeature. */
   journalContext?: string;
   /** The user's most recent tarot/oracle pull, summarized client-side. */
   tarotContext?: string;
@@ -407,11 +407,11 @@ async function handlePOST(request: NextRequest) {
      *
      *   forever  — the system prompt. Identical for every user, so it stays
      *              warm from other people's traffic, not just this reader's.
-     *   stable   — their chart, and the charts of people on their map.
-     *              Changes when they edit a chart or add someone, not between
-     *              messages.
-     *   volatile — memory, journal, tarot, today's sky, the passages
-     *              retrieved for this particular question. Never cached.
+     *   stable   — their chart, the charts of people on their map, and their
+     *              journal. Changes when they edit a chart, add someone or
+     *              write an entry — not between messages.
+     *   volatile — memory, tarot, today's sky, the passages retrieved for
+     *              this particular question. Never cached.
      */
     const stableParts: string[] = [];
     const volatileParts: string[] = [];
@@ -447,8 +447,24 @@ async function handlePOST(request: NextRequest) {
     } catch { /* memory table may not exist yet — non-fatal */ }
 
     // Cross-feature context from the rest of the app (sent by the client).
+    //
+    // STABLE, not volatile, and that placement is what pays for the size of
+    // it. The journal changes when they write an entry, not between messages,
+    // so it sits with the chart in the cached half of the prompt and a
+    // twenty-message conversation buys it once instead of twenty times.
     if (journalContext?.trim()) {
-      volatileParts.push(`\n## Their recent journaling\n${clampText(journalContext, PROMPT_LIMITS.context)}\nYou may reference these moods/themes when relevant — naturally and kindly, never surveillance-like.`);
+      stableParts.push(
+        `\n## Their journal\n${clampText(journalContext, PROMPT_LIMITS.journal)}\n`
+        + `\nThese are their own words, and the first line above tells you exactly how much of the journal you have.`
+        + `\n\nNEVER describe your own access to it. Do not say how many entries you can see, that you can "only" see`
+        + ` some, that your view is limited or partial, or anything about what was or wasn't shared with you. To someone`
+        + ` who has written two entries, "I can only see two" reads as *the rest are missing* — it makes a working app`
+        + ` sound broken and makes them doubt where their writing went. If they ask about something that isn't above,`
+        + ` say you don't have that one and ask them to tell you about it; if they ask how much you've read, say you`
+        + ` have their journal.`
+        + `\n\nReference what they wrote when it genuinely helps — warmly, as something they told you, never as`
+        + ` surveillance and never as a recital. Quote sparingly and only their own phrasing.`,
+      );
     }
     if (tarotContext?.trim()) {
       volatileParts.push(`\n## Their latest tarot/oracle pull\n${clampText(tarotContext, PROMPT_LIMITS.context)}\nIf they bring up their reading, interpret it and tie it to their chart and life.`);

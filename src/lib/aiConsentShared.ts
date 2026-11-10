@@ -35,8 +35,14 @@ export const AI_DECLINED_KEY = "ai-consent-declined";
  *       them", which was not true.
  *   3 — adds the note you wrote on a single-card pull, which goes with the
  *       cards (lib/dollyCrossFeature.ts, first 160 characters).
+ *   4 — Dolly is given the journal ITSELF, not a sample of it. Version 3
+ *       described five entries cut to 160 characters each; she now receives
+ *       the entries in full — text, dates, titles, moods and the prompt
+ *       answered, newest first — with the most recent filling a budget if
+ *       there are a great many. That is materially more of someone's writing
+ *       leaving the device, so it is a new permission, not a reword.
  */
-export const AI_CONSENT_VERSION = 3;
+export const AI_CONSENT_VERSION = 4;
 
 /** The provider, named — Apple wants the company, not "an AI". */
 export const AI_PROVIDER_NAME = "Anthropic";
@@ -46,8 +52,9 @@ export const AI_PROVIDER_NAME = "Anthropic";
  *
  * This has to match the code, not the intention. Checked against:
  *   - api/dolly/route.ts + lib/dollyCrossFeature.ts: every message carries the
- *     five most recent journal entries (first 160 characters each, with the
- *     mood), the latest tarot/oracle pull, the memory note, and up to
+ *     journal entries in full (buildJournalContext — text, date, title, mood
+ *     and prompt, newest first, to a character budget), the latest
+ *     tarot/oracle pull, the memory note, and up to
  *     PROMPT_LIMITS.connections (12) people with their charts.
  *   - api/journal/reflect: the entries for the period being reflected on.
  *   - api/palmistry: the photograph.
@@ -57,7 +64,7 @@ export const AI_PROVIDER_NAME = "Anthropic";
 export const AI_SHARED_ITEMS = [
   "Your first name, your birth date, time and place, and the chart built from them",
   "What you write to Dolly, what she writes back, and the short note she keeps about your life so she can pick up where you left off",
-  "With every message to Dolly: short excerpts from your five most recent journal entries, with the mood you tagged",
+  "With every message to Dolly: your journal entries in full — their text, dates, titles and the moods you tagged, newest first. Entries you burn are never stored and never sent",
   "With every message to Dolly: up to twelve people on your map — their names, how you know them, and their charts",
   "With every message to Dolly: the cards in your latest tarot or oracle pull, and the start of any note you wrote on a single-card pull",
   "Your journal entries for a week or month, when you ask for a reflection on them",
