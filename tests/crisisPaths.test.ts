@@ -78,9 +78,12 @@ test("desktop Dolly checks before it sends, and does not stack a limit on top", 
   const check = indexOfOrFail(src, "const crisis = detectCrisis(userText)", "the crisis check");
   const post = indexOfOrFail(src, 'authedFetch("/api/dolly"', "the request");
   assert.ok(check < post, "the check must happen before the request");
-  // The 402/429/503 branch must bail out rather than render a plan limit.
-  const at = indexOfOrFail(src, "res.status === 402 || res.status === 429 || res.status === 503", "the limit branch");
-  assert.match(src.slice(at, at + 400), /if \(crisis\) return;/, "a plan limit could render under the support card");
+  // The branch that renders a refusal as a notice must bail out rather than
+  // stack a plan limit under the support card. It used to be keyed to
+  // 402/429/503; it now fires on any refusal carrying a sentence, which is
+  // strictly more occasions on which it could cover the card.
+  const at = indexOfOrFail(src, "if (serverSaid) {", "the notice branch");
+  assert.match(src.slice(at, at + 400), /if \(crisis\) return;/, "a refusal could render under the support card");
 });
 
 test("there is exactly one crisis detector in the codebase", () => {

@@ -293,15 +293,17 @@ export default function WebDolly() {
           if (!crisis) setAiConsent("unknown");
           return;
         }
-        if (res.status === 402 || res.status === 429 || res.status === 503) {
+        // Any refusal carrying a readable sentence is shown as a notice,
+        // whatever its number — see the mobile tab for the day this cost.
+        // The route owns that wording and has been careful with it; listing
+        // which statuses "count" only threw good sentences away.
+        const serverSaid = typeof body.error === "string" ? body.error.trim() : "";
+        if (serverSaid) {
           setTyping(false);
           // A card is already on screen for this turn; a plan limit stacked
           // under it would undo the whole point.
           if (crisis) return;
-          const text = typeof body.error === "string" && body.error.trim()
-            ? body.error
-            : "Dolly isn't available on your plan right now.";
-          setMessages((m) => [...m, { from: "dolly" as const, text, at: Date.now(), notice: true }]);
+          setMessages((m) => [...m, { from: "dolly" as const, text: serverSaid, at: Date.now(), notice: true }]);
           return;
         }
         throw new Error(`status ${res.status}`);

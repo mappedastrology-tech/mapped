@@ -652,12 +652,30 @@ export default function DollyTab() {
           }
           return;
         }
-        // 402 and 429 are policy: the plan, the daily limit, the monthly AI
-        // ceiling. 503 is us being unreachable, which the server words
-        // honestly too. All three are answered in the server's own words, as
-        // a notice — not thrown, because a thrown rule becomes "Something
-        // went wrong" in Dolly's own voice.
-        if (res.status === 402 || res.status === 429 || res.status === 503) {
+        /**
+         * If the server said something, say it.
+         *
+         * This used to list the statuses whose message was worth showing —
+         * 402, 429, 503 — and throw away everything else. But /api/dolly
+         * answers an upstream failure with 500 and a sentence written for the
+         * reader: "Dolly is unavailable right now — this one is on us, not
+         * you." That sentence never reached anybody. It fell through to the
+         * throw and came back as "Dolly couldn't finish that answer. Try
+         * asking again?", which is an invitation to retry something that
+         * cannot work.
+         *
+         * It cost a day. The AI key on one of the two deployments had expired,
+         * every reply was failing with an authentication error, the route was
+         * logging it correctly and wording it kindly — and the screen said the
+         * one thing that sends you looking in the wrong place.
+         *
+         * So: any refusal that carries a readable sentence is shown as a
+         * notice, whatever its number. The route owns that wording and has
+         * been careful with it; the client's job is to deliver it, not to
+         * second-guess which ones count.
+         */
+        const serverSaid = typeof errBody.error === "string" ? errBody.error.trim() : "";
+        if (serverSaid) {
           // The support card is already on screen for this turn. A server
           // that refused without taking the crisis branch — an older build,
           // or an edge the route does not cover — must not be allowed to
@@ -666,11 +684,8 @@ export default function DollyTab() {
             setMessages(prev => prev.filter(m => m.id !== assistantId));
             return;
           }
-          const text = typeof errBody.error === "string" && errBody.error.trim()
-            ? errBody.error
-            : "Dolly isn't available on your plan right now.";
           setMessages(prev =>
-            prev.map(m => (m.id === assistantId ? { ...m, content: text, notice: true } : m)),
+            prev.map(m => (m.id === assistantId ? { ...m, content: serverSaid, notice: true } : m)),
           );
           return;
         }
