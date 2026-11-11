@@ -16,9 +16,10 @@
  * the same size as the accept and says what it does.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AI_PROVIDER_NAME, AI_SHARED_ITEMS, grantAiConsent, declineAiConsent } from "@/lib/aiConsent";
+import { supabase } from "@/lib/supabase";
 
 export default function AiConsentScreen({
   onGranted,
@@ -29,6 +30,26 @@ export default function AiConsentScreen({
 }) {
   const [busy, setBusy] = useState<"grant" | "decline" | null>(null);
   const [error, setError] = useState("");
+  /**
+   * Which account this permission is being given FOR.
+   *
+   * Permission is stored per account, and someone with two accounts has no way
+   * to know which one they are answering for — the app never said. Answer on
+   * the wrong one and nothing changes: the screen says it saved, the other
+   * account carries on being refused, and the only visible result is that the
+   * app still does not work. That happened twice in a row, on the author's own
+   * app, with nothing on screen to explain it.
+   *
+   * So the screen names the account, directly above the button that acts on it.
+   */
+  const [account, setAccount] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => { if (alive) setAccount(session?.user?.email ?? null); })
+      .catch(() => { /* the screen is still usable without it */ });
+    return () => { alive = false; };
+  }, []);
 
   async function choose(agree: boolean) {
     setBusy(agree ? "grant" : "decline");
@@ -95,9 +116,26 @@ export default function AiConsentScreen({
           </ul>
         </div>
 
-        <p className="text-[13px] leading-[1.6] mb-6" style={{ color: "var(--foreground-muted)" }}>
+        <p className="text-[13px] leading-[1.6] mb-4" style={{ color: "var(--foreground-muted)" }}>
           It is sent only while you&rsquo;re using Dolly or another AI feature — never in the background.
         </p>
+
+        {/* Named, because this answer only applies to this account. */}
+        {account && (
+          <p
+            className="text-[12.5px] leading-[1.5] mb-5 rounded-xl px-3 py-2.5"
+            style={{
+              fontFamily: "var(--font-ui)",
+              color: "var(--foreground-secondary)",
+              background: "var(--background-card)",
+              border: "0.5px solid var(--border-card)",
+            }}
+          >
+            You&rsquo;re answering for <strong style={{ color: "var(--foreground)" }}>{account}</strong>.
+            If that isn&rsquo;t the account you use Dolly on, sign in to that one first &mdash; permission is
+            saved per account.
+          </p>
+        )}
 
         <div className="flex flex-col gap-2.5">
           <button
