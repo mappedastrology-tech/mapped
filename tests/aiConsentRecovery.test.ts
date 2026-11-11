@@ -95,6 +95,27 @@ test("a consent refusal is not mistaken for a plan limit", () => {
   }
 });
 
+test("the consent screen names the account the answer applies to", () => {
+  // Permission is stored per account. With two accounts and nothing on screen
+  // saying which one is being answered for, "Allow" can be tapped on the wrong
+  // one — twice in a row, as it was — while the account that is actually
+  // blocked carries on being refused and the app carries on looking broken.
+  const src = code("src/components/AiConsentScreen.tsx");
+  assert.match(src, /getSession/, "the screen never looks up who is signed in");
+  assert.match(
+    src,
+    /setAccount\([\s\S]{0,80}email/,
+    "the screen looks up the session but does not take the email from it",
+  );
+  const raw = read("src/components/AiConsentScreen.tsx");
+  assert.match(raw, /\{account\}/, "the email is read but never rendered");
+  assert.match(
+    raw,
+    /saved per account/i,
+    "the screen does not explain that the answer only covers this account",
+  );
+});
+
 test("the version bump that causes all this is still wired to both halves", () => {
   // The refusal only happens because a "yes" to an older list stops counting.
   // If the shared version ever drifted from what the client writes, the app
