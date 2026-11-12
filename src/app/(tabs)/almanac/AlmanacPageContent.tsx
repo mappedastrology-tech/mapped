@@ -15,15 +15,17 @@ import {
   getHoldOffToday,
   getActivityDetail,
   getCategoryDefinitions,
-  scoreCategoryForDate,
-  isUnscoredTopic,
+  readCategoryForDay,
+  SCORE_EXPLAINER,
   getWeekData,
   getMonthData,
   type ActivityDetail,
   type ActivityFactor,
   type CategoryDefinition,
+  type CategoryReading,
   type MonthData,
 } from "@/lib/almanacData";
+import { useAlmanacCategories } from "@/components/almanac/useAlmanacCategories";
 import { getCelestialData, DEFAULT_COORDS } from "@/lib/celestialMechanics";
 import { supabase } from "@/lib/supabase";
 import {
@@ -48,11 +50,7 @@ import { getDailyEnergy } from "@/lib/celestialCalendar";
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
-const CATEGORIES_KEY = "mapped:almanac-categories";
-const CUSTOM_NAMES_KEY = "mapped:almanac-custom-names";
 const TRANSITS_KEY = "mapped:transits";
-// "money" was a default; day scores for money decisions were removed.
-const DEFAULT_CATEGORIES = ["communication", "love", "body", "rest", "creativity"];
 
 /** Decorative stars scattered behind the moon hero — [x%, y%, size, opacity]. */
 const HERO_STARS: [number, number, number, number][] = [
@@ -270,6 +268,48 @@ function FactorVoidIcon() {
   );
 }
 
+// ─── YOUR DAY ───────────────────────────────────────────────────────────────
+
+/** Bar and chip colour by tier. "Quiet" is muted, not red: it is weather, not a warning. */
+const TIER_ACCENT: Record<CategoryReading["tier"], string> = {
+  favorable: "var(--sage)",
+  mixed: "var(--brass)",
+  quiet: "var(--foreground-muted)",
+};
+/** Chip text: sage pulled toward the foreground so it reads on both themes. */
+const TIER_TEXT: Record<CategoryReading["tier"], string> = {
+  favorable: "color-mix(in srgb, var(--sage) 62%, var(--foreground))",
+  mixed: "var(--brass)",
+  quiet: "var(--foreground-muted)",
+};
+/** Month tint by colorLevel (0 = quiet … 4 = favorable): one calm sage ramp. */
+const MONTH_RAMP = [
+  "color-mix(in srgb, var(--foreground) 3%, transparent)",
+  "color-mix(in srgb, var(--sage) 9%, transparent)",
+  "color-mix(in srgb, var(--sage) 18%, transparent)",
+  "color-mix(in srgb, var(--sage) 30%, transparent)",
+  "color-mix(in srgb, var(--sage) 44%, transparent)",
+] as const;
+
+/** A category reading in the detail sheet's shape. */
+function readingAsDetail(r: CategoryReading): ActivityDetail {
+  const icon = (k: CategoryReading["reasons"][number]["kind"]): ActivityFactor["icon"] =>
+    k === "moon" || k === "phase" ? "moon" : k === "motion" ? "retrograde" : k === "void" ? "void" : "planet";
+  const readAs = r.readAs && r.readAs !== "General" ? ` “${r.name}” is read like ${r.readAs}.` : "";
+  return {
+    activity: r.name,
+    type: "good",
+    score: r.score,
+    word: r.word,
+    scoreContext: `${SCORE_EXPLAINER}${readAs}`,
+    factors: r.reasons.map((x) => ({ label: x.label, description: x.note, weight: x.weight, icon: icon(x.kind) })),
+    bestWindow: r.bestWindow ? { start: r.bestWindow.start, end: r.bestWindow.end, reason: r.bestWindow.reason } : null,
+    windowNote: r.windowNote,
+    personalTransit: null,
+    historyNote: null,
+  };
+}
+
 function getFactorIcon(icon: ActivityFactor["icon"]) {
   switch (icon) {
     case "moon": return <FactorMoonIcon />;
@@ -287,14 +327,19 @@ function ActivityDetailView({
   transitData,
   skyLine,
   onClose,
+  eyebrow,
+  accent,
 }: {
   detail: ActivityDetail;
   transitData: string | null;
   skyLine: string;
   onClose: () => void;
+  /** Overrides for a "Your day" category reading. */
+  eyebrow?: string;
+  accent?: string;
 }) {
   const isGood = detail.type === "good";
-  const accentColor = isGood ? "var(--sage)" : "var(--hold)";
+  const accentColor = accent ?? (isGood ? "var(--sage)" : "var(--hold)");
 
   // Parse transit data
   let personalTransitText: string | null = null;
@@ -358,7 +403,7 @@ function ActivityDetailView({
             className="text-[10px] uppercase tracking-[0.18em] font-bold mb-1.5"
             style={{ color: accentColor }}
           >
-            {isGood ? "GOOD FOR TODAY" : "HOLD OFF ON"}
+            {eyebrow ?? (isGood ? "GOOD FOR TODAY" : "HOLD OFF ON")}
           </p>
           <h2
             className="text-[25px] leading-tight"
@@ -386,6 +431,9 @@ function ActivityDetailView({
             <span className="text-[9px] leading-none mt-0.5" style={{ color: "var(--foreground-muted)" }}>
               / 10
             </span>
+            <span className="text-[9px] leading-none mt-1 font-bold uppercase" style={{ letterSpacing: "0.08em", color: accentColor }}>
+              {detail.word}
+            </span>
           </div>
           <p className="text-[14px] leading-relaxed flex-1" style={{ color: "var(--foreground-secondary)" }}>
             {detail.scoreContext}
@@ -412,8 +460,8 @@ function ActivityDetailView({
             className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3"
             style={{ color: "var(--foreground-muted)" }}
           >
-            {isGood ? "Why The Sky Agrees" : "Why To Skip"}
-            <InfoTip text="The specific sky factors behind this pick, and how much each one helps or hinders." />
+            {eyebrow ? "What The Sky Is Doing" : isGood ? "Why The Sky Agrees" : "Why To Skip"}
+            <InfoTip text="The real configurations in today's sky behind this score — the planet's sign, the Moon's sign and phase, and exact aspects — and how much each one adds or takes away." />
           </p>
           <div className="flex flex-col gap-3">
             {detail.factors.map((factor, i) => (
@@ -426,7 +474,7 @@ function ActivityDetailView({
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <span style={{ color: factor.weight >= 0 ? "var(--sage)" : "var(--terracotta)" }}>
+                  <span style={{ color: factor.weight > 0 ? "var(--sage)" : factor.weight < 0 ? "var(--terracotta)" : "var(--foreground-on-card-faint)" }}>
                     {getFactorIcon(factor.icon)}
                   </span>
                   <span className="flex-1 text-[14px] font-semibold" style={{ color: "var(--foreground-on-card)" }}>
@@ -435,13 +483,15 @@ function ActivityDetailView({
                   <span
                     className="text-[10px] font-bold px-1.5 py-0.5 rounded"
                     style={{
-                      background: factor.weight >= 0
+                      background: factor.weight > 0
                         ? "color-mix(in srgb, var(--sage) 12%, transparent)"
-                        : "color-mix(in srgb, var(--terracotta) 12%, transparent)",
-                      color: factor.weight >= 0 ? "var(--sage)" : "var(--terracotta)",
+                        : factor.weight < 0
+                        ? "color-mix(in srgb, var(--terracotta) 12%, transparent)"
+                        : "color-mix(in srgb, var(--foreground) 6%, transparent)",
+                      color: factor.weight > 0 ? "var(--sage)" : factor.weight < 0 ? "var(--terracotta)" : "var(--foreground-on-card-muted)",
                     }}
                   >
-                    {factor.weight >= 0 ? "Helps" : "Hinders"} {factor.weight >= 0 ? "+" : "−"}{Math.abs(factor.weight).toFixed(1)}
+                    {factor.weight === 0 ? "Neutral" : `${factor.weight > 0 ? "Helps +" : "Hinders −"}${Math.abs(factor.weight).toFixed(1)}`}
                   </span>
                 </div>
                 <p className="text-[12px] leading-relaxed mt-2 ml-[30px]" style={{ color: "var(--foreground-on-card-muted)" }}>
@@ -457,7 +507,17 @@ function ActivityDetailView({
           </div>
         </section>
 
-        {/* Best Window (good items only) */}
+        {/* Best Window — computed from the day's aspects and the void Moon, or a note that nothing stands out */}
+        {!detail.bestWindow && detail.windowNote && (
+          <section>
+            <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: "var(--foreground-muted)" }}>
+              Best Window
+            </p>
+            <p className="text-[13px] leading-relaxed rounded-xl px-4 py-3.5" style={{ color: "var(--foreground-on-card-muted)", background: "var(--background-card)", border: "1px solid var(--border-card)" }}>
+              {detail.windowNote}
+            </p>
+          </section>
+        )}
         {detail.bestWindow && (
           <section>
             <p
@@ -465,7 +525,7 @@ function ActivityDetailView({
               style={{ color: "var(--foreground-muted)" }}
             >
               Best Window
-              <InfoTip text="The stretch of today when this activity is most supported by the sky." />
+              <InfoTip text="Computed: the hours leading up to the day's most supportive exact Moon aspect, within waking hours and outside any void-of-course stretch. Applying aspects are traditionally the stronger side." />
             </p>
             <div
               className="rounded-xl px-5 py-4 flex items-center gap-4"
@@ -492,8 +552,10 @@ function ActivityDetailView({
           </section>
         )}
 
-        {/* For Your Chart Specifically */}
-        <section>
+        {/* For Your Chart Specifically — only when there is real transit data.
+            (It used to fall back to "Moon hits your …-related houses today",
+            which nothing computed.) */}
+        {(personalTransitText || detail.personalTransit) && <section>
           <p
             className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3"
             style={{ color: "var(--sage)" }}
@@ -513,11 +575,11 @@ function ActivityDetailView({
                 <StarIcon />
               </span>
               <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-on-card)" }}>
-                {personalTransitText || detail.personalTransit || `Moon hits your ${detail.activity.toLowerCase()}-related houses today. This is personally amplified for your chart — not just a general read.`}
+                {personalTransitText || detail.personalTransit}
               </p>
             </div>
           </div>
-        </section>
+        </section>}
 
         {/* From Your History */}
         {detail.historyNote && (
@@ -885,7 +947,7 @@ export default function AlmanacPageContent() {
   // ── State ─────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [monthOffset, setMonthOffset] = useState(0); // 0 = current month
-  const [monthCategoryFilter] = useState<string | null>(null);
+  const [monthCategoryFilter, setMonthCategoryFilter] = useState<string | null>(null);
   const [showTwilightDetail, setShowTwilightDetail] = useState(false);
   const [showMoonDetail, setShowMoonDetail] = useState(false);
   const [showGardeningTasks, setShowGardeningTasks] = useState(false);
@@ -896,45 +958,15 @@ export default function AlmanacPageContent() {
     const d = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     return getMonthData(d.getFullYear(), d.getMonth(), monthCategoryFilter || undefined);
   }, [today, monthOffset, monthCategoryFilter]);
-  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
-  const [customNames, setCustomNames] = useState<Record<string, string>>({});
+  // Tracked categories: localStorage + the account setting (useAlmanacCategories).
+  const { categories, customNames, add: handleAddCategory, remove: handleRemoveCategory, addCustom } = useAlmanacCategories();
   const [showCategoryLibrary, setShowCategoryLibrary] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [customCategoryNote, setCustomCategoryNote] = useState<string | null>(null);
   const [transitData, setTransitData] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ActivityDetail | null>(null);
+  const [selectedReading, setSelectedReading] = useState<CategoryReading | null>(null);
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
-  const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(["Best For"]));
-
-  // Load categories + custom display names from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CATEGORIES_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Drop saved categories the almanac no longer scores (the removed
-          // medical, money and legal ones, or the same typed in as custom).
-          const builtIn = new Set(getCategoryDefinitions().map((d) => d.id));
-          const kept = parsed.filter((c): c is string =>
-            typeof c === "string" && (builtIn.has(c) || !isUnscoredTopic(c)));
-          setCategories(kept.length > 0 ? kept : DEFAULT_CATEGORIES);
-          if (kept.length !== parsed.length) {
-            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(kept.length > 0 ? kept : DEFAULT_CATEGORIES)); } catch { /* no-op */ }
-          }
-        }
-      }
-      const names = localStorage.getItem(CUSTOM_NAMES_KEY);
-      if (names) {
-        const parsed = JSON.parse(names);
-        if (parsed && typeof parsed === "object") {
-          setCustomNames(parsed);
-        }
-      }
-    } catch {
-      /* no-op */
-    }
-  }, []);
 
   // Load transit data from sessionStorage
   useEffect(() => {
@@ -948,48 +980,11 @@ export default function AlmanacPageContent() {
     }
   }, []);
 
-  // Save categories
-  const saveCategories = useCallback((cats: string[]) => {
-    setCategories(cats);
-    try {
-      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cats));
-    } catch {
-      /* no-op */
-    }
-  }, []);
-
-  const handleAddCategory = useCallback((catId: string) => {
-    if (!categories.includes(catId)) {
-      saveCategories([...categories, catId]);
-    }
-  }, [categories, saveCategories]);
-
-  const handleRemoveCategory = useCallback((catId: string) => {
-    saveCategories(categories.filter(c => c !== catId));
-  }, [categories, saveCategories]);
-
   const handleAddCustomCategory = useCallback(() => {
-    const trimmed = customCategoryInput.trim();
-    if (trimmed) {
-      const id = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      if (id && isUnscoredTopic(id) && !getCategoryDefinitions().some((d) => d.id === id)) {
-        setCustomCategoryNote("The almanac doesn't score health, money or legal decisions — those deserve better than a moon sign.");
-        setCustomCategoryInput("");
-        return;
-      }
-      setCustomCategoryNote(null);
-      if (id && !categories.includes(id)) {
-        saveCategories([...categories, id]);
-        // Store the original display name for custom categories
-        const updated = { ...customNames, [id]: trimmed };
-        setCustomNames(updated);
-        try {
-          localStorage.setItem(CUSTOM_NAMES_KEY, JSON.stringify(updated));
-        } catch { /* no-op */ }
-      }
-    }
+    const note = addCustom(customCategoryInput);
+    setCustomCategoryNote(note);
     setCustomCategoryInput("");
-  }, [customCategoryInput, categories, saveCategories, customNames]);
+  }, [customCategoryInput, addCustom]);
 
   const toggleDomain = useCallback((domain: string) => {
     setExpandedDomains(prev => {
@@ -1000,14 +995,11 @@ export default function AlmanacPageContent() {
     });
   }, []);
 
-  const toggleTier = useCallback((tier: string) => {
-    setExpandedTiers(prev => {
-      const next = new Set(prev);
-      if (next.has(tier)) next.delete(tier);
-      else next.add(tier);
-      return next;
-    });
-  }, []);
+  // A filter for a category no longer tracked falls back to the whole day.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (monthCategoryFilter && !categories.includes(monthCategoryFilter)) setMonthCategoryFilter(null);
+  }, [categories, monthCategoryFilter]);
 
   const handleOpenDetail = useCallback((activity: string, type: "good" | "skip") => {
     const detail = getActivityDetail(activity, type, today, sky.moonSign, sky);
@@ -1029,6 +1021,8 @@ export default function AlmanacPageContent() {
   }, [today, sky, transitData]);
 
   // ── Formatted values ──────────────────────────────────────────────────────
+  // "New Moon in Scorpio", not "New Moon Moon in Scorpio" (the full and new labels already end in Moon).
+  const skyLine = `${/Moon$/.test(sky.moonPhase.label) ? sky.moonPhase.label : `${sky.moonPhase.label} Moon`} in ${sky.moonSign} · ${Math.round(sky.moonPhase.illumination)}% · Sun in ${sky.sunSign}${sky.voidOfCourseMoon ? " · Moon void of course" : ""}`;
   const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
   const dateLabel = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   const moonPhaseLabel = sky.moonPhase.label;
@@ -1074,33 +1068,15 @@ export default function AlmanacPageContent() {
     return `${sky.moonSign} Moon with ${ruler.planet} ruling the day. ${desc.charAt(0).toUpperCase()}${desc.slice(1)}. ${phaseNote}`;
   }, [transitData, sky]);
 
-  // Category scores
-  const categoryScores = useMemo(() => {
-    const allDefs = getCategoryDefinitions();
-    return categories.map((catId) => {
-      const def = allDefs.find(d => d.id === catId);
-      const result = scoreCategoryForDate(catId, today, sky);
-      return {
-        id: catId,
-        name: def?.name || customNames[catId] || unslugify(catId),
-        score: result.score,
-        topFactor: result.topFactor,
-      };
-    });
-  }, [categories, today, sky, customNames]);
-
-  // Group categories into score tiers (sorted descending within each)
-  const scoreTiers = useMemo(() => {
-    const sorted = [...categoryScores].sort((a, b) => b.score - a.score);
-    const best = sorted.filter(c => c.score >= 7.0);
-    const good = sorted.filter(c => c.score >= 5.0 && c.score < 7.0);
-    const notIdeal = sorted.filter(c => c.score < 5.0);
-    return [
-      { label: "Best For", emoji: "✦", items: best },
-      { label: "Good For", emoji: "○", items: good },
-      { label: "Not Ideal", emoji: "—", items: notIdeal },
-    ].filter(t => t.items.length > 0);
-  }, [categoryScores]);
+  // "Your day": one real-sky reading per tracked category (almanacCategories).
+  const categoryReadings = useMemo(
+    () => categories
+      .map((id) => readCategoryForDay(id, today, { name: customNames[id] }))
+      .filter((r) => r.scored),
+    [categories, today, customNames]
+  );
+  const categoryName = useCallback((id: string) =>
+    getCategoryDefinitions().find((d) => d.id === id)?.name || customNames[id] || unslugify(id), [customNames]);
 
   // Category library grouped by domain
   const categoryLibrary = useMemo(() => {
@@ -1528,7 +1504,7 @@ export default function AlmanacPageContent() {
                 {[
                   { label: "Full Moon", value: monthData.overview.fullMoon },
                   { label: "New Moon", value: monthData.overview.newMoon },
-                  { label: "Best window", value: monthData.overview.bestWindow },
+                  { label: monthCategoryFilter ? `Best for ${categoryName(monthCategoryFilter)}` : "Best window", value: monthData.overview.bestWindow },
                 ].map((chip, i) => (
                   <div
                     key={i}
@@ -1604,6 +1580,31 @@ export default function AlmanacPageContent() {
                 </div>
               </div>
 
+              {/* Category filter: tint each day by how the sky reads for one tracked category */}
+              {categoryReadings.length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-3 -mx-0.5 px-0.5" role="group" aria-label="Read the month for a category" style={{ scrollbarWidth: "none" }}>
+                  {[{ id: null as string | null, name: "Phases" }, ...categoryReadings.map((r) => ({ id: r.id as string | null, name: r.name }))].map((chip) => {
+                    const on = monthCategoryFilter === chip.id;
+                    return (
+                      <button
+                        key={chip.id ?? "none"}
+                        onClick={() => setMonthCategoryFilter(chip.id)}
+                        aria-pressed={on}
+                        className="shrink-0 rounded-full px-3 py-[5px] text-[11.5px] font-semibold"
+                        style={{
+                          fontFamily: "var(--font-ui)",
+                          background: on ? "color-mix(in srgb, var(--brass) 18%, transparent)" : "color-mix(in srgb, var(--foreground) 5%, transparent)",
+                          border: on ? "0.5px solid color-mix(in srgb, var(--brass) 50%, transparent)" : "0.5px solid var(--border-card)",
+                          color: on ? "var(--foreground)" : "var(--foreground-muted)",
+                        }}
+                      >
+                        {chip.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 1, marginBottom: 6 }}>
                 {["S", "M", "T", "W", "T", "F", "S"].map((dl, i) => (
                   <span key={i} style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: "var(--foreground-faint)" }}>
@@ -1626,7 +1627,9 @@ export default function AlmanacPageContent() {
                       minHeight: 50,
                       justifyContent: "center",
                       opacity: cell.isCurrentMonth ? 1 : 0.34,
-                      background: cell.isToday
+                      background: monthCategoryFilter && cell.isCurrentMonth
+                        ? MONTH_RAMP[cell.colorLevel]
+                        : cell.isToday
                         ? "color-mix(in srgb, var(--brass) 16%, transparent)"
                         : cell.isKeyPhase && cell.isCurrentMonth
                         ? "color-mix(in srgb, var(--foreground) 4%, transparent)"
@@ -1637,6 +1640,7 @@ export default function AlmanacPageContent() {
                         ? "0.5px solid var(--border-card)"
                         : "0.5px solid transparent",
                     }}
+                    title={monthCategoryFilter && cell.isCurrentMonth ? `${cell.score.toFixed(1)} for ${categoryName(monthCategoryFilter)}` : undefined}
                   >
                     {cell.isCurrentMonth && (
                       <MoonPhaseGlyph illum={cell.illumination} waning={cell.waning} size={cell.isToday ? 21 : 19} />
@@ -1673,6 +1677,22 @@ export default function AlmanacPageContent() {
                   </span>
                 ))}
               </div>
+              {monthCategoryFilter && (
+                <div className="mt-3 pt-3" style={{ borderTop: "0.5px solid var(--border-card)" }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9.5px]" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-muted)" }}>Quiet</span>
+                    {[0, 1, 2, 3, 4].map((lvl) => (
+                      <span key={lvl} className="rounded" style={{ width: 18, height: 10, background: MONTH_RAMP[lvl], border: "0.5px solid var(--border-card)" }} />
+                    ))}
+                    <span className="text-[9.5px]" style={{ fontFamily: "var(--font-ui)", color: "var(--foreground-muted)" }}>Favorable</span>
+                  </div>
+                  {monthData.peakDay.dateStr && (
+                    <p className="text-[11.5px] mt-2" style={{ lineHeight: 1.5, color: "var(--foreground-muted)" }}>
+                      Most favorable for {categoryName(monthCategoryFilter)}: <span style={{ color: "var(--foreground-secondary)", fontWeight: 600 }}>{monthData.peakDay.dateStr}</span> ({monthData.peakDay.score.toFixed(1)}) — {monthData.peakDay.reason}.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Month's moments ── */}
@@ -1920,6 +1940,84 @@ export default function AlmanacPageContent() {
             ))}
           </div>
         </div>
+
+        {/* ━━━ YOUR DAY — the categories this person tracks, read from the real sky ━━━ */}
+        <section aria-labelledby="your-day-heading">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 id="your-day-heading" style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 400, letterSpacing: "0.06em", margin: 0, color: "var(--foreground)" }}>
+              YOUR DAY
+              <InfoTip text="Each score starts at 5 and adds what is really in today's sky for that kind of thing: the sign and dignity of its planet (Venus for love, Mercury for communication, Mars for the body), retrogrades, the Moon's sign and phase, the void-of-course Moon, and the exact aspects of the day. Tap a line to see the configurations behind it." />
+            </h3>
+            <button
+              onClick={() => setShowCategoryLibrary(true)}
+              className="text-[12px] font-semibold shrink-0 px-1 py-1"
+              style={{ color: "var(--brass)", background: "transparent", border: "none" }}
+            >
+              Edit
+            </button>
+          </div>
+          <p className="text-[11.5px]" style={{ lineHeight: 1.5, color: "var(--foreground-faint)", margin: "4px 0 6px" }}>
+            {SCORE_EXPLAINER}
+          </p>
+          {categoryReadings.length === 0 ? (
+            <button
+              onClick={() => setShowCategoryLibrary(true)}
+              className="w-full rounded-xl px-4 py-4 text-left text-[13px]"
+              style={{ background: "var(--background-card)", border: "1px dashed var(--border-card)", color: "var(--foreground-on-card-muted)" }}
+            >
+              You aren&apos;t tracking any categories. Add a few — love, rest, creativity — to see how the sky reads for them each day.
+            </button>
+          ) : (
+            <div>
+              {categoryReadings.map((r) => {
+                const accent = TIER_ACCENT[r.tier];
+                const top = [...r.reasons].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))[0];
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedReading(r)}
+                    className="flex items-center gap-3 w-full text-left px-1 py-[12px]"
+                    style={{ background: "transparent", border: "none", borderBottom: "0.5px solid var(--border-card)" }}
+                    aria-label={`${r.name}: ${r.word}, ${r.score.toFixed(1)} out of 10. ${top?.label ?? ""}`}
+                  >
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="text-[15px]" style={{ color: "var(--foreground)" }}>{r.name}</span>
+                        <span
+                          className="text-[9.5px] font-bold uppercase px-1.5 py-[2px] rounded"
+                          style={{ letterSpacing: "0.07em", color: TIER_TEXT[r.tier], background: `color-mix(in srgb, ${accent} 14%, transparent)` }}
+                        >
+                          {r.word}
+                        </span>
+                      </span>
+                      {top && (
+                        <span className="block text-[11.5px] truncate mt-[3px]" style={{ color: "var(--foreground-muted)" }}>
+                          {top.label}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 flex items-center gap-2" aria-hidden="true">
+                      <span className="block rounded-full overflow-hidden" style={{ width: 52, height: 5, background: "color-mix(in srgb, var(--foreground) 11%, transparent)" }}>
+                        <span className="block h-full rounded-full" style={{ width: `${r.score * 10}%`, background: accent }} />
+                      </span>
+                      <span className="text-[13px] tabular-nums text-right" style={{ width: 26, fontFamily: "var(--font-ui)", color: "var(--foreground-secondary)" }}>
+                        {r.score.toFixed(1)}
+                      </span>
+                    </span>
+                    <span className="text-[13px] shrink-0" style={{ color: "var(--foreground-faint)" }} aria-hidden="true">→</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            onClick={() => setShowCategoryLibrary(true)}
+            className="mt-3 text-[12.5px] font-semibold px-1"
+            style={{ color: "var(--foreground-muted)", background: "transparent", border: "none" }}
+          >
+            + Add or remove categories
+          </button>
+        </section>
 
         {/* ════════════════════════════════════════════════════════════════════
             DRAWERS — tap-to-expand, grouped by theme
@@ -3008,8 +3106,20 @@ export default function AlmanacPageContent() {
         <ActivityDetailView
           detail={selectedDetail}
           transitData={transitData}
-          skyLine={`${sky.moonPhase.label} Moon in ${sky.moonSign} · ${Math.round(sky.moonPhase.illumination)}% · Sun in ${sky.sunSign}${sky.voidOfCourseMoon ? " · Moon void of course" : ""}`}
+          skyLine={skyLine}
           onClose={() => setSelectedDetail(null)}
+        />
+      )}
+
+      {/* ━━━ Your day: one category's reading ━━━ */}
+      {selectedReading && (
+        <ActivityDetailView
+          detail={readingAsDetail(selectedReading)}
+          transitData={null}
+          skyLine={skyLine}
+          onClose={() => setSelectedReading(null)}
+          eyebrow="YOUR DAY"
+          accent={TIER_ACCENT[selectedReading.tier]}
         />
       )}
 
@@ -3021,6 +3131,10 @@ export default function AlmanacPageContent() {
             background: "var(--background)",
             overflowY: "auto",
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your categories"
+          onKeyDown={(e) => { if (e.key === "Escape") setShowCategoryLibrary(false); }}
         >
           <div className="max-w-lg lg:max-w-2xl mx-auto w-full px-5 py-5 lg:pt-8 pb-10 flex flex-col gap-6">
             {/* Header */}
@@ -3040,7 +3154,7 @@ export default function AlmanacPageContent() {
                 className="text-[22px]"
                 style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
               >
-                Add Categories
+                Your Categories
               </h2>
             </header>
 
@@ -3053,9 +3167,11 @@ export default function AlmanacPageContent() {
                 Currently Tracked
               </p>
               <div className="flex flex-wrap gap-2">
+                {categories.length === 0 && (
+                  <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>Nothing yet — add one below.</p>
+                )}
                 {categories.map((catId) => {
-                  const allDefs = getCategoryDefinitions();
-                  const def = allDefs.find(d => d.id === catId);
+                  const name = categoryName(catId);
                   return (
                     <span
                       key={catId}
@@ -3066,12 +3182,12 @@ export default function AlmanacPageContent() {
                         color: "var(--foreground-on-card)",
                       }}
                     >
-                      {def?.name || catId}
+                      {name}
                       <button
                         onClick={() => handleRemoveCategory(catId)}
-                        className="w-4 h-4 flex items-center justify-center rounded-full"
+                        className="w-6 h-6 -mr-1.5 flex items-center justify-center rounded-full"
                         style={{ color: "var(--terracotta)" }}
-                        aria-label={`Remove ${def?.name || catId}`}
+                        aria-label={`Remove ${name}`}
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
