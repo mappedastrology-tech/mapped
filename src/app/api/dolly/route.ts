@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { CLAUDE_MODEL, THINKING_OFF } from "@/lib/aiModel";
 import { PROMPT_LIMITS, clampText, boundHistory } from "@/lib/ai/promptLimits";
 import { cachedSystem, withCachedHistory } from "@/lib/ai/promptCache";
 import { chartSystemContext, chartSystemFromChart } from "@/lib/astro/vedic/system";
@@ -527,6 +527,7 @@ async function handlePOST(request: NextRequest) {
 
     // Use create() with stream: true — returns an async iterable
     const response = await client.messages.create({
+      thinking: THINKING_OFF,
       model: CLAUDE_MODEL,
       max_tokens: 1024,
       system,

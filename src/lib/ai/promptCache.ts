@@ -26,7 +26,26 @@ import type Anthropic from "@anthropic-ai/sdk";
 /** Anthropic allows four cache breakpoints per request. */
 export const MAX_BREAKPOINTS = 4;
 
-const EPHEMERAL = { type: "ephemeral" } as const;
+/**
+ * A one-hour cache, not the five-minute default.
+ *
+ * Caching only pays when an entry is READ back. The default entry lives five
+ * minutes — and a person talking to Dolly takes longer than that between
+ * messages, routinely. So the chart, the saved people and the journal were
+ * being WRITTEN to the cache at 1.25x the input price on nearly every message
+ * and read back at a tenth of it on rather few: measured over real traffic,
+ * 64% of what a Dolly message cost was cache writes, against 8% on reads.
+ *
+ * An hour's entry costs 2x to write instead of 1.25x, and that is the whole
+ * trade: pay a little more once per conversation rather than a little less
+ * over and over. For a ten-message chat spread across half an hour it is the
+ * difference between ten writes and one.
+ *
+ * The cost of being wrong is small and bounded: someone who sends one message
+ * and leaves pays 2x instead of 1.25x on a single write. The meter knows the
+ * difference — see lib/ai/pricing.ts, which bills 1h writes at the 1h rate.
+ */
+const EPHEMERAL = { type: "ephemeral", ttl: "1h" } as const;
 
 export interface CachedSystemInput {
   /**

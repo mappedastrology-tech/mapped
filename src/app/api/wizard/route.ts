@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { natalPointsLabel } from "@/lib/transitFormat";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { CLAUDE_MODEL, THINKING_OFF } from "@/lib/aiModel";
 import { chartSystemContext } from "@/lib/astro/vedic/system";
 
 import { withCors, corsPreflight } from "@/lib/cors";
@@ -338,6 +338,7 @@ Generate the ritual now. Follow the output format exactly.`;
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
+      thinking: THINKING_OFF,
       model: CLAUDE_MODEL,
       max_tokens: 2048,
       system: WIZARD_SYSTEM_PROMPT,
