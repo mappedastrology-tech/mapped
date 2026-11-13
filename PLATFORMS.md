@@ -149,6 +149,24 @@ refinement rather than construction.
 | Apple Developer Program | $99/year |
 | Google Play Console | $25 one-time |
 | Netlify | Free tier; Cloudflare in front for the ~56MB of art |
+
+### One host, on purpose
+
+**Netlify is the only place Mapped is deployed.** `mapped-astrology.netlify.app`
+is the site, and `NEXT_PUBLIC_API_BASE` in every app build points at it.
+
+The repo was also connected to Vercel — left over from `create-next-app`, never
+switched off — so for months every push quietly built a second, identical-looking
+copy at `mapped-olive.vercel.app`. Same code, separate environment variables. The
+Anthropic key on the Vercel copy expired; the one on Netlify did not. Opening the
+Vercel URL in a browser therefore produced an app that looked right and whose AI
+features all failed, while the phone app (pointed at Netlify) failed in a
+completely different way. Working out that these were two different machines
+took a day.
+
+The Vercel project is paused. If a second host is ever wanted again, give it its
+own name in the UI and write down which is which — two deployments that are
+indistinguishable on screen are worse than one.
 | Upstash Redis | Free tier — **required** before traffic, see `DEPLOY.md` |
 
 ## Running the apps locally
