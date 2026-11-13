@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { FALLBACK_MODEL } from "@/lib/aiModel";
+import { FALLBACK_MODEL, THINKING_OFF } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
 
 import { withCors, corsPreflight } from "@/lib/cors";
@@ -73,6 +73,7 @@ Return ONLY the updated memory (bullets), no preamble.`;
   try {
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
+      thinking: THINKING_OFF,
       model: FALLBACK_MODEL,
       max_tokens: 500,
       messages: [{ role: "user", content: prompt }],

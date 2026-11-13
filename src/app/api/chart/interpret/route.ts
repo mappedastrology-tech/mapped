@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { CLAUDE_MODEL, THINKING_OFF } from "@/lib/aiModel";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
@@ -92,6 +92,7 @@ async function handlePOST(request: NextRequest) {
     // Ask Claude to interpret all 3 placements at once.
     // We ask for JSON so we can display each one separately in the UI.
     const message = await client.messages.create({
+      thinking: THINKING_OFF,
       model: CLAUDE_MODEL,
       max_tokens: 1024,
       system: MAPPED_SYSTEM_PROMPT,

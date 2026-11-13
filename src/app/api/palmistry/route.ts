@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MODEL, FALLBACK_MODEL } from "@/lib/aiModel";
+import { CLAUDE_MODEL, FALLBACK_MODEL, THINKING_OFF } from "@/lib/aiModel";
 import {
   PALMISTRY_SYSTEM_PROMPT,
   buildPalmistryUserText,
@@ -121,6 +121,7 @@ async function handlePOST(req: NextRequest) {
     const anthropic = new Anthropic();
 
     const params = {
+      thinking: THINKING_OFF,
       max_tokens: 1200,
       system: PALMISTRY_SYSTEM_PROMPT,
       messages: [

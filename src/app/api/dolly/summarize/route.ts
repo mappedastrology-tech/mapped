@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { FALLBACK_MODEL } from "@/lib/aiModel";
+import { FALLBACK_MODEL, THINKING_OFF } from "@/lib/aiModel";
 import { getAuthedContext } from "@/lib/apiAuth";
 import { dollyBody } from "@/lib/dollyReply";
 
@@ -59,6 +59,7 @@ async function handlePOST(request: NextRequest) {
   try {
     const client = new Anthropic({ apiKey });
     const resp = await client.messages.create({
+      thinking: THINKING_OFF,
       model: FALLBACK_MODEL,
       max_tokens: 24,
       messages: [{ role: "user", content: prompt }],

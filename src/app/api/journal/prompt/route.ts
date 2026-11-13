@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampText, PROMPT_LIMITS } from "@/lib/ai/promptLimits";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MODEL } from "@/lib/aiModel";
+import { CLAUDE_MODEL, THINKING_OFF } from "@/lib/aiModel";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
@@ -53,6 +53,7 @@ async function handlePOST(req: NextRequest) {
     const nakshatraQuality = celestial?.nakshatraQuality || "";
 
     const message = await anthropic.messages.create({
+      thinking: THINKING_OFF,
       model: CLAUDE_MODEL,
       max_tokens: 400,
       messages: [
