@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import CanonicalHost from "@/components/CanonicalHost";
 import ThemeProvider from "@/components/ThemeProvider";
 import AccountIsolation from "@/components/AccountIsolation";
 import OfflineNotice from "@/components/OfflineNotice";
@@ -116,6 +117,11 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className="min-h-dvh flex flex-col antialiased" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+        {/* First, before anything else renders: if this is the retired
+            vercel.app copy, hand the visitor back to the real site with their
+            URL intact. See CanonicalHost — a sign-in that lands there can
+            never complete. */}
+        <CanonicalHost />
         <ApiBaseInit />
         <ErrorMonitorInit />
         <AccountIsolation />
