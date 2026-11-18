@@ -24,6 +24,8 @@ import { useStickToBottom } from "@/lib/useStickToBottom";
 import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
 import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import CrisisCard from "@/components/CrisisCard";
+import DollyReportSheet, { type DollyReportTarget } from "@/components/DollyReportSheet";
+import { promptBefore } from "@/lib/dollyReport";
 import { useDialogKeys } from "@/lib/useDialogKeys";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
@@ -224,6 +226,14 @@ export default function DollyTab() {
   const [savingTranscript, setSavingTranscript] = useState<string | null>(null);
   /** What to say about the last save — success, or why it didn't happen. */
   const [transcriptNote, setTranscriptNote] = useState<string | null>(null);
+  /** The Dolly reply being reported, while its sheet is open. */
+  const [reportTarget, setReportTarget] = useState<DollyReportTarget | null>(null);
+  /** Replies reported this session, so their Report control reads "Reported". */
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const closeReport = useCallback(() => setReportTarget(null), []);
+  const markReported = useCallback((id: string) => {
+    setReportedIds((prev) => new Set(prev).add(id));
+  }, []);
 
   // History drawer state
   const [showHistory, setShowHistory] = useState(false);
@@ -2111,6 +2121,37 @@ export default function DollyTab() {
                   </div>
                 </div>
 
+                {/* Report this one reply. Only once it has finished landing:
+                    a half-written answer is not what they would be reporting. */}
+                {!live && !!body && (
+                  reportedIds.has(msg.id) ? (
+                    <span className="self-start -mt-2.5 text-[11.5px]" style={{ color: "var(--foreground-muted)", padding: "6px 2px" }}>
+                      Reported. Thank you.
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReportTarget({
+                          messageId: msg.id,
+                          replyText: msg.content,
+                          promptText: promptBefore(messages, i, (m) => m.role === "user" && !m.notice && !m.crisis, (m) => m.content),
+                          day: viewingDay || new Date().toISOString().split("T")[0],
+                          surface: "mobile",
+                        })
+                      }
+                      aria-label="Report this reply"
+                      className="self-start -mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] transition-opacity opacity-70 hover:opacity-100 active:opacity-100"
+                      style={{ color: "var(--foreground-muted)", padding: "6px 2px", minHeight: 32 }}
+                    >
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5" />
+                      </svg>
+                      Report
+                    </button>
+                  )
+                )}
+
                 {/* The action chip and follow-ups only once the reply has
                     landed — offering a next step mid-sentence reads as a bug —
                     and only on the LATEST reply. They used to render on every
@@ -2308,6 +2349,7 @@ export default function DollyTab() {
         </p>
       </div>
       {PaywallModal}
+      <DollyReportSheet target={reportTarget} onClose={closeReport} onReported={markReported} />
     </main>
   );
 }

@@ -17,6 +17,8 @@ import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import { STARTER_PROMPTS } from "@/lib/dollyStarters";
 import DollyAvatar from "@/components/DollyAvatar";
 import CrisisCard from "@/components/CrisisCard";
+import DollyReportSheet, { type DollyReportTarget } from "@/components/DollyReportSheet";
+import { promptBefore } from "@/lib/dollyReport";
 import AiConsentScreen from "@/components/AiConsentScreen";
 import { readAiConsent, type AiConsentState } from "@/lib/aiConsent";
 import { useBigThree } from "./useLiveSky";
@@ -63,6 +65,18 @@ export default function WebDolly() {
   const [messages, setMessages] = useState<Msg[]>([GREET]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  /**
+   * A reply is on its way, from send to the last token. `typing` alone goes
+   * false the moment the first words arrive, while the reply is still being
+   * written — and a half-written answer is not something to report.
+   */
+  const [replying, setReplying] = useState(false);
+  /** The Dolly reply being reported, while its sheet is open. */
+  const [reportTarget, setReportTarget] = useState<DollyReportTarget | null>(null);
+  /** Replies reported this sitting, so their control reads "Reported". */
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const closeReport = () => setReportTarget(null);
+  const markReported = (id: string) => setReportedIds((prev) => new Set(prev).add(id));
   /** What a screen reader hears when a reply lands. See the region below. */
   const [announcement, setAnnouncement] = useState("");
   /**
@@ -254,6 +268,7 @@ export default function WebDolly() {
     if (!crisis) setMessages((m) => [...m, { from: "you", text: userText, at: Date.now() }]);
     setInput("");
     setTyping(true);
+    setReplying(true);
 
     // Wait for the chart rather than send without it — see contextReadyRef.
     // The refs are read only after this. (They used to be overridden from
@@ -352,6 +367,7 @@ export default function WebDolly() {
       }
     } finally {
       setTyping(false);
+      setReplying(false);
       // Focus was left on the send button (or nowhere at all) after every
       // send, so the next question meant hunting for the field again.
       inputRef.current?.focus();
@@ -559,8 +575,14 @@ export default function WebDolly() {
               // and the typing row below is already saying so.
               if (dolly && metaPending && !body) return null;
 
+              // The greeting is the app's line, and the last reply is still
+              // being written while `replying` — neither is reportable.
+              const reportId = `desktop-${m.at}-${i}`;
+              const reportable = dolly && m !== GREET && !!body && !(replying && i === messages.length - 1);
+
               return (
-                <div key={i} role="article" style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div role="article" style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: dolly ? "flex-start" : "flex-end", animation: "mp-pop .3s ease" }}>
                   {dolly && <span aria-hidden="true" style={{ flex: "0 0 auto", alignSelf: "flex-end", display: "flex" }}><DollyAvatar size={30} /></span>}
                   <div style={dolly
                     ? { maxWidth: "78%", padding: "14px 18px", borderRadius: "16px 16px 16px 4px", background: "var(--card2)", border: "1px solid var(--hair)", fontSize: 14.5, lineHeight: 1.6, color: "var(--fg2)", textWrap: "pretty" }
@@ -586,6 +608,34 @@ export default function WebDolly() {
                         run together into one block. */}
                     <span style={{ whiteSpace: "pre-wrap" }}>{body}</span>
                   </div>
+                </div>
+                {reportable && (
+                  reportedIds.has(reportId) ? (
+                    <span style={{ marginLeft: 40, padding: "4px 2px", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)" }}>
+                      Reported. Thank you.
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Report this reply"
+                      onClick={() =>
+                        setReportTarget({
+                          messageId: reportId,
+                          replyText: m.text,
+                          promptText: promptBefore(messages, i, (x) => x.from === "you", (x) => x.text),
+                          day: new Date(m.at || Date.now()).toISOString().split("T")[0],
+                          surface: "desktop",
+                        })
+                      }
+                      style={{ alignSelf: "flex-start", marginLeft: 40, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 2px", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)" }}
+                    >
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5" />
+                      </svg>
+                      Report
+                    </button>
+                  )
+                )}
                 </div>
               );
             })}
@@ -680,6 +730,11 @@ export default function WebDolly() {
 
 
       </div>
+      <DollyReportSheet
+        target={reportTarget}
+        onClose={closeReport}
+        onReported={markReported}
+      />
     </WebShell>
   );
 }

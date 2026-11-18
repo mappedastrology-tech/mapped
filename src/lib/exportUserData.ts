@@ -26,6 +26,8 @@ export const USER_TABLES: Record<string, string> = {
   // read nor take with them.
   dolly_memory: "user_id",
   bug_reports: "user_id",
+  // Dolly replies they reported, with the reply and their question quoted.
+  dolly_reply_reports: "user_id",
   promo_redemptions: "user_id",
   // Added after an audit of every table keyed by user_id (supabase/*.sql and
   // every from("…") call). Each was user-owned and missing from the file.

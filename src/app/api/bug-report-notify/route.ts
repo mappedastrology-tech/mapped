@@ -36,9 +36,30 @@ async function handlePOST(request: NextRequest) {
 
     const category = String(r.category || "bug");
     const desc = String(r.description || "").slice(0, 4000);
-    const subject = `[Mapped ${category}] ${desc.slice(0, 60)}${desc.length > 60 ? "…" : ""}`;
+    const isDollyReply = category === "dolly_reply";
+    const reason = String(r.reason || "").slice(0, 40);
+    const replyExcerpt = String(r.reply_excerpt || "").slice(0, 800);
+    const subject = isDollyReply
+      ? `[Mapped Dolly reply reported: ${reason || "no reason"}] ${(desc || replyExcerpt).slice(0, 60)}${(desc || replyExcerpt).length > 60 ? "…" : ""}`
+      : `[Mapped ${category}] ${desc.slice(0, 60)}${desc.length > 60 ? "…" : ""}`;
 
-    const lines = [
+    // A reported Dolly reply: the reason, what they added, and the start of
+    // the reply. The whole reply and the question before it are in the table.
+    const lines = isDollyReply ? [
+      `Reason: ${reason || "unknown"}`,
+      `From: ${r.user_email || "anonymous"}${r.user_id ? ` (${r.user_id})` : ""}`,
+      `Screen: ${r.route || "unknown"}`,
+      `App version: ${r.app_version || "unknown"}`,
+      `Device: ${r.user_agent || "unknown"}`,
+      "",
+      "What they said:",
+      desc || "(nothing added)",
+      "",
+      "Start of Dolly's reply:",
+      replyExcerpt || "(empty)",
+      "",
+      "— The full reply and the question before it are in the Supabase dashboard → dolly_reply_reports table.",
+    ] : [
       `Category: ${category}`,
       `From: ${r.user_email || "anonymous"}${r.user_id ? ` (${r.user_id})` : ""}`,
       `Screen: ${r.route || "unknown"}`,

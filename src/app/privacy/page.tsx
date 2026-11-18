@@ -44,7 +44,8 @@ export default function PrivacyPage() {
       <p>
         <strong>Content you create.</strong> Journal entries, tarot and ritual activity, saved readings,
         preferences, and any bug reports or feedback you submit (including an optional screenshot of your screen
-        and basic device details, if you choose to attach them).
+        and basic device details, if you choose to attach them). If you report one of Dolly&apos;s replies, the
+        report includes that reply and the message you sent before it.
       </p>
       <p>
         <strong>Payment information.</strong> Subscriptions are processed by Stripe. We do not see or store your
