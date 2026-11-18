@@ -128,7 +128,8 @@ async function handleDELETE(request: NextRequest) {
     // ── 3. Delete the data ───────────────────────────────────────────────
     // Everything else user-scoped cascades from auth.users (verified against
     // the live schema: 24 of 25 user tables carry ON DELETE CASCADE; the one
-    // exception is bug_reports, handled above). These three are explicit
+    // exception is bug_reports, handled above). dolly_reports, added after
+    // that check (supabase/dolly_reports_schema.sql), cascades too — 25 of 26. These three are explicit
     // because they are the ones that matter most if a cascade is ever dropped.
     await supabaseAdmin.from("journal_entries").delete().eq("user_id", user.id);
     await supabaseAdmin.from("charts").delete().eq("user_id", user.id);

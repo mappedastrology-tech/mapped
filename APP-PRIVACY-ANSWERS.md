@@ -19,7 +19,7 @@ First question: **"Do you or your third-party partners collect data from this ap
 | Financial Info → **Purchase History** | ✅ | `profiles.tier`, `purchased_decks` |
 | Location → **Coarse Location** | ✅ | birth coordinates on `charts` — see the note below |
 | User Content → **Photos or Videos** | ✅ | palm photographs, profile photo |
-| User Content → **Customer Support** | ✅ | `bug_reports` |
+| User Content → **Customer Support** | ✅ | `bug_reports`, `dolly_reports` ("Report this reply" on Dolly) |
 | User Content → **Other User Content** | ✅ | `journal_entries`, `dolly_conversations`, `tarot_readings`, `custom_rituals` |
 | Identifiers → **User ID** | ✅ | the Supabase account id |
 | Identifiers → **Device ID** | ✅ | `push_subscriptions` endpoints |
@@ -75,8 +75,9 @@ ready to give it rather than surprised by the question.
 
 - **Privacy Policy URL** → `https://mapped-astrology.netlify.app/privacy`
 - **Account deletion**: Apple requires in-app account deletion (5.1.1(v)).
-  Mapped has it, on the Account screen. It cascades across 24 of 25 tables
-  from `auth.users`; `bug_reports` is handled explicitly.
+  Mapped has it, on the Account screen. It cascades across 25 of 26 tables
+  from `auth.users` (`dolly_reports` included); `bug_reports` is handled
+  explicitly.
 
 ---
 
