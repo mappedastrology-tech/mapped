@@ -46,8 +46,8 @@ import { isAdmin } from "@/lib/admin";
 import { applyChartSystem, loadChartSystemPreference, saveChartSystemPreference } from "@/lib/chartSystemSync";
 import { chartSystemFromRow, chartSystemLabel, type ChartSystem } from "@/lib/astro/vedic/system";
 import { defaultHouseSystem } from "@/lib/astro/vedic/houses";
-import { isNativeApp } from "@/lib/isNativeApp";
 import { openCheckout } from "@/lib/openCheckout";
+import { restoreStorePurchases, storeBillingAvailable, storeManagementUrl, storePlatform, NotSignedInError } from "@/lib/iap";
 
 export default function AccountPageWrapper() {
   return (
@@ -1348,12 +1348,25 @@ function SubscriptionSection() {
   const [renewsAt, setRenewsAt] = useState<string | null>(null);
   /** They have cancelled; renewsAt is the end of access, not the next charge. */
   const [cancelling, setCancelling] = useState(false);
+  /**
+   * A plan bought inside the iOS or Android app, through the App Store or
+   * Google Play (lib/iap.ts). Kept apart from Stripe: it is managed and
+   * cancelled in the store, never in the Stripe portal.
+   */
+  const [storeSub, setStoreSub] = useState<{ platform: string | null; periodEnd: string | null; willRenew: boolean | null } | null>(null);
+  /** Purchases inside this app go through the App Store / Google Play. */
+  const storeMode = storeBillingAvailable();
+  const [restoring, setRestoring] = useState(false);
+  const [restoreNote, setRestoreNote] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     getProfile()
       .then((p) => {
         if (!alive) return;
         setHasSubscription(!!p?.stripe_subscription_id);
+        setStoreSub(p?.store_tier === "mid" || p?.store_tier === "max"
+          ? { platform: p.store_platform ?? null, periodEnd: p.store_period_end ?? null, willRenew: p.store_will_renew ?? null }
+          : null);
         setSubStatus(p?.subscription_status ?? null);
         setSubInterval(p?.subscription_interval ?? null);
         setRenewsAt(p?.subscription_period_end ?? null);
@@ -1365,6 +1378,14 @@ function SubscriptionSection() {
 
   /** Stripe is retrying their card right now. */
   const paymentFailing = subStatus === "past_due";
+  /** Billed by a store, and not also by Stripe. */
+  const storeBilled = !!storeSub && !hasSubscription;
+  const storeLabel = storeSub?.platform === "play_store" ? "Google Play" : "the App Store";
+  /**
+   * A web plan seen from inside an app that sells through the stores. The
+   * stores do not allow a link out to change it, so it is said, not linked.
+   */
+  const webPlanInApp = storeMode && hasSubscription === true;
 
   // Any paid tier, not just Mapped+. Testing for "mid" alone showed a Mapped
   // Complete subscriber the Free card and an upgrade button.
@@ -1388,6 +1409,7 @@ function SubscriptionSection() {
    */
   const planPrice =
     tier === "free" ? "Free"
+    : storeBilled ? `Billed by ${storeLabel}`
     : hasSubscription
       ? subInterval === "year"
         ? `$${TIERS[tier].annualPrice}/year`
@@ -1397,8 +1419,9 @@ function SubscriptionSection() {
 
   /** "25 September 2027", or null when we do not know. */
   const renewalDate = (() => {
-    if (!renewsAt) return null;
-    const d = new Date(renewsAt);
+    const at = storeBilled ? storeSub?.periodEnd : renewsAt;
+    if (!at) return null;
+    const d = new Date(at);
     return Number.isNaN(d.getTime())
       ? null
       : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
@@ -1454,7 +1477,45 @@ function SubscriptionSection() {
     }
   }
 
+  /**
+   * Store subscriptions are managed in the store. On a phone this opens the
+   * App Store or Google Play subscriptions page RevenueCat reports.
+   */
+  async function handleManageStore() {
+    setLoadingPortal(true);
+    setBillingError(null);
+    try {
+      const url = await storeManagementUrl();
+      if (url) { openCheckout(url); return; }
+      setBillingError(`Open ${storeLabel} on your phone and go to Subscriptions to change or cancel your plan.`);
+    } finally {
+      setLoadingPortal(false);
+    }
+  }
+
+  async function handleRestore() {
+    setRestoring(true);
+    setRestoreNote(null);
+    try {
+      const result = await restoreStorePurchases();
+      await refreshTier();
+      invalidateProfile();
+      setRestoreNote(result && (result.tier !== "free" || result.decks.length > 0)
+        ? "Your purchases are restored."
+        : `We didn't find a Mapped purchase on this ${storePlatform() === "android" ? "Google account" : "Apple ID"}.`);
+    } catch (err) {
+      setRestoreNote(err instanceof NotSignedInError
+        ? "Please sign in again, then try once more."
+        : "We couldn't reach the store. Check your connection and try again.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   async function handleUpgrade() {
+    // Inside the apps, the plans screen sells through the store at the
+    // store's price; it is the one place that price is shown.
+    if (storeMode) { setShowPlans(true); return; }
     setLoadingCheckout(true);
     setBillingError(null);
     try {
@@ -1512,13 +1573,19 @@ function SubscriptionSection() {
               It&rsquo;s usually an expired card. Everything still works while we retry &mdash; update your
               card and it&rsquo;ll sort itself out.
             </p>
-            <button
-              onClick={handleManageSubscription}
-              className="mt-2.5 px-4 min-h-[44px] rounded-full text-sm font-semibold"
-              style={{ background: "var(--brass)", color: "var(--btn-primary-text)" }}
-            >
-              Update payment method
-            </button>
+            {webPlanInApp ? (
+              <p className="text-xs mt-2" style={{ color: "var(--foreground-secondary)" }}>
+                Update it from the website where you subscribed.
+              </p>
+            ) : (
+              <button
+                onClick={handleManageSubscription}
+                className="mt-2.5 px-4 min-h-[44px] rounded-full text-sm font-semibold"
+                style={{ background: "var(--brass)", color: "var(--btn-primary-text)" }}
+              >
+                Update payment method
+              </button>
+            )}
           </div>
         )}
 
@@ -1543,6 +1610,13 @@ function SubscriptionSection() {
           single most material fact about the subscription, and "cancel any
           time" means little without the date it would be cancelling before.
         */}
+        {isPaid && storeBilled && renewalDate && (
+          <p className="text-muted text-[11.5px] mb-3" style={{ fontFamily: "var(--font-ui)" }}>
+            {storeSub?.willRenew === false
+              ? `Cancelled — ${planName} is yours until ${renewalDate}.`
+              : `Renews ${renewalDate}.`}
+          </p>
+        )}
         {isPaid && hasSubscription && renewalDate && !paymentFailing && (
           <p className="text-muted text-[11.5px] mb-3" style={{ fontFamily: "var(--font-ui)" }}>
             {/*
@@ -1583,7 +1657,7 @@ function SubscriptionSection() {
 
         {/* Upgrade, Manage, or — for access that was granted rather than
             bought — neither. */}
-        {isPaid && hasSubscription ? (
+        {isPaid && (hasSubscription || storeBilled) ? (
           <>
           {/*
             A way up.
@@ -1604,8 +1678,9 @@ function SubscriptionSection() {
               Compare with {TIERS.max.name}
             </button>
           )}
+          {!webPlanInApp && (
           <button
-            onClick={handleManageSubscription}
+            onClick={storeBilled ? handleManageStore : handleManageSubscription}
             disabled={loadingPortal}
             className="w-full py-3 rounded-full border border-foreground/18 text-secondary text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-50"
           >
@@ -1618,6 +1693,7 @@ function SubscriptionSection() {
               "Manage Subscription"
             )}
           </button>
+          )}
           </>
         ) : (
           <div className="flex flex-col gap-2">
@@ -1631,10 +1707,13 @@ function SubscriptionSection() {
                   <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
                   Connecting...
                 </span>
+              ) : storeMode ? (
+                `See ${TIERS.mid.name} plans`
               ) : (
                 `Upgrade to ${TIERS.mid.name} — $${TIERS.mid.price.toFixed(2)}/mo`
               )}
             </button>
+            {!storeMode && (
             <button
               onClick={() => setShowPlans(true)}
               className="w-full py-2 text-muted text-xs hover:text-secondary transition-colors"
@@ -1645,6 +1724,7 @@ function SubscriptionSection() {
                   press the other one. */}
               Compare plans &mdash; yearly is ${TIERS.mid.annualPrice}, about {Math.round((1 - TIERS.mid.annualPrice / (TIERS.mid.price * 12)) * 100)}% less
             </button>
+            )}
           </div>
         )}
 
@@ -1655,19 +1735,44 @@ function SubscriptionSection() {
         )}
 
         {/* Manage billing note — only where there is billing to manage. */}
-        {isPaid && hasSubscription && (
+        {isPaid && storeBilled && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            Cancel or change your plan any time in {storeLabel} subscriptions.
+          </p>
+        )}
+        {webPlanInApp && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            Your plan is billed on the web, so change or cancel it from the website where you subscribed.
+          </p>
+        )}
+        {isPaid && hasSubscription && !webPlanInApp && (
           <p className="text-center text-muted text-[10px] mt-2">
             {cancelling
               ? "Changed your mind? You can restart it in the billing portal before it ends."
               : "Cancel or change your plan any time through the billing portal."}
           </p>
         )}
-        {isPaid && hasSubscription === false && (
+        {isPaid && hasSubscription === false && !storeBilled && (
           <p className="text-center text-muted text-[10px] mt-2">
             {onTrial
               ? `No card, no charge. Your trial has ${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} left — subscribe any time to keep Dolly after it ends.`
               : "This access was added to your account, so there's nothing to pay and nothing to cancel."}
           </p>
+        )}
+
+        {/* Both stores expect a way to restore purchases wherever they are sold. */}
+        {storeMode && (
+          <div className="text-center mt-2">
+            <button
+              onClick={handleRestore}
+              disabled={restoring}
+              className="text-xs underline underline-offset-2 disabled:opacity-50"
+              style={{ color: "var(--foreground-secondary)", minHeight: 44 }}
+            >
+              {restoring ? "Restoring..." : "Restore purchases"}
+            </button>
+            {restoreNote && <p role="status" className="text-muted text-[11px]">{restoreNote}</p>}
+          </div>
         )}
 
         {/* Limits are disclosed, but in the Terms rather than on the plan —
@@ -1684,6 +1789,7 @@ function SubscriptionSection() {
           currentTier={tier}
           currentInterval={subInterval === "year" ? "year" : subInterval === "month" ? "month" : undefined}
           hasSubscription={hasSubscription === true}
+          storeSubscription={!!storeSub}
           onClose={() => setShowPlans(false)}
         />
       )}
@@ -2212,10 +2318,16 @@ function AccountPage() {
    * this component.
    */
   const [hasSubscription, setHasSubscription] = useState(false);
+  /** "play_store" | "app_store" when a store plan is live; the server cannot cancel those. */
+  const [storePlan, setStorePlan] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     getProfile()
-      .then((p) => { if (alive) setHasSubscription(!!p?.stripe_subscription_id); })
+      .then((p) => {
+        if (!alive) return;
+        setHasSubscription(!!p?.stripe_subscription_id);
+        setStorePlan(p?.store_tier === "mid" || p?.store_tier === "max" ? (p.store_platform ?? "app_store") : null);
+      })
       .catch(() => { /* no warning is better than a wrong one */ });
     return () => { alive = false; };
   }, []);
@@ -2861,12 +2973,19 @@ function AccountPage() {
                 stopped when it had not. On the web it is Stripe, and the
                 billing portal is ours.
               */
+              /*
+                Stripe plans are cancelled by /api/account/delete itself before
+                anything is removed. A plan bought in the App Store or Google
+                Play cannot be cancelled by anyone but its owner, in the store.
+              */
               message={`This will permanently delete your account, your birth chart, journal entries, Dolly conversations, and all other data. This can't be undone.${
-                hasSubscription
-                  ? isNativeApp()
-                    ? " Your subscription is billed through Apple and is not cancelled by this — cancel it in iPhone Settings → your name → Subscriptions."
-                    : " Your subscription is billed through Stripe. Cancel it first in the billing portal, or you'll keep being charged."
-                  : ""
+                storePlan
+                  ? storePlan === "play_store"
+                    ? " Your subscription is billed by Google Play and is not cancelled by this — cancel it in the Play Store → Payments & subscriptions → Subscriptions."
+                    : " Your subscription is billed by the App Store and is not cancelled by this — cancel it in iPhone Settings → your name → Subscriptions."
+                  : hasSubscription
+                    ? " Your web subscription is cancelled along with your account, so you won't be charged again."
+                    : ""
               }`}
               confirmLabel="Delete everything"
               confirmDestructive

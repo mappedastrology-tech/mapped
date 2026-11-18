@@ -15,6 +15,15 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { type FeatureKey, type TierLevel, getFeatureInfo, getMinTier, TIERS, recordPaywallDismissed } from "@/lib/tier";
 import { AI_TIER_MULTIPLIER, AI_MULTIPLIER_WORD } from "@/lib/ai/dailyLimits";
 import { openCheckout } from "@/lib/openCheckout";
+import { useTier } from "@/components/TierProvider";
+import {
+  buyPlanInStore,
+  getPlanPrices,
+  NotSignedInError,
+  restoreStorePurchases,
+  storeBillingAvailable,
+  storePlatform,
+} from "@/lib/iap";
 
 interface PaywallProps {
   feature: FeatureKey;
@@ -91,7 +100,11 @@ export default function Paywall({ feature, onDismiss, onSeePlans }: PaywallProps
             features need Mapped Complete, and naming the wrong plan here sends
             someone to a checkout that would not unlock what they tapped. */}
         <p className="text-muted text-xs mb-5">
-          Available with {tierInfo.name} (${tierInfo.price.toFixed(2)}/month).
+          {/* Inside the apps the price is the store's, in local currency, and
+              the plans screen shows it; a USD figure here would contradict it. */}
+          {storeBillingAvailable()
+            ? <>Available with {tierInfo.name}.</>
+            : <>Available with {tierInfo.name} (${tierInfo.price.toFixed(2)}/month).</>}
         </p>
 
         {/* CTAs — equal visual weight */}
@@ -144,6 +157,12 @@ interface PlansPageProps {
    * be prorated.
    */
   hasSubscription?: boolean;
+  /**
+   * Whether there is a live App Store or Google Play subscription. Inside the
+   * app, a change between store plans is made in the store, which handles the
+   * credit for time already paid.
+   */
+  storeSubscription?: boolean;
 }
 
 const FREE_FEATURES = [
@@ -184,8 +203,32 @@ const COMPLETE_FEATURES = [
   "New decks the day they arrive",
 ];
 
-export function PlansPage({ currentTier, onClose, currentInterval, hasSubscription = false }: PlansPageProps) {
+export function PlansPage({ currentTier, onClose, currentInterval, hasSubscription = false, storeSubscription = false }: PlansPageProps) {
   const [loadingPlan, setLoadingPlan] = useState<"mid" | "max" | null>(null);
+  const { refreshTier } = useTier();
+  /**
+   * Inside the iOS and Android apps, plans are sold through the App Store and
+   * Google Play (see lib/iap.ts). Outside the US both stores require it, and
+   * the price has to be the store's own, in the person's currency.
+   */
+  const storeMode = storeBillingAvailable();
+  const platform = storePlatform();
+  const storeName = platform === "android" ? "Google Play" : "the App Store";
+  const [storePrices, setStorePrices] = useState<Awaited<ReturnType<typeof getPlanPrices>>>({});
+  const [storeError, setStoreError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  useEffect(() => {
+    if (!storeMode) return;
+    let alive = true;
+    void getPlanPrices().then((p) => { if (alive) setStorePrices(p); });
+    return () => { alive = false; };
+  }, [storeMode]);
+  /**
+   * A plan billed through Stripe on the web cannot be changed from inside the
+   * app without a second subscription, and the stores do not allow a link
+   * out to change it. So it is said, not sold.
+   */
+  const webBilledInApp = storeMode && hasSubscription;
   /**
    * Annual was defined in TIERS from the start and shown nowhere, so every
    * subscriber was offered the most expensive way to pay and no other.
@@ -219,7 +262,45 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
     return () => document.removeEventListener('keydown', trap);
   }, [onClose]);
 
+  async function handleStoreUpgrade(plan: "mid" | "max") {
+    setLoadingPlan(plan);
+    setStoreError(null);
+    try {
+      const outcome = await buyPlanInStore(plan, billing);
+      if (outcome === "purchased") {
+        await refreshTier();
+        onClose();
+        return;
+      }
+    } catch (err) {
+      if (err instanceof NotSignedInError) {
+        window.location.href = "/account";
+        return;
+      }
+      console.error("Store purchase error:", err);
+      setStoreError(`${platform === "android" ? "Google Play" : "The App Store"} couldn't complete that. Nothing has been charged, so please try again.`);
+    }
+    setLoadingPlan(null);
+  }
+
+  async function handleRestore() {
+    setRestoring(true);
+    setStoreError(null);
+    try {
+      const result = await restoreStorePurchases();
+      await refreshTier();
+      if (result && result.tier !== "free") { onClose(); return; }
+      setStoreError(`We didn't find a Mapped purchase on this ${platform === "android" ? "Google account" : "Apple ID"}.`);
+    } catch (err) {
+      if (err instanceof NotSignedInError) { window.location.href = "/account"; return; }
+      setStoreError("We couldn't reach the store. Check your connection and try again.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   async function handleUpgrade(plan: "mid" | "max") {
+    if (storeMode) return handleStoreUpgrade(plan);
     setLoadingPlan(plan);
     try {
       const { createClient } = await import("@supabase/supabase-js");
@@ -265,6 +346,9 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
    * worth showing.
    */
   function priceLabel(tier: "mid" | "max"): string {
+    // The store's own price, in the person's currency, whenever we have it.
+    const store = storeMode ? storePrices[`${tier}:${billing}`] : undefined;
+    if (store) return billing === "month" ? `${store}/month` : `${store}/year`;
     const t = TIERS[tier];
     if (billing === "month") return `$${t.price.toFixed(2)}/month`;
     return `$${(t.annualPrice / 12).toFixed(2)}/month · $${t.annualPrice}/year`;
@@ -316,7 +400,8 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
     children: React.ReactNode;
   }) {
     const isCurrent = currentTier === plan;
-    const canBuy = rank[plan] > rank[currentTier] && plan !== "free";
+    const canBuy = rank[plan] > rank[currentTier] && plan !== "free" && !webBilledInApp;
+    const switching = storeMode ? storeSubscription : hasSubscription;
     return (
       <div className={`rounded-2xl border p-5 ${isCurrent ? "border-sage bg-sage/5" : "border-foreground/12 bg-card/40"}`}>
         <div className="flex items-baseline justify-between mb-3">
@@ -344,7 +429,7 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
                 <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" role="status" aria-label="Loading" />
                 Connecting...
               </span>
-            ) : hasSubscription ? (
+            ) : switching ? (
               `Switch to ${title}`
             ) : (
               `Subscribe — ${price}`
@@ -352,10 +437,16 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
           </button>
         )}
         {/* Said before they press it, not discovered on the Stripe screen. */}
-        {canBuy && hasSubscription && (
+        {canBuy && switching && (
           <p className="text-center text-muted text-[10px] mt-2">
-            You&rsquo;ll change plan in the billing portal &mdash; Stripe credits what you have
-            already paid for.
+            {storeMode
+              ? <>You&rsquo;ll confirm the change with {storeName}, which credits what you have already paid for.</>
+              : <>You&rsquo;ll change plan in the billing portal &mdash; Stripe credits what you have already paid for.</>}
+          </p>
+        )}
+        {webBilledInApp && rank[plan] > rank[currentTier] && plan !== "free" && (
+          <p className="text-center text-muted text-[10px] mt-2">
+            Your plan is billed on the web, so change it from the website where you subscribed.
           </p>
         )}
       </div>
@@ -438,9 +529,37 @@ export function PlansPage({ currentTier, onClose, currentInterval, hasSubscripti
                 "renews every monthat the price shown" on the subscribe
                 screen — the one screen a store reviewer reads word for word. */}
             Subscriptions renew every {billing === "month" ? "month" : "year"}{" "}
-            at the price shown until you cancel. Cancel any time from Account &rarr; Your plan; you keep access until
-            the end of the {billing === "month" ? "month" : "year"} you have paid for. Prices in USD.
+            at the price shown until you cancel.{" "}
+            {storeMode ? (
+              <>
+                Payment is charged to your {platform === "android" ? "Google Play account" : "Apple ID"} when
+                you confirm, and it renews unless you cancel at least 24 hours before the period ends. Cancel any
+                time in your {platform === "android" ? "Google Play" : "App Store"} subscriptions; you keep access
+                until the end of the {billing === "month" ? "month" : "year"} you have paid for.
+              </>
+            ) : (
+              <>
+                Cancel any time from Account &rarr; Your plan; you keep access until
+                the end of the {billing === "month" ? "month" : "year"} you have paid for. Prices in USD.
+              </>
+            )}
           </p>
+          {storeError && (
+            <p role="alert" className="text-center text-xs" style={{ color: "var(--danger-text)" }}>
+              {storeError}
+            </p>
+          )}
+          {/* Both stores expect a way to restore purchases wherever they are sold. */}
+          {storeMode && (
+            <button
+              onClick={handleRestore}
+              disabled={restoring}
+              className="mx-auto text-xs underline underline-offset-2 disabled:opacity-50"
+              style={{ color: "var(--foreground-secondary)", minHeight: 44 }}
+            >
+              {restoring ? "Restoring..." : "Restore purchases"}
+            </button>
+          )}
           {/* A pricing card is the wrong place for a message count: no
               subscription quotes one, and a number here reads as a ration
               rather than an allowance. It is not vague-by-omission either —

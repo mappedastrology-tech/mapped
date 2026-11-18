@@ -47,6 +47,11 @@ The apps ship the **frontend only**. All server work (Anthropic, Stripe,
 Supabase service-role, web-push) stays on Netlify and is called over HTTPS.
 One API surface for every platform, so the apps cannot drift from the web.
 
+**Payments differ by platform.** The web sells through Stripe. The iOS and
+Android apps sell through the App Store and Google Play via RevenueCat, which
+both stores require outside the US. Both write one `profiles.tier`; see
+`STORE-PURCHASES.md` for how they combine and what has to be set up.
+
 ### Why the app build must be a static export
 
 Capacitor bundles files, not a Node server. Next.js static export forbids

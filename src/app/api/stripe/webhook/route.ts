@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { readStoreTier, stripeTierWithStore } from "@/lib/storeEntitlements";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -217,7 +218,7 @@ export async function POST(request: Request) {
               await supabaseAdmin
                 .from("profiles")
                 .update({
-                  tier: tierOfSubscription(subscription),
+                  tier: stripeTierWithStore(tierOfSubscription(subscription), await readStoreTier(supabaseAdmin, subUserId)),
                   stripe_customer_id: session.customer
                     ? getCustomerId(session.customer as string | Stripe.Customer | Stripe.DeletedCustomer)
                     : null,
@@ -239,7 +240,7 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: tierFromMetadata(session.metadata),
+            tier: stripeTierWithStore(tierFromMetadata(session.metadata), await readStoreTier(supabaseAdmin, userId)),
             stripe_customer_id: session.customer
               ? getCustomerId(session.customer as string | Stripe.Customer | Stripe.DeletedCustomer)
               : null,
@@ -292,7 +293,11 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: isEntitled(subscription.status) ? tierOfSubscription(subscription) : "free",
+            // A lapsed web plan falls back to an active App Store / Play plan.
+            tier: stripeTierWithStore(
+              isEntitled(subscription.status) ? tierOfSubscription(subscription) : "free",
+              await readStoreTier(supabaseAdmin, profile.id),
+            ),
             subscription_status: subscription.status,
             ...billingShape(subscription),
           })
@@ -356,7 +361,7 @@ export async function POST(request: Request) {
             await supabaseAdmin
               .from("profiles")
               .update({
-                tier: "free",
+                tier: stripeTierWithStore("free", await readStoreTier(supabaseAdmin, profile.id)),
                 subscription_status: "canceled",
                 stripe_subscription_id: null,
               })
@@ -368,7 +373,7 @@ export async function POST(request: Request) {
         await supabaseAdmin
           .from("profiles")
           .update({
-            tier: "free",
+            tier: stripeTierWithStore("free", await readStoreTier(supabaseAdmin, userId)),
             subscription_status: "canceled",
             stripe_subscription_id: null,
           })

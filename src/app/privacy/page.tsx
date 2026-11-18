@@ -47,9 +47,11 @@ export default function PrivacyPage() {
         and basic device details, if you choose to attach them).
       </p>
       <p>
-        <strong>Payment information.</strong> Subscriptions are processed by Stripe. We do not see or store your
-        full card number — Stripe handles payment details directly and shares only limited information (such as
-        subscription status) with us.
+        <strong>Payment information.</strong> On the web, subscriptions and decks are processed by Stripe. In the
+        iPhone and Android apps they are processed by Apple (App Store) or Google (Google Play), and RevenueCat
+        confirms those purchases for us. We never see or store your full card number — these companies handle
+        payment details directly and share only limited information (such as what you bought and whether a
+        subscription is active) with us.
       </p>
       <p>
         <strong>Technical information.</strong> Like most apps, we and our hosting provider automatically receive
@@ -115,7 +117,9 @@ export default function PrivacyPage() {
       <p>
         &bull; <strong>Supabase</strong> — database, authentication, and file storage.<br />
         &bull; <strong>Anthropic</strong> — AI generation of readings, as described above.<br />
-        &bull; <strong>Stripe</strong> — subscription and payment processing.<br />
+        &bull; <strong>Stripe</strong> — subscription and payment processing on the web.<br />
+        &bull; <strong>Apple and Google</strong> — payment processing for purchases made in the iPhone and Android apps.<br />
+        &bull; <strong>RevenueCat</strong> — confirming in-app purchases and keeping them linked to your account.<br />
         &bull; <strong>Vercel</strong> — application hosting and content delivery.<br />
         &bull; <strong>OpenStreetMap / Nominatim</strong> — converting a city name you search into coordinates.<br />
         &bull; <strong>Email and push delivery</strong> — to send you transactional messages and, if you opt in,

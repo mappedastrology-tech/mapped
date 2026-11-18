@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { deleteRevenueCatSubscriber } from "@/lib/storeEntitlements";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
@@ -94,6 +95,16 @@ async function handleDELETE(request: NextRequest) {
           );
         }
       }
+    }
+
+    // Store purchases: Apple and Google keep the subscription itself (only
+    // its owner can cancel it, which the confirmation dialog says), but the
+    // RevenueCat customer record is ours to remove. Non-fatal: a stale record
+    // keyed by a deleted id grants nothing to anyone.
+    try {
+      await deleteRevenueCatSubscriber(user.id);
+    } catch (err) {
+      console.error("Failed to delete RevenueCat customer:", err);
     }
 
     // ── 2. Scrub what does not cascade ───────────────────────────────────

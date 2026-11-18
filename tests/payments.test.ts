@@ -243,7 +243,9 @@ test("the plans sheet opens on the interval they are actually billed", () => {
   // that the interval had changed too.
   const src = read("src/components/Paywall.tsx");
   assert.match(src, /useState<"month" \| "year">\(currentInterval \?\? "month"\)/);
-  assert.match(src, /hasSubscription \? \(\s*`Switch to \$\{title\}`/, "a plan change still says Subscribe");
+  assert.match(src, /switching \? \(\s*`Switch to \$\{title\}`/, "a plan change still says Subscribe");
+  // Inside the apps a plan change is a store plan change; on the web, Stripe's.
+  assert.match(src, /const switching = storeMode \? storeSubscription : hasSubscription/);
 });
 
 /* ─── Copy that renders as written ─── */
