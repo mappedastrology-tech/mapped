@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LegalShell, { LegalH2 } from "@/components/LegalShell";
 
 /*
@@ -44,7 +45,8 @@ export default function PrivacyPage() {
       <p>
         <strong>Content you create.</strong> Journal entries, tarot and ritual activity, saved readings,
         preferences, and any bug reports or feedback you submit (including an optional screenshot of your screen
-        and basic device details, if you choose to attach them).
+        and basic device details, if you choose to attach them). If you report one of Dolly&rsquo;s replies, we
+        keep a copy of that reply, the reason you chose and any note you add, so we can review it.
       </p>
       <p>
         <strong>Payment information.</strong> Subscriptions are processed by Stripe. We do not see or store your
@@ -137,8 +139,12 @@ export default function PrivacyPage() {
       <p>
         We keep your information for as long as your account is active. You can delete your account at any time
         from Settings, which deletes your personal data from our systems (some information may persist briefly in
-        backups or where retention is legally required). You can also remove individual connections, journal
-        entries, and other content within the app.
+        backups or where retention is legally required). You can also delete it without the app, or read exactly
+        what is deleted, on our{" "}
+        <Link href="/delete-account" className="text-terracotta hover:text-terracotta-light transition-colors">
+          account deletion page
+        </Link>
+        . You can also remove individual connections, journal entries, and other content within the app.
       </p>
 
       <LegalH2>Your rights</LegalH2>

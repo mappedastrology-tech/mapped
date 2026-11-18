@@ -17,6 +17,7 @@ import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import { STARTER_PROMPTS } from "@/lib/dollyStarters";
 import DollyAvatar from "@/components/DollyAvatar";
 import CrisisCard from "@/components/CrisisCard";
+import ReportReplyButton from "@/components/ReportReplyButton";
 import AiConsentScreen from "@/components/AiConsentScreen";
 import { readAiConsent, type AiConsentState } from "@/lib/aiConsent";
 import { useBigThree } from "./useLiveSky";
@@ -63,6 +64,12 @@ export default function WebDolly() {
   const [messages, setMessages] = useState<Msg[]>([GREET]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  /**
+   * A request is in flight. Not the same as `typing`, which goes false as
+   * soon as the first words arrive — this stays true until the reply has
+   * finished, so the report flag only appears under a finished answer.
+   */
+  const [replying, setReplying] = useState(false);
   /** What a screen reader hears when a reply lands. See the region below. */
   const [announcement, setAnnouncement] = useState("");
   /**
@@ -254,6 +261,7 @@ export default function WebDolly() {
     if (!crisis) setMessages((m) => [...m, { from: "you", text: userText, at: Date.now() }]);
     setInput("");
     setTyping(true);
+    setReplying(true);
 
     // Wait for the chart rather than send without it — see contextReadyRef.
     // The refs are read only after this. (They used to be overridden from
@@ -352,6 +360,7 @@ export default function WebDolly() {
       }
     } finally {
       setTyping(false);
+      setReplying(false);
       // Focus was left on the send button (or nowhere at all) after every
       // send, so the next question meant hunting for the field again.
       inputRef.current?.focus();
@@ -586,6 +595,15 @@ export default function WebDolly() {
                         run together into one block. */}
                     <span style={{ whiteSpace: "pre-wrap" }}>{body}</span>
                   </div>
+                  {/* Report this reply — a store requirement for AI chat (see
+                      lib/dollyReport). Not on the greeting, which the app
+                      wrote, and not while the answer is still arriving. */}
+                  {dolly && m !== GREET && body && !(replying && i === messages.length - 1) && (
+                    <ReportReplyButton
+                      replyText={meta?.lead ? `${meta.lead}\n\n${body}` : body}
+                      style={{ margin: "0 0 -6px -6px" }}
+                    />
+                  )}
                 </div>
               );
             })}

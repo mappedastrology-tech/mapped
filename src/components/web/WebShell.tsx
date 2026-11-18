@@ -258,6 +258,7 @@ function FullFooter() {
         <div style={{ display: "flex", gap: 22 }}>
           <Link href="/privacy" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Privacy</Link>
           <Link href="/terms" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Terms</Link>
+          <Link href="/delete-account" style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--faint)" }}>Delete account</Link>
           {/*
             A mailto, not href="/".
             Both "Contact" and "About" pointed at the homepage, so from the

@@ -9,7 +9,7 @@
  */
 
 /** Pages a signed-out visitor can open as they are. */
-const PUBLIC_PREFIXES = ["/library", "/privacy", "/terms", "/welcome", "/onboarding", "/auth"];
+const PUBLIC_PREFIXES = ["/library", "/privacy", "/terms", "/delete-account", "/welcome", "/onboarding", "/auth"];
 
 /**
  * A `next` value that is safe to navigate to: a path on this site only.

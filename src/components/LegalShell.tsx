@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 /**
- * Shared shell for the legal pages (Privacy Policy, Terms of Service).
+ * Shared shell for the legal pages (Privacy Policy, Terms of Service, Delete
+ * your account).
  * Public, server-rendered, styled to match the app.
  */
 export default function LegalShell({
@@ -38,6 +39,7 @@ export default function LegalShell({
         <div className="mt-12 pt-6 border-t border-foreground/10 flex gap-4 text-sm">
           <Link href="/privacy" className="text-terracotta hover:text-terracotta-light transition-colors">Privacy Policy</Link>
           <Link href="/terms" className="text-terracotta hover:text-terracotta-light transition-colors">Terms of Service</Link>
+          <Link href="/delete-account" className="text-terracotta hover:text-terracotta-light transition-colors">Delete your account</Link>
         </div>
       </div>
     </main>

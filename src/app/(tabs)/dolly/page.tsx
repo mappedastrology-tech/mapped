@@ -24,6 +24,7 @@ import { useStickToBottom } from "@/lib/useStickToBottom";
 import { AI_UPGRADE_MESSAGE } from "@/lib/ai/messages";
 import { detectCrisis, crisisAnnouncement } from "@/lib/crisis";
 import CrisisCard from "@/components/CrisisCard";
+import ReportReplyButton from "@/components/ReportReplyButton";
 import { useDialogKeys } from "@/lib/useDialogKeys";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { parseDollyReply, dollyBody, type DollyTagKind } from "@/lib/dollyReply";
@@ -2110,6 +2111,17 @@ export default function DollyTab() {
                     )}
                   </div>
                 </div>
+
+                {/* Report this reply — a store requirement for AI chat (see
+                    lib/dollyReport). Only once the reply has finished: a
+                    half-written answer is not what someone would report. */}
+                {!live && body && (
+                  <ReportReplyButton
+                    replyText={meta?.lead ? `${meta.lead}\n\n${body}` : body}
+                    conversationId={conversationId}
+                    messageId={msg.id}
+                  />
+                )}
 
                 {/* The action chip and follow-ups only once the reply has
                     landed — offering a next step mid-sentence reads as a bug —
