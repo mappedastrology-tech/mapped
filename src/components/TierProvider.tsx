@@ -22,6 +22,7 @@ import {
 import { getActivePromoTier } from "@/lib/promoCodes";
 import { getProfile, invalidateProfile } from "@/lib/profileCache";
 import { API_BASE } from "@/lib/apiBase";
+import { storeBillingAvailable, syncStorePurchases } from "@/lib/iap";
 
 type Limits = { dollyMessagesPerDay: number; pullsPerDay: number; synastryPartners: number; familyMembers: number; wizardPerMonth: number; transitsShown: number };
 
@@ -214,6 +215,14 @@ export function TierProvider({ children }: { children: ReactNode }) {
         if (body && body.tier !== tier) await fetchTier({ fresh: true });
       } catch {
         /* Best-effort. A failure here must never break the app. */
+      }
+      // Inside the apps, also ask the server to re-read the App Store /
+      // Google Play record: a renewal, a cancellation or a refund made in the
+      // store's own settings lands here the next time the app is opened, even
+      // if the RevenueCat webhook was missed.
+      if (storeBillingAvailable()) {
+        const store = await syncStorePurchases();
+        if (store && store.tier !== tier) await fetchTier({ fresh: true });
       }
     };
     void onVisible();

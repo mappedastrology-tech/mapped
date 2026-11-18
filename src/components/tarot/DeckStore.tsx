@@ -29,6 +29,7 @@ import { cardThumb, onCardThumbError } from "@/lib/cardThumb";
 import DeckStack from "@/components/tarot/DeckStack";
 import { fetchDeckEntitlements, claimFreeDeck, NO_ENTITLEMENTS, type DeckEntitlements } from "@/lib/freeDeck";
 import { openCheckout } from "@/lib/openCheckout";
+import { buyDeckInStore, getDeckPrices, NotSignedInError, storeBillingAvailable } from "@/lib/iap";
 
 interface Props {
   /** Deck id from ?deck_purchased= — shows the success banner. */
@@ -73,9 +74,36 @@ export default function DeckStore({ justPurchased }: Props) {
     return () => { alive = false; };
   }, [justPurchased]);
 
+  /**
+   * Inside the iOS and Android apps, decks are sold as one-time in-app
+   * purchases (lib/iap.ts) at the store's own price in local currency.
+   */
+  const storeMode = storeBillingAvailable();
+  const [storePrices, setStorePrices] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!storeMode) return;
+    let alive = true;
+    void getDeckPrices().then((p) => { if (alive) setStorePrices(p); });
+    return () => { alive = false; };
+  }, [storeMode]);
+  const priceOf = (deck: StoreDeck) => (storeMode && storePrices[deck.id]) || formatPrice(deck.priceCents);
+
   async function buy(deck: StoreDeck) {
     setError(null);
     setBuying(deck.id);
+    if (storeMode) {
+      try {
+        const outcome = await buyDeckInStore(deck.id);
+        if (outcome === "purchased") await loadEntitlements();
+      } catch (err) {
+        setError(err instanceof NotSignedInError
+          ? "Sign in to buy decks — your purchases are tied to your account."
+          : "The store couldn't complete that. Nothing has been charged, so please try again.");
+      } finally {
+        setBuying(null);
+      }
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
@@ -214,11 +242,11 @@ export default function DeckStore({ justPurchased }: Props) {
 
           <div className="flex items-baseline gap-2.5 mt-3.5">
             <span className="text-[26px] font-bold leading-none" style={{ color: "var(--foreground)" }}>
-              {freeHere ? "Free" : formatPrice(openDeck.priceCents)}
+              {freeHere ? "Free" : priceOf(openDeck)}
             </span>
             {freeHere && (
               <span className="text-[14px] line-through" style={{ color: "var(--foreground-muted)" }}>
-                {formatPrice(openDeck.priceCents)}
+                {priceOf(openDeck)}
               </span>
             )}
             <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
@@ -287,7 +315,7 @@ export default function DeckStore({ justPurchased }: Props) {
               <Row term="Format" value="Oracle deck — read inside the Tarot tab" />
               <Row term="Purchase" value="One-time. No subscription, no expiry." />
               <Row term="Delivery" value="Unlocks instantly after payment." />
-              <Row term="Payment" value="Secure checkout by Stripe." />
+              <Row term="Payment" value={storeMode ? "Paid through your app store account." : "Secure checkout by Stripe."} />
             </dl>
           </Section>
         </div>
@@ -314,7 +342,7 @@ export default function DeckStore({ justPurchased }: Props) {
                     ? "Opening checkout…"
                     : freeHere
                       ? "Choose this one — free"
-                      : `Buy now · ${formatPrice(openDeck.priceCents)}`}
+                      : `Buy now · ${priceOf(openDeck)}`}
             </button>
           )}
         </div>
@@ -412,11 +440,11 @@ export default function DeckStore({ justPurchased }: Props) {
                       <>
                         Free{" "}
                         <span className="text-[12.5px] font-normal line-through" style={{ color: "var(--foreground-muted)" }}>
-                          {formatPrice(deck.priceCents)}
+                          {priceOf(deck)}
                         </span>
                       </>
                     ) : (
-                      formatPrice(deck.priceCents)
+                      priceOf(deck)
                     )}
                   </p>
                 </div>
@@ -459,7 +487,7 @@ export default function DeckStore({ justPurchased }: Props) {
         style={{ border: "1px solid var(--border-card)", color: "var(--foreground-muted)" }}>
         <li>✓ {ent.hasFreePick ? "Your first deck is free — no card needed" : "One-time purchase — no subscription"}</li>
         <li>✓ Unlocks instantly after payment</li>
-        <li>✓ Secure checkout by Stripe</li>
+        <li>✓ {storeMode ? "Paid through your app store account" : "Secure checkout by Stripe"}</li>
       </ul>
       )}
     </div>

@@ -28,6 +28,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { readStoreTier, stripeTierWithStore } from "@/lib/storeEntitlements";
 
 import { withCors, corsPreflight } from "@/lib/cors";
 export const runtime = "nodejs";
@@ -159,7 +160,12 @@ async function handlePOST(request: Request) {
      * and it still downgrades.
      */
     const stripeOwnsTier = !!best || !!profile?.stripe_subscription_id;
-    const tier = best ? tierOf(best) : stripeOwnsTier ? "free" : undefined;
+    const stripeTier = best ? tierOf(best) : stripeOwnsTier ? "free" : undefined;
+    // Someone may also hold a plan bought in the App Store or Google Play. A
+    // lapsed web plan falls back to that, never below it.
+    const tier = stripeTier === undefined
+      ? undefined
+      : stripeTierWithStore(stripeTier, await readStoreTier(admin, user.id));
     const status = best?.status ?? subs.data[0]?.status ?? null;
 
     /**

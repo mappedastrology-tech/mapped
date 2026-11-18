@@ -28,8 +28,11 @@ First question: **"Do you or your third-party partners collect data from this ap
 
 **Leave everything else unticked**, in particular:
 
-- **Payment Info** — card details go straight to Stripe and never touch our
-  servers. We store a Stripe customer id, not a card.
+- **Payment Info** — card details go straight to Stripe (web) or Apple /
+  Google (in the apps) and never touch our servers. We store a Stripe customer
+  id and what the stores report was bought (via RevenueCat), never a card.
+- **Purchases** (Purchase History) — linked to the account, used for App
+  Functionality only: which plan and decks someone owns. Not used for tracking.
 - **Precise Location** — the app never calls `navigator.geolocation` and asks
   for no location permission. Verified by grep.
 - **Contacts** — the people on someone's map are typed in by hand. The device

@@ -55,6 +55,12 @@ export interface CachedProfile {
   subscription_period_end?: string | null;
   /** Cancelled in the portal; still entitled until subscription_period_end. */
   subscription_cancel_at_period_end?: boolean | null;
+  /** What the App Store / Google Play grant, kept apart from Stripe (migration 20261118). */
+  store_tier?: "free" | "mid" | "max" | null;
+  /** RevenueCat's store name: "app_store", "play_store", … */
+  store_platform?: string | null;
+  store_period_end?: string | null;
+  store_will_renew?: boolean | null;
   [key: string]: unknown;
 }
 

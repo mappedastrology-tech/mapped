@@ -46,6 +46,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          # RevenueCat public SDK keys (safe to ship). Unset = the app keeps
+          # the Stripe link-out and sells nothing in-app; see STORE-PURCHASES.md.
+          NEXT_PUBLIC_REVENUECAT_IOS_KEY: ${{ vars.NEXT_PUBLIC_REVENUECAT_IOS_KEY }}
+          NEXT_PUBLIC_REVENUECAT_ANDROID_KEY: ${{ vars.NEXT_PUBLIC_REVENUECAT_ANDROID_KEY }}
         run: npm run build:app
 
       - name: Copy the bundle into the native projects

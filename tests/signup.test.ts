@@ -313,12 +313,15 @@ test("declining is a real answer, and does not disable the rest of the app", () 
 /* ─── Guideline 5.1.1(v): deleting an account is not cancelling a plan ─── */
 
 test("the delete dialog says who to cancel the subscription with", () => {
-  // Inside the app that is Apple, and only iPhone Settings can stop it, so
-  // "manage it here" would tell somebody their billing had stopped when it
-  // had not.
+  // A plan bought in the App Store or Google Play can only be cancelled in
+  // the store, so "manage it here" would tell somebody their billing had
+  // stopped when it had not. A web plan is cancelled by the delete route
+  // itself, so the dialog says that instead of sending them to the portal.
   const src = read("src/app/account/page.tsx");
   assert.match(src, /iPhone Settings/);
-  assert.match(src, /isNativeApp\(\)/);
-  assert.match(src, /billed through Stripe/, "web subscribers get no warning");
+  assert.match(src, /billed by Google Play and is not cancelled by this/);
+  assert.match(src, /store_tier === "mid" \|\| p\?\.store_tier === "max"/, "the store warning is not tied to a store plan");
+  assert.match(src, /web subscription is cancelled along with your account/, "web subscribers get no word on billing");
+  assert.match(read("src/app/api/account/delete/route.ts"), /stripe\.subscriptions\.cancel/, "the dialog promises a cancellation the route does not make");
   assert.match(src, /Dolly conversations/, "the dialog does not say Dolly history goes too");
 });

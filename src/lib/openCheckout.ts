@@ -30,8 +30,11 @@
  * when the app resumes (see TierProvider). On the web it stays a plain
  * redirect, which is what a browser should do.
  *
- * This does NOT make the app compliant outside the United States. Selling to
- * other storefronts needs real in-app purchase — see PLATFORMS.md.
+ * This does NOT make the app compliant outside the United States, so an app
+ * build with RevenueCat keys sells through the App Store and Google Play
+ * instead (lib/iap.ts, STORE-PURCHASES.md) and never reaches a Stripe
+ * checkout. This path remains for the web, and for an app build without those
+ * keys. It is also how a store's own subscriptions page is opened.
  */
 
 import { isNativeApp } from "@/lib/isNativeApp";

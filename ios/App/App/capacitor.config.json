@@ -23,6 +23,7 @@
 		"AppPlugin",
 		"CAPBrowserPlugin",
 		"KeyboardPlugin",
-		"PushNotificationsPlugin"
+		"PushNotificationsPlugin",
+		"PurchasesPlugin"
 	]
 }
